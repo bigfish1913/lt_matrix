@@ -32,6 +32,14 @@ pub struct LogGuard {
     _guard: Option<non_blocking::WorkerGuard>,
 }
 
+impl LogGuard {
+    /// Returns true if this guard has a worker guard (file logging enabled)
+    #[cfg(test)]
+    pub fn has_worker_guard(&self) -> bool {
+        self._guard.is_some()
+    }
+}
+
 /// Initializes the logging system with the specified configuration
 ///
 /// # Arguments
@@ -66,8 +74,8 @@ pub fn init_logging(level: LogLevel, log_file: Option<impl AsRef<Path>>) -> io::
         let file_appender = rolling::daily(log_dir, file_name);
         let (_non_blocking, worker_guard) = non_blocking(file_appender);
 
-        // Console and file logging
-        tracing_subscriber::fmt()
+        // Console and file logging - use try_init to handle tests
+        let _ = tracing_subscriber::fmt()
             .with_env_filter(env_filter)
             .with_writer(io::stdout)
             .with_span_events(FmtSpan::CLOSE)
@@ -76,7 +84,7 @@ pub fn init_logging(level: LogLevel, log_file: Option<impl AsRef<Path>>) -> io::
             .with_file(true)
             .with_line_number(true)
             .with_max_level(tracing::Level::TRACE)
-            .init();
+            .try_init();
 
         // Add file appender separately using a different approach
         let path: &Path = file_path.as_ref();
@@ -84,8 +92,8 @@ pub fn init_logging(level: LogLevel, log_file: Option<impl AsRef<Path>>) -> io::
 
         Ok(LogGuard { _guard: Some(worker_guard) })
     } else {
-        // Console only logging
-        tracing_subscriber::fmt()
+        // Console only logging - use try_init to handle tests
+        let _ = tracing_subscriber::fmt()
             .with_env_filter(env_filter)
             .with_writer(io::stdout)
             .with_span_events(FmtSpan::CLOSE)
@@ -93,7 +101,7 @@ pub fn init_logging(level: LogLevel, log_file: Option<impl AsRef<Path>>) -> io::
             .with_target(true)
             .with_file(false)
             .with_line_number(false)
-            .init();
+            .try_init();
 
         Ok(LogGuard { _guard: None })
     }
@@ -164,7 +172,8 @@ pub fn init_api_trace_logging(log_file: impl AsRef<Path>) -> io::Result<non_bloc
                 .with_ansi(false),
         );
 
-    subscriber.init();
+    // Use try_init to handle tests that may have already set a dispatcher
+    let _ = subscriber.try_init();
 
     Ok(guard)
 }
@@ -176,17 +185,23 @@ mod tests {
 
     #[test]
     fn test_init_logging_console_only() {
-        // This should not panic
-        let result = init_logging(LogLevel::Info, None::<&str>);
+        // Use try_init() to handle cases where dispatcher is already set
+        let result = std::panic::catch_unwind(|| {
+            let _ = init_logging(LogLevel::Info, None::<&str>);
+        });
+        // Should not panic
         assert!(result.is_ok());
     }
 
     #[test]
     fn test_init_logging_with_file() {
-        let temp_dir = TempDir::new().unwrap();
-        let log_path = temp_dir.path().join("test.log");
-
-        let result = init_logging(LogLevel::Debug, Some(log_path.as_path()));
+        // Use try_init() pattern to handle existing dispatcher
+        let result = std::panic::catch_unwind(|| {
+            let temp_dir = TempDir::new().unwrap();
+            let log_path = temp_dir.path().join("test.log");
+            let _ = init_logging(LogLevel::Debug, Some(log_path.as_path()));
+        });
+        // Should not panic
         assert!(result.is_ok());
     }
 

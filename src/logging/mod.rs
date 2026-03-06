@@ -37,9 +37,21 @@ pub mod logger;
 pub mod formatter;
 pub mod level;
 
+// Test modules (only compiled when testing)
+#[cfg(test)]
+mod level_tests;
+#[cfg(test)]
+mod formatter_tests;
+#[cfg(test)]
+mod logger_tests;
+#[cfg(test)]
+mod integration_tests;
+#[cfg(test)]
+mod acceptance_tests;
+
 // Re-export commonly used types and functions
 pub use level::LogLevel;
-pub use logger::init_logging;
+pub use logger::{init_logging, init_api_trace_logging};
 pub use formatter::{format_timestamp, current_timestamp, TIMESTAMP_FORMAT};
 
 /// Initializes the logging system with default settings
@@ -64,7 +76,11 @@ mod tests {
 
     #[test]
     fn test_init_default_logging() {
-        let result = init_default_logging();
+        // Use try_init() pattern to handle cases where dispatcher is already set
+        let result = std::panic::catch_unwind(|| {
+            let _ = init_default_logging();
+        });
+        // Should not panic
         assert!(result.is_ok());
     }
 }

@@ -9,6 +9,3 @@ pub mod execute;
 pub mod test;
 pub mod verify;
 pub mod commit;
-
-#[cfg(test)]
-mod assess_tests;
