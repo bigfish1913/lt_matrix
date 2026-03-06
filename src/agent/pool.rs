@@ -168,13 +168,34 @@ impl SessionPool {
 
     /// Create or get a session for a task.
     ///
-    /// If the task has a session_id and it exists and is not stale,
+    /// If the task has a parent_session_id, check if that parent session exists
+    /// and is not stale. If valid, inherit the parent's session.
+    /// Otherwise, if the task has a session_id and it exists and is not stale,
     /// reuse that session (for retry scenarios).
-    /// Otherwise, create a new session and associate it with the task.
+    /// If neither are valid, create a new session and associate it with the task.
     ///
     /// Returns a reference to the session.
     pub fn get_or_create_for_task(&mut self, task: &mut crate::models::Task) -> &MemorySession {
-        // If task has a session_id, try to reuse it
+        // First, check if task has a parent_session_id for inheritance
+        if let Some(parent_session_id) = task.get_parent_session_id() {
+            let parent_session_id = parent_session_id.to_string(); // Clone to avoid borrow issues
+
+            // Check if parent session exists and is not stale
+            if let Some(existing_session) = self.sessions.get(&parent_session_id) {
+                if !existing_session.is_stale() {
+                    // Parent session is valid, inherit it
+                    task.set_session_id(&parent_session_id);
+                    let session = self.sessions.get_mut(&parent_session_id).unwrap();
+                    session.mark_accessed();
+                    return session;
+                }
+            }
+
+            // Parent session is stale or not found, clear parent_session_id
+            task.clear_parent_session_id();
+        }
+
+        // If task has a session_id, try to reuse it (for retry scenarios)
         if let Some(session_id) = task.get_session_id() {
             // Check if session exists and is not stale without borrowing mutably yet
             if let Some(existing_session) = self.sessions.get(session_id) {

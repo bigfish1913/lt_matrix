@@ -39,6 +39,10 @@ pub struct Task {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub session_id: Option<String>,
 
+    /// Parent task's session ID (for dependency chain session inheritance)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parent_session_id: Option<String>,
+
     /// Error message if task failed
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
@@ -73,6 +77,7 @@ impl Task {
             subtasks: Vec::new(),
             retry_count: 0,
             session_id: None,
+            parent_session_id: None,
             error: None,
             created_at: now,
             started_at: None,
@@ -120,6 +125,21 @@ impl Task {
     /// Clear the session ID (e.g., if session becomes stale)
     pub fn clear_session_id(&mut self) {
         self.session_id = None;
+    }
+
+    /// Get the parent task's session ID (if any)
+    pub fn get_parent_session_id(&self) -> Option<&str> {
+        self.parent_session_id.as_deref()
+    }
+
+    /// Set the parent task's session ID (for dependency chain inheritance)
+    pub fn set_parent_session_id(&mut self, parent_session_id: impl Into<String>) {
+        self.parent_session_id = Some(parent_session_id.into());
+    }
+
+    /// Clear the parent session ID
+    pub fn clear_parent_session_id(&mut self) {
+        self.parent_session_id = None;
     }
 
     /// Increment retry count and prepare for retry
