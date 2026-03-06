@@ -186,9 +186,10 @@ lcov.info
 
 # ── Claude / longtime metadata ───────────────────────────────────────────────
 .claude/
-tasks/
+/docs/tasks/
 logs/
 workspace/
+.ltmatrix/
 
 
 # Added by cargo

@@ -2189,13 +2189,50 @@ Perform the final testing now."""
                         task_file.unlink()
 
         if self.resume and self.store.total() > 0:
+            # Count task statuses
+            completed = [t for t in self.store.all_tasks() if t.status == "completed"]
+            failed = [t for t in self.store.all_tasks() if t.status == "failed"]
+            pending = [t for t in self.store.all_tasks() if t.status == "pending"]
+            in_progress = [t for t in self.store.all_tasks() if t.status == "in_progress"]
+
             log("INFO", f"Resuming with {self.store.total()} existing tasks")
+            print(f"     {GREEN}Completed:{RESET} {len(completed)}")
+            print(f"     {RED}Failed:{RESET}    {len(failed)}")
+            print(f"     {YELLOW}Pending:{RESET}    {len(pending)}")
+            print(f"     {CYAN}In Progress:{RESET} {len(in_progress)}")
+            print()
+
             # Reset any tasks stuck at in_progress from a crashed run
-            for t in self.store.all_tasks():
-                if t.status == "in_progress":
-                    t.status = "pending"
-                    self.store.save_task(t)
-                    log("INFO", f"  Reset stuck task to pending: [{t.id}]")
+            for t in in_progress:
+                t.status = "pending"
+                self.store.save_task(t)
+                log("INFO", f"  Reset stuck task to pending: [{t.id}]")
+
+            # Ask user if they want to retry failed tasks
+            if failed:
+                print(f"  {YELLOW}[!]{RESET} Found {len(failed)} failed task(s):")
+                for t in failed[:5]:  # Show first 5
+                    print(f"       - [{t.id}] {t.title[:50]}")
+                if len(failed) > 5:
+                    print(f"       ... and {len(failed) - 5} more")
+                print()
+                try:
+                    answer = input("     Retry failed tasks? [Y/n] ").strip().lower()
+                except EOFError:
+                    answer = "n"
+                except KeyboardInterrupt:
+                    print()
+                    sys.exit(0)
+                print()
+                if answer in ("", "y", "yes"):
+                    for t in failed:
+                        t.status = "pending"
+                        t.retries = 0
+                        t.error = ""
+                        self.store.save_task(t)
+                        log("INFO", f"  Reset failed task to pending: [{t.id}]")
+                else:
+                    log("INFO", f"  Keeping {len(failed)} failed task(s) in failed state")
         else:
             self.generate_tasks(clarification=clarification)
 
