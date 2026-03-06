@@ -1,0 +1,13 @@
+[package]
+name = "ltmatrix"
+version = "0.1.0"
+edition = "2021"
+authors = ["bigfish <bigfish@example.com>"]
+description = "A high-performance, cross-platform long-time agent orchestrator rewritten in Rust from Python"
+license = "MIT"
+repository = "https://github.com/bigfish/ltmatrix"
+readme = "README.md"
+keywords = ["agent", "orchestrator", "automation", "claude", "development"]
+categories = ["development-tools", "command-line-utilities"]
+
+[dependencies]

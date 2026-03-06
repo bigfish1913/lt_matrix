@@ -182,15 +182,15 @@ def extract_json_from_text(text: str) -> dict | None:
     if m:
         try:
             return json.loads(m.group(1))
-        except json.JSONDecodeError:
-            pass
+        except json.JSONDecodeError as e:
+            log("DEBUG", f"JSON parse error in ```json block: {e}")
     # Try bare JSON object — greedy to capture the outermost { ... }
     m = re.search(r"\{.*\}", text, re.DOTALL)
     if m:
         try:
             return json.loads(m.group(0))
-        except json.JSONDecodeError:
-            pass
+        except json.JSONDecodeError as e:
+            log("DEBUG", f"JSON parse error in bare object: {e}")
     return None
 
 
@@ -945,11 +945,12 @@ Rules:
 - Each task should be self-contained and achievable in one focused work session
 - Tasks should be ordered logically (dependencies first)
 - Include setup, implementation, and testing tasks
-- Each task should be small enough to complete in one focused session; generate as many tasks as needed with no upper limit
+- Each task should be small enough to complete in one focused session
+- IMPORTANT: Generate at most 30 tasks in this response. If the project needs more, the system will request additional tasks later.
 - If a reference document is provided, ensure tasks fully implement its requirements
 - If the project has both frontend and backend, split tasks clearly: backend tasks work in a `backend/` subdirectory, frontend tasks in `frontend/`. Shared tasks (e.g. API contract, docker-compose) go in the root. Make this explicit in each task's description.
 
-Respond ONLY with a JSON object (no markdown, no explanation):
+Respond ONLY with a JSON object (no markdown, no explanation, no ```json fence):
 {{
   "tasks": [
     {{
