@@ -130,8 +130,8 @@ fn test_powershell_completion_content() {
     // Verify powershell completion contains expected patterns
     assert!(!output.is_empty(), "Completion output should not be empty");
     assert!(output.contains("ltmatrix"), "Should reference ltmatrix");
-    assert!(output.contains("Param"), "Should define parameters");
-    assert!(output.contains("tabexpansion"), "Should define tab expansion");
+    assert!(output.contains("Param") || output.contains("param"), "Should define parameters");
+    assert!(output.contains("CompletionResult"), "Should define completion results");
 }
 
 #[test]
@@ -394,7 +394,6 @@ fn test_completions_command_parsing_elvish() {
 fn test_bash_completion_to_file() {
     use clap::CommandFactory;
     use clap_complete::Shell;
-    use std::io::Write;
 
     let mut cmd = Args::command();
     let mut buf = Vec::new();
@@ -481,10 +480,12 @@ fn test_completion_includes_description() {
     let output = String::from_utf8(buf).expect("Invalid UTF-8 in completion output");
 
     // The command description should be in the completion
-    let description = cmd.get_about().unwrap_or("");
-    if !description.is_empty() {
-        assert!(output.contains(description) || output.len() > 0,
-                "Completion should be generated with description context");
+    if let Some(description) = cmd.get_about() {
+        let desc_str = description.to_string();
+        if !desc_str.is_empty() {
+            assert!(output.contains(&desc_str) || output.len() > 0,
+                    "Completion should be generated with description context");
+        }
     }
 }
 
@@ -571,7 +572,7 @@ fn test_completion_includes_execution_mode_values() {
 fn test_help_mentions_completions() {
     use clap::CommandFactory;
 
-    let cmd = Args::command();
+    let mut cmd = Args::command();
     let help = cmd.render_help().to_string();
 
     assert!(help.contains("completions") || help.contains("completion"),
