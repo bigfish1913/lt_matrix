@@ -178,14 +178,14 @@ mod tests {
     #[test]
     fn test_create_progress_bar() {
         let bar = create_progress_bar(100, None);
-        assert_eq!(bar.length(), 100);
+        assert_eq!(bar.length(), Some(100));
     }
 
     #[test]
     fn test_create_progress_bar_plain() {
         let config = BarColorConfig::plain();
         let bar = create_progress_bar(100, Some(config));
-        assert_eq!(bar.length(), 100);
+        assert_eq!(bar.length(), Some(100));
     }
 
     #[test]
