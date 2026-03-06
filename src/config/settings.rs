@@ -1152,7 +1152,23 @@ agent = "claude"
 
         let overrides = CliOverrides {
             agent: Some("cli-agent".to_string()),
-            ..Default::default()
+            config_file: None,
+            mode: None,
+            output_format: None,
+            log_level: None,
+            log_file: None,
+            max_retries: None,
+            timeout: None,
+            no_color: None,
+            dry_run: false,
+            resume: false,
+            ask: false,
+            regenerate_plan: false,
+            on_blocked: None,
+            mcp_config: None,
+            progress: None,
+            run_tests: None,
+            verify: None,
         };
 
         let merged = apply_cli_overrides(config, overrides);
@@ -1175,8 +1191,24 @@ agent = "claude"
         };
 
         let overrides = CliOverrides {
+            agent: None,
+            config_file: None,
+            mode: None,
             output_format: Some(OutputFormat::Json),
-            ..Default::default()
+            log_level: None,
+            log_file: None,
+            max_retries: None,
+            timeout: None,
+            no_color: None,
+            dry_run: false,
+            resume: false,
+            ask: false,
+            regenerate_plan: false,
+            on_blocked: None,
+            mcp_config: None,
+            progress: None,
+            run_tests: None,
+            verify: None,
         };
 
         let merged = apply_cli_overrides(config, overrides);
@@ -1198,8 +1230,24 @@ agent = "claude"
         };
 
         let overrides = CliOverrides {
+            agent: None,
+            config_file: None,
+            mode: None,
+            output_format: None,
             log_level: Some(LogLevel::Debug),
-            ..Default::default()
+            log_file: None,
+            max_retries: None,
+            timeout: None,
+            no_color: None,
+            dry_run: false,
+            resume: false,
+            ask: false,
+            regenerate_plan: false,
+            on_blocked: None,
+            mcp_config: None,
+            progress: None,
+            run_tests: None,
+            verify: None,
         };
 
         let merged = apply_cli_overrides(config, overrides);
@@ -1222,8 +1270,24 @@ agent = "claude"
         };
 
         let overrides = CliOverrides {
+            agent: None,
+            config_file: None,
+            mode: None,
+            output_format: None,
+            log_level: None,
+            log_file: None,
+            max_retries: None,
+            timeout: None,
             no_color: Some(true),
-            ..Default::default()
+            dry_run: false,
+            resume: false,
+            ask: false,
+            regenerate_plan: false,
+            on_blocked: None,
+            mcp_config: None,
+            progress: None,
+            run_tests: None,
+            verify: None,
         };
 
         let merged = apply_cli_overrides(config, overrides);
@@ -1262,10 +1326,24 @@ agent = "claude"
         };
 
         let overrides = CliOverrides {
+            agent: None,
+            config_file: None,
             mode: Some("fast".to_string()),
+            output_format: None,
+            log_level: None,
+            log_file: None,
             max_retries: Some(5),
             timeout: Some(2400),
-            ..Default::default()
+            no_color: None,
+            dry_run: false,
+            resume: false,
+            ask: false,
+            regenerate_plan: false,
+            on_blocked: None,
+            mcp_config: None,
+            progress: None,
+            run_tests: None,
+            verify: None,
         };
 
         let merged = apply_cli_overrides(config, overrides);
@@ -1464,9 +1542,24 @@ agent = "claude"
 
         // Now apply CLI override
         let cli_overrides = CliOverrides {
+            config_file: None,
             agent: Some("cli-agent".to_string()),
+            mode: None,
             output_format: Some(OutputFormat::Json),
-            ..Default::default()
+            log_level: None,
+            log_file: None,
+            max_retries: None,
+            timeout: None,
+            no_color: None,
+            dry_run: false,
+            resume: false,
+            ask: false,
+            regenerate_plan: false,
+            on_blocked: None,
+            mcp_config: None,
+            progress: None,
+            run_tests: None,
+            verify: None,
         };
 
         let final_config = apply_cli_overrides(merged, cli_overrides);
