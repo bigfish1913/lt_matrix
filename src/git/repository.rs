@@ -264,30 +264,33 @@ pnpm-debug.log*
 /// # Ok::<(), anyhow::Error>(())
 /// ```
 pub fn checkout(repo: &Repository, branch_name: &str) -> Result<Oid> {
-    let head = repo.head()
-        .context("Failed to get HEAD reference")?;
-
-    let head_commit = head.peel_to_commit()
-        .context("Failed to peel HEAD to commit")?;
-
-    let commit_id = head_commit.id();
-
     // Check if branch already exists
     let branch_exists = repo.find_branch(branch_name, git2::BranchType::Local).is_ok();
 
     if !branch_exists {
         // Create new branch at current HEAD
-        let target = repo.revparse_single("HEAD")?;
-        let commit = target.peel_to_commit()?;
-        repo.branch(branch_name, &commit, false)
+        let head = repo.head()
+            .context("Failed to get HEAD reference")?;
+        let head_commit = head.peel_to_commit()
+            .context("Failed to peel HEAD to commit")?;
+        repo.branch(branch_name, &head_commit, false)
             .context("Failed to create branch")?;
     }
 
-    // Checkout the branch
-    let obj = repo.revparse_single(&format!("refs/heads/{}", branch_name))?;
-    let tree = obj.peel_to_tree()?;
-    repo.checkout_tree(&tree.as_object(), None)?;
-    repo.set_head(&format!("refs/heads/{}", branch_name))?;
+    // Get the target branch's commit
+    let obj = repo.revparse_single(&format!("refs/heads/{}", branch_name))?
+        .peel_to_commit()
+        .context("Failed to peel to commit")?;
+
+    let commit_id = obj.id();
+
+    // First set HEAD to point to the branch
+    repo.set_head(&format!("refs/heads/{}", branch_name))
+        .context("Failed to set HEAD")?;
+
+    // Then hard reset to clean both working directory and index
+    repo.reset(obj.as_object(), git2::ResetType::Hard, None)
+        .context("Failed to reset to branch")?;
 
     tracing::debug!("Checked out branch: {}", branch_name);
 

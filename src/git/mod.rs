@@ -57,3 +57,8 @@ pub use commit::{
     amend_commit,
     short_commit_id,
 };
+
+// Re-export merge functions
+pub use merge::{
+    merge_with_squash,
+};

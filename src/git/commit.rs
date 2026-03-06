@@ -329,10 +329,32 @@ pub fn get_head_commit(repo: &Repository) -> Result<Option<git2::Commit>> {
 /// # Ok::<(), anyhow::Error>(())
 /// ```
 pub fn has_staged_changes(repo: &Repository) -> Result<bool> {
+    // Get HEAD commit
+    let head = match repo.head() {
+        Ok(h) => h,
+        Err(_) => {
+            // No HEAD means no commits yet
+            // Check if index has any entries
+            let index = repo.index()
+                .context("Failed to get repository index")?;
+            return Ok(!index.is_empty());
+        }
+    };
+
+    let head_commit = head.peel_to_commit()
+        .context("Failed to peel HEAD to commit")?;
+    let head_tree = head_commit.tree()
+        .context("Failed to get HEAD tree")?;
+
     let index = repo.index()
         .context("Failed to get repository index")?;
 
-    Ok(!index.is_empty())
+    // Create diff from HEAD tree to index (shows staged changes)
+    let diff = repo.diff_tree_to_index(Some(&head_tree), Some(&index), None)
+        .context("Failed to create diff")?;
+
+    // Check if there are any differences
+    Ok(diff.deltas().count() > 0)
 }
 
 /// Checks if there are unstaged changes.
