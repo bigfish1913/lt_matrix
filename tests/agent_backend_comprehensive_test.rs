@@ -376,6 +376,7 @@ async fn test_agent_backend_trait_methods_exist() {
         depends_on: vec![],
         subtasks: vec![],
         retry_count: 0,
+        session_id: None,
         error: None,
         created_at: chrono::Utc::now(),
         started_at: None,

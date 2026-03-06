@@ -35,6 +35,10 @@ pub struct Task {
     #[serde(default)]
     pub retry_count: u32,
 
+    /// Session ID used for task execution (for retry reuse)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub session_id: Option<String>,
+
     /// Error message if task failed
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
@@ -68,6 +72,7 @@ impl Task {
             depends_on: Vec::new(),
             subtasks: Vec::new(),
             retry_count: 0,
+            session_id: None,
             error: None,
             created_at: now,
             started_at: None,
@@ -95,6 +100,34 @@ impl Task {
     /// Returns true if the task can be retried
     pub fn can_retry(&self, max_retries: u32) -> bool {
         self.is_failed() && self.retry_count < max_retries
+    }
+
+    /// Check if this task has a session ID for reuse on retry
+    pub fn has_session(&self) -> bool {
+        self.session_id.is_some()
+    }
+
+    /// Get the session ID for this task (if any)
+    pub fn get_session_id(&self) -> Option<&str> {
+        self.session_id.as_deref()
+    }
+
+    /// Set the session ID for this task (called before first execution attempt)
+    pub fn set_session_id(&mut self, session_id: impl Into<String>) {
+        self.session_id = Some(session_id.into());
+    }
+
+    /// Clear the session ID (e.g., if session becomes stale)
+    pub fn clear_session_id(&mut self) {
+        self.session_id = None;
+    }
+
+    /// Increment retry count and prepare for retry
+    pub fn prepare_retry(&mut self) {
+        self.retry_count += 1;
+        self.status = TaskStatus::Pending;
+        self.started_at = None;
+        // Note: session_id is preserved for reuse on retry
     }
 }
 

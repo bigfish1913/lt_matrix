@@ -140,6 +140,65 @@ impl SessionPool {
     pub fn iter(&self) -> impl Iterator<Item = &MemorySession> {
         self.sessions.values()
     }
+
+    /// Get a session by ID for retry (marks as accessed).
+    ///
+    /// This is used when retrying a task - it retrieves the existing session
+    /// and marks it as accessed, then returns a mutable reference so the
+    /// caller can use it for the retry attempt.
+    ///
+    /// Returns `None` if the session ID is not found or if the session is stale.
+    pub fn get_for_retry(&mut self, session_id: &str) -> Option<&mut MemorySession> {
+        // Check if session exists and is not stale
+        if let Some(session) = self.sessions.get(session_id) {
+            if session.is_stale() {
+                // Session is stale, don't reuse it
+                return None;
+            }
+        } else {
+            // Session not found
+            return None;
+        }
+
+        // Session exists and is not stale, get mutable reference and mark as accessed
+        let session = self.sessions.get_mut(session_id)?;
+        session.mark_accessed();
+        Some(session)
+    }
+
+    /// Create or get a session for a task.
+    ///
+    /// If the task has a session_id and it exists and is not stale,
+    /// reuse that session (for retry scenarios).
+    /// Otherwise, create a new session and associate it with the task.
+    ///
+    /// Returns a reference to the session.
+    pub fn get_or_create_for_task(&mut self, task: &mut crate::models::Task) -> &MemorySession {
+        // If task has a session_id, try to reuse it
+        if let Some(session_id) = task.get_session_id() {
+            // Check if session exists and is not stale without borrowing mutably yet
+            if let Some(existing_session) = self.sessions.get(session_id) {
+                if !existing_session.is_stale() {
+                    // Session exists and is not stale, get mutable reference and mark as accessed
+                    let session = self.sessions.get_mut(session_id).unwrap();
+                    session.mark_accessed();
+                    return session;
+                }
+            }
+
+            // Session was stale or not found, clear it
+            task.clear_session_id();
+        }
+
+        // Create new session and associate with task
+        let agent_name = "claude"; // TODO: Get from task config
+        let model = "claude-sonnet-4-6"; // TODO: Get from task config
+
+        let session = self.get_or_create(agent_name, model);
+        task.set_session_id(session.session_id.clone());
+
+        session
+    }
 }
 
 #[cfg(test)]
@@ -215,5 +274,126 @@ mod tests {
         let id2 = pool.get_or_create("opencode", "gpt-4").session_id.clone();
         assert_ne!(id1, id2);
         assert_eq!(pool.len(), 2);
+    }
+
+    #[test]
+    fn test_get_for_retry_reuses_session() {
+        let mut pool = SessionPool::new();
+        let id1 = pool
+            .get_or_create("claude", "claude-sonnet-4-6")
+            .session_id
+            .clone();
+
+        // Simulate initial access
+        let initial_reuse_count = pool.get(&id1).unwrap().reuse_count();
+
+        // Get for retry (should mark as accessed)
+        let session = pool.get_for_retry(&id1).unwrap();
+        assert_eq!(session.session_id, id1);
+        assert_eq!(session.reuse_count(), initial_reuse_count + 1);
+    }
+
+    #[test]
+    fn test_get_for_retry_returns_none_for_stale_session() {
+        let mut pool = SessionPool::new();
+
+        // Create a session and make it stale
+        let id = pool
+            .get_or_create("claude", "claude-sonnet-4-6")
+            .session_id
+            .clone();
+
+        // Make session stale by modifying last_accessed
+        let session = pool.sessions.get_mut(&id).unwrap();
+        session.last_accessed = chrono::Utc::now() - chrono::Duration::seconds(4000);
+
+        // get_for_retry should return None for stale sessions
+        assert!(pool.get_for_retry(&id).is_none());
+    }
+
+    #[test]
+    fn test_get_for_retry_returns_none_for_nonexistent_session() {
+        let mut pool = SessionPool::new();
+        assert!(pool.get_for_retry("nonexistent").is_none());
+    }
+
+    #[test]
+    fn test_get_or_create_for_task_creates_new_session() {
+        let mut pool = SessionPool::new();
+        let mut task = crate::models::Task::new("task-1", "Test", "Description");
+
+        assert!(!task.has_session());
+
+        let session = pool.get_or_create_for_task(&mut task);
+
+        assert!(task.has_session());
+        assert_eq!(task.get_session_id(), Some(session.session_id()));
+        assert_eq!(session.reuse_count(), 0); // First access, not reused yet
+    }
+
+    #[test]
+    fn test_get_or_create_for_task_reuses_session_on_retry() {
+        let mut pool = SessionPool::new();
+        let mut task = crate::models::Task::new("task-1", "Test", "Description");
+
+        // First execution
+        let session1 = pool.get_or_create_for_task(&mut task);
+        let session_id = task.get_session_id().unwrap().to_string();
+        let initial_reuse_count = session1.reuse_count();
+
+        // Simulate retry (task has session_id set)
+        let session2 = pool.get_or_create_for_task(&mut task);
+
+        // Should reuse the same session
+        assert_eq!(session2.session_id(), session_id);
+        assert_eq!(task.get_session_id(), Some(session_id.as_str()));
+        assert_eq!(session2.reuse_count(), initial_reuse_count + 1);
+    }
+
+    #[test]
+    fn test_get_or_create_for_task_creates_new_if_stale() {
+        let mut pool = SessionPool::new();
+        let mut task = crate::models::Task::new("task-1", "Test", "Description");
+
+        // First execution
+        let session1 = pool.get_or_create_for_task(&mut task);
+        let old_session_id = session1.session_id().to_string();
+
+        // Make the session stale
+        let session = pool.sessions.get_mut(&old_session_id).unwrap();
+        session.last_accessed = chrono::Utc::now() - chrono::Duration::seconds(4000);
+
+        // Retry with stale session should create a new one
+        let session2 = pool.get_or_create_for_task(&mut task);
+
+        // Should have a new session
+        assert_ne!(session2.session_id(), old_session_id);
+        assert_eq!(task.get_session_id(), Some(session2.session_id()));
+    }
+
+    #[test]
+    fn test_task_prepare_retry_preserves_session() {
+        let mut task = crate::models::Task::new("task-1", "Test", "Description");
+        task.set_session_id("test-session-123");
+
+        let session_id = task.get_session_id().unwrap().to_string();
+        assert_eq!(task.retry_count, 0);
+
+        task.prepare_retry();
+
+        // Session should be preserved
+        assert_eq!(task.get_session_id(), Some(session_id.as_str()));
+        assert_eq!(task.retry_count, 1);
+        assert_eq!(task.status, crate::models::TaskStatus::Pending);
+    }
+
+    #[test]
+    fn test_task_clear_session_id() {
+        let mut task = crate::models::Task::new("task-1", "Test", "Description");
+        task.set_session_id("test-session-123");
+
+        assert!(task.has_session());
+        task.clear_session_id();
+        assert!(!task.has_session());
     }
 }
