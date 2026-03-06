@@ -383,6 +383,7 @@ fn test_merge_configs_preserves_global_when_not_in_project() {
         logging: LoggingConfig::default(),
         features: ltmatrix::feature::FeatureConfig::default(),
         warmup: WarmupConfig::default(),
+        pool: ltmatrix::config::settings::PoolConfig::default(),
     };
 
     let merged = merge_configs(Some(global), Some(project));
@@ -603,6 +604,7 @@ fn test_config_serialization_roundtrip() {
         },
         features: ltmatrix::feature::FeatureConfig::default(),
         warmup: WarmupConfig::default(),
+        pool: ltmatrix::config::settings::PoolConfig::default(),
     };
 
     // Serialize to TOML
@@ -877,6 +879,7 @@ fn test_partial_cli_overrides() {
         },
         features: ltmatrix::feature::FeatureConfig::default(),
         warmup: WarmupConfig::default(),
+        pool: ltmatrix::config::settings::PoolConfig::default(),
     };
 
     // Simulate CLI override for output format only

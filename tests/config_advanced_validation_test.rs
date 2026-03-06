@@ -173,6 +173,7 @@ fn test_config_with_all_optional_fields_none() {
         logging: ltmatrix::config::settings::LoggingConfig::default(),
         features: ltmatrix::feature::FeatureConfig::default(),
         warmup: WarmupConfig::default(),
+        pool: ltmatrix::config::settings::PoolConfig::default(),
     };
 
     // Should be able to serialize and deserialize
@@ -264,6 +265,7 @@ fn test_config_serialization_roundtrip_with_all_fields() {
         },
         features: ltmatrix::feature::FeatureConfig::default(),
         warmup: WarmupConfig::default(),
+        pool: ltmatrix::config::settings::PoolConfig::default(),
     };
 
     // Serialize and deserialize
@@ -353,6 +355,7 @@ fn test_merge_with_empty_override_config() {
         logging: ltmatrix::config::settings::LoggingConfig::default(),
         features: ltmatrix::feature::FeatureConfig::default(),
         warmup: WarmupConfig::default(),
+        pool: ltmatrix::config::settings::PoolConfig::default(),
     };
     let merged = ltmatrix::config::settings::merge_configs(Some(base), Some(empty_config));
 

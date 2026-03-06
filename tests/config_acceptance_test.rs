@@ -477,6 +477,7 @@ fn acceptance_5_4_merge_combines_all_sources() {
         logging: ltmatrix::config::settings::LoggingConfig::default(),
         features: ltmatrix::feature::FeatureConfig::default(),
         warmup: ltmatrix::config::settings::WarmupConfig::default(),
+        pool: ltmatrix::config::settings::PoolConfig::default(),
     };
 
     let project = Config {
@@ -518,6 +519,7 @@ fn acceptance_5_4_merge_combines_all_sources() {
         logging: ltmatrix::config::settings::LoggingConfig::default(),
         features: ltmatrix::feature::FeatureConfig::default(),
         warmup: ltmatrix::config::settings::WarmupConfig::default(),
+        pool: ltmatrix::config::settings::PoolConfig::default(),
     };
 
     let merged = merge_configs(Some(global), Some(project));

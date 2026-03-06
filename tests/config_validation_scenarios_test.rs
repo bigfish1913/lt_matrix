@@ -543,6 +543,7 @@ fn test_merge_with_none_values_in_override() {
         logging: LoggingConfig::default(),
         features: ltmatrix::feature::FeatureConfig::default(),
         warmup: WarmupConfig::default(),
+        pool: ltmatrix::config::settings::PoolConfig::default(),
     };
 
     let merged = merge_configs(Some(base), Some(override_config));
@@ -561,6 +562,7 @@ fn test_merge_with_none_values_in_base() {
         logging: LoggingConfig::default(),
         features: ltmatrix::feature::FeatureConfig::default(),
         warmup: WarmupConfig::default(),
+        pool: ltmatrix::config::settings::PoolConfig::default(),
     };
 
     let mut override_config = Config::default();

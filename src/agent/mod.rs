@@ -3,6 +3,7 @@
 //! This module provides interfaces and implementations for various AI agent backends
 //! including Claude, OpenCode, KimiCode, and Codex.
 
+pub mod agent_pool;
 pub mod backend;
 pub mod claude;
 pub mod codex;
@@ -13,6 +14,7 @@ pub mod pool;
 pub mod session;
 pub mod warmup;
 
+pub use agent_pool::{AgentPool, PoolStats};
 pub use backend::{
     AgentBackend, AgentConfig, AgentConfigBuilder, AgentError, AgentResponse, AgentSession,
     ExecutionConfig, MemorySession,

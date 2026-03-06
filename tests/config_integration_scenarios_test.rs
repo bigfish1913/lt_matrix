@@ -504,6 +504,7 @@ fn test_config_serialization_idempotence() {
         },
         features: ltmatrix::feature::FeatureConfig::default(),
         warmup: WarmupConfig::default(),
+        pool: ltmatrix::config::settings::PoolConfig::default(),
     };
 
     // First serialization

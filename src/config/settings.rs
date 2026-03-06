@@ -42,6 +42,10 @@ pub struct Config {
     /// Warmup configuration
     #[serde(default)]
     pub warmup: WarmupConfig,
+
+    /// Session pool configuration
+    #[serde(default)]
+    pub pool: PoolConfig,
 }
 
 impl Default for Config {
@@ -54,6 +58,7 @@ impl Default for Config {
             logging: LoggingConfig::default(),
             features: FeatureConfig::default(),
             warmup: WarmupConfig::default(),
+            pool: PoolConfig::default(),
         }
     }
 }
@@ -262,12 +267,91 @@ impl WarmupConfig {
     }
 }
 
+/// Session pool configuration
+///
+/// Controls how agent sessions are managed, reused, and cleaned up.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PoolConfig {
+    /// Maximum number of sessions to keep in the pool
+    #[serde(default = "default_max_pool_sessions")]
+    pub max_sessions: usize,
+
+    /// Whether to automatically clean up stale sessions
+    #[serde(default = "default_true")]
+    pub auto_cleanup: bool,
+
+    /// Interval in seconds between automatic cleanup runs
+    #[serde(default = "default_cleanup_interval")]
+    pub cleanup_interval_seconds: u64,
+
+    /// Session staleness threshold in seconds (default: 3600 = 1 hour)
+    #[serde(default = "default_stale_threshold")]
+    pub stale_threshold_seconds: u64,
+
+    /// Whether to enable session reuse across tasks
+    #[serde(default = "default_true")]
+    pub enable_reuse: bool,
+}
+
+impl Default for PoolConfig {
+    fn default() -> Self {
+        PoolConfig {
+            max_sessions: 100,
+            auto_cleanup: true,
+            cleanup_interval_seconds: 300, // 5 minutes
+            stale_threshold_seconds: 3600, // 1 hour
+            enable_reuse: true,
+        }
+    }
+}
+
+impl PoolConfig {
+    /// Validate the pool configuration
+    pub fn validate(&self) -> Result<(), String> {
+        if self.max_sessions == 0 {
+            return Err("max_sessions must be greater than 0".to_string());
+        }
+
+        if self.cleanup_interval_seconds == 0 {
+            return Err("cleanup_interval_seconds must be greater than 0".to_string());
+        }
+
+        if self.stale_threshold_seconds == 0 {
+            return Err("stale_threshold_seconds must be greater than 0".to_string());
+        }
+
+        Ok(())
+    }
+
+    /// Get the stale threshold as a chrono Duration
+    pub fn stale_threshold_duration(&self) -> chrono::Duration {
+        chrono::Duration::seconds(self.stale_threshold_seconds as i64)
+    }
+
+    /// Get the cleanup interval as a tokio Duration
+    pub fn cleanup_interval_duration(&self) -> std::time::Duration {
+        std::time::Duration::from_secs(self.cleanup_interval_seconds)
+    }
+}
+
 fn default_max_queries() -> u32 {
     3
 }
 
 fn default_warmup_timeout() -> u64 {
     30
+}
+
+fn default_max_pool_sessions() -> usize {
+    100
+}
+
+fn default_cleanup_interval() -> u64 {
+    300 // 5 minutes
+}
+
+fn default_stale_threshold() -> u64 {
+    3600 // 1 hour
 }
 
 fn default_true() -> bool {
@@ -368,6 +452,7 @@ fn merge_config(base: Config, override_config: Config) -> Config {
         logging: override_config.logging,
         features: override_config.features,
         warmup: override_config.warmup,
+        pool: override_config.pool,
     }
 }
 
@@ -1062,6 +1147,7 @@ agent = "claude"
             },
             features: FeatureConfig::default(),
         warmup: WarmupConfig::default(),
+            pool: PoolConfig::default(),
         };
 
         let project = Config {
@@ -1110,6 +1196,7 @@ agent = "claude"
             },
             features: FeatureConfig::default(),
         warmup: WarmupConfig::default(),
+            pool: PoolConfig::default(),
         };
 
         let merged = merge_configs(Some(global), Some(project));
@@ -1159,6 +1246,7 @@ agent = "claude"
             logging: LoggingConfig::default(),
             features: FeatureConfig::default(),
         warmup: WarmupConfig::default(),
+            pool: PoolConfig::default(),
         };
 
         let merged = merge_configs(Some(config.clone()), None);
@@ -1322,6 +1410,7 @@ agent = "claude"
             logging: LoggingConfig::default(),
             features: FeatureConfig::default(),
         warmup: WarmupConfig::default(),
+            pool: PoolConfig::default(),
         };
 
         let overrides = CliOverrides {
@@ -1363,6 +1452,7 @@ agent = "claude"
             logging: LoggingConfig::default(),
             features: FeatureConfig::default(),
         warmup: WarmupConfig::default(),
+            pool: PoolConfig::default(),
         };
 
         let overrides = CliOverrides {
@@ -1403,6 +1493,7 @@ agent = "claude"
             },
             features: FeatureConfig::default(),
         warmup: WarmupConfig::default(),
+            pool: PoolConfig::default(),
         };
 
         let overrides = CliOverrides {
@@ -1444,6 +1535,7 @@ agent = "claude"
             logging: LoggingConfig::default(),
             features: FeatureConfig::default(),
         warmup: WarmupConfig::default(),
+            pool: PoolConfig::default(),
         };
 
         let overrides = CliOverrides {
@@ -1505,6 +1597,7 @@ agent = "claude"
             logging: LoggingConfig::default(),
             features: FeatureConfig::default(),
         warmup: WarmupConfig::default(),
+            pool: PoolConfig::default(),
         };
 
         let overrides = CliOverrides {
@@ -1562,6 +1655,7 @@ agent = "claude"
             logging: LoggingConfig::default(),
             features: FeatureConfig::default(),
         warmup: WarmupConfig::default(),
+            pool: PoolConfig::default(),
         };
 
         let result = validate_config(&config);
