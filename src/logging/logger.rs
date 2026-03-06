@@ -5,6 +5,7 @@
 //! - Multiple log levels (TRACE, DEBUG, INFO, WARN, ERROR)
 //! - Log rotation
 //! - Special TRACE level handling for API calls
+//! - Automatic log file management with LogManager
 
 use tracing_subscriber::{
     fmt::{self, format::FmtSpan},
@@ -17,6 +18,7 @@ use tracing_appender::{rolling, non_blocking};
 use std::path::Path;
 use std::io;
 use crate::logging::level::LogLevel;
+use crate::logging::file_manager::LogManager;
 
 /// Guard for the non-blocking writer
 ///
@@ -116,6 +118,50 @@ fn build_env_filter(level: LogLevel) -> EnvFilter {
             "ltmatrix={base_level},reqwest=info,hyper=info,tokio=info"
         ))
     }
+}
+
+/// Initializes logging with automatic log file management
+///
+/// This function creates a timestamped log file in the logs/ directory
+/// and automatically cleans up old logs based on configured limits.
+///
+/// # Arguments
+///
+/// * `level` - The minimum log level to display
+/// * `base_dir` - Optional base directory for logs (defaults to current directory)
+///
+/// # Returns
+///
+/// Returns a tuple of (LogGuard, LogManager) that must be kept alive for the application's lifetime.
+///
+/// # Example
+///
+/// ```no_run
+/// use ltmatrix::logging::logger::init_logging_with_management;
+/// use ltmatrix::logging::level::LogLevel;
+///
+/// // Initialize with automatic log file management
+/// let (_guard, log_manager) = init_logging_with_management(LogLevel::Info, None::<&Path>)
+///     .expect("Failed to init logging");
+///
+/// // Cleanup old logs on successful completion
+/// let removed = log_manager.cleanup_on_success().expect("Failed to cleanup");
+/// println!("Removed {} old log files", removed);
+/// ```
+pub fn init_logging_with_management(
+    level: LogLevel,
+    base_dir: Option<impl AsRef<Path>>,
+) -> io::Result<(LogGuard, LogManager)> {
+    // Create log manager
+    let log_manager = LogManager::new(base_dir);
+
+    // Create log file
+    let log_path = log_manager.create_log_file()?;
+
+    // Initialize logging with the created file
+    let guard = init_logging(level, Some(log_path.as_path()))?;
+
+    Ok((guard, log_manager))
 }
 
 /// Creates a TRACE-level logger specifically for capturing API calls

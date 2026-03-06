@@ -10,6 +10,7 @@ use std::path::{Path, PathBuf};
 use tracing::debug;
 
 use crate::models::Agent;
+use crate::feature::FeatureConfig;
 
 /// Root configuration structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -33,6 +34,10 @@ pub struct Config {
     /// Logging settings
     #[serde(default)]
     pub logging: LoggingConfig,
+
+    /// Feature flag configuration
+    #[serde(default)]
+    pub features: FeatureConfig,
 }
 
 impl Default for Config {
@@ -43,6 +48,7 @@ impl Default for Config {
             modes: ModeConfigs::default(),
             output: OutputConfig::default(),
             logging: LoggingConfig::default(),
+            features: FeatureConfig::default(),
         }
     }
 }
@@ -272,6 +278,7 @@ fn merge_config(base: Config, override_config: Config) -> Config {
         },
         output: override_config.output,
         logging: override_config.logging,
+        features: override_config.features,
     }
 }
 
@@ -505,6 +512,7 @@ agent = "claude"
                 level: LogLevel::Info,
                 file: None,
             },
+            features: FeatureConfig::default(),
         };
 
         let project = Config {
@@ -545,6 +553,7 @@ agent = "claude"
                 level: LogLevel::Debug,  // Override level
                 file: None,
             },
+            features: FeatureConfig::default(),
         };
 
         let merged = merge_configs(Some(global), Some(project));
@@ -586,6 +595,7 @@ agent = "claude"
             modes: ModeConfigs::default(),
             output: OutputConfig::default(),
             logging: LoggingConfig::default(),
+            features: FeatureConfig::default(),
         };
 
         let merged = merge_configs(Some(config.clone()), None);
@@ -646,6 +656,15 @@ agent = "claude"
 
         let agent = agent_config_to_agent("test-agent", &config).unwrap();
         assert_eq!(agent.timeout, 3600);  // Default timeout
+    }
+
+    #[test]
+    fn test_feature_config_default() {
+        let config = Config::default();
+        // Features should have default values
+        assert!(!config.features.agent_backend.enable_claude_opus_backend);
+        assert!(config.features.pipeline.enable_parallel_execution);
+        assert!(config.features.pipeline.enable_smart_cache);
     }
 
     #[test]

@@ -8,6 +8,7 @@ pub mod models;
 
 pub mod cli;
 pub mod config;
+pub mod feature;
 pub mod man;
 pub mod agent;
 pub mod pipeline;

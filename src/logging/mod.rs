@@ -36,6 +36,7 @@
 pub mod logger;
 pub mod formatter;
 pub mod level;
+pub mod file_manager;
 
 // Test modules (only compiled when testing)
 #[cfg(test)]
@@ -51,8 +52,9 @@ mod acceptance_tests;
 
 // Re-export commonly used types and functions
 pub use level::LogLevel;
-pub use logger::{init_logging, init_api_trace_logging};
+pub use logger::{init_logging, init_api_trace_logging, init_logging_with_management};
 pub use formatter::{format_timestamp, current_timestamp, TIMESTAMP_FORMAT};
+pub use file_manager::{LogManager, LogFileInfo, LOGS_DIR, DEFAULT_MAX_LOG_FILES, DEFAULT_MAX_LOG_AGE_DAYS, DEFAULT_MAX_LOG_SIZE_BYTES};
 
 /// Initializes the logging system with default settings
 ///
