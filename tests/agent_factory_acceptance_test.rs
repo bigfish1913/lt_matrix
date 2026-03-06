@@ -72,7 +72,10 @@ fn ac05_factory_error_message_mentions_unknown_backend_name() {
 fn ac06_factory_supports_at_least_one_backend() {
     let factory = AgentFactory::new();
     let backends = factory.supported_backends();
-    assert!(!backends.is_empty(), "supported_backends should not be empty");
+    assert!(
+        !backends.is_empty(),
+        "supported_backends should not be empty"
+    );
 }
 
 #[test]
@@ -355,7 +358,11 @@ fn ac29_session_pool_replace_on_duplicate_register() {
     // Mutate then re-register same ID — should replace
     s.mark_accessed();
     pool.register(s);
-    assert_eq!(pool.len(), 1, "duplicate registration should replace, not add");
+    assert_eq!(
+        pool.len(),
+        1,
+        "duplicate registration should replace, not add"
+    );
 
     // reuse_count should now be 1
     assert_eq!(pool.get(&id).unwrap().reuse_count(), 1);
