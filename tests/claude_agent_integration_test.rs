@@ -270,7 +270,9 @@ async fn test_execute_with_session_accepts_session() {
     let config = ExecutionConfig::default();
     let session = MemorySession::default();
 
-    let result = agent.execute_with_session("test prompt", &config, &session).await;
+    let result = agent
+        .execute_with_session("test prompt", &config, &session)
+        .await;
 
     // Should accept session parameter without panicking
     match result {
@@ -604,9 +606,7 @@ async fn test_concurrent_health_checks() {
     // Spawn 5 concurrent health checks
     for _ in 0..5 {
         let agent_clone = ClaudeAgent::new().unwrap();
-        let handle = tokio::spawn(async move {
-            agent_clone.health_check().await
-        });
+        let handle = tokio::spawn(async move { agent_clone.health_check().await });
         handles.push(handle);
     }
 
@@ -628,9 +628,7 @@ async fn test_concurrent_config_validations() {
     for _ in 0..5 {
         let agent_clone = ClaudeAgent::new().unwrap();
         let config_clone = config.clone();
-        let handle = tokio::spawn(async move {
-            agent_clone.validate_config(&config_clone).await
-        });
+        let handle = tokio::spawn(async move { agent_clone.validate_config(&config_clone).await });
         handles.push(handle);
     }
 

@@ -18,6 +18,11 @@ use ltmatrix::cli::args::Args;
 use ltmatrix::terminal::{self, Color, ColorConfig};
 use std::env;
 use std::io::IsTerminal;
+use std::sync::Mutex;
+
+/// Mutex to serialize tests that manipulate the NO_COLOR environment variable,
+/// preventing race conditions between parallel test threads.
+static NO_COLOR_MUTEX: Mutex<()> = Mutex::new(());
 
 #[cfg(test)]
 mod acceptance_tests {
@@ -244,7 +249,7 @@ mod acceptance_tests {
 
     #[test]
     fn acceptance_03_no_color_env_var_disables_colors() {
-        // Ensure clean state before starting
+        let _lock = NO_COLOR_MUTEX.lock().unwrap();
         env::remove_var("NO_COLOR");
         env::set_var("NO_COLOR", "1");
 
@@ -259,7 +264,7 @@ mod acceptance_tests {
 
     #[test]
     fn acceptance_03_no_color_any_value_disables_colors() {
-        // Ensure clean state before starting
+        let _lock = NO_COLOR_MUTEX.lock().unwrap();
         env::remove_var("NO_COLOR");
 
         let test_values = vec!["1", "true", "yes", "0", "", "any-value"];
@@ -281,7 +286,7 @@ mod acceptance_tests {
 
     #[test]
     fn acceptance_03_no_color_affects_output() {
-        // Ensure clean state before starting
+        let _lock = NO_COLOR_MUTEX.lock().unwrap();
         env::remove_var("NO_COLOR");
         env::set_var("NO_COLOR", "1");
 
@@ -301,6 +306,7 @@ mod acceptance_tests {
 
     #[test]
     fn acceptance_03_no_color_spec_compliance() {
+        let _lock = NO_COLOR_MUTEX.lock().unwrap();
         // Verify compliance with https://no-color.org/
         // "Command-line software which adds colored output should check for
         // the presence of a NO_COLOR environment variable that, when present
@@ -469,6 +475,7 @@ mod acceptance_tests {
 
     #[test]
     fn integration_no_color_flag_overrides_env() {
+        let _lock = NO_COLOR_MUTEX.lock().unwrap();
         // Set NO_COLOR to "0" (trying to enable colors)
         env::set_var("NO_COLOR", "0");
 
@@ -490,6 +497,7 @@ mod acceptance_tests {
 
     #[test]
     fn integration_terminal_detection_with_no_color_env() {
+        let _lock = NO_COLOR_MUTEX.lock().unwrap();
         // Test interaction between terminal detection and NO_COLOR
         env::set_var("NO_COLOR", "1");
 

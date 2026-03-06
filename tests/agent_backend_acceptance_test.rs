@@ -42,7 +42,9 @@ async fn ac02_agent_backend_trait_has_execute_with_session_method() {
     let session = MemorySession::default();
 
     // Method should be callable with a session
-    let _result = agent.execute_with_session("test prompt", &config, &session).await;
+    let _result = agent
+        .execute_with_session("test prompt", &config, &session)
+        .await;
 }
 
 #[tokio::test]
@@ -76,7 +78,10 @@ async fn ac04_agent_backend_trait_has_validate_config_method() {
     invalid_config.name = "".to_string();
     let result = agent.validate_config(&invalid_config).await;
     assert!(result.is_err());
-    assert!(matches!(result.unwrap_err(), AgentError::ConfigValidation { .. }));
+    assert!(matches!(
+        result.unwrap_err(),
+        AgentError::ConfigValidation { .. }
+    ));
 }
 
 #[tokio::test]
@@ -589,7 +594,9 @@ async fn ac36_full_agent_backend_workflow() {
 
     // 5. Execute with session (may fail if claude not installed)
     let session = MemorySession::default();
-    let session_result = agent.execute_with_session("test", &exec_config, &session).await;
+    let session_result = agent
+        .execute_with_session("test", &exec_config, &session)
+        .await;
     // We don't assert success here, just that it doesn't panic
     let _ = session_result;
 }

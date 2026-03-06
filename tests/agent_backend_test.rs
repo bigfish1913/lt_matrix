@@ -228,9 +228,11 @@ async fn test_agent_backend_execute_requires_valid_prompt() {
     assert!(result.is_err());
     let error = result.unwrap_err();
     // Should be an AgentError or anyhow::Error wrapping AgentError
-    assert!(error.to_string().contains("prompt") ||
-            error.to_string().contains("empty") ||
-            error.to_string().contains("required"));
+    assert!(
+        error.to_string().contains("prompt")
+            || error.to_string().contains("empty")
+            || error.to_string().contains("required")
+    );
 }
 
 #[tokio::test]
@@ -276,7 +278,9 @@ async fn test_agent_backend_execute_with_session() {
     let session = MemorySession::default();
 
     // This might fail if claude is not installed, but should not panic
-    let result = agent.execute_with_session("test prompt", &config, &session).await;
+    let result = agent
+        .execute_with_session("test prompt", &config, &session)
+        .await;
 
     // We're testing the API exists and doesn't panic, not the actual execution
     assert!(result.is_ok() || result.is_err());

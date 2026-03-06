@@ -4,7 +4,7 @@
 //! including edge cases, error handling, and trait contract verification.
 
 use ltmatrix::agent::backend::{
-    AgentBackend, AgentConfig, AgentError, AgentSession, AgentResponse, ExecutionConfig,
+    AgentBackend, AgentConfig, AgentError, AgentResponse, AgentSession, ExecutionConfig,
     MemorySession,
 };
 use ltmatrix::agent::claude::ClaudeAgent;
@@ -103,7 +103,10 @@ fn test_agent_config_whitespace_validation() {
     config.name = "   ".to_string();
     let result = config.validate();
     assert!(result.is_err());
-    assert!(matches!(result.unwrap_err(), AgentError::ConfigValidation { .. }));
+    assert!(matches!(
+        result.unwrap_err(),
+        AgentError::ConfigValidation { .. }
+    ));
 
     // Test whitespace-only model
     config.name = "test".to_string();
@@ -540,7 +543,9 @@ async fn test_agent_backend_timeout_behavior() {
 
     // This should timeout quickly if claude is installed and slow
     // Or fail fast if claude is not installed
-    let _result = agent.execute("generate a very long response", &short_timeout_config).await;
+    let _result = agent
+        .execute("generate a very long response", &short_timeout_config)
+        .await;
 }
 
 #[tokio::test]
@@ -633,7 +638,10 @@ async fn test_agent_backend_validation_error_messages() {
         if let Err(AgentError::ConfigValidation { field, .. }) = result {
             assert_eq!(field, expected_field);
         } else {
-            panic!("Expected ConfigValidation error for field: {}", expected_field);
+            panic!(
+                "Expected ConfigValidation error for field: {}",
+                expected_field
+            );
         }
     }
 }

@@ -10,8 +10,8 @@
 //! These tests ensure robust error handling and provide clear feedback to users.
 
 use ltmatrix::config::settings::{
-    load_config_file, merge_configs, AgentConfig, Config, LogLevel, LoggingConfig,
-    ModeConfig, OutputConfig, OutputFormat,
+    load_config_file, merge_configs, AgentConfig, Config, LogLevel, LoggingConfig, ModeConfig,
+    OutputConfig, OutputFormat,
 };
 use std::fs;
 use tempfile::TempDir;
@@ -35,8 +35,10 @@ command = "test"
     assert!(result.is_err());
 
     let error_msg = result.unwrap_err().to_string();
-    assert!(error_msg.contains("Failed to parse") || error_msg.contains("TOML"),
-           "Error should indicate parsing failure");
+    assert!(
+        error_msg.contains("Failed to parse") || error_msg.contains("TOML"),
+        "Error should indicate parsing failure"
+    );
 }
 
 #[test]
@@ -94,8 +96,11 @@ timeout = 123.456.789
     assert!(result.is_err());
 
     let error_msg = result.unwrap_err().to_string();
-    assert!(error_msg.contains("Failed to parse") || error_msg.contains("TOML") ||
-           error_msg.contains("number"));
+    assert!(
+        error_msg.contains("Failed to parse")
+            || error_msg.contains("TOML")
+            || error_msg.contains("number")
+    );
 }
 
 #[test]
@@ -113,8 +118,11 @@ colored = maybe
     assert!(result.is_err());
 
     let error_msg = result.unwrap_err().to_string();
-    assert!(error_msg.contains("Failed to parse") || error_msg.contains("TOML") ||
-           error_msg.contains("boolean"));
+    assert!(
+        error_msg.contains("Failed to parse")
+            || error_msg.contains("TOML")
+            || error_msg.contains("boolean")
+    );
 }
 
 #[test]
@@ -393,7 +401,10 @@ model = "test"
     assert!(result.is_ok());
 
     let config = result.unwrap();
-    assert_eq!(config.agents["test"].command, Some("test\twith\ttabs".to_string()));
+    assert_eq!(
+        config.agents["test"].command,
+        Some("test\twith\ttabs".to_string())
+    );
 }
 
 #[test]
@@ -418,7 +429,11 @@ model = "test"
 
     let config = result.unwrap();
     // Triple-quoted strings include newlines
-    assert!(config.agents["test"].command.as_ref().unwrap().contains('\n'));
+    assert!(config.agents["test"]
+        .command
+        .as_ref()
+        .unwrap()
+        .contains('\n'));
 }
 
 #[test]
@@ -440,7 +455,11 @@ model = "test"
 
     let config = result.unwrap();
     // Should decode unicode escape to é
-    assert!(config.agents["test"].command.as_ref().unwrap().contains('é'));
+    assert!(config.agents["test"]
+        .command
+        .as_ref()
+        .unwrap()
+        .contains('é'));
 }
 
 // ============================================================================
@@ -463,7 +482,10 @@ command = "command{}"
 model = "model{}"
 timeout = {}
 "#,
-            i, i, i, i * 100
+            i,
+            i,
+            i,
+            i * 100
         ));
     }
 
@@ -577,7 +599,10 @@ fn test_merge_preserves_all_unique_modes() {
     assert!(merged.modes.fast.is_some());
     assert!(merged.modes.standard.is_some());
     assert_eq!(merged.modes.fast.unwrap().model, Some("fast".to_string()));
-    assert_eq!(merged.modes.standard.unwrap().model, Some("standard".to_string()));
+    assert_eq!(
+        merged.modes.standard.unwrap().model,
+        Some("standard".to_string())
+    );
 }
 
 #[test]
@@ -596,9 +621,9 @@ fn test_merge_agent_with_partial_override() {
     override_config.agents.insert(
         "test".to_string(),
         AgentConfig {
-            command: None, // Keep base
+            command: None,                             // Keep base
             model: Some("override-model".to_string()), // Override
-            timeout: None, // Keep base
+            timeout: None,                             // Keep base
         },
     );
 
@@ -616,10 +641,7 @@ fn test_merge_agent_with_partial_override() {
 
 #[test]
 fn test_all_output_formats() {
-    let formats = vec![
-        ("text", OutputFormat::Text),
-        ("json", OutputFormat::Json),
-    ];
+    let formats = vec![("text", OutputFormat::Text), ("json", OutputFormat::Json)];
 
     for (format_str, expected_format) in formats {
         let temp_dir = TempDir::new().unwrap();
@@ -751,9 +773,10 @@ fn test_error_message_includes_file_path() {
     let error_msg = result.unwrap_err().to_string();
     // Error message should include the file path
     let path_str = config_path.to_string_lossy().to_string();
-    assert!(error_msg.contains(&path_str) ||
-           error_msg.contains("config.toml"),
-           "Error message should include file path");
+    assert!(
+        error_msg.contains(&path_str) || error_msg.contains("config.toml"),
+        "Error message should include file path"
+    );
 }
 
 #[test]

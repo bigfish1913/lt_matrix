@@ -9,12 +9,12 @@
 //!
 //! These tests ensure the config system works correctly in production scenarios.
 
-use ltmatrix::config::settings::{
-    load_config, load_config_file, load_config_from_args, load_config_with_overrides, merge_configs,
-    CliOverrides, Config, LogLevel, OutputFormat,
-};
-use ltmatrix::cli::Args;
 use clap::Parser;
+use ltmatrix::cli::Args;
+use ltmatrix::config::settings::{
+    load_config, load_config_file, load_config_from_args, load_config_with_overrides,
+    merge_configs, CliOverrides, Config, LogLevel, OutputFormat,
+};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
@@ -220,12 +220,18 @@ file = "/tmp/project-debug.log"
     let merged = merge_configs(Some(global), Some(project));
 
     // Verify merge behavior
-    assert_eq!(merged.agents["claude"].model, Some("claude-opus-4-6".to_string()));
+    assert_eq!(
+        merged.agents["claude"].model,
+        Some("claude-opus-4-6".to_string())
+    );
     assert_eq!(merged.agents["claude"].timeout, Some(7200));
     assert_eq!(merged.agents["opencode"].model, Some("gpt-4".to_string())); // From global
     assert_eq!(merged.output.colored, false); // Overridden by project
     assert_eq!(merged.logging.level, LogLevel::Debug); // Overridden by project
-    assert_eq!(merged.logging.file, Some(PathBuf::from("/tmp/project-debug.log")));
+    assert_eq!(
+        merged.logging.file,
+        Some(PathBuf::from("/tmp/project-debug.log"))
+    );
 }
 
 // ============================================================================
@@ -264,12 +270,8 @@ file = "/var/log/ci/ltmatrix.log"
     _guard.change_to(temp_dir.path());
 
     // Simulate CI environment with CLI override
-    let args = Args::try_parse_from([
-        "ltmatrix",
-        "--no-color",
-        "--output", "json",
-        "goal"
-    ]).expect("Failed to parse args");
+    let args = Args::try_parse_from(["ltmatrix", "--no-color", "--output", "json", "goal"])
+        .expect("Failed to parse args");
 
     let overrides: CliOverrides = args.into();
     let result = load_config_with_overrides(Some(overrides));
@@ -364,7 +366,10 @@ command = "command{:02}"
 model = "model-{:02}"
 timeout = {}
 "#,
-            i, i, i, (i + 1) * 100
+            i,
+            i,
+            i,
+            (i + 1) * 100
         ));
     }
 
@@ -408,7 +413,10 @@ timeout_exec = 14400
     let elapsed = start.elapsed();
 
     assert!(result.is_ok());
-    assert!(elapsed.as_millis() < 1000, "Loading large config should be fast (< 1s)");
+    assert!(
+        elapsed.as_millis() < 1000,
+        "Loading large config should be fast (< 1s)"
+    );
 
     let config = result.unwrap();
     assert_eq!(config.agents.len(), 100);
@@ -444,9 +452,7 @@ timeout = 3600
     let handles: Vec<_> = (0..10)
         .map(|_| {
             let path = config_path.clone();
-            std::thread::spawn(move || {
-                load_config_file(&path)
-            })
+            std::thread::spawn(move || load_config_file(&path))
         })
         .collect();
 
@@ -547,7 +553,8 @@ command = "my-agent"
 model = "my-model"
 timeout = 1800
 "#,
-    ).unwrap();
+    )
+    .unwrap();
 
     // Step 3: Reload and verify new config is used
     let result = load_config();
@@ -598,12 +605,17 @@ level = "info"
     // Apply CLI overrides for specific run
     let args = Args::try_parse_from([
         "ltmatrix",
-        "--mode", "fast",
-        "--output", "json",
-        "--log-level", "debug",
-        "--timeout", "1800",
-        "implement feature"
-    ]).expect("Failed to parse args");
+        "--mode",
+        "fast",
+        "--output",
+        "json",
+        "--log-level",
+        "debug",
+        "--timeout",
+        "1800",
+        "implement feature",
+    ])
+    .expect("Failed to parse args");
 
     let result = load_config_from_args(args);
     assert!(result.is_ok());
@@ -625,7 +637,8 @@ fn test_config_with_mixed_line_endings() {
     let config_path = temp_dir.path().join("config.toml");
 
     // Mix CRLF and LF line endings
-    let content = "default = \"test\"\r\n\r\n[agents.test]\r\ncommand = \"test\"\nmodel = \"test-model\"\r\n";
+    let content =
+        "default = \"test\"\r\n\r\n[agents.test]\r\ncommand = \"test\"\nmodel = \"test-model\"\r\n";
     fs::write(&config_path, content).unwrap();
 
     let result = load_config_file(&config_path);
@@ -641,7 +654,8 @@ fn test_config_with_unicode_bom() {
     let config_path = temp_dir.path().join("config.toml");
 
     // UTF-8 BOM followed by valid TOML
-    let content = "\u{FEFF}default = \"test\"\n\n[agents.test]\ncommand = \"test\"\nmodel = \"test-model\"\n";
+    let content =
+        "\u{FEFF}default = \"test\"\n\n[agents.test]\ncommand = \"test\"\nmodel = \"test-model\"\n";
     fs::write(&config_path, content.as_bytes()).unwrap();
 
     let result = load_config_file(&config_path);

@@ -527,38 +527,26 @@ fn test_contract_config_builder_creates_valid_configs() {
 #[test]
 fn test_contract_config_validation_enforces_constraints() {
     let test_cases: Vec<(&str, AgentConfig)> = vec![
-        (
-            "name",
-            {
-                let mut c = AgentConfig::default();
-                c.name = "".to_string();
-                c
-            },
-        ),
-        (
-            "model",
-            {
-                let mut c = AgentConfig::default();
-                c.model = "".to_string();
-                c
-            },
-        ),
-        (
-            "command",
-            {
-                let mut c = AgentConfig::default();
-                c.command = "".to_string();
-                c
-            },
-        ),
-        (
-            "timeout_secs",
-            {
-                let mut c = AgentConfig::default();
-                c.timeout_secs = 0;
-                c
-            },
-        ),
+        ("name", {
+            let mut c = AgentConfig::default();
+            c.name = "".to_string();
+            c
+        }),
+        ("model", {
+            let mut c = AgentConfig::default();
+            c.model = "".to_string();
+            c
+        }),
+        ("command", {
+            let mut c = AgentConfig::default();
+            c.command = "".to_string();
+            c
+        }),
+        ("timeout_secs", {
+            let mut c = AgentConfig::default();
+            c.timeout_secs = 0;
+            c
+        }),
     ];
 
     for (expected_field, config) in test_cases {
@@ -602,7 +590,9 @@ async fn test_claude_agent_implements_trait_contract() {
     let _exec = agent.execute("test", &exec_config).await;
 
     let session = MemorySession::default();
-    let _exec_session = agent.execute_with_session("test", &exec_config, &session).await;
+    let _exec_session = agent
+        .execute_with_session("test", &exec_config, &session)
+        .await;
 
     let task = Task {
         id: "test-1".to_string(),
@@ -646,11 +636,7 @@ async fn test_execution_config_affects_behavior() {
 
     for config in configs {
         let result = agent.execute("test prompt", &config).await;
-        assert!(
-            result.is_ok(),
-            "Execution with config failed: {:?}",
-            config
-        );
+        assert!(result.is_ok(), "Execution with config failed: {:?}", config);
     }
 }
 

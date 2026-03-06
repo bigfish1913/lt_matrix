@@ -219,7 +219,9 @@ async fn test_timeout_with_very_short_duration() {
 
     // Should timeout quickly if process takes longer than 1 second
     let start = std::time::Instant::now();
-    let _result = agent.execute("generate a very long response", &config).await;
+    let _result = agent
+        .execute("generate a very long response", &config)
+        .await;
     let elapsed = start.elapsed();
 
     // Should complete or fail within reasonable time (with some buffer)

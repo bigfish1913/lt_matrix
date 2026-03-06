@@ -10,12 +10,11 @@
 //! These tests complement the existing comprehensive test suite by covering
 //! additional edge cases and advanced validation scenarios.
 
-use ltmatrix::config::settings::{
-    load_config_from_args, AgentConfig, CliOverrides, Config, LogLevel,
-    ModeConfig, OutputFormat,
-};
-use ltmatrix::cli::Args;
 use clap::Parser;
+use ltmatrix::cli::Args;
+use ltmatrix::config::settings::{
+    load_config_from_args, AgentConfig, CliOverrides, Config, LogLevel, ModeConfig, OutputFormat,
+};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
@@ -57,19 +56,22 @@ impl Drop for DirGuard {
 #[test]
 fn test_cli_override_dry_run_flag() {
     // Test that --dry-run flag is properly captured in CliOverrides
-    let args = Args::try_parse_from(["ltmatrix", "--dry-run", "goal"])
-        .expect("Failed to parse args");
+    let args =
+        Args::try_parse_from(["ltmatrix", "--dry-run", "goal"]).expect("Failed to parse args");
 
     let overrides: CliOverrides = args.into();
 
-    assert_eq!(overrides.dry_run, true, "dry_run flag should be set to true");
+    assert_eq!(
+        overrides.dry_run, true,
+        "dry_run flag should be set to true"
+    );
 }
 
 #[test]
 fn test_cli_override_resume_flag() {
     // Test that --resume flag is properly captured in CliOverrides
-    let args = Args::try_parse_from(["ltmatrix", "--resume", "goal"])
-        .expect("Failed to parse args");
+    let args =
+        Args::try_parse_from(["ltmatrix", "--resume", "goal"]).expect("Failed to parse args");
 
     let overrides: CliOverrides = args.into();
 
@@ -79,8 +81,7 @@ fn test_cli_override_resume_flag() {
 #[test]
 fn test_cli_override_ask_flag() {
     // Test that --ask flag is properly captured in CliOverrides
-    let args = Args::try_parse_from(["ltmatrix", "--ask", "goal"])
-        .expect("Failed to parse args");
+    let args = Args::try_parse_from(["ltmatrix", "--ask", "goal"]).expect("Failed to parse args");
 
     let overrides: CliOverrides = args.into();
 
@@ -95,7 +96,10 @@ fn test_cli_override_regenerate_plan_flag() {
 
     let overrides: CliOverrides = args.into();
 
-    assert_eq!(overrides.regenerate_plan, true, "regenerate_plan flag should be set to true");
+    assert_eq!(
+        overrides.regenerate_plan, true,
+        "regenerate_plan flag should be set to true"
+    );
 }
 
 #[test]
@@ -106,8 +110,11 @@ fn test_cli_override_on_blocked() {
 
     let overrides: CliOverrides = args.into();
 
-    assert_eq!(overrides.on_blocked, Some("skip".to_string()),
-               "on_blocked should be set to 'skip'");
+    assert_eq!(
+        overrides.on_blocked,
+        Some("skip".to_string()),
+        "on_blocked should be set to 'skip'"
+    );
 }
 
 #[test]
@@ -119,8 +126,9 @@ fn test_cli_override_multiple_boolean_flags() {
         "--resume",
         "--ask",
         "--regenerate-plan",
-        "goal"
-    ]).expect("Failed to parse args");
+        "goal",
+    ])
+    .expect("Failed to parse args");
 
     let overrides: CliOverrides = args.into();
 
@@ -141,8 +149,9 @@ fn test_cli_override_mcp_config() {
         "ltmatrix",
         "--mcp-config",
         mcp_config_path.to_str().unwrap(),
-        "goal"
-    ]).expect("Failed to parse args");
+        "goal",
+    ])
+    .expect("Failed to parse args");
 
     let overrides: CliOverrides = args.into();
 
@@ -198,9 +207,9 @@ fn test_mode_config_boundary_values() {
         model: Some("test-model".to_string()),
         run_tests: true,
         verify: false,
-        max_retries: 0, // Minimum value
-        max_depth: 10,  // High value
-        timeout_plan: 1, // Minimum value
+        max_retries: 0,      // Minimum value
+        max_depth: 10,       // High value
+        timeout_plan: 1,     // Minimum value
         timeout_exec: 86400, // Maximum value (24 hours)
     };
 
@@ -308,9 +317,15 @@ fn test_merge_with_partial_mode_overrides() {
     let merged = ltmatrix::config::settings::merge_configs(Some(base), Some(override_config));
 
     // Fast mode should be from override
-    assert_eq!(merged.modes.fast.unwrap().model, Some("override-fast".to_string()));
+    assert_eq!(
+        merged.modes.fast.unwrap().model,
+        Some("override-fast".to_string())
+    );
     // Standard mode should be from base
-    assert_eq!(merged.modes.standard.unwrap().model, Some("base-standard".to_string()));
+    assert_eq!(
+        merged.modes.standard.unwrap().model,
+        Some("base-standard".to_string())
+    );
 }
 
 #[test]
@@ -359,7 +374,8 @@ fn test_merge_with_empty_base_config() {
         },
     );
 
-    let merged = ltmatrix::config::settings::merge_configs(Some(empty_config), Some(override_config));
+    let merged =
+        ltmatrix::config::settings::merge_configs(Some(empty_config), Some(override_config));
 
     // Empty config's None values should be overridden by override config's Some values
     // But Config::default() actually has default: Some("claude"), so override wins
@@ -539,7 +555,8 @@ command = "claude"
 model = "claude-sonnet-4-6"
 timeout = 3600
 "#,
-    ).unwrap();
+    )
+    .unwrap();
 
     let _guard = DirGuard::new();
     _guard.change_to(temp_dir.path());
@@ -547,17 +564,26 @@ timeout = 3600
     // Parse args with multiple overrides
     let args = Args::try_parse_from([
         "ltmatrix",
-        "--agent", "claude",
-        "--mode", "fast",
-        "--output", "json",
-        "--log-level", "debug",
-        "--timeout", "1800",
+        "--agent",
+        "claude",
+        "--mode",
+        "fast",
+        "--output",
+        "json",
+        "--log-level",
+        "debug",
+        "--timeout",
+        "1800",
         "--dry-run",
-        "goal"
-    ]).expect("Failed to parse args");
+        "goal",
+    ])
+    .expect("Failed to parse args");
 
     let result = load_config_from_args(args);
-    assert!(result.is_ok(), "Should successfully load config with all overrides");
+    assert!(
+        result.is_ok(),
+        "Should successfully load config with all overrides"
+    );
 
     let config = result.unwrap();
     assert_eq!(config.default, Some("claude".to_string()));
@@ -573,11 +599,24 @@ fn test_cli_overrides_with_boolean_combinations() {
         (vec!["--regenerate-plan"], false, false, false, true),
         (vec!["--dry-run", "--resume"], true, true, false, false),
         (vec!["--dry-run", "--ask"], true, false, true, false),
-        (vec!["--resume", "--ask", "--regenerate-plan"], false, true, true, true),
-        (vec!["--dry-run", "--resume", "--ask", "--regenerate-plan"], true, true, true, true),
+        (
+            vec!["--resume", "--ask", "--regenerate-plan"],
+            false,
+            true,
+            true,
+            true,
+        ),
+        (
+            vec!["--dry-run", "--resume", "--ask", "--regenerate-plan"],
+            true,
+            true,
+            true,
+            true,
+        ),
     ];
 
-    for (flags, expected_dry_run, expected_resume, expected_ask, expected_regenerate) in &test_cases {
+    for (flags, expected_dry_run, expected_resume, expected_ask, expected_regenerate) in &test_cases
+    {
         let mut args_vec = vec!["ltmatrix"];
         for flag in flags.iter() {
             args_vec.push(*flag);
@@ -587,14 +626,26 @@ fn test_cli_overrides_with_boolean_combinations() {
         let args = Args::try_parse_from(args_vec).expect("Failed to parse args");
         let overrides: CliOverrides = args.into();
 
-        assert_eq!(overrides.dry_run, *expected_dry_run,
-                   "dry_run mismatch for flags: {:?}", flags);
-        assert_eq!(overrides.resume, *expected_resume,
-                   "resume mismatch for flags: {:?}", flags);
-        assert_eq!(overrides.ask, *expected_ask,
-                   "ask mismatch for flags: {:?}", flags);
-        assert_eq!(overrides.regenerate_plan, *expected_regenerate,
-                   "regenerate_plan mismatch for flags: {:?}", flags);
+        assert_eq!(
+            overrides.dry_run, *expected_dry_run,
+            "dry_run mismatch for flags: {:?}",
+            flags
+        );
+        assert_eq!(
+            overrides.resume, *expected_resume,
+            "resume mismatch for flags: {:?}",
+            flags
+        );
+        assert_eq!(
+            overrides.ask, *expected_ask,
+            "ask mismatch for flags: {:?}",
+            flags
+        );
+        assert_eq!(
+            overrides.regenerate_plan, *expected_regenerate,
+            "regenerate_plan mismatch for flags: {:?}",
+            flags
+        );
     }
 }
 
@@ -605,17 +656,17 @@ fn test_on_blocked_strategy_values() {
     let strategies = vec!["skip", "ask", "abort", "retry"];
 
     for strategy in strategies {
-        let args = Args::try_parse_from([
-            "ltmatrix",
-            "--on-blocked",
-            strategy,
-            "goal"
-        ]).expect("Failed to parse args");
+        let args = Args::try_parse_from(["ltmatrix", "--on-blocked", strategy, "goal"])
+            .expect("Failed to parse args");
 
         let overrides: CliOverrides = args.into();
 
-        assert_eq!(overrides.on_blocked, Some(strategy.to_string()),
-                   "on_blocked should be set to: {}", strategy);
+        assert_eq!(
+            overrides.on_blocked,
+            Some(strategy.to_string()),
+            "on_blocked should be set to: {}",
+            strategy
+        );
     }
 }
 
@@ -639,7 +690,8 @@ fn test_config_discovery_with_symlinks() {
         r#"
 default = "test"
 "#,
-    ).unwrap();
+    )
+    .unwrap();
 
     let _guard = DirGuard::new();
     _guard.change_to(temp_dir.path());
@@ -664,7 +716,10 @@ fn test_config_loading_without_files() {
 
     // Should not fail even with no config files
     let result = ltmatrix::config::settings::load_config();
-    assert!(result.is_ok(), "Should load default config when no files exist");
+    assert!(
+        result.is_ok(),
+        "Should load default config when no files exist"
+    );
 
     let config = result.unwrap();
     // Should have default values

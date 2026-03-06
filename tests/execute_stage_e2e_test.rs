@@ -9,7 +9,9 @@
 //! - Error handling and failure scenarios
 
 use async_trait::async_trait;
-use ltmatrix::agent::backend::{AgentBackend, AgentConfig, AgentError, AgentResponse, AgentSession, ExecutionConfig};
+use ltmatrix::agent::backend::{
+    AgentBackend, AgentConfig, AgentError, AgentResponse, AgentSession, ExecutionConfig,
+};
 use ltmatrix::agent::session::SessionManager;
 use ltmatrix::models::{ModeConfig, Task, TaskComplexity, TaskStatus};
 use ltmatrix::pipeline::execute::ExecuteConfig;

@@ -7,13 +7,12 @@
 //! - Precedence rule verification
 //! - Boundary conditions and edge cases
 
-use ltmatrix::config::settings::{
-    load_config_file, load_config_from_args,
-    merge_configs, validate_config, CliOverrides, Config, AgentConfig, ModeConfig,
-    OutputConfig, LoggingConfig, OutputFormat, LogLevel,
-};
-use ltmatrix::cli::Args;
 use clap::Parser;
+use ltmatrix::cli::Args;
+use ltmatrix::config::settings::{
+    load_config_file, load_config_from_args, merge_configs, validate_config, AgentConfig,
+    CliOverrides, Config, LogLevel, LoggingConfig, ModeConfig, OutputConfig, OutputFormat,
+};
 use std::fs;
 use std::path::PathBuf;
 use tempfile::TempDir;
@@ -26,18 +25,24 @@ use tempfile::TempDir;
 fn test_conflicting_agent_names_between_sources() {
     // Global and project both define same agent with different settings
     let mut global = Config::default();
-    global.agents.insert("claude".to_string(), AgentConfig {
-        command: Some("claude-global".to_string()),
-        model: Some("global-model".to_string()),
-        timeout: Some(1800),
-    });
+    global.agents.insert(
+        "claude".to_string(),
+        AgentConfig {
+            command: Some("claude-global".to_string()),
+            model: Some("global-model".to_string()),
+            timeout: Some(1800),
+        },
+    );
 
     let mut project = Config::default();
-    project.agents.insert("claude".to_string(), AgentConfig {
-        command: Some("claude-project".to_string()),
-        model: Some("project-model".to_string()),
-        timeout: Some(3600),
-    });
+    project.agents.insert(
+        "claude".to_string(),
+        AgentConfig {
+            command: Some("claude-project".to_string()),
+            model: Some("project-model".to_string()),
+            timeout: Some(3600),
+        },
+    );
 
     let merged = merge_configs(Some(global), Some(project));
 
@@ -330,18 +335,24 @@ fn test_merge_all_none_sources() {
 fn test_merge_with_partial_agent_configs() {
     // Global has agent with only command, project has same agent with only model
     let mut global = Config::default();
-    global.agents.insert("test".to_string(), AgentConfig {
-        command: Some("global-command".to_string()),
-        model: None,
-        timeout: None,
-    });
+    global.agents.insert(
+        "test".to_string(),
+        AgentConfig {
+            command: Some("global-command".to_string()),
+            model: None,
+            timeout: None,
+        },
+    );
 
     let mut project = Config::default();
-    project.agents.insert("test".to_string(), AgentConfig {
-        command: None,
-        model: Some("project-model".to_string()),
-        timeout: Some(1800),
-    });
+    project.agents.insert(
+        "test".to_string(),
+        AgentConfig {
+            command: None,
+            model: Some("project-model".to_string()),
+            timeout: Some(1800),
+        },
+    );
 
     let merged = merge_configs(Some(global), Some(project));
 
@@ -356,18 +367,24 @@ fn test_merge_with_partial_agent_configs() {
 fn test_merge_preserves_unique_agents() {
     // Global has agent1, project has agent2
     let mut global = Config::default();
-    global.agents.insert("agent1".to_string(), AgentConfig {
-        command: Some("cmd1".to_string()),
-        model: Some("model1".to_string()),
-        timeout: Some(1000),
-    });
+    global.agents.insert(
+        "agent1".to_string(),
+        AgentConfig {
+            command: Some("cmd1".to_string()),
+            model: Some("model1".to_string()),
+            timeout: Some(1000),
+        },
+    );
 
     let mut project = Config::default();
-    project.agents.insert("agent2".to_string(), AgentConfig {
-        command: Some("cmd2".to_string()),
-        model: Some("model2".to_string()),
-        timeout: Some(2000),
-    });
+    project.agents.insert(
+        "agent2".to_string(),
+        AgentConfig {
+            command: Some("cmd2".to_string()),
+            model: Some("model2".to_string()),
+            timeout: Some(2000),
+        },
+    );
 
     let merged = merge_configs(Some(global), Some(project));
 
@@ -384,11 +401,14 @@ fn test_merge_preserves_unique_agents() {
 #[test]
 fn test_validation_timeout_boundary_values() {
     let mut config = Config::default();
-    config.agents.insert("test".to_string(), AgentConfig {
-        command: Some("test".to_string()),
-        model: Some("test-model".to_string()),
-        timeout: Some(86400), // Exactly 24 hours
-    });
+    config.agents.insert(
+        "test".to_string(),
+        AgentConfig {
+            command: Some("test".to_string()),
+            model: Some("test-model".to_string()),
+            timeout: Some(86400), // Exactly 24 hours
+        },
+    );
     config.default = Some("test".to_string());
 
     let result = validate_config(&config);
@@ -398,11 +418,14 @@ fn test_validation_timeout_boundary_values() {
 #[test]
 fn test_validation_timeout_just_over_limit() {
     let mut config = Config::default();
-    config.agents.insert("test".to_string(), AgentConfig {
-        command: Some("test".to_string()),
-        model: Some("test-model".to_string()),
-        timeout: Some(86401), // Just over 24 hours
-    });
+    config.agents.insert(
+        "test".to_string(),
+        AgentConfig {
+            command: Some("test".to_string()),
+            model: Some("test-model".to_string()),
+            timeout: Some(86401), // Just over 24 hours
+        },
+    );
     config.default = Some("test".to_string());
 
     let result = validate_config(&config);
@@ -412,11 +435,14 @@ fn test_validation_timeout_just_over_limit() {
 #[test]
 fn test_validation_max_depth_boundary() {
     let mut config = Config::default();
-    config.agents.insert("test".to_string(), AgentConfig {
-        command: Some("test".to_string()),
-        model: Some("test-model".to_string()),
-        timeout: Some(3600),
-    });
+    config.agents.insert(
+        "test".to_string(),
+        AgentConfig {
+            command: Some("test".to_string()),
+            model: Some("test-model".to_string()),
+            timeout: Some(3600),
+        },
+    );
     config.default = Some("test".to_string());
 
     config.modes.fast = Some(ModeConfig {
@@ -436,11 +462,14 @@ fn test_validation_max_depth_boundary() {
 #[test]
 fn test_validation_max_retries_boundary() {
     let mut config = Config::default();
-    config.agents.insert("test".to_string(), AgentConfig {
-        command: Some("test".to_string()),
-        model: Some("test-model".to_string()),
-        timeout: Some(3600),
-    });
+    config.agents.insert(
+        "test".to_string(),
+        AgentConfig {
+            command: Some("test".to_string()),
+            model: Some("test-model".to_string()),
+            timeout: Some(3600),
+        },
+    );
     config.default = Some("test".to_string());
 
     config.modes.standard = Some(ModeConfig {
@@ -461,21 +490,24 @@ fn test_validation_max_retries_boundary() {
 fn test_validation_mode_specific_timeout_minimums() {
     // Each mode has different timeout minimums
     let test_cases = [
-        ("fast", 30, true),    // Fast mode allows short timeouts
-        ("fast", 1, true),     // Even 1 second is OK for fast
-        ("standard", 60, true), // Standard needs at least 60s
+        ("fast", 30, true),      // Fast mode allows short timeouts
+        ("fast", 1, true),       // Even 1 second is OK for fast
+        ("standard", 60, true),  // Standard needs at least 60s
         ("standard", 59, false), // 59s is too short
-        ("expert", 60, true),   // Expert needs at least 60s
-        ("expert", 59, false),  // 59s is too short
+        ("expert", 60, true),    // Expert needs at least 60s
+        ("expert", 59, false),   // 59s is too short
     ];
 
     for (mode, timeout, should_pass) in test_cases {
         let mut config = Config::default();
-        config.agents.insert("test".to_string(), AgentConfig {
-            command: Some("test".to_string()),
-            model: Some("test-model".to_string()),
-            timeout: Some(3600),
-        });
+        config.agents.insert(
+            "test".to_string(),
+            AgentConfig {
+                command: Some("test".to_string()),
+                model: Some("test-model".to_string()),
+                timeout: Some(3600),
+            },
+        );
         config.default = Some("test".to_string());
 
         let mode_config = ModeConfig {
@@ -497,9 +529,12 @@ fn test_validation_mode_specific_timeout_minimums() {
         }
 
         let result = validate_config(&config);
-        assert_eq!(result.is_ok(), should_pass,
+        assert_eq!(
+            result.is_ok(),
+            should_pass,
             "Mode {} with timeout {} should {}",
-            mode, timeout,
+            mode,
+            timeout,
             if should_pass { "pass" } else { "fail" }
         );
     }
@@ -579,7 +614,8 @@ command = "claude"
 model = "claude-sonnet-4-6"
 timeout = 3600
 "#,
-    ).unwrap();
+    )
+    .unwrap();
 
     // Change to temp directory so project config is found
     let current_dir = std::env::current_dir().unwrap();
@@ -587,29 +623,44 @@ timeout = 3600
 
     let args = Args::try_parse_from([
         "ltmatrix",
-        "--agent", "claude",  // Use valid agent
-        "--mode", "expert",
-        "--output", "json",
-        "--log-level", "trace",
-        "--log-file", "/tmp/override.log",
-        "--max-retries", "9",
-        "--timeout", "7200",
+        "--agent",
+        "claude", // Use valid agent
+        "--mode",
+        "expert",
+        "--output",
+        "json",
+        "--log-level",
+        "trace",
+        "--log-file",
+        "/tmp/override.log",
+        "--max-retries",
+        "9",
+        "--timeout",
+        "7200",
         "--no-color",
-        "goal"
-    ]).expect("Failed to parse args");
+        "goal",
+    ])
+    .expect("Failed to parse args");
 
     let config = load_config_from_args(args);
 
     std::env::set_current_dir(current_dir).unwrap();
 
-    assert!(config.is_ok(), "Config with all overrides should load successfully: {:?}", config.err());
+    assert!(
+        config.is_ok(),
+        "Config with all overrides should load successfully: {:?}",
+        config.err()
+    );
     let config = config.unwrap();
 
     // Verify all overrides were applied
     assert_eq!(config.default, Some("claude".to_string()));
     assert_eq!(config.output.format, OutputFormat::Json);
     assert_eq!(config.logging.level, LogLevel::Trace);
-    assert_eq!(config.logging.file, Some(PathBuf::from("/tmp/override.log")));
+    assert_eq!(
+        config.logging.file,
+        Some(PathBuf::from("/tmp/override.log"))
+    );
     assert_eq!(config.output.colored, false);
 }
 
