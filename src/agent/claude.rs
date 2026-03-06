@@ -262,14 +262,26 @@ impl ClaudeAgent {
     }
 
     /// Check if Claude indicates the task is complete
-    fn check_completion(output: &str) -> bool {
+    pub fn check_completion(output: &str) -> bool {
         let output_lower = output.to_lowercase();
 
-        // Look for completion indicators
+        // First, exclude negative patterns - if we find these, it's NOT complete
+        if output_lower.contains("not done")
+            || output_lower.contains("not finished")
+            || output_lower.contains("not complete")
+            || output_lower.contains("not completed")
+            || output_lower.contains("incomplete")
+        {
+            return false;
+        }
+
+        // Now look for positive completion indicators
         output_lower.contains("task completed")
             || output_lower.contains("implementation complete")
             || output_lower.contains("done")
             || output_lower.contains("finished")
+            || output_lower.contains("complete")
+            || output_lower.contains("completed")
     }
 
     /// Get or create a session for this execution
