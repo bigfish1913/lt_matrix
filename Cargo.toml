@@ -11,3 +11,44 @@ keywords = ["agent", "orchestrator", "automation", "claude", "development"]
 categories = ["development-tools", "command-line-utilities"]
 
 [dependencies]
+# CLI parsing
+clap = { version = "4.5", features = ["derive"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"
+
+# Async runtime
+tokio = { version = "1.40", features = ["full"] }
+
+# Error handling
+anyhow = "1.0"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Progress bars
+indicatif = "0.17"
+
+# Git operations
+git2 = "0.19"
+
+# HTTP client
+reqwest = { version = "0.12", features = ["json"] }
+
+# Datetime handling
+chrono = { version = "0.4", features = ["serde"] }
+
+# Terminal handling
+console = "0.15"
+
+# Interactive prompts
+dialoguer = "0.11"
+
+# Temporary file handling
+tempfile = "3.12"
+
+# Command detection
+which = "6.0"

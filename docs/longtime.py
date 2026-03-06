@@ -1003,8 +1003,6 @@ The `depends_on` field is an array of task IDs that must complete before this ta
                 log("WARN", f"Task plan issue: {issue}")
             if issues:
                 log("WARN", f"{len(issues)} dependency issue(s) detected — blocked tasks will be skipped")
-            log("ERROR", f"Invalid task list from Claude:\n{result[:500]}")
-            sys.exit(1)
 
         tasks_data = data["tasks"]
         log("OK", f"Generated {len(tasks_data)} tasks")
