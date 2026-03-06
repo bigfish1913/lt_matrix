@@ -6,3 +6,4 @@ pub mod dependency;
 pub mod executor;
 pub mod scheduler;
 pub mod task;
+pub mod tree;
