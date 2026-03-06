@@ -172,6 +172,99 @@ fn main() {
     println!("✓ Directory creation if missing");
     println!();
 
+    // Demonstrate orphaned task detection
+    println!("10. Orphaned Task Detection and Cleanup");
+    println!("{}", "=".repeat(50));
+
+    // Create tasks with broken dependencies
+    let mut task_broken = Task::new("task-broken", "Broken Dependencies", "Has missing deps");
+    task_broken.depends_on = vec![
+        "task-1".to_string(),        // Valid
+        "missing-task".to_string(),  // Invalid
+    ];
+
+    let mut task_valid = Task::new("task-1", "Valid Task", "No dependencies");
+
+    let state_with_orphans = WorkspaceState::new(
+        project_root.to_path_buf(),
+        vec![task_valid, task_broken]
+    );
+
+    println!("Detecting orphaned tasks...");
+    let orphaned = state_with_orphans.detect_orphaned_tasks();
+
+    if orphaned.is_empty() {
+        println!("  No orphaned tasks detected");
+    } else {
+        println!("  Found {} task(s) with orphaned dependencies:", orphaned.len());
+        for (task_id, missing_deps) in &orphaned {
+            println!("    - Task '{}' depends on: {:?}", task_id, missing_deps);
+        }
+    }
+    println!();
+
+    // Cleanup orphaned dependencies
+    println!("Cleaning up orphaned dependencies...");
+    let mut state_cleanup = state_with_orphans;
+    let cleaned_count = state_cleanup.cleanup_orphaned_dependencies();
+    println!("  Cleaned up {} invalid dependency reference(s)", cleaned_count);
+
+    // Verify cleanup
+    let orphaned_after = state_cleanup.detect_orphaned_tasks();
+    println!("  Orphaned tasks after cleanup: {}", orphaned_after.len());
+    println!();
+
+    // Validate dependency graph
+    println!("Validating dependency graph...");
+    let mut state_valid = state_cleanup.clone();
+    state_valid.tasks[0].status = TaskStatus::Completed; // Make task-1 completed
+
+    match state_valid.validate_dependency_graph() {
+        Ok(_) => println!("  ✓ Dependency graph is valid"),
+        Err(e) => println!("  ✗ Validation error: {}", e),
+    }
+    println!();
+
+    // Demonstrate circular dependency detection
+    println!("11. Circular Dependency Detection");
+    println!("{}", "=".repeat(50));
+
+    let mut task_circular1 = Task::new("task-a", "Task A", "Depends on B");
+    task_circular1.depends_on = vec!["task-b".to_string()];
+
+    let mut task_circular2 = Task::new("task-b", "Task B", "Depends on A");
+    task_circular2.depends_on = vec!["task-a".to_string()];
+
+    let circular_state = WorkspaceState::new(
+        project_root.to_path_buf(),
+        vec![task_circular1, task_circular2]
+    );
+
+    println!("Detecting circular dependencies...");
+    match circular_state.validate_dependency_graph() {
+        Ok(_) => println!("  No circular dependencies found"),
+        Err(e) => println!("  ✗ Circular dependency detected: {}", e),
+    }
+    println!();
+
+    // Final summary
+    println!("12. Complete Feature Summary");
+    println!("{}", "=".repeat(50));
+    println!("✓ State persistence after each task completion");
+    println!("✓ Auto-reset InProgress → Pending on load");
+    println!("✓ Auto-reset Blocked → Pending on load");
+    println!("✓ Preserve Completed, Failed, Pending statuses");
+    println!("✓ Recursive transformation of subtasks");
+    println!("✓ Preserve dependencies and metadata");
+    println!("✓ Error handling for corrupted files");
+    println!("✓ Directory creation if missing");
+    println!("✓ Orphaned task detection");
+    println!("✓ Orphaned dependency cleanup");
+    println!("✓ Circular dependency detection");
+    println!("✓ Self-dependency detection");
+    println!("✓ Dependency graph validation");
+    println!();
+
     println!("=== Demo Complete ===");
     println!("\nNote: The workspace state is saved in: {:?}", project_root.join(".ltmatrix"));
     println!("This directory will be cleaned up automatically when the temp dir is dropped.");

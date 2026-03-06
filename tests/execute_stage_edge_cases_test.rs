@@ -79,6 +79,8 @@ async fn test_load_memory_from_nonexistent_file() {
         enable_sessions: false,
         work_dir: temp_dir.path().to_path_buf(),
         memory_file: memory_path.clone(),
+        enable_workspace_persistence: false,
+        project_root: None,
     };
 
     // Verify the config points to nonexistent file
@@ -103,6 +105,8 @@ async fn test_load_malformed_memory_file() {
         enable_sessions: false,
         work_dir: temp_dir.path().to_path_buf(),
         memory_file: memory_path,
+        enable_workspace_persistence: false,
+        project_root: None,
     };
 
     // Config should still be valid
@@ -124,6 +128,8 @@ async fn test_load_empty_memory_file() {
         enable_sessions: false,
         work_dir: temp_dir.path().to_path_buf(),
         memory_file: memory_path,
+        enable_workspace_persistence: false,
+        project_root: None,
     };
 
     assert!(config.memory_file.exists());

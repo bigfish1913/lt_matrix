@@ -362,3 +362,272 @@ fn test_handles_empty_task_list() {
 
     assert_eq!(loaded_state.tasks.len(), 0);
 }
+
+// ==================== Orphaned Task Detection Tests ====================
+
+#[test]
+fn test_detect_orphaned_tasks() {
+    let temp_dir = TempDir::new().unwrap();
+    let project_root = temp_dir.path();
+
+    // Create task with dependency on non-existent task
+    let mut task2 = Task::new("task-2", "Dependent Task", "Depends on missing task");
+    task2.depends_on = vec!["non-existent-task".to_string()];
+
+    let task1 = Task::new("task-1", "Valid Task", "No dependencies");
+
+    let state = WorkspaceState::new(project_root.to_path_buf(), vec![task1, task2]);
+
+    // Detect orphaned tasks
+    let orphaned = state.detect_orphaned_tasks();
+
+    assert_eq!(orphaned.len(), 1);
+    assert_eq!(orphaned[0].0, "task-2");
+    assert_eq!(orphaned[0].1, vec!["non-existent-task".to_string()]);
+}
+
+#[test]
+fn test_detect_orphaned_tasks_multiple_dependencies() {
+    let temp_dir = TempDir::new().unwrap();
+    let project_root = temp_dir.path();
+
+    // Create task with multiple missing dependencies
+    let mut task = Task::new("task-1", "Multi-Dep", "Multiple missing deps");
+    task.depends_on = vec![
+        "missing-1".to_string(),
+        "missing-2".to_string(),
+        "missing-3".to_string(),
+    ];
+
+    let state = WorkspaceState::new(project_root.to_path_buf(), vec![task]);
+
+    let orphaned = state.detect_orphaned_tasks();
+
+    assert_eq!(orphaned.len(), 1);
+    assert_eq!(orphaned[0].0, "task-1");
+    assert_eq!(orphaned[0].1.len(), 3);
+}
+
+#[test]
+fn test_detect_orphaned_tasks_in_subtasks() {
+    let temp_dir = TempDir::new().unwrap();
+    let project_root = temp_dir.path();
+
+    // Create nested task with orphaned dependency
+    let mut subtask = Task::new("subtask-1", "Subtask", "Has missing dependency");
+    subtask.depends_on = vec!["missing-subtask-dep".to_string()];
+
+    let mut parent = Task::new("task-1", "Parent", "Parent task");
+    parent.subtasks = vec![subtask];
+
+    let state = WorkspaceState::new(project_root.to_path_buf(), vec![parent]);
+
+    let orphaned = state.detect_orphaned_tasks();
+
+    assert_eq!(orphaned.len(), 1);
+    assert_eq!(orphaned[0].0, "subtask-1");
+    assert_eq!(orphaned[0].1, vec!["missing-subtask-dep".to_string()]);
+}
+
+#[test]
+fn test_detect_orphaned_tasks_no_orphans() {
+    let temp_dir = TempDir::new().unwrap();
+    let project_root = temp_dir.path();
+
+    // Create valid dependency chain
+    let mut task2 = Task::new("task-2", "Dependent", "Depends on task-1");
+    task2.depends_on = vec!["task-1".to_string()];
+
+    let task1 = Task::new("task-1", "Base", "Base task");
+
+    let state = WorkspaceState::new(project_root.to_path_buf(), vec![task1, task2]);
+
+    let orphaned = state.detect_orphaned_tasks();
+
+    assert_eq!(orphaned.len(), 0);
+}
+
+#[test]
+fn test_cleanup_orphaned_dependencies() {
+    let temp_dir = TempDir::new().unwrap();
+    let project_root = temp_dir.path();
+
+    // Create task with mix of valid and invalid dependencies
+    let mut task2 = Task::new("task-2", "Mixed Deps", "Mixed dependencies");
+    task2.depends_on = vec![
+        "task-1".to_string(),      // Valid
+        "missing-1".to_string(),   // Invalid
+        "missing-2".to_string(),   // Invalid
+    ];
+
+    let task1 = Task::new("task-1", "Valid", "Valid dependency");
+
+    let mut state = WorkspaceState::new(project_root.to_path_buf(), vec![task1, task2]);
+
+    // Cleanup orphaned dependencies
+    let cleaned_count = state.cleanup_orphaned_dependencies();
+
+    assert_eq!(cleaned_count, 2); // Two invalid dependencies removed
+    assert_eq!(state.tasks[1].depends_on.len(), 1); // Only valid dep remains
+    assert_eq!(state.tasks[1].depends_on[0], "task-1");
+}
+
+#[test]
+fn test_cleanup_orphaned_dependencies_in_subtasks() {
+    let temp_dir = TempDir::new().unwrap();
+    let project_root = temp_dir.path();
+
+    // Create subtask with invalid dependencies
+    let mut subtask = Task::new("subtask-1", "Subtask", "Has invalid deps");
+    subtask.depends_on = vec!["missing".to_string()];
+
+    let mut parent = Task::new("task-1", "Parent", "Parent task");
+    parent.subtasks = vec![subtask];
+
+    let mut state = WorkspaceState::new(project_root.to_path_buf(), vec![parent]);
+
+    // Cleanup should affect subtasks too
+    let cleaned_count = state.cleanup_orphaned_dependencies();
+
+    assert_eq!(cleaned_count, 1);
+    assert_eq!(state.tasks[0].subtasks[0].depends_on.len(), 0);
+}
+
+#[test]
+fn test_validate_dependency_graph_valid() {
+    let temp_dir = TempDir::new().unwrap();
+    let project_root = temp_dir.path();
+
+    // Create valid linear dependency chain
+    let mut task3 = Task::new("task-3", "Third", "Depends on task-2");
+    task3.depends_on = vec!["task-2".to_string()];
+
+    let mut task2 = Task::new("task-2", "Second", "Depends on task-1");
+    task2.depends_on = vec!["task-1".to_string()];
+
+    let task1 = Task::new("task-1", "First", "Base task");
+
+    let state = WorkspaceState::new(
+        project_root.to_path_buf(),
+        vec![task1, task2, task3]
+    );
+
+    // Should validate successfully
+    assert!(state.validate_dependency_graph().is_ok());
+}
+
+#[test]
+fn test_validate_dependency_graph_orphaned() {
+    let temp_dir = TempDir::new().unwrap();
+    let project_root = temp_dir.path();
+
+    // Create task with orphaned dependency
+    let mut task = Task::new("task-1", "Task", "Has missing dependency");
+    task.depends_on = vec!["missing-task".to_string()];
+
+    let state = WorkspaceState::new(project_root.to_path_buf(), vec![task]);
+
+    // Should fail validation
+    let result = state.validate_dependency_graph();
+    assert!(result.is_err());
+    assert!(result.unwrap_err().to_string().contains("orphaned dependencies"));
+}
+
+#[test]
+fn test_validate_dependency_graph_circular() {
+    let temp_dir = TempDir::new().unwrap();
+    let project_root = temp_dir.path();
+
+    // Create circular dependency: task-1 -> task-2 -> task-1
+    let mut task2 = Task::new("task-2", "Second", "Depends on task-1");
+    task2.depends_on = vec!["task-1".to_string()];
+
+    let mut task1 = Task::new("task-1", "First", "Depends on task-2");
+    task1.depends_on = vec!["task-2".to_string()];
+
+    let state = WorkspaceState::new(project_root.to_path_buf(), vec![task1, task2]);
+
+    // Should detect circular dependency
+    let result = state.validate_dependency_graph();
+    assert!(result.is_err());
+    assert!(result.unwrap_err().to_string().contains("Circular"));
+}
+
+#[test]
+fn test_validate_dependency_graph_self_dependency() {
+    let temp_dir = TempDir::new().unwrap();
+    let project_root = temp_dir.path();
+
+    // Create self-referencing task
+    let mut task = Task::new("task-1", "Self Dep", "Depends on itself");
+    task.depends_on = vec!["task-1".to_string()];
+
+    let state = WorkspaceState::new(project_root.to_path_buf(), vec![task]);
+
+    // Should detect circular dependency (self-reference is a cycle)
+    let result = state.validate_dependency_graph();
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_detect_orphaned_tasks_diamond_pattern() {
+    let temp_dir = TempDir::new().unwrap();
+    let project_root = temp_dir.path();
+
+    // Diamond pattern with one broken edge
+    //     task-1
+    //     /     \
+    // task-2   task-3 (missing)
+    //     \     /
+    //     task-4
+
+    let mut task4 = Task::new("task-4", "Merge", "Merge point");
+    task4.depends_on = vec!["task-2".to_string(), "task-3".to_string()];
+
+    let mut task2 = Task::new("task-2", "Branch A", "First branch");
+    task2.depends_on = vec!["task-1".to_string()];
+
+    let mut task3 = Task::new("task-3", "Branch B", "Second branch");
+    task3.depends_on = vec!["task-1".to_string()];
+
+    let task1 = Task::new("task-1", "Root", "Root task");
+
+    // Create state without task-3 to simulate it being deleted
+    let state = WorkspaceState::new(
+        project_root.to_path_buf(),
+        vec![task1, task2, task4] // task-3 is missing
+    );
+
+    let orphaned = state.detect_orphaned_tasks();
+
+    // task-4 should be detected as having orphaned dependency on task-3
+    assert_eq!(orphaned.len(), 1);
+    assert_eq!(orphaned[0].0, "task-4");
+    assert!(orphaned[0].1.contains(&"task-3".to_string()));
+}
+
+#[test]
+fn test_cleanup_and_save_persistence() {
+    let temp_dir = TempDir::new().unwrap();
+    let project_root = temp_dir.path();
+
+    // Create state with orphaned dependencies
+    let mut task2 = Task::new("task-2", "Orphaned", "Has missing dependency");
+    task2.depends_on = vec!["missing".to_string()];
+
+    let task1 = Task::new("task-1", "Valid", "Valid task");
+
+    let mut state = WorkspaceState::new(project_root.to_path_buf(), vec![task1, task2]);
+    state.save().unwrap();
+
+    // Load, cleanup, and save
+    let mut loaded_state = WorkspaceState::load(project_root.to_path_buf()).unwrap();
+    let cleaned_count = loaded_state.cleanup_orphaned_dependencies();
+    loaded_state.save().unwrap();
+
+    assert_eq!(cleaned_count, 1);
+
+    // Load again and verify cleanup persisted
+    let final_state = WorkspaceState::load(project_root.to_path_buf()).unwrap();
+    assert_eq!(final_state.tasks[1].depends_on.len(), 0);
+}
