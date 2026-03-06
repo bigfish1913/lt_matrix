@@ -2,9 +2,10 @@
 //!
 //! This module handles the execution of different CLI commands and subcommands.
 
-use super::args::{Args, Command};
+use super::args::{Args, Command, CleanupArgs};
 use crate::config::settings::{self, CliOverrides};
 use crate::interactive::{analyze_goal_ambiguity, ClarificationRunner, ClarificationSession, NonInteractiveRunner};
+use crate::workspace::WorkspaceState;
 use anyhow::{Context, Result};
 use tracing::{info, warn};
 
@@ -14,6 +15,7 @@ pub fn execute_command(args: Args) -> Result<()> {
         Some(Command::Release(ref release_args)) => execute_release(&args, release_args),
         Some(Command::Completions(ref completions_args)) => execute_completions(completions_args),
         Some(Command::Man(ref man_args)) => execute_man(man_args),
+        Some(Command::Cleanup(ref cleanup_args)) => execute_cleanup(cleanup_args),
         None => {
             // Default to run command
             execute_run(&args)
@@ -23,11 +25,19 @@ pub fn execute_command(args: Args) -> Result<()> {
 
 /// Execute the main run logic
 fn execute_run(args: &Args) -> Result<()> {
-    if let Some(goal) = &args.goal {
-        println!("ltmatrix - Long-Time Agent Orchestrator");
-        println!("Version: {}", env!("CARGO_PKG_VERSION"));
-        println!();
+    use std::env;
 
+    println!("ltmatrix - Long-Time Agent Orchestrator");
+    println!("Version: {}", env!("CARGO_PKG_VERSION"));
+    println!();
+
+    // Handle resume mode
+    if args.resume {
+        return execute_resume(args);
+    }
+
+    // Regular execution requires a goal
+    if let Some(goal) = &args.goal {
         // Load configuration with CLI overrides
         let overrides = CliOverrides::from(args.clone());
         let config = settings::load_config_with_overrides(Some(overrides))
@@ -43,10 +53,6 @@ fn execute_run(args: &Args) -> Result<()> {
 
         if args.dry_run {
             println!("Dry run: plan will be generated but not executed");
-        }
-
-        if args.resume {
-            println!("Resume: will continue from last interrupted task");
         }
 
         // Handle interactive clarification if --ask flag is set
@@ -76,6 +82,86 @@ fn execute_run(args: &Args) -> Result<()> {
 
     } else {
         print_help();
+    }
+
+    Ok(())
+}
+
+/// Execute resume mode - load and continue from previous workspace state
+fn execute_resume(args: &Args) -> Result<()> {
+    use std::env;
+
+    let project_root = env::current_dir()
+        .context("Failed to get current directory")?;
+
+    println!("Resume Mode: Continuing from previous workspace state");
+    println!();
+
+    // Check if workspace state exists
+    if !WorkspaceState::exists(&project_root) {
+        println!("No workspace state found in current directory.");
+        println!();
+        println!("Expected file: {}", project_root.join(".ltmatrix").join("tasks-manifest.json").display());
+        println!();
+        println!("To start a new task, run: ltmatrix \"your goal\"");
+        println!("To clean up any residual state, run: ltmatrix cleanup --remove --force");
+        return Ok(());
+    }
+
+    // Load workspace state with transformation (resets in_progress/blocked to pending)
+    let state = WorkspaceState::load_with_transform(project_root.clone())
+        .context("Failed to load workspace state")?;
+
+    // Display current workspace status
+    let summary = state.status_summary();
+    println!("Workspace Status:");
+    println!("  Total tasks: {}", summary.total());
+    println!("  Completed: {}", summary.completed);
+    println!("  In Progress: {}", summary.in_progress);
+    println!("  Pending: {}", summary.pending);
+    println!("  Failed: {}", summary.failed);
+    println!("  Blocked: {}", summary.blocked);
+    println!("  Progress: {:.1}%", summary.completion_percentage());
+    println!();
+
+    // Check if all tasks are completed
+    if summary.pending == 0 && summary.in_progress == 0 && summary.failed == 0 {
+        println!("All tasks are already completed!");
+        println!();
+        println!("To start fresh, run: ltmatrix cleanup --remove --force");
+        return Ok(());
+    }
+
+    // Display pending/failed tasks
+    println!("Remaining work:");
+    if summary.pending > 0 {
+        println!("  - {} task(s) pending", summary.pending);
+    }
+    if summary.failed > 0 {
+        println!("  - {} task(s) failed (will retry)", summary.failed);
+    }
+    println!();
+
+    // Load configuration
+    let overrides = CliOverrides::from(args.clone());
+    let config = settings::load_config_with_overrides(Some(overrides))
+        .context("Failed to load configuration")?;
+
+    println!("Configuration:");
+    println!("  - Mode: {}", args.get_execution_mode());
+    if let Some(ref agent) = config.default {
+        println!("  - Agent: {}", agent);
+    }
+    println!();
+
+    if args.dry_run {
+        println!("DRY RUN - Would resume execution with the above configuration");
+        println!("Remove --dry-run to actually execute");
+    } else {
+        println!("Resuming execution...");
+        // TODO: Continue with pipeline execution using loaded state
+        // This is where the actual pipeline execution would continue
+        info!("Loaded workspace state with {} tasks", state.tasks.len());
     }
 
     Ok(())
@@ -245,6 +331,119 @@ fn execute_man(man_args: &super::args::ManArgs) -> Result<()> {
     Ok(())
 }
 
+/// Execute the cleanup command
+fn execute_cleanup(args: &CleanupArgs) -> Result<()> {
+    use std::env;
+
+    println!("ltmatrix - Workspace Cleanup");
+    println!();
+
+    // Get current directory as project root
+    let project_root = env::current_dir()
+        .context("Failed to get current directory")?;
+
+    // Check if workspace state exists
+    if !WorkspaceState::exists(&project_root) {
+        println!("No workspace state found in current directory.");
+        println!("Expected file: {}", project_root.join(".ltmatrix").join("tasks-manifest.json").display());
+        return Ok(());
+    }
+
+    // Show current state summary
+    match WorkspaceState::load(project_root.clone()) {
+        Ok(state) => {
+            let summary = state.status_summary();
+            println!("Current workspace state:");
+            println!("  Total tasks: {}", summary.total());
+            println!("  Completed: {}", summary.completed);
+            println!("  In Progress: {}", summary.in_progress);
+            println!("  Pending: {}", summary.pending);
+            println!("  Failed: {}", summary.failed);
+            println!("  Blocked: {}", summary.blocked);
+            println!("  Progress: {:.1}%", summary.completion_percentage());
+            println!();
+        }
+        Err(e) => {
+            println!("Warning: Could not load workspace state: {}", e);
+            println!();
+        }
+    }
+
+    // Handle different cleanup modes
+    if args.remove {
+        // Remove all workspace state
+        println!("Action: Remove all workspace state files");
+        println!();
+
+        if args.dry_run {
+            println!("DRY RUN - Would remove:");
+            println!("  {}", project_root.join(".ltmatrix").display());
+            println!();
+            println!("Use --force to actually perform the cleanup");
+        } else if !args.force {
+            println!("This will remove all workspace state files including:");
+            println!("  - {}", project_root.join(".ltmatrix").join("tasks-manifest.json").display());
+            println!("  - Any other files in .ltmatrix directory");
+            println!();
+            println!("Are you sure you want to continue? (yes/no): ");
+
+            // In a real implementation, you'd read user input here
+            // For now, we'll require --force flag
+            println!("Please use --force flag to confirm cleanup");
+            return Ok(());
+        } else {
+            WorkspaceState::cleanup(&project_root)
+                .context("Failed to cleanup workspace state")?;
+            println!("✓ Workspace state removed successfully");
+        }
+    } else if args.reset_all {
+        // Reset all tasks to pending
+        println!("Action: Reset all tasks to pending status");
+        println!();
+
+        if args.dry_run {
+            println!("DRY RUN - Would reset all tasks to pending");
+            println!("Use --force to actually perform the reset");
+        } else {
+            let mut state = WorkspaceState::load(project_root)
+                .context("Failed to load workspace state")?;
+            state.reset_all()
+                .context("Failed to reset tasks")?;
+            state.save()
+                .context("Failed to save workspace state")?;
+            println!("✓ All tasks reset to pending status");
+        }
+    } else if args.reset_failed {
+        // Reset only failed tasks
+        println!("Action: Reset failed tasks to pending status");
+        println!();
+
+        if args.dry_run {
+            println!("DRY RUN - Would reset failed tasks");
+            println!("Use --force to actually perform the reset");
+        } else {
+            let mut state = WorkspaceState::load(project_root)
+                .context("Failed to load workspace state")?;
+            let count = state.reset_failed()
+                .context("Failed to reset failed tasks")?;
+            state.save()
+                .context("Failed to save workspace state")?;
+            println!("✓ Reset {} failed task(s) to pending status", count);
+        }
+    } else {
+        // Default: just show status
+        println!("No cleanup action specified. Use one of:");
+        println!("  --remove       Remove all workspace state files");
+        println!("  --reset-all    Reset all tasks to pending");
+        println!("  --reset-failed Reset only failed tasks to pending");
+        println!();
+        println!("Use --force to confirm the action");
+        println!("Use --dry-run to preview changes");
+    }
+
+    Ok(())
+}
+
 /// Print help information
 fn print_help() {
     println!("ltmatrix - Long-Time Agent Orchestrator");
@@ -267,10 +466,14 @@ fn print_help() {
     println!("  release       Create a release build");
     println!("  completions   Generate shell completions");
     println!("  man           Generate man pages");
+    println!("  cleanup       Clean up workspace state");
     println!();
     println!("EXAMPLES:");
     println!("  ltmatrix \"build a REST API\"");
     println!("  ltmatrix --fast \"add error handling\"");
+    println!("  ltmatrix --resume");
+    println!("  ltmatrix cleanup --remove --force");
+    println!("  ltmatrix cleanup --reset-failed");
     println!("  ltmatrix completions bash");
     println!("  ltmatrix man --output ./man");
     println!();
@@ -279,6 +482,7 @@ fn print_help() {
     println!("  ltmatrix-release(1)   Release subcommand");
     println!("  ltmatrix-completions(1) Completions subcommand");
     println!("  ltmatrix-man(1)       Man page generation subcommand");
+    println!("  ltmatrix-cleanup(1)   Cleanup subcommand");
     println!();
     println!("For more information, visit: https://github.com/bigfish/ltmatrix");
 }

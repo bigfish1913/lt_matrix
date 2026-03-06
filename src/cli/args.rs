@@ -154,6 +154,10 @@ pub enum Command {
     /// Generate man pages
     #[command(name = "man")]
     Man(ManArgs),
+
+    /// Clean up workspace state
+    #[command(name = "cleanup")]
+    Cleanup(CleanupArgs),
 }
 
 /// Arguments for the 'release' subcommand
@@ -190,6 +194,30 @@ pub struct ManArgs {
     /// Output directory for man pages
     #[arg(short, long, value_name = "DIR", default_value = "./man")]
     pub output: PathBuf,
+}
+
+/// Arguments for the 'cleanup' subcommand
+#[derive(Debug, Clone, Parser)]
+pub struct CleanupArgs {
+    /// Reset all tasks to pending status (keeps state file)
+    #[arg(long, conflicts_with = "reset_failed")]
+    pub reset_all: bool,
+
+    /// Reset only failed tasks to pending status (keeps state file)
+    #[arg(long)]
+    pub reset_failed: bool,
+
+    /// Remove all workspace state files
+    #[arg(long, conflicts_with = "reset_all", conflicts_with = "reset_failed")]
+    pub remove: bool,
+
+    /// Force cleanup without confirmation
+    #[arg(long)]
+    pub force: bool,
+
+    /// Show what would be cleaned up without actually doing it
+    #[arg(long)]
+    pub dry_run: bool,
 }
 
 /// Execution mode presets
