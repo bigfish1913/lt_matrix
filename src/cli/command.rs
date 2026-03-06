@@ -4,7 +4,7 @@
 
 use super::args::{Args, Command, CleanupArgs};
 use crate::config::settings::{self, CliOverrides};
-use crate::interactive::{analyze_goal_ambiguity, ClarificationRunner, ClarificationSession, NonInteractiveRunner};
+use crate::interactive::{ClarificationRunner, ClarificationSession, NonInteractiveRunner};
 use crate::workspace::WorkspaceState;
 use anyhow::{Context, Result};
 use tracing::{info, warn};
@@ -266,26 +266,44 @@ fn execute_release(_args: &Args, release_args: &super::args::ReleaseArgs) -> Res
 /// Execute the completions command
 fn execute_completions(completions_args: &super::args::CompletionsArgs) -> Result<()> {
     use clap::CommandFactory;
-    use std::io::Write;
 
     let shell = match completions_args.shell {
-        super::args::Shell::Bash => clap_complete::Shell::Bash,
-        super::args::Shell::Zsh => clap_complete::Shell::Zsh,
-        super::args::Shell::Fish => clap_complete::Shell::Fish,
-        super::args::Shell::PowerShell => clap_complete::Shell::PowerShell,
-        super::args::Shell::Elvish => clap_complete::Shell::Elvish,
+        super::args::Shell::Bash => crate::completions::ShellType::Bash,
+        super::args::Shell::Zsh => crate::completions::ShellType::Zsh,
+        super::args::Shell::Fish => crate::completions::ShellType::Fish,
+        super::args::Shell::PowerShell => crate::completions::ShellType::PowerShell,
+        super::args::Shell::Elvish => crate::completions::ShellType::Elvish,
     };
 
-    let mut cmd = Args::command();
-    let mut buf = Vec::new();
+    // If --install flag is provided, print installation instructions
+    if completions_args.install {
+        println!("ltmatrix - Shell Completion Installation");
+        println!();
+        println!("Installing completions for: {}", shell.name());
+        println!();
 
-    clap_complete::generate(shell, &mut cmd, "ltmatrix", &mut buf);
+        crate::completions::print_install_instructions(shell);
+        println!();
+        println!("---");
+        println!();
+        println!("Quick install command:");
+        println!("  ltmatrix completions {} > {}", shell.name(), shell.default_install_path());
+        println!();
+    } else {
+        // Generate completions to stdout
+        let mut cmd = Args::command();
+        crate::completions::generate_completions(shell, &mut cmd)?;
 
-    let stdout = std::io::stdout();
-    let mut handle = stdout.lock();
-    handle
-        .write_all(&buf)
-        .context("Failed to write completions to stdout")?;
+        // Print installation instructions after completion
+        if console::user_attended() {
+            eprintln!();
+            eprintln!("✓ Completion script generated successfully");
+            eprintln!();
+            eprintln!("To install completions for {}, run:", shell.name());
+            eprintln!("  ltmatrix completions {} --install", shell.name());
+            eprintln!();
+        }
+    }
 
     Ok(())
 }
@@ -490,7 +508,7 @@ fn print_help() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cli::args::ReleaseArgs;
+    use crate::cli::args::{ReleaseArgs, CompletionsArgs, Shell};
     use clap::Parser;
     use std::path::PathBuf;
 
@@ -502,23 +520,24 @@ mod tests {
 
     #[test]
     fn test_execute_completions() {
-        use clap::CommandFactory;
-        use clap_complete::Shell;
+        let completions_args = CompletionsArgs {
+            shell: Shell::Bash,
+            install: false,
+        };
 
-        let shell = Shell::Bash;
-        let mut cmd = Args::command();
-        let mut buf = Vec::new();
+        let result = execute_completions(&completions_args);
+        assert!(result.is_ok(), "Should execute completions command successfully");
+    }
 
-        clap_complete::generate(shell, &mut cmd, "ltmatrix", &mut buf);
+    #[test]
+    fn test_execute_completions_with_install() {
+        let completions_args = CompletionsArgs {
+            shell: Shell::Bash,
+            install: true,
+        };
 
-        // Verify completion script was generated
-        let output = String::from_utf8(buf).expect("Invalid UTF-8 in completion output");
-        assert!(!output.is_empty(), "Completion output should not be empty");
-        assert!(
-            output.contains("_ltmatrix"),
-            "Completion should define _ltmatrix function"
-        );
-        assert!(output.contains("compgen"), "Completion should use compgen");
+        let result = execute_completions(&completions_args);
+        assert!(result.is_ok(), "Should execute completions with install flag successfully");
     }
 
     #[test]

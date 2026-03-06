@@ -76,9 +76,52 @@ ltmatrix/
 
 ## Installation
 
+### From Cargo
+
 ```bash
 cargo install ltmatrix
 ```
+
+### From Release Binaries
+
+Pre-built binaries are available for:
+- **Windows** (x86_64, ARM64)
+- **Linux** (x86_64, aarch64) - requires glibc 2.17+
+- **macOS** (Intel, Apple Silicon)
+
+See [Releases](https://github.com/bigfish/ltmatrix/releases) for downloads.
+
+## Building from Source
+
+### Prerequisites
+
+- Rust 1.70+ toolchain
+- For cross-compilation: `cargo-zigbuild` and Zig compiler
+
+### Build Commands
+
+```bash
+# Build for host platform
+cargo build --release
+
+# Build for Linux (from any platform)
+./build-linux.sh          # Unix/macOS
+build-linux.bat           # Windows
+
+# Build for macOS
+cargo build --release --target x86_64-apple-darwin      # Intel
+cargo build --release --target aarch64-apple-darwin      # Apple Silicon
+
+# Build for Windows
+cargo build --release --target x86_64-pc-windows-msvc    # x86_64
+cargo build --release --target aarch64-pc-windows-msvc   # ARM64
+```
+
+### Cross-Compilation Notes
+
+- **Linux builds** from Windows/macOS produce dynamically linked binaries (require glibc 2.17+)
+- **Static Linux binaries** must be built on Linux using musl targets
+- See [docs/LINUX_BUILD_REPORT.md](docs/LINUX_BUILD_REPORT.md) for detailed build information
 
 ## Usage
 

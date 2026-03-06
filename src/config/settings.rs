@@ -9,6 +9,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use tracing::debug;
 
+use crate::config::mcp::LoadedMcpConfig;
 use crate::feature::FeatureConfig;
 use crate::models::Agent;
 
@@ -46,6 +47,13 @@ pub struct Config {
     /// Session pool configuration
     #[serde(default)]
     pub pool: PoolConfig,
+
+    /// MCP configuration (loaded from --mcp-config flag)
+    ///
+    /// Note: This is not serialized/deserialized from TOML
+    /// as it's loaded from a separate file specified via CLI.
+    #[serde(skip)]
+    pub mcp: Option<LoadedMcpConfig>,
 }
 
 impl Default for Config {
@@ -59,6 +67,7 @@ impl Default for Config {
             features: FeatureConfig::default(),
             warmup: WarmupConfig::default(),
             pool: PoolConfig::default(),
+            mcp: None,
         }
     }
 }
@@ -453,6 +462,7 @@ fn merge_config(base: Config, override_config: Config) -> Config {
         features: override_config.features,
         warmup: override_config.warmup,
         pool: override_config.pool,
+        mcp: override_config.mcp.or(base.mcp),
     }
 }
 
@@ -746,8 +756,29 @@ pub fn load_config_with_overrides(overrides: Option<CliOverrides>) -> Result<Con
     }
 
     // Apply CLI overrides if provided
-    if let Some(overrides) = overrides {
+    if let Some(mut overrides) = overrides {
+        // Extract MCP config path before moving overrides
+        let mcp_config_path = overrides.mcp_config.take();
+
         merged = apply_cli_overrides(merged, overrides);
+
+        // Load MCP configuration if specified
+        if let Some(mcp_config_path) = mcp_config_path {
+            debug!("Loading MCP configuration from: {}", mcp_config_path.display());
+            match LoadedMcpConfig::from_file(&mcp_config_path) {
+                Ok(loaded_mcp) => {
+                    debug!("Successfully loaded MCP configuration with {} servers",
+                           loaded_mcp.config.mcp.servers.len());
+                    merged.mcp = Some(loaded_mcp);
+                }
+                Err(e) => {
+                    // MCP config loading failure should not be fatal
+                    // Log the error but continue
+                    debug!("Failed to load MCP config from {}: {}, continuing without MCP",
+                           mcp_config_path.display(), e);
+                }
+            }
+        }
     }
 
     // Validate the final configuration
@@ -1146,8 +1177,9 @@ agent = "claude"
                 file: None,
             },
             features: FeatureConfig::default(),
-        warmup: WarmupConfig::default(),
+            warmup: WarmupConfig::default(),
             pool: PoolConfig::default(),
+            mcp: None,
         };
 
         let project = Config {
@@ -1195,8 +1227,9 @@ agent = "claude"
                 file: None,
             },
             features: FeatureConfig::default(),
-        warmup: WarmupConfig::default(),
+            warmup: WarmupConfig::default(),
             pool: PoolConfig::default(),
+            mcp: None,
         };
 
         let merged = merge_configs(Some(global), Some(project));
@@ -1245,8 +1278,9 @@ agent = "claude"
             output: OutputConfig::default(),
             logging: LoggingConfig::default(),
             features: FeatureConfig::default(),
-        warmup: WarmupConfig::default(),
+            warmup: WarmupConfig::default(),
             pool: PoolConfig::default(),
+            mcp: None,
         };
 
         let merged = merge_configs(Some(config.clone()), None);
@@ -1409,8 +1443,9 @@ agent = "claude"
             output: OutputConfig::default(),
             logging: LoggingConfig::default(),
             features: FeatureConfig::default(),
-        warmup: WarmupConfig::default(),
+            warmup: WarmupConfig::default(),
             pool: PoolConfig::default(),
+            mcp: None,
         };
 
         let overrides = CliOverrides {
@@ -1451,8 +1486,9 @@ agent = "claude"
             },
             logging: LoggingConfig::default(),
             features: FeatureConfig::default(),
-        warmup: WarmupConfig::default(),
+            warmup: WarmupConfig::default(),
             pool: PoolConfig::default(),
+            mcp: None,
         };
 
         let overrides = CliOverrides {
@@ -1492,8 +1528,9 @@ agent = "claude"
                 file: None,
             },
             features: FeatureConfig::default(),
-        warmup: WarmupConfig::default(),
+            warmup: WarmupConfig::default(),
             pool: PoolConfig::default(),
+            mcp: None,
         };
 
         let overrides = CliOverrides {
@@ -1534,8 +1571,9 @@ agent = "claude"
             },
             logging: LoggingConfig::default(),
             features: FeatureConfig::default(),
-        warmup: WarmupConfig::default(),
+            warmup: WarmupConfig::default(),
             pool: PoolConfig::default(),
+            mcp: None,
         };
 
         let overrides = CliOverrides {
@@ -1596,8 +1634,9 @@ agent = "claude"
             output: OutputConfig::default(),
             logging: LoggingConfig::default(),
             features: FeatureConfig::default(),
-        warmup: WarmupConfig::default(),
+            warmup: WarmupConfig::default(),
             pool: PoolConfig::default(),
+            mcp: None,
         };
 
         let overrides = CliOverrides {
@@ -1654,8 +1693,9 @@ agent = "claude"
             output: OutputConfig::default(),
             logging: LoggingConfig::default(),
             features: FeatureConfig::default(),
-        warmup: WarmupConfig::default(),
+            warmup: WarmupConfig::default(),
             pool: PoolConfig::default(),
+            mcp: None,
         };
 
         let result = validate_config(&config);

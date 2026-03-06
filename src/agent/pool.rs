@@ -268,7 +268,7 @@ impl SessionPool {
         model: &str,
     ) -> anyhow::Result<String> {
         // If we have a warmup executor and haven't warmed this agent yet
-        if let Some(executor) = &self.warmup_executor {
+        if let Some(_executor) = &self.warmup_executor {
             let agent_key = (agent_name.to_string(), model.to_string());
 
             if !self.warmed_agents.contains(&agent_key) {

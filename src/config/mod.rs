@@ -51,6 +51,7 @@
 //! | `--log-file <PATH>` | `logging.file` | PathBuf |
 //! | `--max-retries <NUM>` | Mode max_retries | u32 |
 //! | `--timeout <SECONDS>` | Mode timeout | u64 |
+//! | `--mcp-config <PATH>` | `mcp` | LoadedMcpConfig |
 //! | `--no-color` | `output.colored` | bool |
 //!
 //! # Config File Format
@@ -79,7 +80,32 @@
 //! level = "info"
 //! file = "/tmp/ltmatrix.log"
 //! ```
+//!
+//! # MCP Configuration
+//!
+//! MCP (Model Context Protocol) servers can be configured via a separate
+//! config file specified with `--mcp-config`:
+//!
+//! ```bash
+//! ltmatrix --mcp-config mcp-servers.toml "test my application"
+//! ```
+//!
+//! Example MCP config file:
+//!
+//! ```toml
+//! [mcp.servers.playwright]
+//! type = "playwright"
+//! command = "npx"
+//! args = ["-y", "@playwright/mcp@latest"]
+//! timeout = 60
+//!
+//! [mcp.servers.browser]
+//! type = "browser"
+//! command = "mcp-server-browser"
+//! timeout = 30
+//! ```
 
 pub mod agent;
+pub mod mcp;
 pub mod modes;
 pub mod settings;

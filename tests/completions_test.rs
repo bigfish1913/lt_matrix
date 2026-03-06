@@ -410,6 +410,18 @@ fn test_completions_command_parsing_bash() {
 
     if let Some(Command::Completions(completions_args)) = args.command {
         assert_eq!(completions_args.shell, Shell::Bash);
+        assert!(!completions_args.install);
+    }
+}
+
+#[test]
+fn test_completions_command_parsing_bash_with_install() {
+    let args = Args::try_parse_from(["ltmatrix", "completions", "bash", "--install"]).unwrap();
+    assert!(matches!(args.command, Some(Command::Completions(..))));
+
+    if let Some(Command::Completions(completions_args)) = args.command {
+        assert_eq!(completions_args.shell, Shell::Bash);
+        assert!(completions_args.install);
     }
 }
 

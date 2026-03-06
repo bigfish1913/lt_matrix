@@ -8,6 +8,7 @@ pub mod models;
 
 pub mod agent;
 pub mod cli;
+pub mod completions;
 pub mod config;
 pub mod dryrun;
 pub mod feature;
@@ -15,6 +16,7 @@ pub mod git;
 pub mod interactive;
 pub mod logging;
 pub mod man;
+pub mod mcp;
 pub mod memory;
 pub mod output;
 pub mod pipeline;

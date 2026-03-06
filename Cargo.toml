@@ -38,7 +38,8 @@ indicatif = "0.17"
 
 # Git operations
 # Use vendored libgit2 for static linking on musl targets
-git2 = { version = "0.19", features = ["vendored-libgit2", "ssh"] }
+# SSH support removed for static builds (requires OpenSSL)
+git2 = { version = "0.19", default-features = false, features = ["vendored-libgit2"] }
 
 # HTTP client
 # Use rustls-tls for pure Rust TLS (statically linkable)
@@ -69,18 +70,21 @@ dirs = "5.0"
 # Default features - balanced for development and production
 default = []
 
+# SSH support for git operations (requires OpenSSL, not suitable for static builds)
+ssh = ["git2/ssh"]
+
 # Static linking feature for musl targets
-# Enables vendored dependencies for truly static binaries
+# Note: Cannot use SSH feature with static builds due to OpenSSL
 static = [
     "git2/vendored-libgit2",
-    "git2/vendored-openssl",
 ]
 
 # Minimal build - reduces dependencies
 minimal = []
 
 # Full feature set - all optional features
-full = ["static"]
+# Note: SSH and static are mutually exclusive due to OpenSSL
+full = ["ssh"]
 
 [package.metadata.docs.rs]
 # Features to enable when building docs on docs.rs

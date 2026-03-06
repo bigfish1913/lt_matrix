@@ -11,7 +11,7 @@ use tokio::sync::Mutex;
 
 use anyhow::Context;
 
-use crate::agent::backend::{AgentBackend, AgentSession, ExecutionConfig, MemorySession};
+use crate::agent::backend::{AgentBackend, AgentSession, ExecutionConfig};
 use crate::agent::pool::SessionPool;
 use crate::agent::warmup::{WarmupExecutor, WarmupResult};
 use crate::config::settings::{Config, PoolConfig, WarmupConfig};

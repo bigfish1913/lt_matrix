@@ -305,8 +305,9 @@ pub async fn commit_tasks(
 /// Open git repository at the specified path
 ///
 /// Returns None if not in a git repository, Some(Repository) if successful.
-fn open_repository(work_dir: &Path) -> Option<Repository> {
-    match Repository::discover(work_dir) {
+/// Uses Repository::open which only checks the exact directory, not parent directories.
+pub fn open_repository(work_dir: &Path) -> Option<Repository> {
+    match Repository::open(work_dir) {
         Ok(repo) => {
             debug!("Found git repository at: {:?}", repo.path());
             Some(repo)

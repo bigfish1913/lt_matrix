@@ -186,6 +186,10 @@ pub struct CompletionsArgs {
     /// Shell type to generate completions for
     #[arg(value_name = "SHELL")]
     pub shell: Shell,
+
+    /// Print installation instructions for the specified shell
+    #[arg(long)]
+    pub install: bool,
 }
 
 /// Arguments for the 'man' subcommand
@@ -391,6 +395,10 @@ mod tests {
     #[test]
     fn test_completions_subcommand() {
         let args = Args::try_parse_from(["ltmatrix", "completions", "bash"]).unwrap();
+        assert!(matches!(args.command, Some(Command::Completions(..))));
+
+        // Test with --install flag
+        let args = Args::try_parse_from(["ltmatrix", "completions", "bash", "--install"]).unwrap();
         assert!(matches!(args.command, Some(Command::Completions(..))));
     }
 }

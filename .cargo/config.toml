@@ -6,6 +6,8 @@
 # - macOS (Intel x86_64, Apple Silicon aarch64)
 
 [build]
+# Use D: drive for target directory (E: drive is full)
+target-dir = "D:/Project/lt_matrix/target"
 # Default target is the host platform
 # Override with: cargo build --release --target <triple>
 
@@ -27,15 +29,13 @@ git-fetch-with-cli = true
 
 # Linux x86_64 with musl (static binary)
 [target.x86_64-unknown-linux-musl]
-# cargo-zigbuild will handle linker via Zig
-# For manual builds without zigbuild, you can uncomment:
-# linker = "x86_64-linux-musl-gcc"
-rustflags = ["-C", "target-feature=+crt-static"]
+# cargo-zigbuild will handle linker and static linking via Zig
+# No manual rustflags needed - zigbuild handles it
 
 # Linux ARM64 with musl (static binary)
 [target.aarch64-unknown-linux-musl]
-# cargo-zigbuild will handle linker via Zig
-rustflags = ["-C", "target-feature=+crt-static"]
+# cargo-zigbuild will handle linker and static linking via Zig
+# No manual rustflags needed - zigbuild handles it
 
 # Linux x86_64 with GNU libc (dynamic binary)
 [target.x86_64-unknown-linux-gnu]
