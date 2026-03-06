@@ -367,10 +367,10 @@ fn acceptance_5_3_merge_order_is_correct() {
     let default_config = Config::default();
 
     let mut global_config = Config::default();
-    global_config.default = Some("global");
+    global_config.default = Some("global".to_string());
 
     let mut project_config = Config::default();
-    project_config.default = Some("project");
+    project_config.default = Some("project".to_string());
 
     // Merge
     let merged = merge_configs(Some(global_config), Some(project_config));
