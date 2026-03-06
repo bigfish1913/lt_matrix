@@ -543,24 +543,27 @@ pub fn load_config_with_overrides(overrides: Option<CliOverrides>) -> Result<Con
 ///
 /// CLI arguments have the highest precedence and override all other sources.
 fn apply_cli_overrides(mut config: Config, overrides: CliOverrides) -> Config {
+    // Apply custom config file if specified
+    // Note: This is handled by load_config_with_overrides before calling this
+
     // Override default agent
-    if let Some(agent) = overrides.agent {
-        config.default = Some(agent);
+    if let Some(ref agent) = overrides.agent {
+        config.default = Some(agent.clone());
     }
 
     // Override output format
-    if let Some(format) = overrides.output_format {
-        config.output.format = format;
+    if let Some(ref format) = overrides.output_format {
+        config.output.format = *format;
     }
 
     // Override log level
-    if let Some(level) = overrides.log_level {
-        config.logging.level = level;
+    if let Some(ref level) = overrides.log_level {
+        config.logging.level = *level;
     }
 
     // Override log file
-    if let Some(file) = overrides.log_file {
-        config.logging.file = Some(file);
+    if let Some(ref file) = overrides.log_file {
+        config.logging.file = Some(file.clone());
     }
 
     // Override colored output
@@ -568,65 +571,78 @@ fn apply_cli_overrides(mut config: Config, overrides: CliOverrides) -> Config {
         config.output.colored = !no_color;
     }
 
-    // Override mode-specific settings if mode specified
-    if let Some(mode_str) = overrides.mode {
-        let mode_name = mode_str.to_lowercase();
-        // Check if mode exists in config
-        if get_mode_config_by_name(&config, &mode_name).is_some() {
-            // Override max_retries from CLI
-            if let Some(max_retries) = overrides.max_retries {
-                config.agents.iter_mut().for_each(|(_, agent_config)| {
-                    // Update default agent timeout if not explicitly set
-                    if agent_config.timeout.is_none() && overrides.timeout.is_some() {
-                        agent_config.timeout = overrides.timeout;
-                    }
-                });
+    // Override progress bars (inverse of no_color)
+    if let Some(no_color) = overrides.no_color {
+        config.output.progress = !no_color;
+    }
 
-                // Update mode config
-                if mode_name == "fast" {
-                    if let Some(ref mut fast) = config.modes.fast {
-                        fast.max_retries = max_retries;
-                    }
-                } else if mode_name == "standard" {
-                    if let Some(ref mut standard) = config.modes.standard {
-                        standard.max_retries = max_retries;
-                    }
-                } else if mode_name == "expert" {
-                    if let Some(ref mut expert) = config.modes.expert {
-                        expert.max_retries = max_retries;
-                    }
-                }
-            }
-
-            // Override timeout from CLI
-            if let Some(timeout) = overrides.timeout {
-                if mode_name == "fast" {
-                    if let Some(ref mut fast) = config.modes.fast {
-                        fast.timeout_exec = timeout;
-                    }
-                } else if mode_name == "standard" {
-                    if let Some(ref mut standard) = config.modes.standard {
-                        standard.timeout_exec = timeout;
-                    }
-                } else if mode_name == "expert" {
-                    if let Some(ref mut expert) = config.modes.expert {
-                        expert.timeout_exec = timeout;
-                    }
-                }
-            }
-        }
+    // Apply execution mode-specific overrides
+    if let Some(ref mode_str) = overrides.mode {
+        apply_mode_overrides(&mut config, mode_str, &overrides);
     }
 
     config
 }
 
-/// Gets mode config by name
-fn get_mode_config_by_name<'a>(config: &'a Config, name: &str) -> Option<&'a ModeConfig> {
-    match name {
-        "fast" => config.modes.fast.as_ref(),
-        "standard" => config.modes.standard.as_ref(),
-        "expert" => config.modes.expert.as_ref(),
-        _ => None,
+/// Apply mode-specific overrides to configuration
+fn apply_mode_overrides(
+    config: &mut Config,
+    mode_name: &str,
+    overrides: &CliOverrides,
+) {
+    match mode_name {
+        "fast" => {
+            // Override fast mode settings
+            if let Some(ref mut fast) = config.modes.fast {
+                if overrides.max_retries.is_some() {
+                    fast.max_retries = overrides.max_retries.unwrap();
+                }
+                if overrides.timeout.is_some() {
+                    fast.timeout_exec = overrides.timeout.unwrap();
+                }
+                if overrides.run_tests.is_some() {
+                    fast.run_tests = overrides.run_tests.unwrap();
+                }
+                if overrides.verify.is_some() {
+                    fast.verify = overrides.verify.unwrap();
+                }
+            }
+        }
+        "standard" => {
+            // Override standard mode settings
+            if let Some(ref mut standard) = config.modes.standard {
+                if overrides.max_retries.is_some() {
+                    standard.max_retries = overrides.max_retries.unwrap();
+                }
+                if overrides.timeout.is_some() {
+                    standard.timeout_exec = overrides.timeout.unwrap();
+                }
+                if overrides.run_tests.is_some() {
+                    standard.run_tests = overrides.run_tests.unwrap();
+                }
+                if overrides.verify.is_some() {
+                    standard.verify = overrides.verify.unwrap();
+                }
+            }
+        }
+        "expert" => {
+            // Override expert mode settings
+            if let Some(ref mut expert) = config.modes.expert {
+                if overrides.max_retries.is_some() {
+                    expert.max_retries = overrides.max_retries.unwrap();
+                }
+                if overrides.timeout.is_some() {
+                    expert.timeout_exec = overrides.timeout.unwrap();
+                }
+                if overrides.run_tests.is_some() {
+                    expert.run_tests = overrides.run_tests.unwrap();
+                }
+                if overrides.verify.is_some() {
+                    expert.verify = overrides.verify.unwrap();
+                }
+            }
+        }
+        _ => {}
     }
 }
 
@@ -1292,6 +1308,7 @@ agent = "claude"
 
         let merged = apply_cli_overrides(config, overrides);
         assert_eq!(merged.output.colored, false);
+        assert_eq!(merged.output.progress, false); // Progress bars also disabled with no_color
     }
 
     #[test]
@@ -1342,13 +1359,15 @@ agent = "claude"
             on_blocked: None,
             mcp_config: None,
             progress: None,
-            run_tests: None,
-            verify: None,
+            run_tests: Some(true),  // Override from false to true
+            verify: Some(false),    // Override from true to false
         };
 
         let merged = apply_cli_overrides(config, overrides);
         assert_eq!(merged.modes.fast.as_ref().unwrap().max_retries, 5);
         assert_eq!(merged.modes.fast.as_ref().unwrap().timeout_exec, 2400);
+        assert_eq!(merged.modes.fast.as_ref().unwrap().run_tests, true);   // Overridden
+        assert_eq!(merged.modes.fast.as_ref().unwrap().verify, false);     // Overridden
     }
 
     // ============================================================================
