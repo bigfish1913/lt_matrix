@@ -496,6 +496,8 @@ pub fn read_file_lines(path: &Path, max_lines: usize) -> Result<Vec<String>> {
 mod tests {
     use super::*;
 
+    // ==================== Framework Display Tests ====================
+
     #[test]
     fn test_framework_display_names() {
         assert_eq!(TestFramework::Pytest.display_name(), "pytest");
@@ -505,13 +507,52 @@ mod tests {
         assert_eq!(TestFramework::None.display_name(), "None");
     }
 
+    // ==================== Test Command Mapping Tests ====================
+
     #[test]
     fn test_framework_test_commands() {
         assert_eq!(TestFramework::Pytest.test_command(), "pytest");
         assert_eq!(TestFramework::Npm.test_command(), "npm test");
         assert_eq!(TestFramework::Go.test_command(), "go test ./...");
         assert_eq!(TestFramework::Cargo.test_command(), "cargo test");
+        assert_eq!(TestFramework::None.test_command(), "");
     }
+
+    #[test]
+    fn test_test_command_returns_valid_strings() {
+        // Ensure all test commands return non-empty strings (except None)
+        assert!(!TestFramework::Pytest.test_command().is_empty());
+        assert!(!TestFramework::Npm.test_command().is_empty());
+        assert!(!TestFramework::Go.test_command().is_empty());
+        assert!(!TestFramework::Cargo.test_command().is_empty());
+        assert!(TestFramework::None.test_command().is_empty());
+    }
+
+    #[test]
+    fn test_test_commands_contain_framework_keywords() {
+        // Verify test commands contain relevant framework keywords
+        assert!(TestFramework::Pytest.test_command().contains("pytest"));
+        assert!(TestFramework::Npm.test_command().contains("npm"));
+        assert!(TestFramework::Npm.test_command().contains("test"));
+        assert!(TestFramework::Go.test_command().contains("go"));
+        assert!(TestFramework::Go.test_command().contains("test"));
+        assert!(TestFramework::Cargo.test_command().contains("cargo"));
+        assert!(TestFramework::Cargo.test_command().contains("test"));
+    }
+
+    #[test]
+    fn test_test_command_format_consistency() {
+        // All test commands should be lowercase (except for npm test which has a space)
+        let pytest_cmd = TestFramework::Pytest.test_command();
+        let go_cmd = TestFramework::Go.test_command();
+        let cargo_cmd = TestFramework::Cargo.test_command();
+
+        assert_eq!(pytest_cmd, pytest_cmd.to_lowercase());
+        assert_eq!(go_cmd, go_cmd.to_lowercase());
+        assert_eq!(cargo_cmd, cargo_cmd.to_lowercase());
+    }
+
+    // ==================== Framework Configuration Tests ====================
 
     #[test]
     fn test_framework_has_config() {
@@ -521,6 +562,8 @@ mod tests {
         assert!(!TestFramework::Go.has_config()); // Go doesn't require config
         assert!(!TestFramework::None.has_config());
     }
+
+    // ==================== Framework Detection Builder Tests ====================
 
     #[test]
     fn test_detection_builder() {
@@ -536,15 +579,78 @@ mod tests {
     }
 
     #[test]
+    fn test_detection_builder_multiple_configs() {
+        let detection = FrameworkDetection::new(TestFramework::Cargo)
+            .with_config(PathBuf::from("Cargo.toml"))
+            .with_config(PathBuf::from(".cargo/config.toml"))
+            .with_test_path(PathBuf::from("tests/integration_test.rs"))
+            .with_test_path(PathBuf::from("src/lib.rs"))
+            .with_confidence(1.0);
+
+        assert_eq!(detection.framework, TestFramework::Cargo);
+        assert_eq!(detection.config_files.len(), 2);
+        assert_eq!(detection.test_paths.len(), 2);
+        assert_eq!(detection.confidence, 1.0);
+    }
+
+    #[test]
+    fn test_detection_builder_empty() {
+        let detection = FrameworkDetection::new(TestFramework::None);
+        assert_eq!(detection.framework, TestFramework::None);
+        assert!(detection.config_files.is_empty());
+        assert!(detection.test_paths.is_empty());
+        assert_eq!(detection.confidence, 0.0);
+    }
+
+    #[test]
+    fn test_detection_builder_confidence_bounds() {
+        // Test minimum confidence
+        let detection_min = FrameworkDetection::new(TestFramework::Go).with_confidence(0.0);
+        assert_eq!(detection_min.confidence, 0.0);
+
+        // Test maximum confidence
+        let detection_max = FrameworkDetection::new(TestFramework::Cargo).with_confidence(1.0);
+        assert_eq!(detection_max.confidence, 1.0);
+
+        // Test intermediate confidence
+        let detection_mid = FrameworkDetection::new(TestFramework::Pytest).with_confidence(0.5);
+        assert!((detection_mid.confidence - 0.5).abs() < f32::EPSILON);
+    }
+
+    // ==================== Framework Equality Tests ====================
+
+    #[test]
+    fn test_framework_equality() {
+        assert_eq!(TestFramework::Pytest, TestFramework::Pytest);
+        assert_eq!(TestFramework::Npm, TestFramework::Npm);
+        assert_eq!(TestFramework::Go, TestFramework::Go);
+        assert_eq!(TestFramework::Cargo, TestFramework::Cargo);
+        assert_eq!(TestFramework::None, TestFramework::None);
+    }
+
+    #[test]
+    fn test_framework_inequality() {
+        assert_ne!(TestFramework::Pytest, TestFramework::Npm);
+        assert_ne!(TestFramework::Npm, TestFramework::Go);
+        assert_ne!(TestFramework::Go, TestFramework::Cargo);
+        assert_ne!(TestFramework::Cargo, TestFramework::None);
+        assert_ne!(TestFramework::None, TestFramework::Pytest);
+    }
+
+    // ==================== File System Utility Tests ====================
+
+    #[test]
     fn test_file_exists_checks() {
         assert!(file_exists_and_readable(Path::new("Cargo.toml")));
         assert!(!file_exists_and_readable(Path::new("nonexistent.txt")));
+        assert!(!file_exists_and_readable(Path::new("src"))); // Directory, not file
     }
 
     #[test]
     fn test_directory_checks() {
         assert!(directory_exists_and_accessible(Path::new("src")));
         assert!(!directory_exists_and_accessible(Path::new("nonexistent_dir")));
+        assert!(!directory_exists_and_accessible(Path::new("Cargo.toml"))); // File, not directory
     }
 
     #[test]
@@ -552,5 +658,159 @@ mod tests {
         let lines = read_file_lines(Path::new("Cargo.toml"), 3).unwrap();
         assert!(!lines.is_empty());
         assert!(lines.len() <= 3);
+    }
+
+    #[test]
+    fn test_read_file_lines_zero_limit() {
+        let lines = read_file_lines(Path::new("Cargo.toml"), 0).unwrap();
+        assert_eq!(lines.len(), 0);
+    }
+
+    #[test]
+    fn test_read_file_lines_nonexistent_file() {
+        let result = read_file_lines(Path::new("nonexistent.txt"), 5);
+        assert!(result.is_err());
+    }
+
+    // ==================== Edge Case Tests ====================
+
+    #[test]
+    fn test_framework_none_returns_empty_command() {
+        assert_eq!(TestFramework::None.test_command(), "");
+        assert!(TestFramework::None.test_command().is_empty());
+    }
+
+    #[test]
+    fn test_framework_none_has_no_display() {
+        assert_eq!(TestFramework::None.display_name(), "None");
+    }
+
+    #[test]
+    fn test_framework_clone() {
+        let original = TestFramework::Cargo;
+        let cloned = original.clone();
+        assert_eq!(original, cloned);
+        assert_eq!(original.test_command(), cloned.test_command());
+    }
+
+    #[test]
+    fn test_detection_path_buf_operations() {
+        let config_path = PathBuf::from("/path/to/config.toml");
+        let test_path = PathBuf::from("/path/to/test_file.rs");
+
+        let detection = FrameworkDetection::new(TestFramework::Cargo)
+            .with_config(config_path.clone())
+            .with_test_path(test_path.clone());
+
+        assert_eq!(detection.config_files[0], config_path);
+        assert_eq!(detection.test_paths[0], test_path);
+    }
+
+    #[test]
+    fn test_framework_ordering_consistency() {
+        // Test that framework priorities are consistent
+        let frameworks = vec![
+            TestFramework::Cargo,
+            TestFramework::Go,
+            TestFramework::Pytest,
+            TestFramework::Npm,
+            TestFramework::None,
+        ];
+
+        // Verify each framework has a unique display name
+        let display_names: Vec<_> = frameworks.iter()
+            .map(|f| f.display_name())
+            .collect();
+        let unique_names: std::collections::HashSet<_> = display_names.iter().collect();
+        assert_eq!(unique_names.len(), frameworks.len());
+
+        // Verify each framework has a test command (except None)
+        for framework in &frameworks {
+            if *framework != TestFramework::None {
+                assert!(!framework.test_command().is_empty());
+            }
+        }
+    }
+
+    #[test]
+    fn test_confidence_scenarios() {
+        // High confidence scenarios
+        let high_confidence = FrameworkDetection::new(TestFramework::Cargo)
+            .with_config(PathBuf::from("Cargo.toml"))
+            .with_test_path(PathBuf::from("tests/test.rs"))
+            .with_confidence(1.0);
+        assert_eq!(high_confidence.confidence, 1.0);
+
+        // Medium confidence scenarios
+        let medium_confidence = FrameworkDetection::new(TestFramework::Pytest)
+            .with_config(PathBuf::from("pytest.ini"))
+            .with_confidence(0.7);
+        assert!((medium_confidence.confidence - 0.7).abs() < f32::EPSILON);
+
+        // Low confidence scenarios
+        let low_confidence = FrameworkDetection::new(TestFramework::Go)
+            .with_test_path(PathBuf::from("handler_test.go"))
+            .with_confidence(0.3);
+        assert!((low_confidence.confidence - 0.3).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_test_command_execution_ready() {
+        // All test commands should be ready to execute without modification
+        let commands = vec![
+            TestFramework::Pytest.test_command(),
+            TestFramework::Npm.test_command(),
+            TestFramework::Go.test_command(),
+            TestFramework::Cargo.test_command(),
+        ];
+
+        for cmd in commands {
+            // Commands should not have leading/trailing whitespace
+            assert_eq!(cmd, cmd.trim());
+            // Commands should not be empty
+            assert!(!cmd.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_framework_comprehensive_coverage() {
+        // Ensure all frameworks are covered in tests
+        let all_frameworks = vec![
+            TestFramework::Pytest,
+            TestFramework::Npm,
+            TestFramework::Go,
+            TestFramework::Cargo,
+            TestFramework::None,
+        ];
+
+        for framework in all_frameworks {
+            // Each framework should have a display name
+            assert!(!framework.display_name().is_empty());
+
+            // Each framework (except None) should have a test command
+            if framework != TestFramework::None {
+                assert!(!framework.test_command().is_empty());
+            }
+
+            // Verify framework equality with itself
+            assert_eq!(framework, framework);
+        }
+    }
+
+    #[test]
+    fn test_multiple_config_and_test_paths() {
+        let mut detection = FrameworkDetection::new(TestFramework::Cargo)
+            .with_config(PathBuf::from("Cargo.toml"))
+            .with_test_path(PathBuf::from("tests/test1.rs"))
+            .with_test_path(PathBuf::from("tests/test2.rs"))
+            .with_test_path(PathBuf::from("src/lib.rs"))
+            .with_confidence(1.0);
+
+        // Add another config
+        detection = detection.with_config(PathBuf::from(".cargo/config.toml"));
+
+        assert_eq!(detection.config_files.len(), 2);
+        assert_eq!(detection.test_paths.len(), 3);
+        assert_eq!(detection.framework, TestFramework::Cargo);
     }
 }
