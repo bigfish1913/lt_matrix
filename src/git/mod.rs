@@ -32,3 +32,14 @@ pub use repository::{
     get_current_branch,
     create_signature,
 };
+
+// Re-export branch functions
+pub use branch::{
+    create_branch,
+    validate_branch_name,
+    branch_exists,
+    list_branches,
+    delete_branch,
+    get_current_branch_name,
+    is_head_detached,
+};
