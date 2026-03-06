@@ -120,6 +120,76 @@ pub enum ValidationError {
     InvalidStructure { task: String, reason: String },
 }
 
+/// Result of dependency validation with detailed metrics
+#[derive(Debug, Clone)]
+pub struct DependencyValidationResult {
+    /// Whether all dependencies are valid (no missing or circular dependencies)
+    pub is_valid: bool,
+
+    /// Dependency validation errors found
+    pub errors: Vec<DependencyError>,
+
+    /// Statistics about the dependency graph
+    pub stats: DependencyGraphStats,
+}
+
+/// Detailed statistics about the task dependency graph
+#[derive(Debug, Clone)]
+pub struct DependencyGraphStats {
+    /// Total number of tasks in the graph
+    pub total_tasks: usize,
+
+    /// Number of tasks that have dependencies
+    pub tasks_with_dependencies: usize,
+
+    /// Total number of dependency edges in the graph
+    pub total_dependencies: usize,
+
+    /// Maximum depth of the dependency graph
+    pub max_depth: usize,
+
+    /// Number of tasks with no dependencies (roots)
+    pub root_tasks: usize,
+
+    /// Number of tasks with no dependents (leaves)
+    pub leaf_tasks: usize,
+
+    /// Number of missing dependencies detected
+    pub missing_dependencies: usize,
+
+    /// Number of circular dependency chains detected
+    pub circular_dependencies: usize,
+
+    /// Whether the graph is a Directed Acyclic Graph (DAG)
+    pub is_dag: bool,
+}
+
+/// Dependency-specific validation errors
+#[derive(Debug, Clone)]
+pub enum DependencyError {
+    /// Reference to a task that doesn't exist
+    MissingReference { task_id: String, missing_ref: String },
+
+    /// Circular dependency in the task graph
+    CircularChain { chain: Vec<String> },
+}
+
+impl From<DependencyError> for ValidationError {
+    fn from(error: DependencyError) -> Self {
+        match error {
+            DependencyError::MissingReference { task_id, missing_ref } => {
+                ValidationError::MissingDependency {
+                    task: task_id,
+                    dependency: missing_ref,
+                }
+            }
+            DependencyError::CircularChain { chain } => {
+                ValidationError::CircularDependency { chain }
+            }
+        }
+    }
+}
+
 impl std::fmt::Display for ValidationError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -371,7 +441,6 @@ fn extract_json_block(text: &str) -> Option<&str> {
 /// Validates a list of tasks for common issues
 fn validate_tasks(tasks: &[Task]) -> Vec<ValidationError> {
     let mut errors = Vec::new();
-    let task_ids: HashSet<&str> = tasks.iter().map(|t| t.id.as_str()).collect();
 
     // Check for duplicate IDs
     let mut seen_ids = HashSet::new();
@@ -383,23 +452,9 @@ fn validate_tasks(tasks: &[Task]) -> Vec<ValidationError> {
         }
     }
 
-    // Check for missing dependencies
-    for task in tasks {
-        for dep in &task.depends_on {
-            if !task_ids.contains(dep.as_str()) {
-                errors.push(ValidationError::MissingDependency {
-                    task: task.id.clone(),
-                    dependency: dep.clone(),
-                });
-            }
-        }
-    }
-
-    // Check for circular dependencies
-    let circular_chains = detect_circular_dependencies(tasks);
-    errors.extend(circular_chains.into_iter().map(|chain| {
-        ValidationError::CircularDependency { chain }
-    }));
+    // Validate dependencies using the dedicated dependency validation function
+    let dep_errors = validate_dependencies(tasks);
+    errors.extend(dep_errors);
 
     // Check for invalid task structures
     for task in tasks {
@@ -414,6 +469,192 @@ fn validate_tasks(tasks: &[Task]) -> Vec<ValidationError> {
                 task: task.id.clone(),
                 reason: "description is empty".to_string(),
             });
+        }
+    }
+
+    errors
+}
+
+/// Validates task dependencies for missing references and circular dependencies
+///
+/// This function performs focused validation of the task dependency graph using
+/// graph traversal algorithms to detect two critical issues:
+///
+/// 1. **Missing Dependencies**: References to tasks that don't exist in the task list
+/// 2. **Circular Dependencies**: Cycles in the dependency graph that would prevent
+///    topological execution
+///
+/// # Arguments
+/// * `tasks` - Slice of tasks to validate
+///
+/// # Returns
+/// List of dependency validation errors found. Empty list indicates valid dependencies.
+///
+/// # Algorithm
+/// - Missing dependency detection: O(n + d) where n=number of tasks, d=total dependencies
+/// - Circular dependency detection: O(n + d) using DFS with cycle detection
+///
+/// # Examples
+/// ```no_run
+/// use ltmatrix::pipeline::generate::validate_dependencies;
+/// use ltmatrix::models::Task;
+///
+/// let mut tasks = vec![
+///     Task::new("task-1", "First", "No dependencies"),
+///     Task::new("task-2", "Second", "Depends on first"),
+/// ];
+/// tasks[1].depends_on = vec!["task-1".to_string()];
+///
+/// let errors = validate_dependencies(&tasks);
+/// assert!(errors.is_empty());
+/// ```
+pub fn validate_dependencies(tasks: &[Task]) -> Vec<ValidationError> {
+    let mut errors = Vec::new();
+
+    // Build set of valid task IDs for O(1) lookup
+    let task_ids: HashSet<&str> = tasks.iter().map(|t| t.id.as_str()).collect();
+
+    // Check for missing dependencies
+    let missing_deps = detect_missing_dependencies(tasks, &task_ids);
+    errors.extend(missing_deps);
+
+    // Check for circular dependencies
+    let circular_chains = detect_circular_dependencies(tasks);
+    errors.extend(circular_chains.into_iter().map(|chain| {
+        ValidationError::CircularDependency { chain }
+    }));
+
+    errors
+}
+
+/// Enhanced dependency validation that returns detailed statistics
+///
+/// This is an extended version of `validate_dependencies()` that provides comprehensive
+/// metrics about the dependency graph structure in addition to validation errors.
+///
+/// # Returns
+/// A `DependencyValidationResult` containing validation status, errors, and detailed statistics
+pub fn validate_dependencies_with_stats(tasks: &[Task]) -> DependencyValidationResult {
+    // Build set of valid task IDs
+    let task_ids: HashSet<&str> = tasks.iter().map(|t| t.id.as_str()).collect();
+
+    // Check for missing dependencies
+    let missing_deps = detect_missing_dependencies(tasks, &task_ids);
+    let missing_count = missing_deps.len();
+
+    // Convert to DependencyError
+    let dep_errors: Vec<DependencyError> = missing_deps
+        .into_iter()
+        .map(|e| match e {
+            ValidationError::MissingDependency { task, dependency } => {
+                DependencyError::MissingReference {
+                    task_id: task,
+                    missing_ref: dependency,
+                }
+            }
+            _ => unreachable!("detect_missing_dependencies only returns MissingDependency"),
+        })
+        .collect();
+
+    // Check for circular dependencies
+    let circular_chains = detect_circular_dependencies(tasks);
+    let circular_count = circular_chains.len();
+
+    let mut errors = dep_errors;
+    errors.extend(circular_chains.iter().cloned().map(|chain| {
+        DependencyError::CircularChain { chain }
+    }));
+
+    // Calculate graph statistics
+    let stats = calculate_dependency_graph_stats(tasks, missing_count, circular_count);
+
+    DependencyValidationResult {
+        is_valid: errors.is_empty(),
+        errors,
+        stats,
+    }
+}
+
+/// Calculates comprehensive statistics about the task dependency graph
+fn calculate_dependency_graph_stats(
+    tasks: &[Task],
+    missing_count: usize,
+    circular_count: usize,
+) -> DependencyGraphStats {
+    let total_tasks = tasks.len();
+    let mut tasks_with_dependencies = 0;
+    let mut total_dependencies = 0;
+
+    // Build dependency adjacency map for depth calculation
+    let mut dep_map: HashMap<&str, Vec<&str>> = HashMap::new();
+    let mut reverse_dep_map: HashMap<&str, Vec<&str>> = HashMap::new();
+
+    for task in tasks {
+        if !task.depends_on.is_empty() {
+            tasks_with_dependencies += 1;
+            total_dependencies += task.depends_on.len();
+
+            // Build forward dependency map (what this task depends on)
+            let deps: Vec<&str> = task.depends_on.iter().map(|s| s.as_str()).collect();
+            dep_map.insert(task.id.as_str(), deps);
+
+            // Build reverse dependency map (what depends on this task)
+            for dep in &task.depends_on {
+                reverse_dep_map
+                    .entry(dep.as_str())
+                    .or_insert_with(Vec::new)
+                    .push(task.id.as_str());
+            }
+        } else {
+            dep_map.insert(task.id.as_str(), Vec::new());
+        }
+    }
+
+    // Calculate max depth
+    let max_depth = calculate_dependency_depth(tasks);
+
+    // Count root tasks (no dependencies) and leaf tasks (nothing depends on them)
+    let root_tasks = tasks.iter().filter(|t| t.depends_on.is_empty()).count();
+    let leaf_tasks = tasks
+        .iter()
+        .filter(|t| reverse_dep_map.get(t.id.as_str()).map_or(true, |v| v.is_empty()))
+        .count();
+
+    DependencyGraphStats {
+        total_tasks,
+        tasks_with_dependencies,
+        total_dependencies,
+        max_depth,
+        root_tasks,
+        leaf_tasks,
+        missing_dependencies: missing_count,
+        circular_dependencies: circular_count,
+        is_dag: circular_count == 0 && missing_count == 0,
+    }
+}
+
+/// Detects missing dependencies by checking if all referenced task IDs exist
+///
+/// # Algorithm
+/// - Time Complexity: O(n * d) where n=number of tasks, d=avg dependencies per task
+/// - Space Complexity: O(n) for the task_ids HashSet
+///
+/// # Returns
+/// List of MissingDependency errors for each invalid reference
+fn detect_missing_dependencies(
+    tasks: &[Task],
+    task_ids: &HashSet<&str>,
+) -> Vec<ValidationError> {
+    let mut errors = Vec::new();
+
+    for task in tasks {
+        for dep in &task.depends_on {
+            if !task_ids.contains(dep.as_str()) {
+                errors.push(ValidationError::MissingDependency {
+                    task: task.id.clone(),
+                    dependency: dep.clone(),
+                });
+            }
         }
     }
 
@@ -1144,5 +1385,352 @@ Some text after."#;
         assert_eq!(tasks[2].depends_on.len(), 2);
         assert!(tasks[2].depends_on.contains(&"implement".to_string()));
         assert!(tasks[2].depends_on.contains(&"setup".to_string()));
+    }
+
+    // Comprehensive tests for validate_dependencies()
+
+    #[test]
+    fn test_validate_dependencies_no_errors() {
+        let tasks = vec![
+            {
+                let mut t = Task::new("task-1", "First", "No dependencies");
+                t.depends_on = vec![];
+                t
+            },
+            {
+                let mut t = Task::new("task-2", "Second", "Depends on first");
+                t.depends_on = vec!["task-1".to_string()];
+                t
+            },
+        ];
+
+        let errors = validate_dependencies(&tasks);
+        assert!(errors.is_empty(), "Should have no errors for valid dependencies");
+    }
+
+    #[test]
+    fn test_validate_dependencies_single_missing() {
+        let tasks = vec![
+            {
+                let mut t = Task::new("task-1", "Task 1", "Has missing dependency");
+                t.depends_on = vec!["non-existent".to_string()];
+                t
+            },
+        ];
+
+        let errors = validate_dependencies(&tasks);
+        assert_eq!(errors.len(), 1);
+        assert!(matches!(
+            &errors[0],
+            ValidationError::MissingDependency { task, .. } if task == "task-1"
+        ));
+    }
+
+    #[test]
+    fn test_validate_dependencies_multiple_missing() {
+        let tasks = vec![
+            {
+                let mut t = Task::new("task-1", "Task 1", "Missing deps");
+                t.depends_on = vec!["missing-1".to_string(), "missing-2".to_string()];
+                t
+            },
+        ];
+
+        let errors = validate_dependencies(&tasks);
+        assert_eq!(errors.len(), 2);
+        assert!(errors.iter().all(|e| matches!(e, ValidationError::MissingDependency { .. })));
+    }
+
+    #[test]
+    fn test_validate_dependencies_simple_cycle() {
+        let tasks = vec![
+            {
+                let mut t = Task::new("a", "A", "Task A");
+                t.depends_on = vec!["b".to_string()];
+                t
+            },
+            {
+                let mut t = Task::new("b", "B", "Task B");
+                t.depends_on = vec!["a".to_string()];
+                t
+            },
+        ];
+
+        let errors = validate_dependencies(&tasks);
+        assert_eq!(errors.len(), 1);
+        match &errors[0] {
+            ValidationError::CircularDependency { chain } => {
+                assert_eq!(chain.len(), 2);
+                assert!(chain.contains(&"a".to_string()));
+                assert!(chain.contains(&"b".to_string()));
+            }
+            _ => panic!("Expected CircularDependency error"),
+        }
+    }
+
+    #[test]
+    fn test_validate_dependencies_complex_cycle() {
+        let tasks = vec![
+            {
+                let mut t = Task::new("a", "A", "Task A");
+                t.depends_on = vec!["b".to_string()];
+                t
+            },
+            {
+                let mut t = Task::new("b", "B", "Task B");
+                t.depends_on = vec!["c".to_string()];
+                t
+            },
+            {
+                let mut t = Task::new("c", "C", "Task C");
+                t.depends_on = vec!["a".to_string()];
+                t
+            },
+        ];
+
+        let errors = validate_dependencies(&tasks);
+        assert_eq!(errors.len(), 1);
+        match &errors[0] {
+            ValidationError::CircularDependency { chain } => {
+                assert_eq!(chain.len(), 3);
+            }
+            _ => panic!("Expected CircularDependency error"),
+        }
+    }
+
+    #[test]
+    fn test_validate_dependencies_mixed_errors() {
+        let tasks = vec![
+            {
+                let mut t = Task::new("task-1", "Task 1", "Has missing dep");
+                t.depends_on = vec!["missing".to_string()];
+                t
+            },
+            {
+                let mut t = Task::new("task-2", "Task 2", "Part of cycle");
+                t.depends_on = vec!["task-3".to_string()];
+                t
+            },
+            {
+                let mut t = Task::new("task-3", "Task 3", "Part of cycle");
+                t.depends_on = vec!["task-2".to_string()];
+                t
+            },
+        ];
+
+        let errors = validate_dependencies(&tasks);
+        assert_eq!(errors.len(), 2); // 1 missing + 1 circular
+        assert!(errors.iter().any(|e| matches!(e, ValidationError::MissingDependency { .. })));
+        assert!(errors.iter().any(|e| matches!(e, ValidationError::CircularDependency { .. })));
+    }
+
+    #[test]
+    fn test_validate_dependencies_empty_list() {
+        let tasks: Vec<Task> = vec![];
+        let errors = validate_dependencies(&tasks);
+        assert!(errors.is_empty());
+    }
+
+    #[test]
+    fn test_validate_dependencies_diamond_structure() {
+        // Diamond dependency (should be valid - not a cycle)
+        let tasks = vec![
+            {
+                let mut t = Task::new("a", "A", "Root");
+                t.depends_on = vec![];
+                t
+            },
+            {
+                let mut t = Task::new("b", "B", "Left");
+                t.depends_on = vec!["a".to_string()];
+                t
+            },
+            {
+                let mut t = Task::new("c", "C", "Right");
+                t.depends_on = vec!["a".to_string()];
+                t
+            },
+            {
+                let mut t = Task::new("d", "D", "Bottom");
+                t.depends_on = vec!["b".to_string(), "c".to_string()];
+                t
+            },
+        ];
+
+        let errors = validate_dependencies(&tasks);
+        assert!(errors.is_empty(), "Diamond structure should be valid");
+    }
+
+    // Tests for validate_dependencies_with_stats()
+
+    #[test]
+    fn test_validate_dependencies_with_stats_valid_graph() {
+        let tasks = vec![
+            {
+                let mut t = Task::new("task-1", "First", "Root task");
+                t.depends_on = vec![];
+                t
+            },
+            {
+                let mut t = Task::new("task-2", "Second", "Depends on first");
+                t.depends_on = vec!["task-1".to_string()];
+                t
+            },
+        ];
+
+        let result = validate_dependencies_with_stats(&tasks);
+        assert!(result.is_valid);
+        assert!(result.errors.is_empty());
+        assert_eq!(result.stats.total_tasks, 2);
+        assert_eq!(result.stats.tasks_with_dependencies, 1);
+        assert_eq!(result.stats.total_dependencies, 1);
+        assert_eq!(result.stats.max_depth, 1);
+        assert_eq!(result.stats.root_tasks, 1);
+        assert_eq!(result.stats.leaf_tasks, 1);
+        assert!(result.stats.is_dag);
+    }
+
+    #[test]
+    fn test_validate_dependencies_with_stats_complex_graph() {
+        let tasks = vec![
+            {
+                let mut t = Task::new("setup", "Setup", "Setup");
+                t.depends_on = vec![];
+                t
+            },
+            {
+                let mut t = Task::new("implement", "Implement", "Implement");
+                t.depends_on = vec!["setup".to_string()];
+                t
+            },
+            {
+                let mut t = Task::new("test", "Test", "Test");
+                t.depends_on = vec!["implement".to_string()];
+                t
+            },
+        ];
+
+        let result = validate_dependencies_with_stats(&tasks);
+        assert!(result.is_valid);
+        assert_eq!(result.stats.total_tasks, 3);
+        assert_eq!(result.stats.tasks_with_dependencies, 2);
+        assert_eq!(result.stats.total_dependencies, 2);
+        assert_eq!(result.stats.max_depth, 2);
+        assert_eq!(result.stats.root_tasks, 1);
+        assert_eq!(result.stats.leaf_tasks, 1);
+    }
+
+    #[test]
+    fn test_validate_dependencies_with_stats_with_missing() {
+        let tasks = vec![
+            {
+                let mut t = Task::new("task-1", "Task 1", "Has missing dep");
+                t.depends_on = vec!["missing".to_string()];
+                t
+            },
+        ];
+
+        let result = validate_dependencies_with_stats(&tasks);
+        assert!(!result.is_valid);
+        assert_eq!(result.errors.len(), 1);
+        assert_eq!(result.stats.missing_dependencies, 1);
+        assert!(!result.stats.is_dag);
+    }
+
+    #[test]
+    fn test_validate_dependencies_with_stats_with_cycle() {
+        let tasks = vec![
+            {
+                let mut t = Task::new("a", "A", "Task A");
+                t.depends_on = vec!["b".to_string()];
+                t
+            },
+            {
+                let mut t = Task::new("b", "B", "Task B");
+                t.depends_on = vec!["a".to_string()];
+                t
+            },
+        ];
+
+        let result = validate_dependencies_with_stats(&tasks);
+        assert!(!result.is_valid);
+        assert_eq!(result.errors.len(), 1);
+        assert_eq!(result.stats.circular_dependencies, 1);
+        assert!(!result.stats.is_dag);
+    }
+
+    #[test]
+    fn test_validate_dependencies_with_stats_empty_tasks() {
+        let tasks: Vec<Task> = vec![];
+        let result = validate_dependencies_with_stats(&tasks);
+
+        assert!(result.is_valid);
+        assert!(result.errors.is_empty());
+        assert_eq!(result.stats.total_tasks, 0);
+        assert_eq!(result.stats.tasks_with_dependencies, 0);
+        assert_eq!(result.stats.total_dependencies, 0);
+        assert_eq!(result.stats.max_depth, 0);
+        assert!(result.stats.is_dag);
+    }
+
+    #[test]
+    fn test_validate_dependencies_with_stats_independent_tasks() {
+        let tasks = vec![
+            {
+                let mut t = Task::new("task-1", "Task 1", "Independent");
+                t.depends_on = vec![];
+                t
+            },
+            {
+                let mut t = Task::new("task-2", "Task 2", "Independent");
+                t.depends_on = vec![];
+                t
+            },
+            {
+                let mut t = Task::new("task-3", "Task 3", "Independent");
+                t.depends_on = vec![];
+                t
+            },
+        ];
+
+        let result = validate_dependencies_with_stats(&tasks);
+        assert!(result.is_valid);
+        assert_eq!(result.stats.root_tasks, 3); // All are roots
+        assert_eq!(result.stats.leaf_tasks, 3); // All are leaves
+        assert_eq!(result.stats.max_depth, 0);
+        assert_eq!(result.stats.tasks_with_dependencies, 0);
+    }
+
+    #[test]
+    fn test_validate_dependencies_with_stats_multi_parent() {
+        // Task with multiple parents
+        let tasks = vec![
+            {
+                let mut t = Task::new("a", "A", "Root");
+                t.depends_on = vec![];
+                t
+            },
+            {
+                let mut t = Task::new("b", "B", "Branch");
+                t.depends_on = vec!["a".to_string()];
+                t
+            },
+            {
+                let mut t = Task::new("c", "C", "Branch");
+                t.depends_on = vec!["a".to_string()];
+                t
+            },
+            {
+                let mut t = Task::new("d", "D", "Multi-parent");
+                t.depends_on = vec!["b".to_string(), "c".to_string()];
+                t
+            },
+        ];
+
+        let result = validate_dependencies_with_stats(&tasks);
+        assert!(result.is_valid);
+        assert_eq!(result.stats.total_dependencies, 4); // 0 + 1 + 1 + 2 = 4
+        assert_eq!(result.stats.root_tasks, 1);
+        assert_eq!(result.stats.leaf_tasks, 1);
     }
 }
