@@ -14,6 +14,9 @@ pub fn execute_command(args: Args) -> Result<()> {
         Some(Command::Completions(ref completions_args)) => {
             execute_completions(completions_args)
         }
+        Some(Command::Man(ref man_args)) => {
+            execute_man(man_args)
+        }
         None => {
             // Default to run command
             execute_run(&args)
@@ -100,6 +103,45 @@ fn execute_completions(completions_args: &super::args::CompletionsArgs) -> Resul
     Ok(())
 }
 
+/// Execute the man command
+fn execute_man(man_args: &super::args::ManArgs) -> Result<()> {
+    use std::fs;
+
+    println!("ltmatrix - Man Page Generation");
+    println!("Output directory: {}", man_args.output.display());
+    println!();
+
+    // Generate man pages
+    crate::man::generate_man_pages(&man_args.output)
+        .context("Failed to generate man pages")?;
+
+    // List generated files
+    let man_entries: Vec<_> = fs::read_dir(&man_args.output)
+        .context("Failed to read output directory")?
+        .filter_map(|entry| entry.ok())
+        .collect();
+
+    if man_entries.is_empty() {
+        println!("No man pages were generated!");
+    } else {
+        println!("Generated man pages:");
+        for entry in &man_entries {
+            let name = entry.file_name();
+            let name_str = name.to_string_lossy();
+            println!("  - {}", name_str);
+        }
+    }
+
+    println!();
+    println!("To view a man page, run:");
+    println!("  man {}", man_args.output.join("ltmatrix.1").display());
+    println!();
+    println!("To install man pages system-wide:");
+    println!("  cp {}/*.1 /usr/local/share/man/man1/", man_args.output.display());
+
+    Ok(())
+}
+
 /// Print help information
 fn print_help() {
     println!("ltmatrix - Long-Time Agent Orchestrator");
@@ -121,11 +163,19 @@ fn print_help() {
     println!("SUBCOMMANDS:");
     println!("  release       Create a release build");
     println!("  completions   Generate shell completions");
+    println!("  man           Generate man pages");
     println!();
     println!("EXAMPLES:");
     println!("  ltmatrix \"build a REST API\"");
     println!("  ltmatrix --fast \"add error handling\"");
     println!("  ltmatrix completions bash");
+    println!("  ltmatrix man --output ./man");
+    println!();
+    println!("MAN PAGES:");
+    println!("  ltmatrix(1)           Main ltmatrix command");
+    println!("  ltmatrix-release(1)   Release subcommand");
+    println!("  ltmatrix-completions(1) Completions subcommand");
+    println!("  ltmatrix-man(1)       Man page generation subcommand");
     println!();
     println!("For more information, visit: https://github.com/bigfish/ltmatrix");
 }

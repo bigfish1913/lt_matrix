@@ -5,7 +5,7 @@
 use ltmatrix::terminal::{self, ColorConfig};
 use ltmatrix::progress::{
     create_progress_bar, create_spinner, report_task_start, report_task_complete,
-    report_progress_summary, TrackerColorConfig,
+    report_progress_summary,
 };
 use std::thread;
 use std::time::Duration;

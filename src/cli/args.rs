@@ -37,6 +37,9 @@ use std::path::PathBuf;
   # Generate shell completions
   ltmatrix completions bash
 
+  # Generate man pages
+  ltmatrix man --output ./man
+
 For more information, visit: https://github.com/bigfish/ltmatrix"
 )]
 pub struct Args {
@@ -147,6 +150,10 @@ pub enum Command {
     /// Generate shell completion scripts
     #[command(name = "completions")]
     Completions(CompletionsArgs),
+
+    /// Generate man pages
+    #[command(name = "man")]
+    Man(ManArgs),
 }
 
 /// Arguments for the 'release' subcommand
@@ -175,6 +182,14 @@ pub struct CompletionsArgs {
     /// Shell type to generate completions for
     #[arg(value_name = "SHELL")]
     pub shell: Shell,
+}
+
+/// Arguments for the 'man' subcommand
+#[derive(Debug, Clone, Parser)]
+pub struct ManArgs {
+    /// Output directory for man pages
+    #[arg(short, long, value_name = "DIR", default_value = "./man")]
+    pub output: PathBuf,
 }
 
 /// Execution mode presets
