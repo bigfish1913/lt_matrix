@@ -195,7 +195,8 @@ pub async fn commit_tasks(
     tasks: Vec<Task>,
     config: &CommitConfig,
 ) -> Result<(Vec<Task>, CommitSummary)> {
-    info!("Starting commit stage for {} tasks", tasks.len());
+    let total_tasks = tasks.len();
+    info!("Starting commit stage for {} tasks", total_tasks);
 
     // Check if committing is enabled
     if !config.enabled {
@@ -203,10 +204,10 @@ pub async fn commit_tasks(
         return Ok((
             tasks,
             CommitSummary {
-                total_tasks: tasks.len(),
+                total_tasks,
                 committed_tasks: 0,
                 failed_tasks: 0,
-                skipped_tasks: tasks.len(),
+                skipped_tasks: total_tasks,
                 conflicts: 0,
                 branches_created: 0,
                 branches_deleted: 0,
@@ -225,10 +226,10 @@ pub async fn commit_tasks(
                 return Ok((
                     tasks,
                     CommitSummary {
-                        total_tasks: tasks.len(),
+                        total_tasks,
                         committed_tasks: 0,
                         failed_tasks: 0,
-                        skipped_tasks: tasks.len(),
+                        skipped_tasks: total_tasks,
                         conflicts: 0,
                         branches_created: 0,
                         branches_deleted: 0,
@@ -241,9 +242,6 @@ pub async fn commit_tasks(
             }
         }
     };
-
-    // Get total count before moving tasks
-    let total_tasks = tasks.len();
 
     // Get current branch as base branch
     let base_branch = if let Some(ref branch) = config.base_branch {
@@ -580,7 +578,6 @@ pub fn display_commit_summary(summary: &CommitSummary) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::TaskComplexity;
     use tempfile::TempDir;
 
     #[test]
