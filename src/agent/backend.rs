@@ -194,37 +194,22 @@ use crate::models::{Agent, Task};
 #[derive(Debug, Clone)]
 pub enum AgentError {
     /// Agent command not found in PATH
-    CommandNotFound {
-        command: String,
-    },
+    CommandNotFound { command: String },
 
     /// Agent execution failed
-    ExecutionFailed {
-        command: String,
-        message: String,
-    },
+    ExecutionFailed { command: String, message: String },
 
     /// Agent execution timed out
-    Timeout {
-        command: String,
-        timeout_secs: u64,
-    },
+    Timeout { command: String, timeout_secs: u64 },
 
     /// Agent response was invalid or couldn't be parsed
-    InvalidResponse {
-        reason: String,
-    },
+    InvalidResponse { reason: String },
 
     /// Configuration validation failed
-    ConfigValidation {
-        field: String,
-        message: String,
-    },
+    ConfigValidation { field: String, message: String },
 
     /// Session not found
-    SessionNotFound {
-        session_id: String,
-    },
+    SessionNotFound { session_id: String },
 }
 
 impl fmt::Display for AgentError {
@@ -482,7 +467,7 @@ impl AgentSession for MemorySession {
 }
 
 /// Response from an agent execution
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct AgentResponse {
     /// The raw output from the agent
     pub output: String,
@@ -495,17 +480,6 @@ pub struct AgentResponse {
 
     /// Error message if the agent failed
     pub error: Option<String>,
-}
-
-impl Default for AgentResponse {
-    fn default() -> Self {
-        AgentResponse {
-            output: String::new(),
-            structured_data: None,
-            is_complete: false,
-            error: None,
-        }
-    }
 }
 
 /// Configuration for agent execution

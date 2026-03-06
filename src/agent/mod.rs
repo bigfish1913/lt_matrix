@@ -5,6 +5,7 @@
 
 pub mod backend;
 pub mod claude;
+pub mod factory;
 pub mod pool;
 pub mod session;
 
@@ -13,4 +14,6 @@ pub use backend::{
     ExecutionConfig, MemorySession,
 };
 pub use claude::ClaudeAgent;
+pub use factory::{AgentFactory, AgentFactoryConfig};
+pub use pool::SessionPool;
 pub use session::{SessionData, SessionManager};
