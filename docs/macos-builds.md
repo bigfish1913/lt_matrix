@@ -414,6 +414,57 @@ strip = true        # Remove debug symbols
 
 ## Distribution
 
+### Build Automation Scripts
+
+For convenience, several automation scripts are available:
+
+#### Build All Architectures
+
+```bash
+# Build for both Intel and Apple Silicon
+./scripts/build-all-macos.sh
+```
+
+**What it does:**
+1. Builds Intel (x86_64) binary
+2. Builds Apple Silicon (aarch64) binary
+3. Creates universal binary
+4. Applies code signing
+5. Runs verification tests
+
+**Output:** Both single-arch and universal binaries in `target/release/`
+
+#### Create Universal Binary
+
+```bash
+# Create universal binary from existing builds
+./scripts/create-universal-binary.sh
+```
+
+**What it does:**
+1. Verifies both architecture binaries exist
+2. Combines them using `lipo`
+3. Verifies universal binary format
+4. Tests execution
+5. Applies code signing
+
+**Output:** `target/release/ltmatrix-universal`
+
+#### Package for Distribution
+
+```bash
+# Create distribution package
+./scripts/package-macos.sh 0.1.0
+```
+
+**What it does:**
+1. Creates package directory structure
+2. Copies binary and documentation
+3. Generates installation scripts
+4. Creates tarball with checksums
+
+**Output:** `target/dist/ltmatrix-0.1.0-macos-universal.tar.gz`
+
 ### Creating Distribution Package
 
 ```bash
@@ -630,15 +681,53 @@ jobs:
 
 ## Cross-Compilation Notes
 
+### Between macOS Architectures
+
+macOS supports cross-compilation between Intel and Apple Silicon architectures seamlessly:
+
+**From Apple Silicon to Intel:**
+```bash
+# On Apple Silicon Mac
+rustup target add x86_64-apple-darwin
+cargo build --release --target x86_64-apple-darwin
+```
+
+**From Intel to Apple Silicon:**
+```bash
+# On Intel Mac
+rustup target add aarch64-apple-darwin
+cargo build --release --target aarch64-apple-darwin
+```
+
+Both work perfectly because:
+- Same operating system (macOS)
+- Same build tools (Xcode Command Line Tools)
+- Same SDK available for both architectures
+
 ### From Linux to macOS
 
-**Not recommended.** Cross-compiling from Linux to macOS requires:
+**Possible with cargo-zigbuild** but has limitations:
 
-1. macOS SDK (Apple licensing restricts distribution)
-2. Xcode toolchain
-3. Complex cross-compilation setup
+```bash
+# Install cargo-zigbuild
+cargo install cargo-zigbuild
 
-**Alternative:** Use GitHub Actions with macOS runners (free for public repos)
+# Install Zig compiler
+# Download from https://ziglang.org/download/
+
+# Build for Intel macOS
+cargo zigbuild --release --target x86_64-apple-darwin
+
+# Build for Apple Silicon macOS
+cargo zigbuild --release --target aarch64-apple-darwin
+```
+
+**Limitations:**
+1. Zig's macOS SDK support is incomplete
+2. Some native dependencies may not compile
+3. Not suitable for production releases
+
+**Recommendation:** Use GitHub Actions with macOS runners for Linux→macOS cross-compilation (free for public repos)
 
 ### From Windows to macOS
 
@@ -647,25 +736,135 @@ jobs:
 1. No macOS SDK available for Windows
 2. No Xcode toolchain for Windows
 3. Native dependencies require macOS build tools
+4. `cargo-zigbuild` does not support macOS targets from Windows
 
 **Alternative:** Use GitHub Actions with macOS runners
 
-## Dependency Management
+### cargo-zigbuild on macOS
 
-### Native Dependencies
+`cargo-zigbuild` can be used on macOS for building other targets (Linux):
 
-ltmatrix uses vendored dependencies to minimize system requirements:
+```bash
+# Install cargo-zigbuild
+cargo install cargo-zigbuild
+
+# Build Linux x86_64 from macOS
+cargo zigbuild --release --target x86_64-unknown-linux-gnu
+
+# Build Linux ARM64 from macOS
+cargo zigbuild --release --target aarch64-unknown-linux-gnu
+```
+
+**Advantages of macOS for cross-compilation:**
+- Unix-like environment (better cross-compiler support)
+- Can build for both Linux and macOS targets
+- Works better than Windows for cross-compilation
+
+**Note:** For production macOS releases, always build on native macOS hardware or GitHub Actions macOS runners.
+
+## Static Linking on macOS
+
+### Current Configuration
+
+ltmatrix is configured for dynamic linking on macOS (standard for macOS applications):
+
+```toml
+# .cargo/config.toml
+[target.x86_64-apple-darwin]
+rustflags = ["-C", "link-arg=-mmacosx-version-min=10.13"]
+
+[target.aarch64-apple-darwin]
+rustflags = ["-C", "link-arg=-mmacosx-version-min=11.0"]
+```
+
+### Static Linking Considerations
+
+**Why not statically link on macOS?**
+
+1. **Apple's Design Philosophy:** macOS applications are expected to:
+   - Use dynamic linking for system frameworks
+   - Link against system-provided libraries
+   - Follow Apple's Human Interface Guidelines
+
+2. **Code Signing Issues:**
+   - Statically linked binaries may have code signing issues
+   - Hardened runtime expects certain dynamic libraries
+   - Notarization may fail with fully static binaries
+
+3. **System Frameworks:**
+   - Some macOS APIs require system frameworks (CoreFoundation, Security)
+   - These cannot be statically linked
+   - Always dynamically linked by design
+
+4. **App Store Requirements:**
+   - App Store has specific binary requirements
+   - Expects standard macOS linking behavior
+   - Static linking may violate guidelines
+
+### Vendored Dependencies
+
+ltmatrix uses vendored dependencies to minimize external dependencies:
 
 ```toml
 [dependencies]
-git2 = { version = "0.19", features = ["vendored-libgit2"] }
-reqwest = { version = "0.12", features = ["rustls-tls"], default-features = false }
+git2 = { version = "0.19", default-features = false, features = ["vendored-libgit2"] }
+reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
 ```
 
-**Benefits:**
+**What this means:**
 - `git2`: Statically links libgit2 (no system libgit2 required)
-- `reqwest`: Uses pure Rust TLS (no OpenSSL required)
-- No Homebrew or MacPorts dependencies needed
+- `reqwest`: Uses pure Rust rustls TLS (no OpenSSL required)
+- Reduces external dependencies while following macOS conventions
+
+**Verification:**
+```bash
+# Check dependencies (should only show system frameworks)
+otool -L target/release/ltmatrix
+
+# Expected output:
+# /usr/lib/libSystem.B.dylib
+# /System/Library/Frameworks/CoreFoundation.framework/...
+# /System/Library/Frameworks/Security.framework/...
+# /System/Library/Frameworks/CoreServices.framework/...
+```
+
+### Hybrid Approach (Recommended)
+
+The current configuration provides the best balance:
+
+1. **Static:**
+   - Rust stdlib (statically linked by default)
+   - Vendored libgit2 (no system git2 dependency)
+   - Pure Rust TLS (rustls, no OpenSSL)
+
+2. **Dynamic:**
+   - System frameworks (CoreFoundation, Security, etc.)
+   - libSystem (C standard library)
+   - System-provided libraries only
+
+**Benefits:**
+- ✅ No Homebrew/MacPorts dependencies
+- ✅ Code signing works correctly
+- ✅ Notarization compatible
+- ✅ Follows macOS best practices
+- ✅ Single binary distribution possible
+
+## Dependency Management
+
+### System Dependencies
+
+ltmatrix requires minimal system dependencies:
+
+**Required:**
+- Xcode Command Line Tools (for compiler and system frameworks)
+- macOS system frameworks (always present)
+
+**NOT Required:**
+- ❌ Homebrew
+- ❌ MacPorts
+- ❌ libgit2 (vendored)
+- ❌ OpenSSL (uses rustls)
+- ❌ Any third-party libraries
 
 ### Verification
 
@@ -673,11 +872,30 @@ reqwest = { version = "0.12", features = ["rustls-tls"], default-features = fals
 # Verify no unexpected dependencies
 otool -L target/release/ltmatrix
 
+# Expected output (system frameworks only):
+# /usr/lib/libSystem.B.dylib
+# /System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation
+# /System/Library/Frameworks/Security.framework/Versions/A/Security
+# /System/Library/Frameworks/CoreServices.framework/Versions/A/CoreServices
+
 # Should NOT show:
 # - /usr/local/lib (Homebrew Intel)
 # - /opt/homebrew/lib (Homebrew ARM)
-# - Any .dylib files except system frameworks
+# - Any third-party .dylib files
 ```
+
+### Cross-Compilation Dependencies
+
+When using cargo-zigbuild from macOS to build Linux targets:
+
+**Required:**
+- Zig compiler (0.11+)
+- cargo-zigbuild
+- Rust cross-compilation targets
+
+**Not Required:**
+- ❌ Linux system headers (Zig provides them)
+- ❌ Linux toolchain (Zig acts as cross-compiler)
 
 ## Security Considerations
 
@@ -726,7 +944,59 @@ codesign --force --deep --sign - \
 - [codesign Manual Page](https://ss64.com/osx/codesign.html)
 - [otool Manual Page](https://ss64.com/osx/otool.html)
 
+## Platform Comparison
+
+### macOS Build Host vs. Cross-Compilation
+
+| From \ To | macOS x86_64 | macOS ARM64 | Linux | Windows |
+|-----------|--------------|------------|-------|---------|
+| **macOS x86_64** | ✅ Native | ✅ Easy | ✅ cargo-zigbuild | ❌ No |
+| **macOS ARM64** | ✅ Easy | ✅ Native | ✅ cargo-zigbuild | ❌ No |
+| **Linux** | ⚠️ Complex | ⚠️ Complex | ✅ Native | ⚠️ Limited |
+| **Windows** | ❌ No | ❌ No | ⚠️ Limited | ✅ Native |
+
+**Legend:**
+- ✅ Native/Easy - Direct build or simple cross-compilation
+- ⚠️ Complex - Possible but requires additional setup
+- ❌ No - Not supported
+
+### Recommended Build Strategy
+
+| Target | Best Build Host | Method |
+|--------|----------------|--------|
+| macOS Universal | macOS ARM64 or GitHub Actions | Native + lipo |
+| macOS Intel-only | macOS Intel or GitHub Actions | Native |
+| macOS ARM-only | macOS ARM64 or GitHub Actions | Native |
+| Linux (any) | Linux or GitHub Actions | Native or cargo-zigbuild |
+| Windows (any) | Windows or GitHub Actions | Native |
+
+### CI/CD Recommendations
+
+**For macOS builds:**
+- Use GitHub Actions with `macos-14` (Apple Silicon) and `macos-13` (Intel) runners
+- Free for public repositories
+- Fast builds with native toolchains
+- Automatic code signing support
+
+**Example workflow:**
+```yaml
+build-macos:
+  strategy:
+    matrix:
+      target: [x86_64-apple-darwin, aarch64-apple-darwin]
+      runner: [macos-13, macos-14]
+  runs-on: ${{ matrix.runner }}
+  steps:
+    - uses: actions/checkout@v4
+    - uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: ${{ matrix.target }}
+    - run: cargo build --release --target ${{ matrix.target }}
+```
+
 ## Summary
+
+### Quick Reference
 
 | Task | Command | Output |
 |------|---------|--------|
@@ -734,9 +1004,83 @@ codesign --force --deep --sign - \
 | Build Intel (cross) | `cargo build --release --target x86_64-apple-darwin` | `target/x86_64-apple-darwin/release/ltmatrix` |
 | Build ARM (native) | `cargo build --release` | `target/release/ltmatrix` |
 | Build ARM (cross) | `cargo build --release --target aarch64-apple-darwin` | `target/aarch64-apple-darwin/release/ltmatrix` |
+| Build Linux from macOS | `cargo zigbuild --release --target x86_64-unknown-linux-gnu` | `target/x86_64-unknown-linux-gnu/release/ltmatrix` |
 | Create universal | `./scripts/create-universal-binary.sh` | `target/release/ltmatrix-universal` |
 | Create package | `./scripts/package-macos.sh 0.1.0` | `target/dist/ltmatrix-0.1.0-macos-universal.tar.gz` |
 | Sign binary | `codesign --force --deep --sign - target/release/ltmatrix` | (signs in place) |
 | Verify signature | `codesign -v target/release/ltmatrix` | (exits 0 on success) |
 | Check dependencies | `otool -L target/release/ltmatrix` | (shows linked libraries) |
 | Check architectures | `lipo -info target/release/ltmatrix-universal` | `x86_64 arm64` |
+| Verify binary | `file target/release/ltmatrix` | `Mach-O 64-bit executable` |
+
+### Minimum macOS Versions
+
+| Architecture | Minimum macOS | Configured In |
+|--------------|---------------|---------------|
+| Intel (x86_64) | macOS 10.13 (High Sierra) | `.cargo/config.toml` |
+| Apple Silicon (aarch64) | macOS 11.0 (Big Sur) | `.cargo/config.toml` |
+
+### Build Characteristics
+
+| Aspect | Value |
+|--------|-------|
+| **Binary Type** | Mach-O executable |
+| **Linking** | Hybrid (static deps, dynamic frameworks) |
+| **Code Signing** | Required (ad-hoc or Developer ID) |
+| **Notarization** | Optional (recommended for distribution) |
+| **Dependencies** | System frameworks only |
+| **Universal Binary** | Supported (x86_64 + aarch64) |
+| **Cross-Compilation** | Easy between macOS architectures |
+
+### Best Practices
+
+✅ **DO:**
+- Build on native macOS hardware when possible
+- Use GitHub Actions for CI/CD (free macOS runners)
+- Create universal binaries for distribution
+- Always code sign binaries (even with ad-hoc signature)
+- Notarize binaries for public distribution
+- Test on both Intel and Apple Silicon
+- Use vendored dependencies to reduce external deps
+
+❌ **DON'T:**
+- Expect to build macOS binaries from Windows (not possible)
+- Use fully static linking on macOS (breaks code signing)
+- Skip code signing (Gatekeeper will block execution)
+- Distribute without notarization (user warnings)
+- Use Homebrew dependencies in production builds
+- Ignore minimum macOS version requirements
+
+### Troubleshooting Checklist
+
+If a macOS build fails:
+
+1. ✅ Xcode Command Line Tools installed?
+   ```bash
+   xcode-select --install
+   ```
+
+2. ✅ Rust targets installed?
+   ```bash
+   rustup target list --installed
+   ```
+
+3. ✅ Minimum macOS version set correctly?
+   ```bash
+   cat .cargo/config.toml
+   ```
+
+4. ✅ Binary code signed?
+   ```bash
+   codesign -v target/release/ltmatrix
+   ```
+
+5. ✅ Architecture matches host?
+   ```bash
+   uname -m  # Should match build target
+   ```
+
+6. ✅ No quarantine attribute?
+   ```bash
+   xattr -l target/release/ltmatrix
+   ```

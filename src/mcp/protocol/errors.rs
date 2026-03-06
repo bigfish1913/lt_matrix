@@ -37,7 +37,7 @@ impl JsonRpcErrorCode {
             -32601 => JsonRpcErrorCode::MethodNotFound,
             -32602 => JsonRpcErrorCode::InvalidParams,
             -32603 => JsonRpcErrorCode::InternalError,
-            code if (-32000..=-32099).contains(&code) => JsonRpcErrorCode::ServerError(code),
+            code if (-32099..=-32000).contains(&code) => JsonRpcErrorCode::ServerError(code),
             _ => JsonRpcErrorCode::InternalError,
         }
     }
