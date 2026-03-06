@@ -5,10 +5,18 @@
 //! - Execution order with levels
 //! - Critical path highlighting
 //! - Parallel task grouping
+//!
+//! Also provides Mermaid diagram generation for:
+//! - Flowchart representation of task dependencies
+//! - Graph visualization of execution plans
+//! - Export to .mmd files
 
 use crate::models::{Task, TaskStatus};
 use crate::tasks::scheduler::ExecutionPlan;
 use std::collections::{HashMap, HashSet};
+use std::fs;
+use std::io::Write;
+use std::path::Path;
 
 /// Configuration for topology visualization
 #[derive(Debug, Clone, Copy)]
@@ -510,6 +518,217 @@ fn simple_topological_sort(tasks: &mut Vec<Task>) -> Vec<Task> {
     }
 
     sorted
+}
+
+/// Generates Mermaid flowchart syntax for task dependencies
+///
+/// # Arguments
+///
+/// * `tasks` - Slice of tasks to visualize
+/// * `show_status` - Optional flag to include task status in the diagram
+///
+/// # Returns
+///
+/// A string containing Mermaid flowchart syntax
+#[must_use]
+pub fn generate_mermaid_flowchart(tasks: &[Task], show_status: Option<bool>) -> String {
+    let include_status = show_status.unwrap_or(false);
+    let mut result = String::new();
+
+    // Mermaid diagram header
+    result.push_str("```mermaid\n");
+    result.push_str("graph TD\n");
+
+    if tasks.is_empty() {
+        result.push_str("    empty[\"No tasks\"]\n");
+        result.push_str("```\n");
+        return result;
+    }
+
+    // Build task map for quick lookup
+    let task_map: HashMap<&str, &Task> = tasks
+        .iter()
+        .map(|task| (task.id.as_str(), task))
+        .collect();
+
+    // Generate node definitions
+    for task in tasks {
+        let node_id = sanitize_mermaid_id(&task.id);
+
+        let label = if include_status {
+            format!("{}[\"{}\\n{}: {}\"]",
+                node_id,
+                task.id,
+                status_to_mermaid_text(&task.status),
+                task.title
+            )
+        } else {
+            format!("{}[\"{}: {}\"]", node_id, task.id, task.title)
+        };
+
+        result.push_str("    ");
+        result.push_str(&label);
+        result.push('\n');
+    }
+
+    // Generate dependency edges
+    for task in tasks {
+        if !task.depends_on.is_empty() {
+            let source = sanitize_mermaid_id(&task.id);
+            for dep_id in &task.depends_on {
+                let target = sanitize_mermaid_id(dep_id);
+                result.push_str(&format!("    {} --> {}\n", target, source));
+            }
+        }
+    }
+
+    // Add styling based on status if requested
+    if include_status {
+        result.push_str("\n    %% Style nodes based on status\n");
+        for task in tasks {
+            let node_id = sanitize_mermaid_id(&task.id);
+            let style = match task.status {
+                TaskStatus::Pending => "    ".to_string(),
+                TaskStatus::InProgress => format!("    classDef {}Style fill:#fff4e6,stroke:#ffa500,stroke-width:2px;\n", node_id),
+                TaskStatus::Completed => format!("    classDef {}Style fill:#e6f7e6,stroke:#00cc00,stroke-width:2px;\n", node_id),
+                TaskStatus::Failed => format!("    classDef {}Style fill:#ffe6e6,stroke:#cc0000,stroke-width:2px;\n", node_id),
+                TaskStatus::Blocked => format!("    classDef {}Style fill:#f0f0f0,stroke:#666666,stroke-width:2px,stroke-dasharray: 5 5;\n", node_id),
+            };
+            result.push_str(&style);
+        }
+    }
+
+    result.push_str("```\n");
+    result
+}
+
+/// Generates Mermaid graph from execution plan
+///
+/// # Arguments
+///
+/// * `plan` - The execution plan to visualize
+/// * `show_levels` - Optional flag to include execution levels
+///
+/// # Returns
+///
+/// A string containing Mermaid graph syntax
+#[must_use]
+pub fn generate_mermaid_graph(plan: &ExecutionPlan, show_levels: Option<bool>) -> String {
+    let include_levels = show_levels.unwrap_or(false);
+    let mut result = String::new();
+
+    // Mermaid diagram header
+    result.push_str("```mermaid\n");
+    result.push_str("graph TD\n");
+
+    // Title
+    result.push_str("    title[\"Task Execution Plan\"]\n");
+
+    if plan.execution_order.is_empty() {
+        result.push_str("    empty[\"No tasks\"]\n");
+        result.push_str("```\n");
+        return result;
+    }
+
+    // Group by execution levels if requested
+    if include_levels {
+        result.push_str("\n    %% Execution Levels\n");
+        for (level_index, level_tasks) in plan.execution_levels.iter().enumerate() {
+            result.push_str(&format!("    subgraph Level{} [\"Level {}\"]\n", level_index, level_index));
+            for task in level_tasks {
+                let node_id = sanitize_mermaid_id(&task.id);
+                result.push_str(&format!("        {}[\"{}\"]\n", node_id, task.id));
+            }
+            result.push_str("    end\n");
+        }
+    } else {
+        // Simple flat list of tasks
+        for task_id in &plan.execution_order {
+            let node_id = sanitize_mermaid_id(task_id);
+            result.push_str(&format!("    {}[\"{}\"]\n", node_id, task_id));
+        }
+    }
+
+    // Add execution order edges
+    result.push_str("\n    %% Execution Order\n");
+    for (index, task_id) in plan.execution_order.iter().enumerate() {
+        if index < plan.execution_order.len() - 1 {
+            let current = sanitize_mermaid_id(task_id);
+            let next = sanitize_mermaid_id(&plan.execution_order[index + 1]);
+            result.push_str(&format!("    {} -->|next| {}\n", current, next));
+        }
+    }
+
+    // Add statistics
+    result.push_str("\n    %% Statistics\n");
+    result.push_str(&format!("    stats[\"Total: {} | Max Depth: {} | Critical Path: {}\"]\n",
+        plan.total_tasks,
+        plan.max_depth,
+        plan.critical_path.len()
+    ));
+
+    result.push_str("```\n");
+    result
+}
+
+/// Exports Mermaid diagram to a file
+///
+/// # Arguments
+///
+/// * `tasks` - Slice of tasks to visualize
+/// * `path` - Path to the output file
+/// * `show_status` - Optional flag to include task status
+///
+/// # Returns
+///
+/// Result indicating success or failure
+pub fn export_mermaid_to_file(
+    tasks: &[Task],
+    path: &Path,
+    show_status: Option<bool>,
+) -> std::io::Result<()> {
+    let mermaid_content = generate_mermaid_flowchart(tasks, show_status);
+
+    // Create parent directories if they don't exist
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+
+    // Write to file
+    let mut file = fs::File::create(path)?;
+    file.write_all(mermaid_content.as_bytes())?;
+    file.sync_all()?;
+
+    Ok(())
+}
+
+/// Sanitizes task ID for use in Mermaid diagrams
+///
+/// Mermaid IDs must start with a letter and contain only alphanumeric characters,
+/// underscores, and hyphens. This function replaces invalid characters.
+fn sanitize_mermaid_id(id: &str) -> String {
+    // If ID is already valid, return as-is
+    if id.chars().next().map_or(false, |c| c.is_alphabetic()) {
+        let sanitized: String = id
+            .chars()
+            .map(|c| if c.is_alphanumeric() || c == '_' || c == '-' { c } else { '_' })
+            .collect();
+        return sanitized;
+    }
+
+    // If ID doesn't start with a letter, prefix it
+    format!("id_{}", id)
+}
+
+/// Converts task status to Mermaid-friendly text representation
+fn status_to_mermaid_text(status: &TaskStatus) -> &str {
+    match status {
+        TaskStatus::Pending => "○ Pending",
+        TaskStatus::InProgress => "⚙ In Progress",
+        TaskStatus::Completed => "✓ Completed",
+        TaskStatus::Failed => "✗ Failed",
+        TaskStatus::Blocked => "⚠ Blocked",
+    }
 }
 
 #[cfg(test)]
