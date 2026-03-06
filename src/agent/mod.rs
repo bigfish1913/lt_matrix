@@ -6,6 +6,7 @@
 pub mod backend;
 pub mod claude;
 pub mod factory;
+pub mod opencode;
 pub mod pool;
 pub mod session;
 
@@ -15,5 +16,6 @@ pub use backend::{
 };
 pub use claude::ClaudeAgent;
 pub use factory::{AgentFactory, AgentFactoryConfig};
+pub use opencode::OpenCodeAgent;
 pub use pool::SessionPool;
 pub use session::{SessionData, SessionManager};

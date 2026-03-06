@@ -181,6 +181,11 @@ impl Agent {
         Agent::new("claude", "claude", "claude-sonnet-4-6", 3600).with_default()
     }
 
+    /// Creates the default OpenCode agent configuration
+    pub fn opencode_default() -> Self {
+        Agent::new("opencode", "opencode", "gpt-4", 3600)
+    }
+
     /// Marks this agent as the default
     pub fn with_default(mut self) -> Self {
         self.is_default = true;

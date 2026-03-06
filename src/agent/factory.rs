@@ -6,11 +6,12 @@
 //!
 //! # Supported Backends
 //!
-//! | Name       | Type          |
-//! |------------|---------------|
-//! | `"claude"` | [`ClaudeAgent`] |
+//! | Name        | Type             |
+//! |-------------|------------------|
+//! | `"claude"`  | [`ClaudeAgent`]  |
+//! | `"opencode"`| [`OpenCodeAgent`]|
 //!
-//! Additional backends (OpenCode, KimiCode, Codex) will be registered as they
+//! Additional backends (KimiCode, Codex) will be registered as they
 //! are implemented.
 //!
 //! # Usage
@@ -37,6 +38,7 @@ use anyhow::{anyhow, Result};
 
 use crate::agent::backend::{AgentBackend, AgentConfig, AgentError};
 use crate::agent::claude::ClaudeAgent;
+use crate::agent::opencode::OpenCodeAgent;
 use crate::agent::session::SessionManager;
 use crate::models::Agent;
 
@@ -88,7 +90,7 @@ impl AgentFactory {
 
     /// Return the names of all backends this factory knows how to create.
     pub fn supported_backends(&self) -> Vec<&'static str> {
-        vec!["claude"]
+        vec!["claude", "opencode"]
     }
 
     /// Return `true` if `name` is a recognised backend.
@@ -131,6 +133,7 @@ impl AgentFactory {
         // Per-backend checks
         match backend {
             "claude" => self.validate_claude_config(config),
+            "opencode" => self.validate_opencode_config(config),
             unknown => Err(AgentError::ConfigValidation {
                 field: "name".to_string(),
                 message: format!("unknown backend '{}'", unknown),
@@ -144,6 +147,14 @@ impl AgentFactory {
     fn default_config_for(&self, name: &str) -> Result<AgentConfig> {
         match name {
             "claude" => Ok(AgentConfig::default()),
+            "opencode" => Ok(AgentConfig::builder()
+                .name("opencode")
+                .command("opencode")
+                .model("gpt-4")
+                .timeout_secs(3600)
+                .max_retries(3)
+                .enable_session(true)
+                .build()),
             unknown => Err(anyhow!(
                 "unsupported agent backend '{}'; supported: {:?}",
                 unknown,
@@ -179,6 +190,23 @@ impl AgentFactory {
                 let backend = ClaudeAgent::with_agent(agent, session_manager);
                 Ok(Box::new(backend))
             }
+            "opencode" => {
+                let agent = Agent {
+                    name: config.name.clone(),
+                    command: config.command.clone(),
+                    model: config.model.clone(),
+                    timeout: config.timeout_secs,
+                    is_default: false,
+                };
+
+                let session_manager = SessionManager::default_manager().unwrap_or_else(|_| {
+                    let tmp = std::env::temp_dir().join("ltmatrix-sessions");
+                    SessionManager::new(&tmp).expect("temp-dir session manager creation")
+                });
+
+                let backend = OpenCodeAgent::with_agent(agent, session_manager);
+                Ok(Box::new(backend))
+            }
             unknown => Err(anyhow!("unsupported agent backend '{}'", unknown)),
         }
     }
@@ -190,6 +218,20 @@ impl AgentFactory {
                 field: "name".to_string(),
                 message: format!(
                     "claude backend requires name='claude', got '{}'",
+                    config.name
+                ),
+            });
+        }
+        Ok(())
+    }
+
+    /// OpenCode-specific validation rules.
+    fn validate_opencode_config(&self, config: &AgentConfig) -> Result<(), AgentError> {
+        if config.name != "opencode" {
+            return Err(AgentError::ConfigValidation {
+                field: "name".to_string(),
+                message: format!(
+                    "opencode backend requires name='opencode', got '{}'",
                     config.name
                 ),
             });
@@ -279,6 +321,64 @@ mod tests {
         assert!(factory
             .validate_config("claude", &AgentConfig::default())
             .is_ok());
+    }
+
+    #[test]
+    fn supported_backends_includes_opencode() {
+        let factory = AgentFactory::new();
+        assert!(factory.supported_backends().contains(&"opencode"));
+    }
+
+    #[test]
+    fn is_supported_opencode() {
+        let factory = AgentFactory::new();
+        assert!(factory.is_supported("opencode"));
+    }
+
+    #[test]
+    fn create_opencode_backend() {
+        let factory = AgentFactory::new();
+        let result = factory.create("opencode");
+        assert!(result.is_ok());
+        let agent = result.unwrap();
+        assert_eq!(agent.backend_name(), "opencode");
+    }
+
+    #[test]
+    fn create_opencode_with_config() {
+        let factory = AgentFactory::new();
+        let config = AgentConfig::builder()
+            .name("opencode")
+            .command("opencode")
+            .model("gpt-4-turbo")
+            .timeout_secs(3600)
+            .max_retries(3)
+            .build();
+        assert!(factory.create_with_config(config).is_ok());
+    }
+
+    #[test]
+    fn validate_config_bad_name_for_opencode_backend() {
+        let factory = AgentFactory::new();
+        let config = AgentConfig::builder()
+            .name("claude")
+            .model("gpt-4")
+            .command("opencode")
+            .timeout_secs(3600)
+            .build();
+        assert!(factory.validate_config("opencode", &config).is_err());
+    }
+
+    #[test]
+    fn validate_config_good_opencode() {
+        let factory = AgentFactory::new();
+        let config = AgentConfig::builder()
+            .name("opencode")
+            .command("opencode")
+            .model("gpt-4")
+            .timeout_secs(3600)
+            .build();
+        assert!(factory.validate_config("opencode", &config).is_ok());
     }
 
     #[test]
