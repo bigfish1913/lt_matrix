@@ -1,3 +1,4 @@
+use clap::Parser;
 use ltmatrix::cli::Args;
 
 fn main() {
