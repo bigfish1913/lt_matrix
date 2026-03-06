@@ -4,6 +4,7 @@
 //! with full terminal color support.
 
 pub mod bar;
+pub mod manager;
 pub mod reporter;
 pub mod tracker;
 
@@ -12,6 +13,7 @@ pub use bar::{
     colorize_percentage, create_custom_progress_bar, create_progress_bar, create_spinner,
     BarColorConfig,
 };
+pub use manager::{ProgressBarType, ProgressManager, ProgressManagerConfig};
 pub use reporter::{
     flush, report_progress_summary, report_status, report_task_blocked, report_task_complete,
     report_task_error, report_task_retry, report_task_start, ReporterColorConfig,
