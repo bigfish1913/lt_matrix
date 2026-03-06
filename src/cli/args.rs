@@ -279,6 +279,7 @@ pub enum Shell {
     Bash,
     Zsh,
     Fish,
+    #[value(name = "powershell")]
     PowerShell,
     Elvish,
 }

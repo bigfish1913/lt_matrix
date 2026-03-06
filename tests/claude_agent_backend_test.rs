@@ -477,13 +477,30 @@ async fn test_claude_agent_execute_with_disabled_verification() {
     let prompt = "Test prompt";
     let config = ExecutionConfig::default();
 
-    // This will fail because we don't have claude installed, but it should
-    // fail at the subprocess level, not at verification
+    // With verification disabled, the command execution proceeds without
+    // checking if claude is available first. The result depends on whether
+    // claude is actually installed on the system.
     let result = agent.execute(prompt, &config).await;
 
-    // Should get an error (command not found or similar), but not a
-    // verification error
-    assert!(result.is_err());
+    // The test verifies that verification was bypassed (no verification error).
+    // Actual execution result depends on environment:
+    // - If claude is installed: may succeed or fail depending on the prompt
+    // - If claude is not installed: fails with "command not found"
+    //
+    // The key assertion is that we got past verification without error.
+    // We accept both success and failure since the environment varies.
+    match result {
+        Ok(_) => {
+            // Claude is installed and executed - verification was bypassed
+        }
+        Err(e) => {
+            // Verify the error is NOT a verification error
+            let error_msg = e.to_string().to_lowercase();
+            assert!(!error_msg.contains("verification"),
+                    "Should not get a verification error when verification is disabled: {}", e);
+            // Command not found or other execution errors are acceptable
+        }
+    }
 }
 
 // =============================================================================
