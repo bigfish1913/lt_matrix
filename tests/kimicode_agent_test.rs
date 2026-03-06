@@ -38,11 +38,10 @@ fn kimicode_agent_backend_name() {
 #[test]
 fn kimicode_with_agent_constructor() {
     let agent_model = Agent::kimicode_default();
-    let session_manager = SessionManager::default_manager()
-        .unwrap_or_else(|_| {
-            let tmp = std::env::temp_dir().join("ltmatrix-test-sessions");
-            SessionManager::new(&tmp).expect("temp session manager")
-        });
+    let session_manager = SessionManager::default_manager().unwrap_or_else(|_| {
+        let tmp = std::env::temp_dir().join("ltmatrix-test-sessions");
+        SessionManager::new(&tmp).expect("temp session manager")
+    });
     let kimicode = KimiCodeAgent::with_agent(agent_model, session_manager);
     assert_eq!(kimicode.backend_name(), "kimicode");
     assert_eq!(kimicode.agent().name, "kimicode");
@@ -190,12 +189,10 @@ async fn execute_with_session_rejects_whitespace_prompt() {
     let config = ltmatrix::agent::ExecutionConfig::default();
     let session = MemorySession::default();
 
-    assert!(
-        agent
-            .execute_with_session("   ", &config, &session)
-            .await
-            .is_err()
-    );
+    assert!(agent
+        .execute_with_session("   ", &config, &session)
+        .await
+        .is_err());
 }
 
 // ── execute_task prompt formatting ───────────────────────────────────────────
@@ -257,11 +254,17 @@ async fn health_check_returns_false_when_binary_absent() {
 
 #[test]
 fn check_completion_positive_phrases() {
-    assert!(KimiCodeAgent::check_completion("Task completed successfully."));
+    assert!(KimiCodeAgent::check_completion(
+        "Task completed successfully."
+    ));
     assert!(KimiCodeAgent::check_completion("Implementation complete."));
     assert!(KimiCodeAgent::check_completion("Done! All steps finished."));
-    assert!(KimiCodeAgent::check_completion("Success! The build passed."));
-    assert!(KimiCodeAgent::check_completion("Completed all requirements."));
+    assert!(KimiCodeAgent::check_completion(
+        "Success! The build passed."
+    ));
+    assert!(KimiCodeAgent::check_completion(
+        "Completed all requirements."
+    ));
 }
 
 #[test]
@@ -337,8 +340,7 @@ fn parse_structured_data_handles_nested_json() {
 
 #[test]
 fn parse_structured_data_uses_first_block_only() {
-    let output =
-        "```json\n{\"first\": true}\n```\n```json\n{\"second\": true}\n```";
+    let output = "```json\n{\"first\": true}\n```\n```json\n{\"second\": true}\n```";
     let data = KimiCodeAgent::parse_structured_data(output);
     assert!(data.is_some());
     assert_eq!(

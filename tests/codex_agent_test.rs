@@ -335,3 +335,208 @@ fn factory_all_four_backends_supported() {
     assert!(backends.contains(&"kimicode"));
     assert!(backends.contains(&"codex"));
 }
+
+// ── Constructor variants ──────────────────────────────────────────────────────
+
+#[test]
+fn codex_with_agent_constructor() {
+    use ltmatrix::agent::SessionManager;
+    use ltmatrix::models::Agent;
+
+    let agent_model = Agent::codex_default();
+    let session_manager = SessionManager::default_manager().unwrap_or_else(|_| {
+        let tmp = std::env::temp_dir().join("ltmatrix-test-sessions-codex");
+        SessionManager::new(&tmp).expect("temp session manager")
+    });
+    let codex = ltmatrix::agent::CodexAgent::with_agent(agent_model, session_manager);
+    assert_eq!(codex.backend_name(), "codex");
+    assert_eq!(codex.agent().name, "codex");
+    assert_eq!(codex.agent().command, "codex");
+    assert_eq!(codex.agent().model, "o4-mini");
+}
+
+#[test]
+fn codex_without_verification_builder() {
+    // without_verification() is a builder method — should not panic
+    let _agent = ltmatrix::agent::CodexAgent::default().without_verification();
+}
+
+// ── Agent metadata ────────────────────────────────────────────────────────────
+
+#[test]
+fn codex_agent_is_not_default_backend() {
+    // The default backend is claude, not codex
+    let agent = ltmatrix::agent::CodexAgent::default();
+    assert!(!agent.agent().is_default);
+}
+
+#[test]
+fn codex_default_model_is_o4_mini() {
+    let agent = ltmatrix::agent::CodexAgent::default();
+    assert_eq!(agent.agent().model, "o4-mini");
+}
+
+// ── Additional structured-data parsing ───────────────────────────────────────
+
+#[test]
+fn parse_structured_data_uses_first_block_only() {
+    let output =
+        "```json\n{\"first\": true}\n```\n```json\n{\"second\": true}\n```";
+    let data = ltmatrix::agent::CodexAgent::parse_structured_data(output);
+    assert!(data.is_some());
+    assert_eq!(
+        data.unwrap().get("first").and_then(|v| v.as_bool()),
+        Some(true)
+    );
+}
+
+#[test]
+fn parse_structured_data_empty_json_object() {
+    let output = "```json\n{}\n```";
+    let data = ltmatrix::agent::CodexAgent::parse_structured_data(output);
+    assert!(data.is_some());
+}
+
+#[test]
+fn parse_structured_data_json_array() {
+    let output = "```json\n[1, 2, 3]\n```";
+    let data = ltmatrix::agent::CodexAgent::parse_structured_data(output);
+    assert!(data.is_some());
+    assert!(data.unwrap().is_array());
+}
+
+#[test]
+fn parse_structured_data_returns_none_for_empty_string() {
+    assert!(ltmatrix::agent::CodexAgent::parse_structured_data("").is_none());
+}
+
+// ── execute_task signature test ───────────────────────────────────────────────
+
+#[tokio::test]
+async fn execute_task_is_callable_and_returns_result() {
+    use ltmatrix::models::Task;
+
+    let agent = ltmatrix::agent::CodexAgent::default().without_verification();
+    let config = ExecutionConfig::default();
+    let task = Task::new("t-1", "Implement feature X", "Add X to the codebase");
+
+    // Without codex installed the call will fail, but it must not panic and
+    // must return a Result (not diverge or abort).
+    let result = agent.execute_task(&task, "some context", &config).await;
+    let _ = result;
+}
+
+#[tokio::test]
+async fn execute_task_with_empty_context_does_not_panic() {
+    use ltmatrix::models::Task;
+
+    let agent = ltmatrix::agent::CodexAgent::default().without_verification();
+    let config = ExecutionConfig::default();
+    let task = Task::new("t-2", "Write tests", "Write unit tests for module A");
+
+    let result = agent.execute_task(&task, "", &config).await;
+    let _ = result;
+}
+
+// ── Additional factory tests ──────────────────────────────────────────────────
+
+#[test]
+fn factory_codex_is_not_default_backend() {
+    let factory = AgentFactory::new();
+    let default_agent = factory.create_default().unwrap();
+    assert_ne!(default_agent.backend_name(), "codex");
+}
+
+#[test]
+fn factory_codex_rejects_empty_model() {
+    let factory = AgentFactory::new();
+    let config = AgentConfig::builder()
+        .name("codex")
+        .command("codex")
+        .model("")
+        .timeout_secs(3600)
+        .build();
+    assert!(factory.create_with_config(config).is_err());
+}
+
+#[test]
+fn factory_codex_rejects_zero_timeout() {
+    let factory = AgentFactory::new();
+    let config = AgentConfig {
+        name: "codex".to_string(),
+        command: "codex".to_string(),
+        model: "o4-mini".to_string(),
+        timeout_secs: 0,
+        max_retries: 3,
+        enable_session: true,
+    };
+    assert!(factory.create_with_config(config).is_err());
+}
+
+#[test]
+fn factory_codex_rejects_opencode_name() {
+    let factory = AgentFactory::new();
+    let config = AgentConfig::builder()
+        .name("opencode")
+        .command("codex")
+        .model("o4-mini")
+        .timeout_secs(3600)
+        .build();
+    assert!(factory.validate_config("codex", &config).is_err());
+}
+
+#[test]
+fn factory_codex_model_has_correct_default() {
+    let factory = AgentFactory::new();
+    let agent = factory.create("codex").unwrap();
+    assert_eq!(agent.agent().model, "o4-mini");
+}
+
+#[test]
+fn factory_codex_command_has_correct_default() {
+    let factory = AgentFactory::new();
+    let agent = factory.create("codex").unwrap();
+    assert_eq!(agent.agent().command, "codex");
+}
+
+// ── Model variants ────────────────────────────────────────────────────────────
+
+#[test]
+fn codex_all_model_variants_accepted_by_factory() {
+    let factory = AgentFactory::new();
+    let models = ["o4-mini", "o3", "o3-mini"];
+
+    for model in models {
+        let config = AgentConfig::builder()
+            .name("codex")
+            .command("codex")
+            .model(model)
+            .timeout_secs(3600)
+            .build();
+        assert!(
+            factory.create_with_config(config).is_ok(),
+            "model '{}' should be accepted",
+            model
+        );
+    }
+}
+
+// ── Additional validate_config tests ─────────────────────────────────────────
+
+#[tokio::test]
+async fn validate_config_kimicode_name_rejected() {
+    let agent = ltmatrix::agent::CodexAgent::default();
+    let config = AgentConfig::builder()
+        .name("kimicode")
+        .command("codex")
+        .model("o4-mini")
+        .timeout_secs(3600)
+        .build();
+
+    let result = agent.validate_config(&config).await;
+    assert!(result.is_err());
+    assert!(matches!(
+        result.unwrap_err(),
+        AgentError::ConfigValidation { .. }
+    ));
+}

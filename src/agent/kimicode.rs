@@ -229,10 +229,11 @@ impl KimiCodeAgent {
         };
 
         let timeout_duration = Duration::from_secs(config.timeout);
-        let (stdout_text, stderr_text) =
-            tokio::time::timeout(timeout_duration, async { tokio::join!(stdout_fut, stderr_fut) })
-                .await
-                .context("KimiCode execution timed out")?;
+        let (stdout_text, stderr_text) = tokio::time::timeout(timeout_duration, async {
+            tokio::join!(stdout_fut, stderr_fut)
+        })
+        .await
+        .context("KimiCode execution timed out")?;
 
         let status = child
             .wait()
@@ -551,7 +552,9 @@ Done.
 
     #[test]
     fn test_check_completion_positive() {
-        assert!(KimiCodeAgent::check_completion("Task completed successfully."));
+        assert!(KimiCodeAgent::check_completion(
+            "Task completed successfully."
+        ));
         assert!(KimiCodeAgent::check_completion("Implementation complete."));
         assert!(KimiCodeAgent::check_completion("done"));
         assert!(KimiCodeAgent::check_completion("finished"));
@@ -563,9 +566,13 @@ Done.
         // "not done" must win over "done"
         assert!(!KimiCodeAgent::check_completion("not done yet"));
         assert!(!KimiCodeAgent::check_completion("task not completed"));
-        assert!(!KimiCodeAgent::check_completion("Error: something went wrong"));
+        assert!(!KimiCodeAgent::check_completion(
+            "Error: something went wrong"
+        ));
         assert!(!KimiCodeAgent::check_completion("Build failed!"));
-        assert!(!KimiCodeAgent::check_completion("incomplete implementation"));
+        assert!(!KimiCodeAgent::check_completion(
+            "incomplete implementation"
+        ));
     }
 
     #[test]
