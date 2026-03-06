@@ -5,5 +5,9 @@
 //! generating execution plans.
 
 pub mod clarify;
+pub mod runner;
 
-pub use clarify::{ClarificationQuestion, ClarificationSession, QuestionType};
+pub use clarify::{
+    analyze_goal_ambiguity, ClarificationQuestion, ClarificationSession, QuestionType,
+};
+pub use runner::{ClarificationRunner, NonInteractiveRunner};

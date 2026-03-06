@@ -179,7 +179,7 @@ pub async fn generate_clarification_questions(
 }
 
 /// Analyze goal ambiguity locally (without AI)
-fn analyze_goal_ambiguity(goal: &str) -> Vec<ClarificationQuestion> {
+pub fn analyze_goal_ambiguity(goal: &str) -> Vec<ClarificationQuestion> {
     let mut questions = Vec::new();
     let goal_lower = goal.to_lowercase();
 

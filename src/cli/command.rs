@@ -4,7 +4,9 @@
 
 use super::args::{Args, Command};
 use crate::config::settings::{self, CliOverrides};
+use crate::interactive::{analyze_goal_ambiguity, ClarificationRunner, ClarificationSession, NonInteractiveRunner};
 use anyhow::{Context, Result};
+use tracing::{info, warn};
 
 /// Execute the command specified in the arguments
 pub fn execute_command(args: Args) -> Result<()> {
@@ -47,17 +49,105 @@ fn execute_run(args: &Args) -> Result<()> {
             println!("Resume: will continue from last interrupted task");
         }
 
-        // TODO: Implement actual run logic using the config
-        println!("\nTODO: Implement run logic with config");
-        println!("Config loaded successfully:");
+        // Handle interactive clarification if --ask flag is set
+        let enhanced_goal = if args.ask {
+            println!("\nInteractive clarification enabled (--ask flag)");
+            let enhanced_goal = run_interactive_clarification(goal, args)?;
+            enhanced_goal
+        } else {
+            goal.clone()
+        };
+
+        // Continue with actual execution
+        println!("\nConfig loaded successfully:");
         println!("  - Default agent: {:?}", config.default);
         println!("  - Log level: {:?}", config.logging.level);
         println!("  - Output format: {:?}", config.output.format);
+
+        if args.ask {
+            println!("  - Enhanced goal: {}", enhanced_goal);
+        }
+
+        info!("Ready to execute with goal: {}", enhanced_goal);
+
+        // TODO: Continue with pipeline execution using enhanced_goal
+        // This is where the actual pipeline (Generate -> Assess -> Execute -> Test -> Verify -> Commit)
+        // will be invoked with the clarified goal
+
     } else {
         print_help();
     }
 
     Ok(())
+}
+
+/// Run interactive clarification session
+///
+/// If --ask flag is set, this function will:
+/// 1. Generate clarification questions based on goal ambiguity
+/// 2. Present questions interactively to the user
+/// 3. Collect and validate answers
+/// 4. Generate an enhanced goal with clarifications
+fn run_interactive_clarification(goal: &str, args: &Args) -> Result<String> {
+    use crate::interactive::{analyze_goal_ambiguity, ClarificationSession};
+
+    info!("Starting interactive clarification for goal: {}", goal);
+
+    // Generate clarification questions
+    let questions = analyze_goal_ambiguity(goal);
+
+    if questions.is_empty() {
+        info!("No clarification questions generated - goal appears clear");
+        println!("\n✓ Goal is clear enough - no clarification needed");
+        return Ok(goal.to_string());
+    }
+
+    // Create clarification session
+    let mut session = ClarificationSession::new(goal);
+    for question in questions {
+        session.add_question(question);
+    }
+
+    // Run interactive session
+    let processed_session = if !args.dry_run && console::user_attended() {
+        // Interactive mode
+        let runner = ClarificationRunner::new();
+        runner.run_clarification(session)?
+    } else {
+        // Non-interactive mode (dry-run or no terminal)
+        if args.dry_run {
+            println!("\n[Dry run] Would ask {} clarification questions", session.questions.len());
+        }
+        NonInteractiveRunner::process_session(session)?
+    };
+
+    // Confirm before proceeding
+    if !args.dry_run && console::user_attended() {
+        let runner = ClarificationRunner::new();
+        if !runner.confirm_proceed(&processed_session)? {
+            warn!("User cancelled during clarification confirmation");
+            anyhow::bail!("Clarification cancelled by user");
+        }
+    }
+
+    // Generate enhanced goal with clarifications
+    let enhanced_goal = enhance_goal_with_clarifications(&processed_session);
+    Ok(enhanced_goal)
+}
+
+/// Enhance the original goal with clarification answers
+fn enhance_goal_with_clarifications(session: &ClarificationSession) -> String {
+    if session.answers.is_empty() {
+        return session.goal.clone();
+    }
+
+    let mut enhanced = session.goal.clone();
+
+    // Append clarifications to the goal
+    let clarifications = session.generate_prompt_injection();
+    enhanced.push_str(&clarifications);
+
+    enhanced
 }
 
 /// Execute the release command
