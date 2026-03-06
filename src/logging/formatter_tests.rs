@@ -6,10 +6,10 @@
 //! - Level formatting
 
 use crate::logging::formatter::{
-    format_timestamp, current_timestamp, format_level, console_style,
+    format_timestamp, current_timestamp, format_level,
     TIMESTAMP_FORMAT,
 };
-use chrono::{DateTime, Local, Datelike, TimeZone};
+use chrono::{DateTime, Local};
 use tracing::Level;
 
 #[cfg(test)]

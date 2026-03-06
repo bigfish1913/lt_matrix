@@ -18,12 +18,6 @@ use std::path::Path;
 use std::io;
 use crate::logging::level::LogLevel;
 
-/// Maximum log file size before rotation (10 MB)
-const MAX_LOG_SIZE: u64 = 10 * 1024 * 1024;
-
-/// Number of rotated log files to keep
-const MAX_LOG_FILES: usize = 5;
-
 /// Guard for the non-blocking writer
 ///
 /// This must be kept alive for the lifetime of the application to ensure
@@ -122,13 +116,6 @@ fn build_env_filter(level: LogLevel) -> EnvFilter {
             "ltmatrix={base_level},reqwest=info,hyper=info,tokio=info"
         ))
     }
-}
-
-/// Creates a file logging layer with rotation support
-fn create_file_layer(_file_path: &Path) -> io::Result<(fmt::Layer<Registry>, non_blocking::WorkerGuard)> {
-    // For now, use a simpler approach
-    // In a future version, we can implement proper dual-layer logging
-    todo!("Implement proper dual-layer logging with rotation")
 }
 
 /// Creates a TRACE-level logger specifically for capturing API calls

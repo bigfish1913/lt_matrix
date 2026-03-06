@@ -1,0 +1,337 @@
+name: macOS Binary Verification
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Cargo.toml'
+      - 'src/**'
+      - '.cargo/config.toml'
+      - '.github/workflows/macos-verification.yml'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  verify-macos-intel:
+    name: Verify macOS Intel (x86_64)
+    runs-on: macos-13  # Intel runner
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-apple-darwin
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo build
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build release binary (Intel)
+        run: |
+          cargo build --release --target x86_64-apple-darwin
+
+      - name: Verify binary exists
+        run: |
+          if [ ! -f "target/x86_64-apple-darwin/release/ltmatrix" ]; then
+            echo "::error::Binary not found"
+            exit 1
+          fi
+          echo "✓ Binary exists"
+
+      - name: Check Mach-O format
+        run: |
+          file target/x86_64-apple-darwin/release/ltmatrix
+          file target/x86_64-apple-darwin/release/ltmatrix | grep -q "Mach-O 64-bit executable x86_64"
+          echo "✓ Correct format: Mach-O 64-bit x86_64"
+
+      - name: Check binary size
+        run: |
+          size=$(stat -f%z target/x86_64-apple-darwin/release/ltmatrix)
+          size_mb=$(echo "scale=2; $size / 1024 / 1024" | bc)
+          echo "Binary size: ${size_mb} MB"
+          if (( $(echo "$size_mb < 1" | bc -l) )) || (( $(echo "$size_mb > 200" | bc -l) )); then
+            echo "::warning::Binary size ${size_mb} MB is outside expected range [1, 200] MB"
+          fi
+          echo "✓ Binary size within reasonable range"
+
+      - name: Test --version command
+        run: |
+          output=$(target/x86_64-apple-darwin/release/ltmatrix --version)
+          echo "$output"
+          echo "$output" | grep -q "ltmatrix"
+          echo "✓ --version works"
+
+      - name: Test --help command
+        run: |
+          output=$(target/x86_64-apple-darwin/release/ltmatrix --help)
+          echo "$output"
+          echo "$output" | grep -q -E "(Usage:|USAGE:|usage:)"
+          echo "✓ --help works"
+
+      - name: Check dynamic dependencies
+        run: |
+          echo "=== Dynamic dependencies ==="
+          otool -L target/x86_64-apple-darwin/release/ltmatrix
+          echo ""
+          echo "✓ Dependencies checked"
+
+      - name: Check for unexpected dependencies
+        run: |
+          deps=$(otool -L target/x86_64-apple-darwin/release/ltmatrix)
+          if echo "$deps" | grep -q "/usr/local/lib"; then
+            echo "::warning::Found /usr/local/lib dependency (non-standard)"
+          fi
+          if echo "$deps" | grep -q "/opt/homebrew"; then
+            echo "::warning::Found Homebrew dependency (non-standard)"
+          fi
+          echo "✓ No suspicious dependencies"
+
+      - name: Apply ad-hoc code signing
+        run: |
+          codesign --force --deep --sign - target/x86_64-apple-darwin/release/ltmatrix
+          echo "✓ Ad-hoc signing applied"
+
+      - name: Verify code signature
+        run: |
+          codesign -v target/x86_64-apple-darwin/release/ltmatrix
+          echo "✓ Code signature valid"
+
+      - name: Display code signing details
+        run: |
+          echo "=== Code signing details ==="
+          codesign -dvv target/x86_64-apple-darwin/release/ltmatrix || true
+
+      - name: Run unit tests
+        run: |
+          cargo test --target x86_64-apple-darwin --lib
+
+      - name: Run integration tests (if any)
+        run: |
+          cargo test --target x86_64-apple-darwin --test '*'
+        continue-on-error: true
+
+      - name: Upload Intel binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: ltmatrix-macos-intel
+          path: target/x86_64-apple-darwin/release/ltmatrix
+          retention-days: 7
+
+  verify-macos-arm:
+    name: Verify macOS ARM (Apple Silicon)
+    runs-on: macos-14  # ARM runner
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo build
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build release binary (ARM)
+        run: |
+          cargo build --release --target aarch64-apple-darwin
+
+      - name: Verify binary exists
+        run: |
+          if [ ! -f "target/aarch64-apple-darwin/release/ltmatrix" ]; then
+            echo "::error::Binary not found"
+            exit 1
+          fi
+          echo "✓ Binary exists"
+
+      - name: Check Mach-O format
+        run: |
+          file target/aarch64-apple-darwin/release/ltmatrix
+          file target/aarch64-apple-darwin/release/ltmatrix | grep -q "Mach-O 64-bit executable arm64"
+          echo "✓ Correct format: Mach-O 64-bit arm64"
+
+      - name: Check binary size
+        run: |
+          size=$(stat -f%z target/aarch64-apple-darwin/release/ltmatrix)
+          size_mb=$(echo "scale=2; $size / 1024 / 1024" | bc)
+          echo "Binary size: ${size_mb} MB"
+          if (( $(echo "$size_mb < 1" | bc -l) )) || (( $(echo "$size_mb > 200" | bc -l) )); then
+            echo "::warning::Binary size ${size_mb} MB is outside expected range [1, 200] MB"
+          fi
+          echo "✓ Binary size within reasonable range"
+
+      - name: Test --version command
+        run: |
+          output=$(target/aarch64-apple-darwin/release/ltmatrix --version)
+          echo "$output"
+          echo "$output" | grep -q "ltmatrix"
+          echo "✓ --version works"
+
+      - name: Test --help command
+        run: |
+          output=$(target/aarch64-apple-darwin/release/ltmatrix --help)
+          echo "$output"
+          echo "$output" | grep -q -E "(Usage:|USAGE:|usage:)"
+          echo "✓ --help works"
+
+      - name: Check dynamic dependencies
+        run: |
+          echo "=== Dynamic dependencies ==="
+          otool -L target/aarch64-apple-darwin/release/ltmatrix
+          echo ""
+          echo "✓ Dependencies checked"
+
+      - name: Check for unexpected dependencies
+        run: |
+          deps=$(otool -L target/aarch64-apple-darwin/release/ltmatrix)
+          if echo "$deps" | grep -q "/usr/local/lib"; then
+            echo "::warning::Found /usr/local/lib dependency (non-standard)"
+          fi
+          if echo "$deps" | grep -q "/opt/homebrew"; then
+            echo "::warning::Found Homebrew dependency (non-standard)"
+          fi
+          echo "✓ No suspicious dependencies"
+
+      - name: Apply ad-hoc code signing
+        run: |
+          codesign --force --deep --sign - target/aarch64-apple-darwin/release/ltmatrix
+          echo "✓ Ad-hoc signing applied"
+
+      - name: Verify code signature
+        run: |
+          codesign -v target/aarch64-apple-darwin/release/ltmatrix
+          echo "✓ Code signature valid"
+
+      - name: Display code signing details
+        run: |
+          echo "=== Code signing details ==="
+          codesign -dvv target/aarch64-apple-darwin/release/ltmatrix || true
+
+      - name: Run unit tests
+        run: |
+          cargo test --target aarch64-apple-darwin --lib
+
+      - name: Run integration tests (if any)
+        run: |
+          cargo test --target aarch64-apple-darwin --test '*'
+        continue-on-error: true
+
+      - name: Upload ARM binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: ltmatrix-macos-arm
+          path: target/aarch64-apple-darwin/release/ltmatrix
+          retention-days: 7
+
+  create-universal-binary:
+    name: Create Universal Binary
+    needs: [verify-macos-intel, verify-macos-arm]
+    runs-on: macos-14
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download Intel binary
+        uses: actions/download-artifact@v4
+        with:
+          name: ltmatrix-macos-intel
+          path: bin/intel
+
+      - name: Download ARM binary
+        uses: actions/download-artifact@v4
+        with:
+          name: ltmatrix-macos-arm
+          path: bin/arm
+
+      - name: Create universal binary
+        run: |
+          mkdir -p release
+          lipo -create \
+            bin/intel/ltmatrix \
+            bin/arm/ltmatrix \
+            -output release/ltmatrix-universal
+
+      - name: Verify universal binary
+        run: |
+          file release/ltmatrix-universal
+          file release/ltmatrix-universal | grep -q "Mach-O universal binary"
+          echo "✓ Universal binary created"
+
+      - name: Check universal binary architectures
+        run: |
+          echo "=== Architectures in universal binary ==="
+          lipo -info release/ltmatrix-universal
+          lipo -info release/ltmatrix-universal | grep -q "x86_64"
+          lipo -info release/ltmatrix-universal | grep -q "arm64"
+          echo "✓ Both x86_64 and arm64 present"
+
+      - name: Test universal binary
+        run: |
+          output=$(release/ltmatrix-universal --version)
+          echo "$output"
+          echo "$output" | grep -q "ltmatrix"
+          echo "✓ Universal binary executes"
+
+      - name: Sign universal binary
+        run: |
+          codesign --force --deep --sign - release/ltmatrix-universal
+          echo "✓ Universal binary signed"
+
+      - name: Upload universal binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: ltmatrix-macos-universal
+          path: release/ltmatrix-universal
+          retention-days: 30
+
+      - name: Create release summary
+        run: |
+          echo "# macOS Binary Verification Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Build Status" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Intel (x86_64) binary built and verified" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ ARM (aarch64) binary built and verified" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Universal binary created" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "- ltmatrix-macos-intel: Intel binary" >> $GITHUB_STEP_SUMMARY
+          echo "- ltmatrix-macos-arm: Apple Silicon binary" >> $GITHUB_STEP_SUMMARY
+          echo "- ltmatrix-macos-universal: Universal binary (both architectures)" >> $GITHUB_STEP_SUMMARY

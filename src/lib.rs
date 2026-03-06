@@ -17,6 +17,7 @@ pub mod logging;
 pub mod progress;
 pub mod output;
 pub mod dryrun;
+pub mod interactive;
 
 // Re-export commonly used types
 pub use models::{

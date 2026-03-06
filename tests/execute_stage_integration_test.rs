@@ -20,13 +20,13 @@ use async_trait::async_trait;
 use tokio::fs;
 
 /// Mock agent backend for testing
-struct MockAgent {
+struct _MockAgent {
     pub responses: Vec<AgentResponse>,
     pub call_count: Arc<std::sync::atomic::AtomicUsize>,
 }
 
 #[async_trait]
-impl AgentBackend for MockAgent {
+impl AgentBackend for _MockAgent {
     async fn execute(&self, _prompt: &str, _config: &ExecutionConfig) -> anyhow::Result<AgentResponse> {
         let count = self.call_count.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         Ok(self.responses[count % self.responses.len()].clone())

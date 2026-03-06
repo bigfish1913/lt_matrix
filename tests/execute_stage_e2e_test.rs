@@ -20,12 +20,12 @@ use tokio::fs;
 
 /// Mock agent that simulates successful execution
 #[derive(Clone)]
-struct SuccessfulMockAgent {
+struct _SuccessfulMockAgent {
     pub call_count: Arc<AtomicUsize>,
 }
 
 #[async_trait]
-impl AgentBackend for SuccessfulMockAgent {
+impl AgentBackend for _SuccessfulMockAgent {
     async fn execute(&self, prompt: &str, _config: &ExecutionConfig) -> anyhow::Result<AgentResponse> {
         self.call_count.fetch_add(1, Ordering::SeqCst);
         Ok(AgentResponse {
@@ -62,14 +62,14 @@ impl AgentBackend for SuccessfulMockAgent {
 
 /// Mock agent that simulates failures before success
 #[derive(Clone)]
-struct FlakyMockAgent {
+struct _FlakyMockAgent {
     pub call_count: Arc<AtomicUsize>,
     pub fail_until: usize, // Number of calls before success
 }
 
 #[async_trait]
-impl AgentBackend for FlakyMockAgent {
-    async fn execute(&self, prompt: &str, _config: &ExecutionConfig) -> anyhow::Result<AgentResponse> {
+impl AgentBackend for _FlakyMockAgent {
+    async fn execute(&self, _prompt: &str, _config: &ExecutionConfig) -> anyhow::Result<AgentResponse> {
         let count = self.call_count.fetch_add(1, Ordering::SeqCst);
 
         if count < self.fail_until {
@@ -119,10 +119,10 @@ async fn test_execute_single_task_success() {
 
     // Create a simple task
     let task = Task::new("task-1", "Simple Task", "Implement a simple feature");
-    let tasks = vec![task.clone()];
+    let _tasks = vec![task.clone()];
 
     // Create config with sessions disabled for simplicity
-    let config = ExecuteConfig {
+    let _config = ExecuteConfig {
         mode_config: ModeConfig::default(),
         max_retries: 0,
         timeout: 60,
@@ -146,7 +146,7 @@ async fn test_execute_single_task_success() {
 
 #[tokio::test]
 async fn test_execute_multiple_tasks_with_dependencies() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let _temp_dir = tempfile::tempdir().unwrap();
 
     // Create tasks with dependencies
     let task1 = Task::new("task-1", "Setup", "Initial setup");
@@ -478,7 +478,7 @@ async fn test_execution_order_with_complex_dependency_graph() {
 
 #[tokio::test]
 async fn test_empty_task_list_execution() {
-    let tasks: Vec<Task> = vec![];
+    let _tasks: Vec<Task> = vec![];
     let task_map: std::collections::HashMap<String, Task> = std::collections::HashMap::new();
 
     let order = ltmatrix::pipeline::execute::get_execution_order(&task_map).unwrap();
