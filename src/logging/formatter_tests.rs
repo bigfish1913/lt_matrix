@@ -9,6 +9,7 @@ use crate::logging::formatter::{
     format_timestamp, current_timestamp, format_level,
     TIMESTAMP_FORMAT,
 };
+use crate::terminal::{self, ColorConfig};
 use chrono::{DateTime, Local};
 use tracing::Level;
 
@@ -195,71 +196,49 @@ mod tests {
     // ============================================================================
 
     #[test]
-    fn test_console_style_adds_ansi() {
-        let plain = "test".to_string();
-        let styled = crate::logging::formatter::console_style(
-            plain.clone(),
-            console::Color::Green,
-            true,
-        );
+    fn test_terminal_style_text() {
+        let config = ColorConfig::plain();
+        let plain = "test";
+        let styled = terminal::style_text(plain, terminal::Color::Green, config);
 
-        // Styled text should at least contain the original text
-        // ANSI codes may not be added on Windows without a terminal
-        assert!(styled.contains(&plain));
+        // With plain config (colors disabled), should just return the text
+        assert_eq!(styled, plain);
     }
 
     #[test]
-    fn test_console_style_different_colors() {
-        use console::Color;
-
+    fn test_terminal_style_different_colors() {
+        let config = ColorConfig::plain();
         let colors = vec![
-            Color::Black,
-            Color::Red,
-            Color::Green,
-            Color::Yellow,
-            Color::Blue,
-            Color::Magenta,
-            Color::Cyan,
-            Color::White,
+            terminal::Color::Black,
+            terminal::Color::Red,
+            terminal::Color::Green,
+            terminal::Color::Yellow,
+            terminal::Color::Blue,
+            terminal::Color::Magenta,
+            terminal::Color::Cyan,
+            terminal::Color::White,
         ];
 
         let texts: Vec<_> = colors
             .iter()
-            .map(|&color| {
-                crate::logging::formatter::console_style("test".to_string(), color, true)
-            })
+            .map(|&color| terminal::style_text("test", color, config))
             .collect();
 
-        // Different colors should produce different styled outputs
-        // (though some might accidentally be the same depending on terminal)
-        for (i, text1) in texts.iter().enumerate() {
-            for (j, text2) in texts.iter().enumerate() {
-                if i != j && text1 == text2 {
-                    // This is acceptable - some colors might render the same
-                }
-            }
+        // With colors disabled, all should return the same plain text
+        for text in &texts {
+            assert_eq!(text, "test");
         }
     }
 
     #[test]
-    fn test_console_style_bright_vs_dim() {
-        use console::Color;
+    fn test_terminal_style_bright_vs_dim() {
+        let config = ColorConfig::plain();
+        let bright = terminal::style_text("test", terminal::Color::BrightRed, config);
+        let dim = terminal::style_text("test", terminal::Color::Dim, config);
 
-        let bright = crate::logging::formatter::console_style(
-            "test".to_string(),
-            Color::Red,
-            true,
-        );
-        let dim = crate::logging::formatter::console_style(
-            "test".to_string(),
-            Color::Red,
-            false,
-        );
-
-        // Bright and dim should produce different outputs
-        // (though not guaranteed on all terminals)
-        assert_ne!(bright.len(), 0);
-        assert_ne!(dim.len(), 0);
+        // With colors disabled, both should just return the plain text
+        assert_eq!(bright, "test");
+        assert_eq!(dim, "test");
     }
 
     // ============================================================================

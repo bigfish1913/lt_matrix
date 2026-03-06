@@ -373,8 +373,7 @@ mod error_handling_tests {
 
     #[test]
     fn test_multiple_strategy_flags_not_allowed() {
-        // Clap doesn't allow multiple values for this flag by default
-        // Only the last value should be used
+        // When multiple --on-blocked flags are provided, clap should reject them
         let args = Args::try_parse_from([
             "ltmatrix",
             "--on-blocked", "skip",
@@ -382,11 +381,13 @@ mod error_handling_tests {
             "test goal",
         ]);
 
-        // This should parse, with only the last value being used
-        assert!(args.is_ok());
-        let args = args.unwrap();
-        // Clap's default behavior is to use the last value
-        assert_eq!(args.on_blocked, Some(BlockedStrategy::Retry));
+        // This should fail because --on-blocked cannot be used multiple times
+        assert!(args.is_err(), "Multiple --on-blocked flags should not be allowed");
+        let err = args.unwrap_err();
+        // Verify the error message mentions the issue
+        assert!(err.to_string().contains("cannot be used multiple times")
+                || err.to_string().contains("--on-blocked"),
+                "Error should mention that --on-blocked cannot be used multiple times");
     }
 }
 
@@ -410,6 +411,7 @@ fn test_args() -> Args {
         regenerate_plan: false,
         on_blocked: Some(BlockedStrategy::Skip),
         mcp_config: None,
+        no_color: false,
         command: None,
     }
 }

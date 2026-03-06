@@ -6,32 +6,41 @@
 use chrono::{DateTime, Local};
 use tracing::Event;
 use tracing::field::{Field, Visit};
+use crate::terminal::{self, ColorConfig};
 
 /// Timestamp format used in logs
 pub const TIMESTAMP_FORMAT: &str = "%Y-%m-%d %H:%M:%S%.3f";
 
-/// Formats a log level with ANSI color codes
-pub fn format_level(level: &tracing::Level) -> String {
-    let (level_str, color) = match level {
-        &tracing::Level::TRACE => ("TRACE", console::Color::White),
-        &tracing::Level::DEBUG => ("DEBUG", console::Color::Blue),
-        &tracing::Level::INFO => ("INFO", console::Color::Green),
-        &tracing::Level::WARN => ("WARN", console::Color::Yellow),
-        &tracing::Level::ERROR => ("ERROR", console::Color::Red),
-    };
+/// Global color configuration for logging
+static mut COLOR_CONFIG: Option<ColorConfig> = None;
 
-    console_style(level_str.to_string(), color, true)
+/// Initialize the color configuration for logging formatters
+///
+/// # Safety
+///
+/// This function should only be called once during application initialization.
+/// It uses unsafe mutable static to share the color config with formatters.
+pub fn init_color_config(config: ColorConfig) {
+    unsafe {
+        COLOR_CONFIG = Some(config);
+    }
 }
 
-/// Applies ANSI color styling to text
-pub fn console_style(text: String, color: console::Color, bright: bool) -> String {
-    let style = if bright {
-        console::Style::new().fg(color).bright()
-    } else {
-        console::Style::new().fg(color).dim()
-    };
+/// Get the current color configuration
+///
+/// # Safety
+///
+/// Returns ColorConfig::auto() if not initialized
+fn get_color_config() -> ColorConfig {
+    unsafe {
+        COLOR_CONFIG.unwrap_or_else(|| ColorConfig::auto())
+    }
+}
 
-    style.apply_to(text).to_string()
+/// Formats a log level with ANSI color codes
+pub fn format_level(level: &tracing::Level) -> String {
+    let config = get_color_config();
+    terminal::colorize_log_level(level.as_str(), config)
 }
 
 /// Extracts and formats the message from an event
@@ -60,17 +69,22 @@ pub fn format_console_line(event: &Event<'_>) -> String {
     let timestamp = current_timestamp();
     let metadata = event.metadata();
     let level = format_level(metadata.level());
+    let config = get_color_config();
+
     let module = metadata
         .module_path()
         .unwrap_or("ltmatrix")
         .replace("ltmatrix::", "");
+    let module_colored = terminal::style_text(&module, terminal::Color::Cyan, config);
+
+    let timestamp_colored = terminal::dim(&timestamp, config);
     let message = format_message(event);
 
     format!(
         "{} {} [{}] {}",
-        console_style(timestamp, console::Color::Black, true),
+        timestamp_colored,
         level,
-        console_style(module, console::Color::Cyan, false),
+        module_colored,
         message
     )
 }
@@ -132,11 +146,11 @@ mod tests {
     }
 
     #[test]
-    fn test_console_style() {
-        let styled = console_style("test".to_string(), console::Color::Green, true);
-        // On Windows or without a terminal, ANSI codes may not be applied
-        // Just check that it contains the original text
-        assert!(styled.contains("test"));
+    fn test_terminal_style_text() {
+        let config = ColorConfig::plain();
+        let styled = terminal::style_text("test", terminal::Color::Green, config);
+        // With plain config, should just return the text
+        assert_eq!(styled, "test");
     }
 
     #[test]

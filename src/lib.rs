@@ -18,6 +18,7 @@ pub mod progress;
 pub mod output;
 pub mod dryrun;
 pub mod interactive;
+pub mod terminal;
 
 // Re-export commonly used types
 pub use models::{

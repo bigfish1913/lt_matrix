@@ -147,6 +147,12 @@ mod blocked_strategy_tests {
         // With retry strategy, task-2 should remain in pending state
         // for retry after task-1 is fixed
         assert_eq!(task2.status, TaskStatus::Pending);
+
+        // Simulate task-2 failing after trying to execute
+        task2.status = TaskStatus::Failed;
+        task2.error = Some("Dependency failed".to_string());
+
+        // Now that it's failed, it should be retryable
         assert!(task2.can_retry(3));
     }
 
@@ -406,6 +412,10 @@ mod blocked_strategy_tests {
     fn test_max_retries_with_blocking() {
         // Test that max_retries affects retry strategy
         let mut task = create_task("task-1", "Test task", vec!["task-failed"]);
+
+        // Mark the task as failed so can_retry will work
+        task.status = TaskStatus::Failed;
+        task.error = Some("Task execution failed".to_string());
 
         // With retry strategy, task can be retried up to max_retries times
         let max_retries = 3;

@@ -101,7 +101,7 @@ async fn test_commit_with_direct_strategy() {
         ..Default::default()
     };
 
-    let (updated_tasks, summary) = commit_tasks(tasks, &config).await.unwrap();
+    let (_updated_tasks, summary) = commit_tasks(tasks, &config).await.unwrap();
 
     assert_eq!(summary.total_tasks, 1);
     assert_eq!(summary.committed_tasks, 1);
@@ -155,7 +155,7 @@ async fn test_commit_respects_base_branch() {
         ..Default::default()
     };
 
-    let (updated_tasks, summary) = commit_tasks(tasks, &config).await.unwrap();
+    let (_updated_tasks, summary) = commit_tasks(tasks, &config).await.unwrap();
 
     assert_eq!(summary.base_branch, Some("master".to_string()));
     assert_eq!(summary.total_tasks, 1);
@@ -174,7 +174,7 @@ async fn test_commit_no_changes_to_commit() {
     };
 
     // Should succeed but report no changes
-    let (updated_tasks, summary) = commit_tasks(tasks, &config).await.unwrap();
+    let (_updated_tasks, summary) = commit_tasks(tasks, &config).await.unwrap();
 
     // Even with no changes, task is marked as successfully processed
     assert_eq!(summary.committed_tasks, 1);
@@ -218,7 +218,7 @@ async fn test_commit_with_actual_file_changes() {
         ..Default::default()
     };
 
-    let (updated_tasks, summary) = commit_tasks(tasks, &config).await.unwrap();
+    let (_updated_tasks, summary) = commit_tasks(tasks, &config).await.unwrap();
 
     assert_eq!(summary.committed_tasks, 1);
     assert!(summary.total_commits >= 1);
@@ -242,14 +242,14 @@ async fn test_commit_multiple_files() {
         ..Default::default()
     };
 
-    let (updated_tasks, summary) = commit_tasks(tasks, &config).await.unwrap();
+    let (_updated_tasks, summary) = commit_tasks(tasks, &config).await.unwrap();
 
     assert_eq!(summary.committed_tasks, 1);
 }
 
 #[tokio::test]
 async fn test_commit_preserves_branch_after_failure() {
-    let (temp_dir, repo) = create_test_repo();
+    let (temp_dir, _repo) = create_test_repo();
 
     // Create a conflicting file on master
     fs::write(temp_dir.path().join("conflict.txt"), "Master version").unwrap();
@@ -263,7 +263,7 @@ async fn test_commit_preserves_branch_after_failure() {
         ..Default::default()
     };
 
-    let (updated_tasks, summary) = commit_tasks(tasks, &config).await.unwrap();
+    let (updated_tasks, _summary) = commit_tasks(tasks, &config).await.unwrap();
 
     // Even if there are issues, the function should complete without crashing
     assert_eq!(updated_tasks.len(), 1);
@@ -282,7 +282,7 @@ async fn test_commit_disabled_in_config() {
         ..Default::default()
     };
 
-    let (updated_tasks, summary) = commit_tasks(tasks, &config).await.unwrap();
+    let (_updated_tasks, summary) = commit_tasks(tasks, &config).await.unwrap();
 
     // Should skip all tasks when disabled
     assert_eq!(summary.skipped_tasks, 1);
@@ -292,7 +292,7 @@ async fn test_commit_disabled_in_config() {
 
 #[tokio::test]
 async fn test_commit_message_format() {
-    let task = create_test_task("task-123", "Add authentication");
+    let _task = create_test_task("task-123", "Add authentication");
     let message = format!("feat: [task-123] Add authentication");
 
     // Verify conventional commit format
@@ -315,7 +315,7 @@ async fn test_commit_with_different_commit_types() {
         ..Default::default()
     };
 
-    let (updated_tasks, summary) = commit_tasks(tasks, &config).await.unwrap();
+    let (_updated_tasks, summary) = commit_tasks(tasks, &config).await.unwrap();
 
     assert_eq!(summary.committed_tasks, 1);
 }

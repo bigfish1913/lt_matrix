@@ -186,10 +186,12 @@ impl CommitSummary {
 /// use ltmatrix::pipeline::commit::{commit_tasks, CommitConfig};
 /// use ltmatrix::models::Task;
 ///
+/// # async fn example() -> anyhow::Result<()> {
 /// let tasks = vec![Task::new("task-1", "Add feature", "Implement new feature")];
 /// let config = CommitConfig::default();
-/// let (updated_tasks, summary) = commit_tasks(tasks, &config)?;
-/// # Ok::<(), anyhow::Error>(())
+/// let (updated_tasks, summary) = commit_tasks(tasks, &config).await?;
+/// # Ok(())
+/// # }
 /// ```
 pub async fn commit_tasks(
     tasks: Vec<Task>,

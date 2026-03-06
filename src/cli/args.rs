@@ -108,6 +108,10 @@ pub struct Args {
     #[arg(long, value_name = "FILE")]
     pub mcp_config: Option<PathBuf>,
 
+    /// Disable colored output (respects NO_COLOR env var)
+    #[arg(long, global = true)]
+    pub no_color: bool,
+
     /// Subcommand to execute
     #[command(subcommand)]
     pub command: Option<Command>,

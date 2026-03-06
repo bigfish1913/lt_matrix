@@ -188,6 +188,7 @@ mod tests {
             regenerate_plan: false,
             on_blocked: None,
             mcp_config: None,
+            no_color: false,
             command: Some(Command::Release(release_args)),
         };
 
