@@ -11,6 +11,7 @@ pub mod kimicode;
 pub mod opencode;
 pub mod pool;
 pub mod session;
+pub mod warmup;
 
 pub use backend::{
     AgentBackend, AgentConfig, AgentConfigBuilder, AgentError, AgentResponse, AgentSession,
@@ -23,3 +24,4 @@ pub use kimicode::KimiCodeAgent;
 pub use opencode::OpenCodeAgent;
 pub use pool::SessionPool;
 pub use session::{SessionData, SessionManager};
+pub use warmup::{WarmupExecutor, WarmupResult};
