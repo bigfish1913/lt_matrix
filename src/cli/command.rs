@@ -1,2 +1,187 @@
-//! Placeholder module for command
-// TODO: Implement command
+//! CLI command handling
+//!
+//! This module handles the execution of different CLI commands and subcommands.
+
+use super::args::{Args, Command};
+use anyhow::{Context, Result};
+
+/// Execute the command specified in the arguments
+pub fn execute_command(args: Args) -> Result<()> {
+    match args.command {
+        Some(Command::Release(ref release_args)) => {
+            execute_release(&args, release_args)
+        }
+        Some(Command::Completions(ref completions_args)) => {
+            execute_completions(completions_args)
+        }
+        None => {
+            // Default to run command
+            execute_run(&args)
+        }
+    }
+}
+
+/// Execute the main run logic
+fn execute_run(args: &Args) -> Result<()> {
+    if let Some(goal) = &args.goal {
+        println!("ltmatrix - Long-Time Agent Orchestrator");
+        println!("Version: {}", env!("CARGO_PKG_VERSION"));
+        println!();
+        println!("Goal: {}", goal);
+        println!("Mode: {}", args.get_execution_mode());
+
+        if args.dry_run {
+            println!("Dry run: plan will be generated but not executed");
+        }
+
+        if args.resume {
+            println!("Resume: will continue from last interrupted task");
+        }
+
+        // TODO: Implement actual run logic
+        println!("\nTODO: Implement run logic");
+    } else {
+        print_help();
+    }
+
+    Ok(())
+}
+
+/// Execute the release command
+fn execute_release(_args: &Args, release_args: &super::args::ReleaseArgs) -> Result<()> {
+    println!("ltmatrix - Release Build");
+    println!();
+
+    if release_args.all_targets {
+        println!("Building for all target platforms...");
+        // TODO: Implement multi-target build
+    } else if let Some(target) = &release_args.target {
+        println!("Building for target: {}", target);
+        // TODO: Implement single target build
+    } else {
+        println!("Building for host platform...");
+        // TODO: Implement host platform build
+    }
+
+    if release_args.archive {
+        println!("Creating release archives...");
+        // TODO: Implement archive creation
+    }
+
+    println!("\nOutput directory: {}", release_args.output.display());
+    println!("\nTODO: Implement release logic");
+
+    Ok(())
+}
+
+/// Execute the completions command
+fn execute_completions(completions_args: &super::args::CompletionsArgs) -> Result<()> {
+    use clap::CommandFactory;
+    use std::io::Write;
+
+    let shell = match completions_args.shell {
+        super::args::Shell::Bash => clap_complete::Shell::Bash,
+        super::args::Shell::Zsh => clap_complete::Shell::Zsh,
+        super::args::Shell::Fish => clap_complete::Shell::Fish,
+        super::args::Shell::PowerShell => clap_complete::Shell::PowerShell,
+        super::args::Shell::Elvish => clap_complete::Shell::Elvish,
+    };
+
+    let mut cmd = Args::command();
+    let mut buf = Vec::new();
+
+    clap_complete::generate(shell, &mut cmd, "ltmatrix", &mut buf);
+
+    let stdout = std::io::stdout();
+    let mut handle = stdout.lock();
+    handle.write_all(&buf)
+        .context("Failed to write completions to stdout")?;
+
+    Ok(())
+}
+
+/// Print help information
+fn print_help() {
+    println!("ltmatrix - Long-Time Agent Orchestrator");
+    println!();
+    println!("USAGE:");
+    println!("  ltmatrix [OPTIONS] <GOAL>");
+    println!("  ltmatrix [SUBCOMMAND]");
+    println!();
+    println!("OPTIONS:");
+    println!("  -h, --help       Print help information");
+    println!("  -V, --version    Print version information");
+    println!("  --fast           Fast execution mode");
+    println!("  --expert         Expert execution mode");
+    println!("  --dry-run        Generate plan without execution");
+    println!("  --resume         Resume interrupted work");
+    println!("  --output <FORMAT> Output format (text, json)");
+    println!("  --log-level <LEVEL> Log level (trace, debug, info, warn, error)");
+    println!();
+    println!("SUBCOMMANDS:");
+    println!("  release       Create a release build");
+    println!("  completions   Generate shell completions");
+    println!();
+    println!("EXAMPLES:");
+    println!("  ltmatrix \"build a REST API\"");
+    println!("  ltmatrix --fast \"add error handling\"");
+    println!("  ltmatrix completions bash");
+    println!();
+    println!("For more information, visit: https://github.com/bigfish/ltmatrix");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::cli::args::{ReleaseArgs, CompletionsArgs, Shell};
+    use clap::Parser;
+    use std::path::PathBuf;
+
+    #[test]
+    fn test_execute_run_command() {
+        let args = Args::try_parse_from(["ltmatrix", "test goal"]).unwrap();
+        assert!(execute_command(args).is_ok());
+    }
+
+    #[test]
+    fn test_execute_completions() {
+        let completions_args = CompletionsArgs {
+            shell: Shell::Bash,
+        };
+        // This should not error
+        assert!(execute_completions(&completions_args).is_ok());
+    }
+
+    #[test]
+    fn test_execute_release() {
+        let release_args = ReleaseArgs {
+            target: Some("x86_64-unknown-linux-musl".to_string()),
+            output: PathBuf::from("./dist"),
+            archive: true,
+            all_targets: false,
+        };
+
+        let args = Args {
+            goal: None,
+            agent: None,
+            mode: None,
+            fast: false,
+            expert: false,
+            config: None,
+            output: None,
+            log_level: None,
+            log_file: None,
+            max_retries: None,
+            timeout: None,
+            dry_run: false,
+            resume: false,
+            ask: false,
+            regenerate_plan: false,
+            on_blocked: None,
+            mcp_config: None,
+            command: Some(Command::Release(release_args)),
+        };
+
+        assert!(execute_command(args).is_ok());
+    }
+}

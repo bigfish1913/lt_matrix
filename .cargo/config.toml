@@ -22,20 +22,29 @@ git-fetch-with-cli = true
 # Linux Target Configurations
 # =============================================================================
 
+# Note: When using cargo-zigbuild, these linker settings are overridden by Zig
+# The zig toolchain provides its own cross-compilation linker
+
 # Linux x86_64 with musl (static binary)
 [target.x86_64-unknown-linux-musl]
-linker = "x86_64-linux-musl-gcc"
+# cargo-zigbuild will handle linker via Zig
+# For manual builds without zigbuild, you can uncomment:
+# linker = "x86_64-linux-musl-gcc"
+rustflags = ["-C", "target-feature=+crt-static"]
 
 # Linux ARM64 with musl (static binary)
 [target.aarch64-unknown-linux-musl]
-linker = "aarch64-linux-musl-gcc"
+# cargo-zigbuild will handle linker via Zig
+rustflags = ["-C", "target-feature=+crt-static"]
 
 # Linux x86_64 with GNU libc (dynamic binary)
 [target.x86_64-unknown-linux-gnu]
+# Standard system linker will be used
 linker = "x86_64-linux-gnu-gcc"
 
 # Linux ARM64 with GNU libc (dynamic binary)
 [target.aarch64-unknown-linux-gnu]
+# Standard system linker will be used
 linker = "aarch64-linux-gnu-gcc"
 
 # =============================================================================
