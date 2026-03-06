@@ -4,6 +4,7 @@
 
 use super::args::{Args, Command};
 use anyhow::{Context, Result};
+use crate::config::settings::{self, CliOverrides};
 
 /// Execute the command specified in the arguments
 pub fn execute_command(args: Args) -> Result<()> {
@@ -30,8 +31,19 @@ fn execute_run(args: &Args) -> Result<()> {
         println!("ltmatrix - Long-Time Agent Orchestrator");
         println!("Version: {}", env!("CARGO_PKG_VERSION"));
         println!();
+
+        // Load configuration with CLI overrides
+        let overrides = CliOverrides::from(args.clone());
+        let config = settings::load_config_with_overrides(Some(overrides))
+            .context("Failed to load configuration")?;
+
+        // Display configuration info
         println!("Goal: {}", goal);
         println!("Mode: {}", args.get_execution_mode());
+
+        if let Some(ref agent) = config.default {
+            println!("Agent: {}", agent);
+        }
 
         if args.dry_run {
             println!("Dry run: plan will be generated but not executed");
@@ -41,8 +53,12 @@ fn execute_run(args: &Args) -> Result<()> {
             println!("Resume: will continue from last interrupted task");
         }
 
-        // TODO: Implement actual run logic
-        println!("\nTODO: Implement run logic");
+        // TODO: Implement actual run logic using the config
+        println!("\nTODO: Implement run logic with config");
+        println!("Config loaded successfully:");
+        println!("  - Default agent: {:?}", config.default);
+        println!("  - Log level: {:?}", config.logging.level);
+        println!("  - Output format: {:?}", config.output.format);
     } else {
         print_help();
     }
