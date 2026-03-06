@@ -504,29 +504,88 @@ pub fn load_config_from_args(args: crate::cli::Args) -> Result<Config> {
 /// # Returns
 ///
 /// Returns a merged and validated `Config`.
+/// Loads configuration with CLI overrides
+///
+/// This function merges configuration from multiple sources with proper precedence:
+/// 1. CLI overrides (highest)
+/// 2. Custom config file (if specified via --config)
+/// 3. Project config (.ltmatrix/config.toml)
+/// 4. Global config (~/.ltmatrix/config.toml)
+/// 5. Defaults (lowest)
+///
+/// # Arguments
+///
+/// * `overrides` - Optional CLI override values
+///
+/// # Returns
+///
+/// Returns a merged and validated `Config`.
 pub fn load_config_with_overrides(overrides: Option<CliOverrides>) -> Result<Config> {
     let global_path = get_global_config_path()?;
     let project_path = get_project_config_path();
 
-    let global_config = if global_path.exists() {
-        Some(load_config_file(&global_path)?)
-    } else {
-        debug!("No global config found at: {}", global_path.display());
-        None
-    };
-
-    let project_config = if let Some(ref path) = project_path {
-        if path.exists() {
-            Some(load_config_file(path)?)
+    // Use custom config file if specified, otherwise use standard paths
+    let (config_paths, custom_path) = if let Some(ref overrides) = overrides {
+        if let Some(ref custom_config) = overrides.config_file {
+            // Load only from custom config file
+            (vec![custom_config.clone()], Some(custom_config.clone()))
         } else {
-            debug!("No project config found at: {}", path.display());
-            None
+            // Load from standard paths
+            let mut paths = Vec::new();
+            paths.push(global_path.clone());
+            if let Some(ref project) = project_path {
+                paths.push(project.clone());
+            }
+            (paths, None)
         }
     } else {
-        None
+        // No overrides, use standard paths
+        let mut paths = Vec::new();
+        paths.push(global_path.clone());
+        if let Some(ref project) = project_path {
+            paths.push(project.clone());
+        }
+        (paths, None)
     };
 
-    let mut merged = merge_configs(global_config, project_config);
+    // Load configs from all paths
+    let mut configs: Vec<Config> = Vec::new();
+
+    for path in &config_paths {
+        if path.exists() {
+            debug!("Loading configuration from: {}", path.display());
+            match load_config_file(path) {
+                Ok(config) => configs.push(config),
+                Err(e) => {
+                    // If custom config was specified, fail hard
+                    if custom_path.is_some() {
+                        return Err(e.context(format!(
+                            "Failed to load custom config file: {}",
+                            path.display()
+                        )));
+                    }
+                    // Otherwise, just log and continue
+                    debug!("Skipping invalid config at {}: {}", path.display(), e);
+                }
+            }
+        } else {
+            // If custom config was specified and doesn't exist, fail hard
+            if custom_path.is_some() {
+                return Err(anyhow::anyhow!(
+                    "Custom config file not found: {}",
+                    path.display()
+                ));
+            }
+            // Otherwise, just log and continue
+            debug!("No config found at: {}", path.display());
+        }
+    }
+
+    // Merge all configs (last one wins)
+    let mut merged = Config::default();
+    for config in configs {
+        merged = merge_configs(Some(merged), Some(config));
+    }
 
     // Apply CLI overrides if provided
     if let Some(overrides) = overrides {
