@@ -8,53 +8,55 @@
 //!
 //! # Configuration
 //!
-//! Feature flags are configured in the TOML configuration file under the `[features]` section:
+//! Feature flags are configured in the TOML configuration file:
 //!
 //! ```toml
-//! [features]
-//! # Agent backend features
+//! [agent_backend]
 //! enable_claude_opus_backend = true
 //! enable_opencode_backend = false
-//! enable_kimicode_backend = false
-//! enable_codex_backend = false
 //!
-//! # Pipeline stage features
+//! [pipeline]
 //! enable_parallel_execution = true
 //! enable_smart_cache = true
 //! enable_incremental_builds = false
 //! enable_distributed_tasks = false
 //!
-//! # Scheduler features
+//! [scheduler]
 //! enable_priority_scheduler = false
 //! enable_adaptive_scheduler = false
-//! enable_ml_scheduler = false
 //!
-//! # Gradual rollout configuration
-//! [features.rollout]
-//! parallel_execution_percentage = 50  # 50% of users
-//! smart_cache_percentage = 100        # 100% of users (fully rolled out)
+//! [rollout.enable_parallel_execution]
+//! percentage = 50
+//! users = ["beta_user1", "beta_user2"]
 //!
-//! # User whitelist for gradual rollout
-//! [features.rollout.users]
-//! priority = ["user1", "user2"]
-//! adaptive = ["user3", "user4"]
+//! [rollout.enable_smart_cache]
+//! percentage = 100
 //! ```
 //!
 //! # Usage
 //!
-//! ```no_run
-//! use ltmatrix::feature::{FeatureFlag, FeatureFlags};
+//! ```
+//! use ltmatrix::feature::{FeatureFlag, FeatureFlags, FeatureConfig};
 //!
-//! // Load feature flags from configuration
-//! let flags = FeatureFlags::from_config(&config);
+//! // Create feature flags from configuration
+//! let config = FeatureConfig::default();
+//! let flags = FeatureFlags::new(config);
 //!
 //! // Check if a feature is enabled
-//! if flags.is_enabled(FeatureFlag::ParallelExecution) {
+//! if flags.is_enabled(FeatureFlag::EnableParallelExecution) {
 //!     // Use parallel execution
 //! }
 //!
 //! // Check gradual rollout
-//! if flags.is_enabled_for_user(FeatureFlag::SmartCache, "user123") {
+//! # use std::collections::HashMap;
+//! # use ltmatrix::feature::RolloutConfig;
+//! # let mut config = FeatureConfig::default();
+//! # config.pipeline.enable_smart_cache = true;
+//! # let mut rollout = HashMap::new();
+//! # rollout.insert("enable_smart_cache".to_string(), RolloutConfig::new(100));
+//! # config.rollout = rollout;
+//! # let flags = FeatureFlags::new(config);
+//! if flags.is_enabled_for_user(FeatureFlag::EnableSmartCache, "user123") {
 //!     // Enable smart cache for this user
 //! }
 //! ```

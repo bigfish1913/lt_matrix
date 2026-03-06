@@ -320,6 +320,29 @@ pub fn get_project_config_path() -> Option<PathBuf> {
     Some(current.join(".ltmatrix").join("config.toml"))
 }
 
+/// CLI override options for configuration
+///
+/// These values come from command-line arguments and take highest precedence
+#[derive(Debug, Clone, Default)]
+pub struct CliOverrides {
+    /// Agent backend to use
+    pub agent: Option<String>,
+    /// Execution mode
+    pub mode: Option<String>,
+    /// Output format
+    pub output_format: Option<OutputFormat>,
+    /// Log level
+    pub log_level: Option<LogLevel>,
+    /// Log file path
+    pub log_file: Option<PathBuf>,
+    /// Maximum retries
+    pub max_retries: Option<u32>,
+    /// Timeout in seconds
+    pub timeout: Option<u64>,
+    /// Disable colored output
+    pub no_color: Option<bool>,
+}
+
 /// Loads configuration from all available sources
 ///
 /// This function automatically discovers and merges configuration from:
@@ -330,6 +353,25 @@ pub fn get_project_config_path() -> Option<PathBuf> {
 ///
 /// Returns a merged `Config` or a default config if no files exist.
 pub fn load_config() -> Result<Config> {
+    load_config_with_overrides(None)
+}
+
+/// Loads configuration with CLI overrides
+///
+/// This function merges configuration from multiple sources with proper precedence:
+/// 1. CLI overrides (highest)
+/// 2. Project config (.ltmatrix/config.toml)
+/// 3. Global config (~/.ltmatrix/config.toml)
+/// 4. Defaults (lowest)
+///
+/// # Arguments
+///
+/// * `overrides` - Optional CLI override values
+///
+/// # Returns
+///
+/// Returns a merged and validated `Config`.
+pub fn load_config_with_overrides(overrides: Option<CliOverrides>) -> Result<Config> {
     let global_path = get_global_config_path()?;
     let project_path = get_project_config_path();
 
@@ -351,7 +393,224 @@ pub fn load_config() -> Result<Config> {
         None
     };
 
-    Ok(merge_configs(global_config, project_config))
+    let mut merged = merge_configs(global_config, project_config);
+
+    // Apply CLI overrides if provided
+    if let Some(overrides) = overrides {
+        merged = apply_cli_overrides(merged, overrides);
+    }
+
+    // Validate the final configuration
+    validate_config(&merged)?;
+
+    Ok(merged)
+}
+
+/// Applies CLI overrides to a configuration
+///
+/// CLI arguments have the highest precedence and override all other sources.
+fn apply_cli_overrides(mut config: Config, overrides: CliOverrides) -> Config {
+    // Override default agent
+    if let Some(agent) = overrides.agent {
+        config.default = Some(agent);
+    }
+
+    // Override output format
+    if let Some(format) = overrides.output_format {
+        config.output.format = format;
+    }
+
+    // Override log level
+    if let Some(level) = overrides.log_level {
+        config.logging.level = level;
+    }
+
+    // Override log file
+    if let Some(file) = overrides.log_file {
+        config.logging.file = Some(file);
+    }
+
+    // Override colored output
+    if let Some(no_color) = overrides.no_color {
+        config.output.colored = !no_color;
+    }
+
+    // Override mode-specific settings if mode specified
+    if let Some(mode_str) = overrides.mode {
+        let mode_name = mode_str.to_lowercase();
+        // Check if mode exists in config
+        if get_mode_config_by_name(&config, &mode_name).is_some() {
+            // Override max_retries from CLI
+            if let Some(max_retries) = overrides.max_retries {
+                config.agents.iter_mut().for_each(|(_, agent_config)| {
+                    // Update default agent timeout if not explicitly set
+                    if agent_config.timeout.is_none() && overrides.timeout.is_some() {
+                        agent_config.timeout = overrides.timeout;
+                    }
+                });
+
+                // Update mode config
+                if mode_name == "fast" {
+                    if let Some(ref mut fast) = config.modes.fast {
+                        fast.max_retries = max_retries;
+                    }
+                } else if mode_name == "standard" {
+                    if let Some(ref mut standard) = config.modes.standard {
+                        standard.max_retries = max_retries;
+                    }
+                } else if mode_name == "expert" {
+                    if let Some(ref mut expert) = config.modes.expert {
+                        expert.max_retries = max_retries;
+                    }
+                }
+            }
+
+            // Override timeout from CLI
+            if let Some(timeout) = overrides.timeout {
+                if mode_name == "fast" {
+                    if let Some(ref mut fast) = config.modes.fast {
+                        fast.timeout_exec = timeout;
+                    }
+                } else if mode_name == "standard" {
+                    if let Some(ref mut standard) = config.modes.standard {
+                        standard.timeout_exec = timeout;
+                    }
+                } else if mode_name == "expert" {
+                    if let Some(ref mut expert) = config.modes.expert {
+                        expert.timeout_exec = timeout;
+                    }
+                }
+            }
+        }
+    }
+
+    config
+}
+
+/// Gets mode config by name
+fn get_mode_config_by_name<'a>(config: &'a Config, name: &str) -> Option<&'a ModeConfig> {
+    match name {
+        "fast" => config.modes.fast.as_ref(),
+        "standard" => config.modes.standard.as_ref(),
+        "expert" => config.modes.expert.as_ref(),
+        _ => None,
+    }
+}
+
+/// Validates a configuration
+///
+/// Ensures that:
+/// - Default agent exists in agents map
+/// - Timeouts are positive and reasonable
+/// - Retry limits are reasonable
+/// - Paths are valid (if specified)
+pub fn validate_config(config: &Config) -> Result<()> {
+    // Validate default agent exists
+    // Special case: if default is "claude" (the built-in default) and no agents are defined,
+    // skip validation - this represents Config::default() with no config loaded
+    if let Some(ref default_agent) = config.default {
+        let is_builtin_default_with_no_agents = default_agent == "claude" && config.agents.is_empty();
+        if !is_builtin_default_with_no_agents && !config.agents.contains_key(default_agent) {
+            anyhow::bail!(
+                "Default agent '{}' is not defined in configuration. Available agents: {}",
+                default_agent,
+                config.agents.keys().cloned().collect::<Vec<_>>().join(", ")
+            );
+        }
+    }
+
+    // Validate agent configurations
+    for (name, agent_config) in &config.agents {
+        // Validate timeout if specified
+        if let Some(timeout) = agent_config.timeout {
+            if timeout == 0 {
+                anyhow::bail!("Agent '{}' has timeout of 0, must be positive", name);
+            }
+            if timeout > 86400 {
+                // 24 hours
+                anyhow::bail!(
+                    "Agent '{}' has timeout of {}s (> 24 hours), likely an error",
+                    name,
+                    timeout
+                );
+            }
+        }
+
+        // Validate command exists if specified
+        if let Some(ref command) = agent_config.command {
+            if command.is_empty() {
+                anyhow::bail!("Agent '{}' has empty command", name);
+            }
+        }
+    }
+
+    // Validate mode configurations
+    validate_mode_config("fast", &config.modes.fast)?;
+    validate_mode_config("standard", &config.modes.standard)?;
+    validate_mode_config("expert", &config.modes.expert)?;
+
+    // Validate log file path if specified
+    if let Some(ref log_path) = config.logging.file {
+        // Check if the parent directory exists or can be created
+        if let Some(parent) = log_path.parent() {
+            if !parent.exists() {
+                debug!(
+                    "Log file parent directory does not exist: {}, will be created if needed",
+                    parent.display()
+                );
+            }
+        }
+    }
+
+    debug!("Configuration validation passed");
+    Ok(())
+}
+
+/// Validates a mode configuration
+fn validate_mode_config(mode_name: &str, mode_config: &Option<ModeConfig>) -> Result<()> {
+    if let Some(ref config) = mode_config {
+        // Validate max_depth
+        if config.max_depth > 5 {
+            anyhow::bail!(
+                "Mode '{}' has max_depth of {}, exceeding recommended maximum of 5",
+                mode_name,
+                config.max_depth
+            );
+        }
+
+        // Validate max_retries
+        if config.max_retries > 10 {
+            anyhow::bail!(
+                "Mode '{}' has max_retries of {}, exceeding recommended maximum of 10",
+                mode_name,
+                config.max_retries
+            );
+        }
+
+        // Validate timeouts
+        if config.timeout_plan == 0 {
+            anyhow::bail!(
+                "Mode '{}' has timeout_plan of 0, must be positive",
+                mode_name
+            );
+        }
+        if config.timeout_exec == 0 {
+            anyhow::bail!(
+                "Mode '{}' has timeout_exec of 0, must be positive",
+                mode_name
+            );
+        }
+
+        // Validate timeout_exec is reasonable (not too short)
+        if config.timeout_exec < 60 && mode_name != "fast" {
+            anyhow::bail!(
+                "Mode '{}' has timeout_exec of {}s, less than recommended minimum of 60s",
+                mode_name,
+                config.timeout_exec
+            );
+        }
+    }
+    Ok(())
 }
 
 /// Converts an AgentConfig to an Agent model
@@ -740,5 +999,363 @@ agent = "claude"
         };
         let toml_str = toml::to_string(&config).unwrap();
         assert!(toml_str.contains("level = \"debug\""));
+    }
+
+    // ============================================================================
+    // CLI Override Tests
+    // ============================================================================
+
+    #[test]
+    fn test_apply_cli_overrides_agent() {
+        let config = Config {
+            default: Some("original".to_string()),
+            agents: HashMap::new(),
+            modes: ModeConfigs::default(),
+            output: OutputConfig::default(),
+            logging: LoggingConfig::default(),
+            features: FeatureConfig::default(),
+        };
+
+        let overrides = CliOverrides {
+            agent: Some("cli-agent".to_string()),
+            ..Default::default()
+        };
+
+        let merged = apply_cli_overrides(config, overrides);
+        assert_eq!(merged.default, Some("cli-agent".to_string()));
+    }
+
+    #[test]
+    fn test_apply_cli_overrides_output_format() {
+        let config = Config {
+            default: None,
+            agents: HashMap::new(),
+            modes: ModeConfigs::default(),
+            output: OutputConfig {
+                format: OutputFormat::Text,
+                colored: true,
+                progress: true,
+            },
+            logging: LoggingConfig::default(),
+            features: FeatureConfig::default(),
+        };
+
+        let overrides = CliOverrides {
+            output_format: Some(OutputFormat::Json),
+            ..Default::default()
+        };
+
+        let merged = apply_cli_overrides(config, overrides);
+        assert_eq!(merged.output.format, OutputFormat::Json);
+    }
+
+    #[test]
+    fn test_apply_cli_overrides_log_level() {
+        let config = Config {
+            default: None,
+            agents: HashMap::new(),
+            modes: ModeConfigs::default(),
+            output: OutputConfig::default(),
+            logging: LoggingConfig {
+                level: LogLevel::Info,
+                file: None,
+            },
+            features: FeatureConfig::default(),
+        };
+
+        let overrides = CliOverrides {
+            log_level: Some(LogLevel::Debug),
+            ..Default::default()
+        };
+
+        let merged = apply_cli_overrides(config, overrides);
+        assert_eq!(merged.logging.level, LogLevel::Debug);
+    }
+
+    #[test]
+    fn test_apply_cli_overrides_no_color() {
+        let config = Config {
+            default: None,
+            agents: HashMap::new(),
+            modes: ModeConfigs::default(),
+            output: OutputConfig {
+                format: OutputFormat::Text,
+                colored: true,
+                progress: true,
+            },
+            logging: LoggingConfig::default(),
+            features: FeatureConfig::default(),
+        };
+
+        let overrides = CliOverrides {
+            no_color: Some(true),
+            ..Default::default()
+        };
+
+        let merged = apply_cli_overrides(config, overrides);
+        assert_eq!(merged.output.colored, false);
+    }
+
+    #[test]
+    fn test_apply_cli_overrides_mode_settings() {
+        let config = Config {
+            default: Some("claude".to_string()),
+            agents: {
+                let mut map = HashMap::new();
+                map.insert("claude".to_string(), AgentConfig {
+                    command: Some("claude".to_string()),
+                    model: Some("claude-sonnet-4-6".to_string()),
+                    timeout: None,
+                });
+                map
+            },
+            modes: ModeConfigs {
+                fast: Some(ModeConfig {
+                    model: Some("claude-haiku-4-5".to_string()),
+                    run_tests: false,
+                    verify: true,
+                    max_retries: 1,
+                    max_depth: 2,
+                    timeout_plan: 60,
+                    timeout_exec: 1800,
+                }),
+                standard: None,
+                expert: None,
+            },
+            output: OutputConfig::default(),
+            logging: LoggingConfig::default(),
+            features: FeatureConfig::default(),
+        };
+
+        let overrides = CliOverrides {
+            mode: Some("fast".to_string()),
+            max_retries: Some(5),
+            timeout: Some(2400),
+            ..Default::default()
+        };
+
+        let merged = apply_cli_overrides(config, overrides);
+        assert_eq!(merged.modes.fast.as_ref().unwrap().max_retries, 5);
+        assert_eq!(merged.modes.fast.as_ref().unwrap().timeout_exec, 2400);
+    }
+
+    // ============================================================================
+    // Config Validation Tests
+    // ============================================================================
+
+    #[test]
+    fn test_validate_config_success() {
+        let mut config = Config::default();
+        let agent_config = AgentConfig {
+            command: Some("claude".to_string()),
+            model: Some("claude-sonnet-4-6".to_string()),
+            timeout: Some(3600),
+        };
+        config.agents.insert("claude".to_string(), agent_config);
+
+        assert!(validate_config(&config).is_ok());
+    }
+
+    #[test]
+    fn test_validate_config_missing_default_agent() {
+        let config = Config {
+            default: Some("nonexistent".to_string()),
+            agents: HashMap::new(),
+            modes: ModeConfigs::default(),
+            output: OutputConfig::default(),
+            logging: LoggingConfig::default(),
+            features: FeatureConfig::default(),
+        };
+
+        let result = validate_config(&config);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("not defined in configuration"));
+    }
+
+    #[test]
+    fn test_validate_config_zero_timeout() {
+        let mut config = Config::default();
+        let agent_config = AgentConfig {
+            command: Some("claude".to_string()),
+            model: Some("claude-sonnet-4-6".to_string()),
+            timeout: Some(0), // Invalid
+        };
+        config.agents.insert("claude".to_string(), agent_config);
+        config.default = Some("claude".to_string());
+
+        let result = validate_config(&config);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("timeout of 0"));
+    }
+
+    #[test]
+    fn test_validate_config_excessive_timeout() {
+        let mut config = Config::default();
+        let agent_config = AgentConfig {
+            command: Some("claude".to_string()),
+            model: Some("claude-sonnet-4-6".to_string()),
+            timeout: Some(100000), // > 24 hours
+        };
+        config.agents.insert("claude".to_string(), agent_config);
+        config.default = Some("claude".to_string());
+
+        let result = validate_config(&config);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("likely an error"));
+    }
+
+    #[test]
+    fn test_validate_config_empty_command() {
+        let mut config = Config::default();
+        let agent_config = AgentConfig {
+            command: Some("".to_string()), // Invalid
+            model: Some("claude-sonnet-4-6".to_string()),
+            timeout: Some(3600),
+        };
+        config.agents.insert("claude".to_string(), agent_config);
+        config.default = Some("claude".to_string());
+
+        let result = validate_config(&config);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("empty command"));
+    }
+
+    #[test]
+    fn test_validate_mode_config_excessive_depth() {
+        let config = ModeConfig {
+            model: Some("test".to_string()),
+            run_tests: true,
+            verify: true,
+            max_retries: 3,
+            max_depth: 10, // > 5
+            timeout_plan: 120,
+            timeout_exec: 3600,
+        };
+
+        let result = validate_mode_config("test", &Some(config));
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("exceeding recommended maximum"));
+    }
+
+    #[test]
+    fn test_validate_mode_config_excessive_retries() {
+        let config = ModeConfig {
+            model: Some("test".to_string()),
+            run_tests: true,
+            verify: true,
+            max_retries: 20, // > 10
+            max_depth: 3,
+            timeout_plan: 120,
+            timeout_exec: 3600,
+        };
+
+        let result = validate_mode_config("test", &Some(config));
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("exceeding recommended maximum"));
+    }
+
+    #[test]
+    fn test_validate_mode_config_zero_timeout_plan() {
+        let config = ModeConfig {
+            model: Some("test".to_string()),
+            run_tests: true,
+            verify: true,
+            max_retries: 3,
+            max_depth: 3,
+            timeout_plan: 0, // Invalid
+            timeout_exec: 3600,
+        };
+
+        let result = validate_mode_config("test", &Some(config));
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("must be positive"));
+    }
+
+    #[test]
+    fn test_validate_mode_config_zero_timeout_exec() {
+        let config = ModeConfig {
+            model: Some("test".to_string()),
+            run_tests: true,
+            verify: true,
+            max_retries: 3,
+            max_depth: 3,
+            timeout_plan: 120,
+            timeout_exec: 0, // Invalid
+        };
+
+        let result = validate_mode_config("test", &Some(config));
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("must be positive"));
+    }
+
+    #[test]
+    fn test_validate_mode_config_too_short_timeout() {
+        let config = ModeConfig {
+            model: Some("test".to_string()),
+            run_tests: true,
+            verify: true,
+            max_retries: 3,
+            max_depth: 3,
+            timeout_plan: 120,
+            timeout_exec: 30, // < 60s for non-fast mode
+        };
+
+        let result = validate_mode_config("standard", &Some(config));
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("less than recommended minimum"));
+    }
+
+    #[test]
+    fn test_full_merge_precedence() {
+        // Test: CLI > Project > Global > Defaults
+        let mut global = Config::default();
+        global.default = Some("global-agent".to_string());
+        global.output.format = OutputFormat::Text;
+
+        let project = Config {
+            default: Some("project-agent".to_string()),
+            output: OutputConfig {
+                format: OutputFormat::Json,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        // Merge global and project
+        let merged = merge_configs(Some(global), Some(project));
+
+        // Project overrides global
+        assert_eq!(merged.default, Some("project-agent".to_string()));
+        assert_eq!(merged.output.format, OutputFormat::Json);
+
+        // Now apply CLI override
+        let cli_overrides = CliOverrides {
+            agent: Some("cli-agent".to_string()),
+            output_format: Some(OutputFormat::Json),
+            ..Default::default()
+        };
+
+        let final_config = apply_cli_overrides(merged, cli_overrides);
+
+        // CLI overrides everything
+        assert_eq!(final_config.default, Some("cli-agent".to_string()));
+        assert_eq!(final_config.output.format, OutputFormat::Json);
+    }
+
+    #[test]
+    fn test_validate_mode_fast_mode_short_timeout_allowed() {
+        // Fast mode should allow shorter timeouts
+        let config = ModeConfig {
+            model: Some("claude-haiku-4-5".to_string()),
+            run_tests: false,
+            verify: true,
+            max_retries: 1,
+            max_depth: 2,
+            timeout_plan: 30,
+            timeout_exec: 30, // Short timeout OK for fast mode
+        };
+
+        let result = validate_mode_config("fast", &Some(config));
+        assert!(result.is_ok()); // Should pass for fast mode
     }
 }

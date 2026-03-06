@@ -139,6 +139,7 @@ fn build_env_filter(level: LogLevel) -> EnvFilter {
 /// ```no_run
 /// use ltmatrix::logging::logger::init_logging_with_management;
 /// use ltmatrix::logging::level::LogLevel;
+/// use std::path::Path;
 ///
 /// // Initialize with automatic log file management
 /// let (_guard, log_manager) = init_logging_with_management(LogLevel::Info, None::<&Path>)

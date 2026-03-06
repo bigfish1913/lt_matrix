@@ -20,6 +20,8 @@ mod tests {
 
     #[test]
     fn test_no_color_env_var_disables_colors_when_checking() {
+        // Ensure clean state first
+        env::remove_var("NO_COLOR");
         // Set NO_COLOR environment variable
         env::set_var("NO_COLOR", "1");
 
@@ -33,6 +35,8 @@ mod tests {
 
     #[test]
     fn test_no_color_env_var_empty_value_disables_colors() {
+        // Ensure clean state first
+        env::remove_var("NO_COLOR");
         // Set NO_COLOR to empty string (should still disable per spec)
         env::set_var("NO_COLOR", "");
 
@@ -45,6 +49,8 @@ mod tests {
 
     #[test]
     fn test_no_color_env_var_any_value_disables_colors() {
+        // Ensure clean state first
+        env::remove_var("NO_COLOR");
         // Set NO_COLOR to arbitrary value
         env::set_var("NO_COLOR", "true");
 
@@ -57,6 +63,8 @@ mod tests {
 
     #[test]
     fn test_no_color_env_var_ignored_when_checking_disabled() {
+        // Ensure clean state first
+        env::remove_var("NO_COLOR");
         // Set NO_COLOR environment variable
         env::set_var("NO_COLOR", "1");
 
@@ -70,6 +78,8 @@ mod tests {
 
     #[test]
     fn test_auto_respects_no_color_env_var() {
+        // Ensure clean state first
+        env::remove_var("NO_COLOR");
         // Set NO_COLOR environment variable
         env::set_var("NO_COLOR", "1");
 
@@ -82,6 +92,8 @@ mod tests {
 
     #[test]
     fn test_no_color_env_var_affects_styling() {
+        // Ensure clean state first
+        env::remove_var("NO_COLOR");
         // Set NO_COLOR environment variable
         env::set_var("NO_COLOR", "1");
 

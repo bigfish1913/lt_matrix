@@ -225,6 +225,8 @@ mod acceptance_tests {
 
     #[test]
     fn acceptance_03_no_color_env_var_disables_colors() {
+        // Ensure clean state before starting
+        env::remove_var("NO_COLOR");
         env::set_var("NO_COLOR", "1");
 
         let config = ColorConfig::auto();
@@ -236,6 +238,9 @@ mod acceptance_tests {
 
     #[test]
     fn acceptance_03_no_color_any_value_disables_colors() {
+        // Ensure clean state before starting
+        env::remove_var("NO_COLOR");
+
         let test_values = vec!["1", "true", "yes", "0", "", "any-value"];
 
         for value in test_values {
@@ -252,6 +257,8 @@ mod acceptance_tests {
 
     #[test]
     fn acceptance_03_no_color_affects_output() {
+        // Ensure clean state before starting
+        env::remove_var("NO_COLOR");
         env::set_var("NO_COLOR", "1");
 
         let config = ColorConfig::auto();
