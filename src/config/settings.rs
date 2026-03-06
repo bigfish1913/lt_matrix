@@ -107,19 +107,19 @@ pub struct ModeConfig {
     pub verify: bool,
 
     /// Maximum number of retries
-    #[serde(default)]
+    #[serde(default = "default_max_retries")]
     pub max_retries: u32,
 
     /// Maximum depth for task decomposition
-    #[serde(default)]
+    #[serde(default = "default_max_depth")]
     pub max_depth: u32,
 
     /// Timeout for planning stage (seconds)
-    #[serde(default)]
+    #[serde(default = "default_timeout_plan")]
     pub timeout_plan: u64,
 
     /// Timeout for execution stage (seconds)
-    #[serde(default)]
+    #[serde(default = "default_timeout_exec")]
     pub timeout_exec: u64,
 }
 
@@ -200,6 +200,22 @@ impl Default for LoggingConfig {
 
 fn default_true() -> bool {
     true
+}
+
+fn default_max_retries() -> u32 {
+    3
+}
+
+fn default_max_depth() -> u32 {
+    3
+}
+
+fn default_timeout_plan() -> u64 {
+    300 // 5 minutes
+}
+
+fn default_timeout_exec() -> u64 {
+    3600 // 1 hour
 }
 
 /// Loads configuration from a TOML file
@@ -325,22 +341,111 @@ pub fn get_project_config_path() -> Option<PathBuf> {
 /// These values come from command-line arguments and take highest precedence
 #[derive(Debug, Clone, Default)]
 pub struct CliOverrides {
+    /// Custom config file path
+    pub config_file: Option<PathBuf>,
+
     /// Agent backend to use
     pub agent: Option<String>,
+
     /// Execution mode
     pub mode: Option<String>,
+
     /// Output format
     pub output_format: Option<OutputFormat>,
+
     /// Log level
     pub log_level: Option<LogLevel>,
+
     /// Log file path
     pub log_file: Option<PathBuf>,
+
     /// Maximum retries
     pub max_retries: Option<u32>,
+
     /// Timeout in seconds
     pub timeout: Option<u64>,
+
     /// Disable colored output
     pub no_color: Option<bool>,
+
+    /// Generate plan without execution
+    pub dry_run: bool,
+
+    /// Resume interrupted work
+    pub resume: bool,
+
+    /// Ask for clarification before planning
+    pub ask: bool,
+
+    /// Regenerate the plan
+    pub regenerate_plan: bool,
+
+    /// Strategy for blocked tasks
+    pub on_blocked: Option<String>,
+
+    /// MCP configuration file
+    pub mcp_config: Option<PathBuf>,
+
+    /// Show/hide progress bars
+    pub progress: Option<bool>,
+
+    /// Override test execution
+    pub run_tests: Option<bool>,
+
+    /// Override verification
+    pub verify: Option<bool>,
+}
+
+impl From<crate::cli::Args> for CliOverrides {
+    fn from(args: crate::cli::Args) -> Self {
+        // Determine mode string from flags
+        let mode = if args.fast {
+            Some("fast".to_string())
+        } else if args.expert {
+            Some("expert".to_string())
+        } else if args.mode.is_some() {
+            args.mode.map(|m| m.to_string())
+        } else {
+            None // None means use config file default
+        };
+
+        // Convert CLI log level to config log level
+        let log_level = args.log_level.map(|cli_level| match cli_level {
+            crate::cli::args::LogLevel::Trace => LogLevel::Trace,
+            crate::cli::args::LogLevel::Debug => LogLevel::Debug,
+            crate::cli::args::LogLevel::Info => LogLevel::Info,
+            crate::cli::args::LogLevel::Warn => LogLevel::Warn,
+            crate::cli::args::LogLevel::Error => LogLevel::Error,
+        });
+
+        // Convert CLI output format to config output format
+        let output_format = args.output.map(|cli_format| match cli_format {
+            crate::cli::args::OutputFormat::Text => OutputFormat::Text,
+            crate::cli::args::OutputFormat::Json => OutputFormat::Json,
+            crate::cli::args::OutputFormat::JsonCompact => OutputFormat::Json,
+        });
+
+        CliOverrides {
+            config_file: args.config,
+            agent: args.agent,
+            mode,
+            output_format,
+            log_level,
+            log_file: args.log_file,
+            max_retries: args.max_retries,
+            timeout: args.timeout,
+            no_color: if args.no_color { Some(true) } else { None },
+            dry_run: args.dry_run,
+            resume: args.resume,
+            ask: args.ask,
+            regenerate_plan: args.regenerate_plan,
+            on_blocked: args.on_blocked.map(|s| s.to_string()),
+            mcp_config: args.mcp_config,
+            progress: None, // Not currently exposed in CLI
+            run_tests: None, // Not currently exposed in CLI
+            verify: None, // Not currently exposed in CLI
+        }
+    }
 }
 
 /// Loads configuration from all available sources
@@ -354,6 +459,34 @@ pub struct CliOverrides {
 /// Returns a merged `Config` or a default config if no files exist.
 pub fn load_config() -> Result<Config> {
     load_config_with_overrides(None)
+}
+
+/// Loads configuration with CLI argument overrides
+///
+/// This is a convenience function that converts CLI arguments to overrides
+/// and loads the final merged configuration.
+///
+/// # Arguments
+///
+/// * `args` - Parsed CLI arguments
+///
+/// # Returns
+///
+/// Returns a merged and validated `Config` with CLI overrides applied.
+///
+/// # Examples
+///
+/// ```no_run
+/// use ltmatrix::cli::Args;
+/// use ltmatrix::config::settings::load_config_from_args;
+///
+/// let args = Args::try_parse_from(["ltmatrix", "--agent", "claude", "goal"])?;
+/// let config = load_config_from_args(args)?;
+/// # Ok::<(), anyhow::Error>(())
+/// ```
+pub fn load_config_from_args(args: crate::cli::Args) -> Result<Config> {
+    let overrides: CliOverrides = args.into();
+    load_config_with_overrides(Some(overrides))
 }
 
 /// Loads configuration with CLI overrides
@@ -664,6 +797,7 @@ pub fn get_default_agent(config: &Config) -> Result<Agent> {
 mod tests {
     use super::*;
     use tempfile::TempDir;
+    use clap::Parser;
 
     #[test]
     fn test_default_config() {
@@ -1357,5 +1491,186 @@ agent = "claude"
 
         let result = validate_mode_config("fast", &Some(config));
         assert!(result.is_ok()); // Should pass for fast mode
+    }
+
+    // ============================================================================
+    // CLI-Config Integration Tests
+    // ============================================================================
+
+    #[test]
+    fn test_load_config_from_args_basic() {
+        // Test with the default "claude" agent which will pass validation
+        let args = crate::cli::Args::try_parse_from([
+            "ltmatrix",
+            "--agent", "claude",
+            "goal"
+        ]).expect("Failed to parse args");
+
+        let result = load_config_from_args(args);
+        assert!(result.is_ok());
+
+        let config = result.unwrap();
+        assert_eq!(config.default, Some("claude".to_string()));
+    }
+
+    #[test]
+    fn test_load_config_from_args_with_mode() {
+        let args = crate::cli::Args::try_parse_from([
+            "ltmatrix",
+            "--fast",
+            "goal"
+        ]).expect("Failed to parse args");
+
+        let result = load_config_from_args(args);
+        assert!(result.is_ok());
+
+        let config = result.unwrap();
+        // Mode should be preserved in CliOverrides even if not directly visible in Config
+        assert_eq!(config.default, Some("claude".to_string())); // Default agent
+    }
+
+    #[test]
+    fn test_load_config_from_args_with_output_format() {
+        let args = crate::cli::Args::try_parse_from([
+            "ltmatrix",
+            "--output", "json",
+            "goal"
+        ]).expect("Failed to parse args");
+
+        let result = load_config_from_args(args);
+        assert!(result.is_ok());
+
+        let config = result.unwrap();
+        assert_eq!(config.output.format, OutputFormat::Json);
+    }
+
+    #[test]
+    fn test_load_config_from_args_with_log_settings() {
+        let args = crate::cli::Args::try_parse_from([
+            "ltmatrix",
+            "--log-level", "debug",
+            "--log-file", "/tmp/test.log",
+            "goal"
+        ]).expect("Failed to parse args");
+
+        let result = load_config_from_args(args);
+        assert!(result.is_ok());
+
+        let config = result.unwrap();
+        assert_eq!(config.logging.level, LogLevel::Debug);
+        assert_eq!(config.logging.file, Some(PathBuf::from("/tmp/test.log")));
+    }
+
+    #[test]
+    fn test_load_config_from_args_no_color() {
+        let args = crate::cli::Args::try_parse_from([
+            "ltmatrix",
+            "--no-color",
+            "goal"
+        ]).expect("Failed to parse args");
+
+        let result = load_config_from_args(args);
+        assert!(result.is_ok());
+
+        let config = result.unwrap();
+        assert_eq!(config.output.colored, false);
+    }
+
+    #[test]
+    fn test_load_config_from_args_with_all_overrides() {
+        let args = crate::cli::Args::try_parse_from([
+            "ltmatrix",
+            "--agent", "claude",
+            "--mode", "expert",
+            "--output", "json",
+            "--log-level", "trace",
+            "--log-file", "/tmp/custom.log",
+            "--max-retries", "7",
+            "--timeout", "2400",
+            "--no-color",
+            "goal"
+        ]).expect("Failed to parse args");
+
+        let result = load_config_from_args(args);
+        assert!(result.is_ok());
+
+        let config = result.unwrap();
+        assert_eq!(config.default, Some("claude".to_string()));
+        assert_eq!(config.output.format, OutputFormat::Json);
+        assert_eq!(config.logging.level, LogLevel::Trace);
+        assert_eq!(config.logging.file, Some(PathBuf::from("/tmp/custom.log")));
+        assert_eq!(config.output.colored, false);
+    }
+
+    #[test]
+    fn test_args_to_overrides_conversion_comprehensive() {
+        // Test all fields are properly converted (no validation required)
+        let args = crate::cli::Args::try_parse_from([
+            "ltmatrix",
+            "--agent", "test-agent",
+            "--mode", "fast",
+            "--output", "json",
+            "--log-level", "debug",
+            "--log-file", "/tmp/test.log",
+            "--max-retries", "5",
+            "--timeout", "1800",
+            "--no-color",
+            "goal"
+        ]).expect("Failed to parse args");
+
+        let overrides: CliOverrides = args.into();
+
+        assert_eq!(overrides.agent, Some("test-agent".to_string()));
+        assert_eq!(overrides.mode, Some("fast".to_string()));
+        assert_eq!(overrides.output_format, Some(OutputFormat::Json));
+        assert_eq!(overrides.log_level, Some(LogLevel::Debug));
+        assert_eq!(overrides.log_file, Some(PathBuf::from("/tmp/test.log")));
+        assert_eq!(overrides.max_retries, Some(5));
+        assert_eq!(overrides.timeout, Some(1800));
+        assert_eq!(overrides.no_color, Some(true));
+    }
+
+    #[test]
+    fn test_args_to_overrides_with_expert_flag() {
+        let args = crate::cli::Args::try_parse_from([
+            "ltmatrix",
+            "--expert",
+            "goal"
+        ]).expect("Failed to parse args");
+
+        let overrides: CliOverrides = args.into();
+        assert_eq!(overrides.mode, Some("expert".to_string()));
+    }
+
+    #[test]
+    fn test_args_to_overrides_without_mode_flags() {
+        let args = crate::cli::Args::try_parse_from([
+            "ltmatrix",
+            "goal"
+        ]).expect("Failed to parse args");
+
+        let overrides: CliOverrides = args.into();
+        assert_eq!(overrides.mode, None); // No mode specified
+    }
+
+    #[test]
+    fn test_args_to_overrides_partial_fields() {
+        // Test with only some fields set (no validation required for conversion)
+        let args = crate::cli::Args::try_parse_from([
+            "ltmatrix",
+            "--agent", "partial-agent",
+            "goal"
+        ]).expect("Failed to parse args");
+
+        let overrides: CliOverrides = args.into();
+
+        assert_eq!(overrides.agent, Some("partial-agent".to_string()));
+        assert_eq!(overrides.mode, None);
+        assert_eq!(overrides.output_format, None);
+        assert_eq!(overrides.log_level, None);
+        assert_eq!(overrides.log_file, None);
+        assert_eq!(overrides.max_retries, None);
+        assert_eq!(overrides.timeout, None);
+        assert_eq!(overrides.no_color, None); // false is None
     }
 }
