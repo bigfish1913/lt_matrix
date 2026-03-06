@@ -6,13 +6,13 @@
 //!
 //! # Supported Backends
 //!
-//! | Name        | Type             |
-//! |-------------|------------------|
-//! | `"claude"`  | [`ClaudeAgent`]  |
-//! | `"opencode"`| [`OpenCodeAgent`]|
+//! | Name          | Type               |
+//! |---------------|--------------------|
+//! | `"claude"`    | [`ClaudeAgent`]    |
+//! | `"opencode"`  | [`OpenCodeAgent`]  |
+//! | `"kimicode"`  | [`KimiCodeAgent`]  |
 //!
-//! Additional backends (KimiCode, Codex) will be registered as they
-//! are implemented.
+//! Additional backends (Codex) will be registered as they are implemented.
 //!
 //! # Usage
 //!
@@ -38,6 +38,7 @@ use anyhow::{anyhow, Result};
 
 use crate::agent::backend::{AgentBackend, AgentConfig, AgentError};
 use crate::agent::claude::ClaudeAgent;
+use crate::agent::kimicode::KimiCodeAgent;
 use crate::agent::opencode::OpenCodeAgent;
 use crate::agent::session::SessionManager;
 use crate::models::Agent;
@@ -90,7 +91,7 @@ impl AgentFactory {
 
     /// Return the names of all backends this factory knows how to create.
     pub fn supported_backends(&self) -> Vec<&'static str> {
-        vec!["claude", "opencode"]
+        vec!["claude", "opencode", "kimicode"]
     }
 
     /// Return `true` if `name` is a recognised backend.
@@ -134,6 +135,7 @@ impl AgentFactory {
         match backend {
             "claude" => self.validate_claude_config(config),
             "opencode" => self.validate_opencode_config(config),
+            "kimicode" => self.validate_kimicode_config(config),
             unknown => Err(AgentError::ConfigValidation {
                 field: "name".to_string(),
                 message: format!("unknown backend '{}'", unknown),
@@ -151,6 +153,14 @@ impl AgentFactory {
                 .name("opencode")
                 .command("opencode")
                 .model("gpt-4")
+                .timeout_secs(3600)
+                .max_retries(3)
+                .enable_session(true)
+                .build()),
+            "kimicode" => Ok(AgentConfig::builder()
+                .name("kimicode")
+                .command("kimi-code")
+                .model("moonshot-v1-128k")
                 .timeout_secs(3600)
                 .max_retries(3)
                 .enable_session(true)
@@ -207,6 +217,23 @@ impl AgentFactory {
                 let backend = OpenCodeAgent::with_agent(agent, session_manager);
                 Ok(Box::new(backend))
             }
+            "kimicode" => {
+                let agent = Agent {
+                    name: config.name.clone(),
+                    command: config.command.clone(),
+                    model: config.model.clone(),
+                    timeout: config.timeout_secs,
+                    is_default: false,
+                };
+
+                let session_manager = SessionManager::default_manager().unwrap_or_else(|_| {
+                    let tmp = std::env::temp_dir().join("ltmatrix-sessions");
+                    SessionManager::new(&tmp).expect("temp-dir session manager creation")
+                });
+
+                let backend = KimiCodeAgent::with_agent(agent, session_manager);
+                Ok(Box::new(backend))
+            }
             unknown => Err(anyhow!("unsupported agent backend '{}'", unknown)),
         }
     }
@@ -232,6 +259,20 @@ impl AgentFactory {
                 field: "name".to_string(),
                 message: format!(
                     "opencode backend requires name='opencode', got '{}'",
+                    config.name
+                ),
+            });
+        }
+        Ok(())
+    }
+
+    /// KimiCode-specific validation rules.
+    fn validate_kimicode_config(&self, config: &AgentConfig) -> Result<(), AgentError> {
+        if config.name != "kimicode" {
+            return Err(AgentError::ConfigValidation {
+                field: "name".to_string(),
+                message: format!(
+                    "kimicode backend requires name='kimicode', got '{}'",
                     config.name
                 ),
             });
@@ -388,5 +429,63 @@ mod tests {
         };
         let factory = AgentFactory::with_factory_config(fc);
         assert!(factory.create_default().is_ok());
+    }
+
+    #[test]
+    fn supported_backends_includes_kimicode() {
+        let factory = AgentFactory::new();
+        assert!(factory.supported_backends().contains(&"kimicode"));
+    }
+
+    #[test]
+    fn is_supported_kimicode() {
+        let factory = AgentFactory::new();
+        assert!(factory.is_supported("kimicode"));
+    }
+
+    #[test]
+    fn create_kimicode_backend() {
+        let factory = AgentFactory::new();
+        let result = factory.create("kimicode");
+        assert!(result.is_ok());
+        let agent = result.unwrap();
+        assert_eq!(agent.backend_name(), "kimicode");
+    }
+
+    #[test]
+    fn create_kimicode_with_custom_config() {
+        let factory = AgentFactory::new();
+        let config = AgentConfig::builder()
+            .name("kimicode")
+            .command("kimi-code")
+            .model("moonshot-v1-32k")
+            .timeout_secs(7200)
+            .max_retries(3)
+            .build();
+        assert!(factory.create_with_config(config).is_ok());
+    }
+
+    #[test]
+    fn validate_config_bad_name_for_kimicode_backend() {
+        let factory = AgentFactory::new();
+        let config = AgentConfig::builder()
+            .name("claude")
+            .model("moonshot-v1-128k")
+            .command("kimi-code")
+            .timeout_secs(3600)
+            .build();
+        assert!(factory.validate_config("kimicode", &config).is_err());
+    }
+
+    #[test]
+    fn validate_config_good_kimicode() {
+        let factory = AgentFactory::new();
+        let config = AgentConfig::builder()
+            .name("kimicode")
+            .command("kimi-code")
+            .model("moonshot-v1-128k")
+            .timeout_secs(3600)
+            .build();
+        assert!(factory.validate_config("kimicode", &config).is_ok());
     }
 }

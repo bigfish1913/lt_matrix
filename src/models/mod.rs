@@ -186,6 +186,11 @@ impl Agent {
         Agent::new("opencode", "opencode", "gpt-4", 3600)
     }
 
+    /// Creates the default KimiCode agent configuration
+    pub fn kimicode_default() -> Self {
+        Agent::new("kimicode", "kimi-code", "moonshot-v1-128k", 3600)
+    }
+
     /// Marks this agent as the default
     pub fn with_default(mut self) -> Self {
         self.is_default = true;
