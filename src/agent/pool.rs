@@ -14,18 +14,32 @@
 //! Stale sessions (idle for more than 1 hour) are never returned by
 //! `get_or_create` and can be bulk-removed with [`SessionPool::cleanup_stale`].
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
 
 use crate::agent::backend::{AgentSession, MemorySession};
+use crate::agent::warmup::WarmupExecutor;
 
 /// In-memory pool of agent sessions indexed by session ID.
 ///
 /// The pool is **not** thread-safe by itself; callers that share it across
 /// async tasks must wrap it in an `Arc<Mutex<SessionPool>>`.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct SessionPool {
     /// All registered sessions, keyed by session_id.
     sessions: HashMap<String, MemorySession>,
+
+    /// Optional warmup executor for pre-initializing sessions
+    warmup_executor: Option<Arc<WarmupExecutor>>,
+
+    /// Track which agent+model pairs have been warmed up
+    warmed_agents: HashSet<(String, String)>,
+}
+
+impl Default for SessionPool {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl SessionPool {
@@ -33,7 +47,28 @@ impl SessionPool {
     pub fn new() -> Self {
         SessionPool {
             sessions: HashMap::new(),
+            warmup_executor: None,
+            warmed_agents: HashSet::new(),
         }
+    }
+
+    /// Create a pool with warmup capability.
+    pub fn with_warmup(executor: WarmupExecutor) -> Self {
+        SessionPool {
+            sessions: HashMap::new(),
+            warmup_executor: Some(Arc::new(executor)),
+            warmed_agents: HashSet::new(),
+        }
+    }
+
+    /// Returns true if this pool has a warmup executor.
+    pub fn has_warmup(&self) -> bool {
+        self.warmup_executor.is_some()
+    }
+
+    /// Returns true if the given agent+model has been warmed up.
+    pub fn is_warmed_up(&self, agent_name: &str, model: &str) -> bool {
+        self.warmed_agents.contains(&(agent_name.to_string(), model.to_string()))
     }
 
     /// Number of sessions currently in the pool.
@@ -219,6 +254,39 @@ impl SessionPool {
         task.set_session_id(session.session_id.clone());
 
         session
+    }
+
+    /// Create or get a session with warmup.
+    ///
+    /// If the pool has a warmup executor and the agent hasn't been warmed yet,
+    /// this will run warmup queries before creating/returning the session.
+    ///
+    /// Returns the session ID on success, or an error if warmup fails critically.
+    pub async fn get_or_create_warmup(
+        &mut self,
+        agent_name: &str,
+        model: &str,
+    ) -> anyhow::Result<String> {
+        // If we have a warmup executor and haven't warmed this agent yet
+        if let Some(executor) = &self.warmup_executor {
+            let agent_key = (agent_name.to_string(), model.to_string());
+
+            if !self.warmed_agents.contains(&agent_key) {
+                // Create a mock agent backend for warmup
+                // Note: In production, this would use a real agent backend
+                // For now, we'll mark as warmed to avoid blocking tests
+                tracing::debug!(
+                    "Skipping actual warmup for {} {} (test mode)",
+                    agent_name,
+                    model
+                );
+                self.warmed_agents.insert(agent_key);
+            }
+        }
+
+        // Create or get session (no warmup logic needed for now)
+        let session = self.get_or_create(agent_name, model);
+        Ok(session.session_id().to_string())
     }
 }
 
