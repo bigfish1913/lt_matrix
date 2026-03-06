@@ -12,8 +12,8 @@ use ltmatrix::{
     models::{Task, TaskStatus},
     pipeline::commit::{commit_tasks, CommitConfig},
 };
-use tempfile::TempDir;
 use std::fs;
+use tempfile::TempDir;
 
 #[tokio::test]
 async fn test_commit_stage_with_task_branches() {
@@ -44,9 +44,7 @@ async fn test_commit_stage_with_task_branches() {
         ..Default::default()
     };
 
-    let (updated_tasks, summary) = commit_tasks(vec![task.clone()], &config)
-        .await
-        .unwrap();
+    let (updated_tasks, summary) = commit_tasks(vec![task.clone()], &config).await.unwrap();
 
     // Verify results
     assert_eq!(summary.total_tasks, 1);
@@ -89,9 +87,7 @@ async fn test_commit_stage_direct_commits() {
         ..Default::default()
     };
 
-    let (_updated_tasks, summary) = commit_tasks(vec![task.clone()], &config)
-        .await
-        .unwrap();
+    let (_updated_tasks, summary) = commit_tasks(vec![task.clone()], &config).await.unwrap();
 
     // Verify results
     assert_eq!(summary.total_tasks, 1);
@@ -128,9 +124,7 @@ async fn test_commit_stage_no_changes() {
         ..Default::default()
     };
 
-    let (_updated_tasks, summary) = commit_tasks(vec![task.clone()], &config)
-        .await
-        .unwrap();
+    let (_updated_tasks, summary) = commit_tasks(vec![task.clone()], &config).await.unwrap();
 
     // Should succeed but with no actual commit
     assert_eq!(summary.total_tasks, 1);
@@ -170,9 +164,7 @@ async fn test_commit_stage_multiple_tasks() {
         ..Default::default()
     };
 
-    let (_updated_tasks1, summary1) = commit_tasks(vec![task1.clone()], &config)
-        .await
-        .unwrap();
+    let (_updated_tasks1, summary1) = commit_tasks(vec![task1.clone()], &config).await.unwrap();
 
     assert_eq!(summary1.committed_tasks, 1);
 
@@ -181,9 +173,7 @@ async fn test_commit_stage_multiple_tasks() {
     fs::write(&file2, "// Feature B").unwrap();
 
     // Commit second task
-    let (_updated_tasks2, summary2) = commit_tasks(vec![task2.clone()], &config)
-        .await
-        .unwrap();
+    let (_updated_tasks2, summary2) = commit_tasks(vec![task2.clone()], &config).await.unwrap();
 
     assert_eq!(summary2.committed_tasks, 1);
 
@@ -266,9 +256,7 @@ async fn test_commit_stage_fast_mode() {
         ..config
     };
 
-    let (_updated_tasks, summary) = commit_tasks(vec![task.clone()], &config)
-        .await
-        .unwrap();
+    let (_updated_tasks, summary) = commit_tasks(vec![task.clone()], &config).await.unwrap();
 
     // Fast mode uses direct commits (no task branches)
     assert_eq!(summary.branches_created, 0);
@@ -304,9 +292,7 @@ async fn test_commit_stage_expert_mode() {
         ..config
     };
 
-    let (_updated_tasks, summary) = commit_tasks(vec![task.clone()], &config)
-        .await
-        .unwrap();
+    let (_updated_tasks, summary) = commit_tasks(vec![task.clone()], &config).await.unwrap();
 
     // Expert mode uses task branches and deletes them after merge
     assert_eq!(summary.branches_created, 1);

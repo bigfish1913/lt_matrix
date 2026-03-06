@@ -80,10 +80,7 @@ mod build_configuration_tests {
     #[test]
     fn test_static_linking_configured() {
         // Verify static linking configuration for musl targets
-        let musl_targets = vec![
-            "x86_64-unknown-linux-musl",
-            "aarch64-unknown-linux-musl",
-        ];
+        let musl_targets = vec!["x86_64-unknown-linux-musl", "aarch64-unknown-linux-musl"];
 
         for target in musl_targets {
             assert!(
@@ -161,10 +158,13 @@ mod target_triple_tests {
             // Verify OS or environment
             let combined = format!("{} {}", os, environment);
             assert!(
-                combined.contains("linux") || combined.contains("darwin") ||
-                combined.contains("windows") || combined.contains("musl") ||
-                combined.contains("gnu") || combined.contains("msvc") ||
-                combined.is_empty(),
+                combined.contains("linux")
+                    || combined.contains("darwin")
+                    || combined.contains("windows")
+                    || combined.contains("musl")
+                    || combined.contains("gnu")
+                    || combined.contains("msvc")
+                    || combined.is_empty(),
                 "Invalid OS/environment in triple: {}",
                 triple
             );
@@ -181,14 +181,14 @@ mod dependency_tests {
         // These are from Cargo.toml
 
         let macos_compatible_crates = vec![
-            "clap",          // CLI parsing (cross-platform)
-            "tokio",         // Async runtime (cross-platform)
-            "serde",         // Serialization (cross-platform)
-            "git2",          // Git operations (supports macOS)
-            "reqwest",       // HTTP client (cross-platform with rustls)
-            "chrono",        // Datetime (cross-platform)
-            "anyhow",        // Error handling (cross-platform)
-            "tracing",       // Logging (cross-platform)
+            "clap",    // CLI parsing (cross-platform)
+            "tokio",   // Async runtime (cross-platform)
+            "serde",   // Serialization (cross-platform)
+            "git2",    // Git operations (supports macOS)
+            "reqwest", // HTTP client (cross-platform with rustls)
+            "chrono",  // Datetime (cross-platform)
+            "anyhow",  // Error handling (cross-platform)
+            "tracing", // Logging (cross-platform)
         ];
 
         // All these should support macOS
@@ -237,10 +237,7 @@ mod feature_flag_tests {
         // From Cargo.toml [features]
         // static = ["git2/vendored-libgit2", "git2/vendored-openssl"]
 
-        let static_features = vec![
-            "git2/vendored-libgit2",
-            "git2/vendored-openssl",
-        ];
+        let static_features = vec!["git2/vendored-libgit2", "git2/vendored-openssl"];
 
         assert!(!static_features.is_empty());
         assert!(static_features.iter().any(|f| f.contains("vendored")));
@@ -283,7 +280,7 @@ mod code_signing_tests {
         let force_flag = "--force";
         let deep_flag = "--deep";
         let sign_flag = "--sign";
-        let adhoc_indicator = "-";  // "-" means ad-hoc
+        let adhoc_indicator = "-"; // "-" means ad-hoc
 
         assert_eq!(sign_command, "codesign");
         assert_eq!(force_flag, "--force");
@@ -342,12 +339,12 @@ mod compatibility_tests {
     #[test]
     fn test_macos_version_compatibility() {
         // Minimum versions supported by the binary
-        let intel_min = "10.13";  // High Sierra
-        let arm_min = "11.0";     // Big Sur (first Apple Silicon release)
+        let intel_min = "10.13"; // High Sierra
+        let arm_min = "11.0"; // Big Sur (first Apple Silicon release)
 
         // These are the minimum versions, not the current version
         assert!(intel_min <= "10.15"); // At least High Sierra
-        assert!(arm_min == "11.0");    // Big Sur for Apple Silicon
+        assert!(arm_min == "11.0"); // Big Sur for Apple Silicon
     }
 
     /// Test that Apple Silicon requires macOS 11+
@@ -374,9 +371,7 @@ mod macos_only_tests {
     #[test]
     fn test_swift_runtime_available() {
         // On macOS, Swift runtime should be available
-        let output = Command::new("swift")
-            .arg("--version")
-            .output();
+        let output = Command::new("swift").arg("--version").output();
 
         // Swift should be installed on macOS
         match output {
@@ -396,9 +391,7 @@ mod macos_only_tests {
     #[test]
     fn test_xcode_tools_available() {
         // clang should be available on macOS
-        let output = Command::new("clang")
-            .arg("--version")
-            .output();
+        let output = Command::new("clang").arg("--version").output();
 
         match output {
             Ok(output) => {

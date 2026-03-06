@@ -10,8 +10,7 @@
 
 use ltmatrix::models::Task;
 use ltmatrix::tasks::scheduler::{
-    calculate_graph_statistics, generate_mermaid_diagram, schedule_tasks,
-    visualize_execution_plan,
+    calculate_graph_statistics, generate_mermaid_diagram, schedule_tasks, visualize_execution_plan,
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -31,32 +30,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             task
         },
         {
-            let mut task =
-                Task::new("task-3", "Create API", "Implement REST API endpoints");
+            let mut task = Task::new("task-3", "Create API", "Implement REST API endpoints");
             task.depends_on = vec!["task-1".to_string()];
             task
         },
         {
-            let mut task =
-                Task::new("task-4", "Write Tests", "Write unit tests for API");
+            let mut task = Task::new("task-4", "Write Tests", "Write unit tests for API");
             task.depends_on = vec!["task-3".to_string()];
             task
         },
         {
-            let mut task = Task::new(
-                "task-5",
-                "Create Frontend",
-                "Build frontend interface",
-            );
+            let mut task = Task::new("task-5", "Create Frontend", "Build frontend interface");
             task.depends_on = vec!["task-1".to_string()];
             task
         },
         {
-            let mut task = Task::new(
-                "task-6",
-                "Integration Tests",
-                "Write integration tests",
-            );
+            let mut task = Task::new("task-6", "Integration Tests", "Write integration tests");
             task.depends_on = vec!["task-3".to_string(), "task-5".to_string()];
             task
         },

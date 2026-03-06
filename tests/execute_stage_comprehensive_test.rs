@@ -4,9 +4,11 @@
 //! Private functions are tested within the module itself in src/pipeline/execute.rs
 
 use ltmatrix::models::{ModeConfig, Task, TaskComplexity, TaskStatus};
-use ltmatrix::pipeline::execute::{ExecuteConfig, ExecutionStatistics, display_execution_statistics};
-use std::path::PathBuf;
+use ltmatrix::pipeline::execute::{
+    display_execution_statistics, ExecuteConfig, ExecutionStatistics,
+};
 use std::collections::HashSet;
+use std::path::PathBuf;
 
 // ============================================================================
 // Configuration Tests

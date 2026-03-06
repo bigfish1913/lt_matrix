@@ -36,7 +36,9 @@ fn test_all_subcommands_have_man_pages() {
 
     for expected in &expected_man_pages {
         assert!(
-            entries.iter().any(|name| name.to_string_lossy().as_ref() == *expected),
+            entries
+                .iter()
+                .any(|name| name.to_string_lossy().as_ref() == *expected),
             "Expected man page {} not found. Generated: {:?}",
             expected,
             entries
@@ -70,17 +72,29 @@ fn test_man_page_roff_structure() {
 
     for man_page in &man_pages {
         let man_path = output_dir.join(man_page);
-        let content = fs::read_to_string(&man_path)
-            .unwrap_or_else(|_| panic!("Failed to read {}", man_page));
+        let content =
+            fs::read_to_string(&man_path).unwrap_or_else(|_| panic!("Failed to read {}", man_page));
 
         // Check for required roff macros
         assert!(content.contains(".TH"), "{} must have TH macro", man_page);
         assert!(content.contains(".SH"), "{} must have SH macro", man_page);
 
         // Check for standard sections
-        assert!(content.contains("NAME"), "{} must have NAME section", man_page);
-        assert!(content.contains("SYNOPSIS"), "{} must have SYNOPSIS section", man_page);
-        assert!(content.contains("DESCRIPTION"), "{} must have DESCRIPTION section", man_page);
+        assert!(
+            content.contains("NAME"),
+            "{} must have NAME section",
+            man_page
+        );
+        assert!(
+            content.contains("SYNOPSIS"),
+            "{} must have SYNOPSIS section",
+            man_page
+        );
+        assert!(
+            content.contains("DESCRIPTION"),
+            "{} must have DESCRIPTION section",
+            man_page
+        );
 
         // Verify .TH comes first (within first 3 lines)
         let lines: Vec<&str> = content.lines().collect();
@@ -147,8 +161,8 @@ fn test_man_page_command_information() {
 /// Test that help text includes man page references
 #[test]
 fn test_help_text_contains_man_references() {
-    use ltmatrix::cli::args::Args;
     use clap::CommandFactory;
+    use ltmatrix::cli::args::Args;
 
     let mut cmd = Args::command();
     let help_text = cmd.render_long_help();
@@ -218,10 +232,13 @@ fn test_man_subcommand_execution() {
 fn test_man_page_creates_nested_directories() {
     let temp_dir = PathBuf::from(env!("CARGO_TARGET_TMPDIR"));
     // Use a UUID-based unique path to avoid conflicts
-    let unique_name = format!("nested_test_{}", std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
-        .as_nanos());
+    let unique_name = format!(
+        "nested_test_{}",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    );
     let nested_dir = temp_dir.join(&unique_name).join("nested").join("man");
 
     // Clean up if it exists from a previous run
@@ -235,10 +252,7 @@ fn test_man_page_creates_nested_directories() {
         result.is_ok(),
         "Should create nested directories successfully"
     );
-    assert!(
-        nested_dir.exists(),
-        "Nested directory should be created"
-    );
+    assert!(nested_dir.exists(), "Nested directory should be created");
     assert!(
         nested_dir.join("ltmatrix.1").exists(),
         "Main man page should exist in nested directory"
@@ -265,7 +279,11 @@ fn test_man_pages_valid_utf8() {
                 .unwrap_or_else(|_| panic!("Failed to read man page as UTF-8: {:?}", path));
 
             // Verify it's not empty
-            assert!(!content.is_empty(), "Man page {:?} should not be empty", path);
+            assert!(
+                !content.is_empty(),
+                "Man page {:?} should not be empty",
+                path
+            );
         }
     }
 }
@@ -315,10 +333,10 @@ fn test_man_page_deterministic() {
     ltmatrix::man::generate_man_pages(&output_dir1).expect("First generation should succeed");
     ltmatrix::man::generate_man_pages(&output_dir2).expect("Second generation should succeed");
 
-    let main_man1 = fs::read_to_string(output_dir1.join("ltmatrix.1"))
-        .expect("Failed to read first man page");
-    let main_man2 = fs::read_to_string(output_dir2.join("ltmatrix.1"))
-        .expect("Failed to read second man page");
+    let main_man1 =
+        fs::read_to_string(output_dir1.join("ltmatrix.1")).expect("Failed to read first man page");
+    let main_man2 =
+        fs::read_to_string(output_dir2.join("ltmatrix.1")).expect("Failed to read second man page");
 
     assert_eq!(
         main_man1, main_man2,
@@ -371,7 +389,10 @@ fn test_man_page_rendering() {
             );
         }
         Err(e) => {
-            println!("Skipping man rendering test: man command failed to run: {}", e);
+            println!(
+                "Skipping man rendering test: man command failed to run: {}",
+                e
+            );
         }
     }
 }

@@ -7,7 +7,9 @@
 //! - Public helper functions
 
 use ltmatrix::models::{ModeConfig, Task, TaskComplexity, TaskStatus};
-use ltmatrix::pipeline::execute::{ExecuteConfig, ExecutionStatistics, display_execution_statistics};
+use ltmatrix::pipeline::execute::{
+    display_execution_statistics, ExecuteConfig, ExecutionStatistics,
+};
 use std::path::PathBuf;
 
 #[test]
@@ -99,7 +101,10 @@ fn test_execution_statistics_structure() {
 
     // Verify calculations
     assert_eq!(stats.completed_tasks + stats.failed_tasks, 95); // 5 pending
-    assert_eq!(stats.simple_tasks + stats.moderate_tasks + stats.complex_tasks, 100);
+    assert_eq!(
+        stats.simple_tasks + stats.moderate_tasks + stats.complex_tasks,
+        100
+    );
 }
 
 #[test]

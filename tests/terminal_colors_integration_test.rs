@@ -55,7 +55,10 @@ mod tests {
         env::set_var("NO_COLOR", "true");
 
         let config = ColorConfig::with_config(true, true);
-        assert!(!config.is_enabled(), "NO_COLOR=<any value> should disable colors");
+        assert!(
+            !config.is_enabled(),
+            "NO_COLOR=<any value> should disable colors"
+        );
 
         // Cleanup
         env::remove_var("NO_COLOR");
@@ -70,7 +73,10 @@ mod tests {
 
         // With check_no_color=false, NO_COLOR should be ignored
         let config = ColorConfig::with_config(true, false);
-        assert!(config.is_enabled(), "NO_COLOR should be ignored when check_no_color=false");
+        assert!(
+            config.is_enabled(),
+            "NO_COLOR should be ignored when check_no_color=false"
+        );
 
         // Cleanup
         env::remove_var("NO_COLOR");
@@ -84,7 +90,10 @@ mod tests {
         env::set_var("NO_COLOR", "1");
 
         let config = ColorConfig::auto();
-        assert!(!config.is_enabled(), "ColorConfig::auto() should respect NO_COLOR");
+        assert!(
+            !config.is_enabled(),
+            "ColorConfig::auto() should respect NO_COLOR"
+        );
 
         // Cleanup
         env::remove_var("NO_COLOR");
@@ -99,7 +108,10 @@ mod tests {
 
         let config = ColorConfig::auto();
         let styled = terminal::success("Test message", config);
-        assert_eq!(styled, "Test message", "Styled text should be plain when NO_COLOR is set");
+        assert_eq!(
+            styled, "Test message",
+            "Styled text should be plain when NO_COLOR is set"
+        );
 
         // Cleanup
         env::remove_var("NO_COLOR");
@@ -121,19 +133,28 @@ mod tests {
     #[test]
     fn test_plain_config_always_disabled() {
         let config = ColorConfig::plain();
-        assert!(!config.is_enabled(), "Plain config should always have colors disabled");
+        assert!(
+            !config.is_enabled(),
+            "Plain config should always have colors disabled"
+        );
     }
 
     #[test]
     fn test_explicit_enabled_overrides_detection() {
         let config = ColorConfig::with_config(true, false);
-        assert!(config.is_enabled(), "Explicit enabled=true should force colors on");
+        assert!(
+            config.is_enabled(),
+            "Explicit enabled=true should force colors on"
+        );
     }
 
     #[test]
     fn test_explicit_disabled_overrides_detection() {
         let config = ColorConfig::with_config(false, false);
-        assert!(!config.is_enabled(), "Explicit enabled=false should force colors off");
+        assert!(
+            !config.is_enabled(),
+            "Explicit enabled=false should force colors off"
+        );
     }
 
     // =========================================================================
@@ -165,7 +186,11 @@ mod tests {
 
         for (input, expected) in test_cases {
             let result = terminal::colorize_status(input, config);
-            assert_eq!(result, expected, "Status '{}' should be '{}' when colors disabled", input, expected);
+            assert_eq!(
+                result, expected,
+                "Status '{}' should be '{}' when colors disabled",
+                input, expected
+            );
         }
     }
 
@@ -176,7 +201,11 @@ mod tests {
 
         for status in unknown_statuses {
             let result = terminal::colorize_status(status, config);
-            assert_eq!(result, status, "Unknown status '{}' should pass through unchanged", status);
+            assert_eq!(
+                result, status,
+                "Unknown status '{}' should pass through unchanged",
+                status
+            );
         }
     }
 
@@ -187,7 +216,10 @@ mod tests {
         // When colors are enabled, status should be uppercase and styled
         let result = terminal::colorize_status("pending", config);
         // Result will have ANSI codes, but should contain "PENDING"
-        assert!(result.contains("PENDING") || result == "pending", "Status should be properly formatted");
+        assert!(
+            result.contains("PENDING") || result == "pending",
+            "Status should be properly formatted"
+        );
     }
 
     // =========================================================================
@@ -218,7 +250,11 @@ mod tests {
 
         for (input, expected) in test_cases {
             let result = terminal::colorize_log_level(input, config);
-            assert_eq!(result, expected, "Log level '{}' should be '{}' when colors disabled", input, expected);
+            assert_eq!(
+                result, expected,
+                "Log level '{}' should be '{}' when colors disabled",
+                input, expected
+            );
         }
     }
 
@@ -229,7 +265,11 @@ mod tests {
 
         for level in unknown_levels {
             let result = terminal::colorize_log_level(level, config);
-            assert_eq!(result, level, "Unknown log level '{}' should pass through unchanged", level);
+            assert_eq!(
+                result, level,
+                "Unknown log level '{}' should pass through unchanged",
+                level
+            );
         }
     }
 
@@ -256,7 +296,11 @@ mod tests {
 
         for progress in test_cases {
             let result = terminal::colorize_progress(progress, config);
-            assert_eq!(result, progress, "Progress '{}' should pass through when colors disabled", progress);
+            assert_eq!(
+                result, progress,
+                "Progress '{}' should pass through when colors disabled",
+                progress
+            );
         }
     }
 
@@ -358,7 +402,7 @@ mod tests {
         let failed_status = terminal::colorize_status("failed", config);
 
         assert_eq!(error_msg, "Task failed");
-        assert_eq!(error_level, "ERROR");  // Returns original when colors disabled
+        assert_eq!(error_level, "ERROR"); // Returns original when colors disabled
         assert_eq!(failed_status, "failed");
     }
 
@@ -384,9 +428,15 @@ mod tests {
     fn test_whitespace_preservation() {
         let config = ColorConfig::plain();
 
-        assert_eq!(terminal::style_text("  test  ", terminal::Color::Red, config), "  test  ");
+        assert_eq!(
+            terminal::style_text("  test  ", terminal::Color::Red, config),
+            "  test  "
+        );
         assert_eq!(terminal::success("  success  ", config), "  success  ");
-        assert_eq!(terminal::colorize_status("  pending  ", config), "  pending  ");
+        assert_eq!(
+            terminal::colorize_status("  pending  ", config),
+            "  pending  "
+        );
         assert_eq!(terminal::colorize_log_level("  info  ", config), "  info  ");
     }
 
@@ -394,7 +444,10 @@ mod tests {
     fn test_newline_preservation() {
         let config = ColorConfig::plain();
 
-        assert_eq!(terminal::success("Line 1\nLine 2", config), "Line 1\nLine 2");
+        assert_eq!(
+            terminal::success("Line 1\nLine 2", config),
+            "Line 1\nLine 2"
+        );
         assert_eq!(terminal::error("Error\nDetails", config), "Error\nDetails");
     }
 

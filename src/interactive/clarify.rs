@@ -93,13 +93,15 @@ impl ClarificationSession {
             anyhow::bail!("Question '{}' does not exist", question_id);
         }
 
-        self.answers.insert(question_id.to_string(), answer.to_string());
+        self.answers
+            .insert(question_id.to_string(), answer.to_string());
         Ok(())
     }
 
     /// Skip a question (uses default value if available)
     pub fn skip_question(&mut self, question_id: &str) -> Result<()> {
-        let question = self.questions
+        let question = self
+            .questions
             .iter()
             .find(|q| q.id == question_id)
             .context(format!("Question '{}' not found", question_id))?;
@@ -109,7 +111,8 @@ impl ClarificationSession {
         }
 
         if let Some(default) = &question.default_value {
-            self.answers.insert(question_id.to_string(), default.clone());
+            self.answers
+                .insert(question_id.to_string(), default.clone());
         }
 
         Ok(())
@@ -182,7 +185,10 @@ fn analyze_goal_ambiguity(goal: &str) -> Vec<ClarificationQuestion> {
 
     // Check for authentication-related ambiguity
     if goal_lower.contains("auth") || goal_lower.contains("login") || goal_lower.contains("user") {
-        if !goal_lower.contains("jwt") && !goal_lower.contains("oauth") && !goal_lower.contains("session") {
+        if !goal_lower.contains("jwt")
+            && !goal_lower.contains("oauth")
+            && !goal_lower.contains("session")
+        {
             questions.push(ClarificationQuestion {
                 id: "auth_method".to_string(),
                 question_text: "Which authentication method should be implemented?".to_string(),
@@ -202,7 +208,10 @@ fn analyze_goal_ambiguity(goal: &str) -> Vec<ClarificationQuestion> {
 
     // Check for API type ambiguity
     if goal_lower.contains("api") {
-        if !goal_lower.contains("rest") && !goal_lower.contains("graphql") && !goal_lower.contains("grpc") {
+        if !goal_lower.contains("rest")
+            && !goal_lower.contains("graphql")
+            && !goal_lower.contains("grpc")
+        {
             questions.push(ClarificationQuestion {
                 id: "api_type".to_string(),
                 question_text: "What type of API should be built?".to_string(),
@@ -220,10 +229,16 @@ fn analyze_goal_ambiguity(goal: &str) -> Vec<ClarificationQuestion> {
     }
 
     // Check for database ambiguity
-    if goal_lower.contains("database") || goal_lower.contains("db") || goal_lower.contains("storage") {
-        if !goal_lower.contains("sql") && !goal_lower.contains("nosql") &&
-           !goal_lower.contains("postgres") && !goal_lower.contains("mysql") &&
-           !goal_lower.contains("mongodb") {
+    if goal_lower.contains("database")
+        || goal_lower.contains("db")
+        || goal_lower.contains("storage")
+    {
+        if !goal_lower.contains("sql")
+            && !goal_lower.contains("nosql")
+            && !goal_lower.contains("postgres")
+            && !goal_lower.contains("mysql")
+            && !goal_lower.contains("mongodb")
+        {
             questions.push(ClarificationQuestion {
                 id: "database_type".to_string(),
                 question_text: "Which database technology should be used?".to_string(),
@@ -244,7 +259,10 @@ fn analyze_goal_ambiguity(goal: &str) -> Vec<ClarificationQuestion> {
 
     // Check for testing ambiguity
     if goal_lower.contains("test") {
-        if !goal_lower.contains("unit") && !goal_lower.contains("integration") && !goal_lower.contains("e2e") {
+        if !goal_lower.contains("unit")
+            && !goal_lower.contains("integration")
+            && !goal_lower.contains("e2e")
+        {
             questions.push(ClarificationQuestion {
                 id: "test_type".to_string(),
                 question_text: "What type of tests are needed?".to_string(),
@@ -266,7 +284,8 @@ fn analyze_goal_ambiguity(goal: &str) -> Vec<ClarificationQuestion> {
     if goal.len() < 30 && !goal.contains(".") {
         questions.push(ClarificationQuestion {
             id: "more_details".to_string(),
-            question_text: "Could you provide more details about what you'd like to accomplish?".to_string(),
+            question_text: "Could you provide more details about what you'd like to accomplish?"
+                .to_string(),
             question_type: QuestionType::Text,
             options: None,
             default_value: None,

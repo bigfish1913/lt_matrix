@@ -14,11 +14,17 @@ async fn test_dry_run_basic_functionality() {
     assert!(!result.tasks.is_empty(), "Should generate tasks");
 
     // Verify that execution plan was created
-    assert!(!result.execution_plan.execution_order.is_empty(), "Should create execution plan");
+    assert!(
+        !result.execution_plan.execution_order.is_empty(),
+        "Should create execution plan"
+    );
 
     // Verify statistics
     assert_eq!(result.statistics.total_tasks, result.tasks.len());
-    assert!(result.statistics.execution_depth > 0, "Should have execution depth");
+    assert!(
+        result.statistics.execution_depth > 0,
+        "Should have execution depth"
+    );
 }
 
 #[tokio::test]
@@ -32,11 +38,20 @@ async fn test_dry_run_with_complex_goal() {
     let result = run_dry_run(goal, &config).await.unwrap();
 
     // Verify we got a reasonable number of tasks
-    assert!(result.tasks.len() >= 3, "Should generate at least 3 tasks for complex goal");
+    assert!(
+        result.tasks.len() >= 3,
+        "Should generate at least 3 tasks for complex goal"
+    );
 
     // Verify execution plan structure
-    assert!(result.execution_plan.max_depth > 1, "Complex tasks should have multiple levels");
-    assert!(!result.execution_plan.critical_path.is_empty(), "Should have critical path");
+    assert!(
+        result.execution_plan.max_depth > 1,
+        "Complex tasks should have multiple levels"
+    );
+    assert!(
+        !result.execution_plan.critical_path.is_empty(),
+        "Should have critical path"
+    );
 }
 
 #[tokio::test]
@@ -49,14 +64,15 @@ async fn test_dry_run_statistics() {
     // Verify statistics are calculated correctly
     assert_eq!(
         result.statistics.total_tasks,
-        result.statistics.simple_tasks + result.statistics.moderate_tasks + result.statistics.complex_tasks,
+        result.statistics.simple_tasks
+            + result.statistics.moderate_tasks
+            + result.statistics.complex_tasks,
         "Total tasks should equal sum of complexity categories"
     );
 
     // Verify execution depth matches plan
     assert_eq!(
-        result.statistics.execution_depth,
-        result.execution_plan.max_depth,
+        result.statistics.execution_depth, result.execution_plan.max_depth,
         "Execution depth should match plan"
     );
 
@@ -139,7 +155,10 @@ async fn test_dry_run_critical_path_identification() {
             let has_direct_dependency = second.depends_on.contains(&first.id);
             let has_common_dependency = !first.depends_on.is_empty()
                 && !second.depends_on.is_empty()
-                && first.depends_on.iter().any(|dep| second.depends_on.contains(dep));
+                && first
+                    .depends_on
+                    .iter()
+                    .any(|dep| second.depends_on.contains(dep));
 
             assert!(
                 has_direct_dependency || has_common_dependency,

@@ -36,26 +36,31 @@ use std::path::Path;
 /// ```
 pub fn generate_man_pages(output_dir: &Path) -> Result<()> {
     // Create output directory if it doesn't exist
-    fs::create_dir_all(output_dir)
-        .context("Failed to create man page output directory")?;
+    fs::create_dir_all(output_dir).context("Failed to create man page output directory")?;
 
     // Get the command structure
     let cmd = crate::cli::args::Args::command();
 
     // Generate man page for the main command
     let mut buffer = Vec::new();
-    clap_mangen::Man::new(cmd.clone()).render(&mut buffer)
+    clap_mangen::Man::new(cmd.clone())
+        .render(&mut buffer)
         .context("Failed to render main man page")?;
 
     let main_man_path = output_dir.join("ltmatrix.1");
-    fs::write(&main_man_path, buffer)
-        .with_context(|| format!("Failed to write main man page to {}", main_man_path.display()))?;
+    fs::write(&main_man_path, buffer).with_context(|| {
+        format!(
+            "Failed to write main man page to {}",
+            main_man_path.display()
+        )
+    })?;
 
     // Generate man pages for each subcommand
     for sub in cmd.get_subcommands() {
         let sub_name = sub.get_name();
         let mut buffer = Vec::new();
-        clap_mangen::Man::new(sub.clone()).render(&mut buffer)
+        clap_mangen::Man::new(sub.clone())
+            .render(&mut buffer)
             .with_context(|| format!("Failed to render man page for subcommand {}", sub_name))?;
 
         let man_filename = format!("ltmatrix-{}.1", sub_name);
@@ -90,7 +95,10 @@ mod tests {
         assert!(release_man.exists(), "Release man page should exist");
 
         let completions_man = output_dir.join("ltmatrix-completions.1");
-        assert!(completions_man.exists(), "Completions man page should exist");
+        assert!(
+            completions_man.exists(),
+            "Completions man page should exist"
+        );
     }
 
     #[test]
@@ -121,7 +129,10 @@ mod tests {
 
         let result = generate_man_pages(&output_dir);
 
-        assert!(result.is_ok(), "Should create directory and generate man pages");
+        assert!(
+            result.is_ok(),
+            "Should create directory and generate man pages"
+        );
         assert!(output_dir.exists(), "Directory should be created");
     }
 }

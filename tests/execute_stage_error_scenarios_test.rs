@@ -22,12 +22,9 @@ async fn test_circular_dependency_detection() {
     task1.depends_on = vec!["task-2".to_string()];
     task2.depends_on = vec!["task-1".to_string()];
 
-    let task_map: HashMap<String, Task> = [
-        (task1.id.clone(), task1),
-        (task2.id.clone(), task2),
-    ]
-    .into_iter()
-    .collect();
+    let task_map: HashMap<String, Task> = [(task1.id.clone(), task1), (task2.id.clone(), task2)]
+        .into_iter()
+        .collect();
 
     // Should detect circular dependency and fail
     let result = ltmatrix::pipeline::execute::get_execution_order(&task_map);
@@ -43,8 +40,7 @@ async fn test_self_dependency_detection() {
     let mut task = Task::new("task-1", "Self Dependent", "Depends on itself");
     task.depends_on = vec!["task-1".to_string()];
 
-    let task_map: HashMap<String, Task> =
-        [(task.id.clone(), task)].into_iter().collect();
+    let task_map: HashMap<String, Task> = [(task.id.clone(), task)].into_iter().collect();
 
     // Should detect self as circular dependency
     let result = ltmatrix::pipeline::execute::get_execution_order(&task_map);
@@ -117,8 +113,7 @@ async fn test_missing_dependency_reference() {
     let mut task = Task::new("task-1", "Test", "Test task");
     task.depends_on = vec!["nonexistent-task".to_string()];
 
-    let task_map: HashMap<String, Task> =
-        [(task.id.clone(), task)].into_iter().collect();
+    let task_map: HashMap<String, Task> = [(task.id.clone(), task)].into_iter().collect();
 
     // Topological sort should fail due to missing dependency
     let result = ltmatrix::pipeline::execute::get_execution_order(&task_map);
@@ -139,32 +134,21 @@ async fn test_empty_task_title_and_description() {
     assert_eq!(task.description, "");
 
     // Prompt building should handle empty strings
-    let task_map: HashMap<String, Task> =
-        [(task.id.clone(), task.clone())].into_iter().collect();
+    let task_map: HashMap<String, Task> = [(task.id.clone(), task.clone())].into_iter().collect();
     let completed: HashSet<String> = HashSet::new();
 
-    let context = ltmatrix::pipeline::execute::build_task_context(
-        &task,
-        &task_map,
-        &completed,
-        "",
-    );
+    let context = ltmatrix::pipeline::execute::build_task_context(&task, &task_map, &completed, "");
 
     assert!(context.is_ok());
 }
 
 #[tokio::test]
 async fn test_task_with_special_characters_in_id() {
-    let task = Task::new(
-        "task-1-with-special-chars_123",
-        "Test",
-        "Test task",
-    );
+    let task = Task::new("task-1-with-special-chars_123", "Test", "Test task");
 
     assert_eq!(task.id, "task-1-with-special-chars_123");
 
-    let task_map: HashMap<String, Task> =
-        [(task.id.clone(), task)].into_iter().collect();
+    let task_map: HashMap<String, Task> = [(task.id.clone(), task)].into_iter().collect();
 
     let order = ltmatrix::pipeline::execute::get_execution_order(&task_map);
     assert!(order.is_ok());
@@ -177,8 +161,7 @@ async fn test_very_long_task_id() {
 
     assert_eq!(task.id.len(), 10_000);
 
-    let task_map: HashMap<String, Task> =
-        [(task.id.clone(), task)].into_iter().collect();
+    let task_map: HashMap<String, Task> = [(task.id.clone(), task)].into_iter().collect();
 
     let order = ltmatrix::pipeline::execute::get_execution_order(&task_map);
     assert!(order.is_ok());
@@ -249,16 +232,11 @@ More content
 "#;
 
     let task = Task::new("task-1", "Multiline", description);
-    let task_map: HashMap<String, Task> =
-        [(task.id.clone(), task.clone())].into_iter().collect();
+    let task_map: HashMap<String, Task> = [(task.id.clone(), task.clone())].into_iter().collect();
     let completed: HashSet<String> = HashSet::new();
 
-    let context = ltmatrix::pipeline::execute::build_task_context(
-        &task,
-        &task_map,
-        &completed,
-        "",
-    ).unwrap();
+    let context =
+        ltmatrix::pipeline::execute::build_task_context(&task, &task_map, &completed, "").unwrap();
 
     // Should preserve multiline formatting
     assert!(context.contains("multiline description"));
@@ -409,16 +387,11 @@ async fn test_build_task_context_handles_unicode() {
         "Description with emoji 🎉 and 中文 characters",
     );
 
-    let task_map: HashMap<String, Task> =
-        [(task.id.clone(), task.clone())].into_iter().collect();
+    let task_map: HashMap<String, Task> = [(task.id.clone(), task.clone())].into_iter().collect();
     let completed: HashSet<String> = HashSet::new();
 
-    let context = ltmatrix::pipeline::execute::build_task_context(
-        &task,
-        &task_map,
-        &completed,
-        "",
-    ).unwrap();
+    let context =
+        ltmatrix::pipeline::execute::build_task_context(&task, &task_map, &completed, "").unwrap();
 
     assert!(context.contains("🚀"));
     assert!(context.contains("🎉"));
@@ -466,8 +439,7 @@ async fn test_execution_statistics_edge_cases() {
 #[tokio::test]
 async fn test_single_task_execution_order() {
     let task = Task::new("only-task", "Only Task", "Single task");
-    let task_map: HashMap<String, Task> =
-        [(task.id.clone(), task)].into_iter().collect();
+    let task_map: HashMap<String, Task> = [(task.id.clone(), task)].into_iter().collect();
 
     let order = ltmatrix::pipeline::execute::get_execution_order(&task_map).unwrap();
 
@@ -482,20 +454,11 @@ async fn test_mode_config_model_selection() {
     let expert_config = ModeConfig::expert_mode();
 
     // Fast mode should use different models
-    assert_ne!(
-        fast_config.model_fast,
-        default_config.model_fast
-    );
+    assert_ne!(fast_config.model_fast, default_config.model_fast);
 
     // Expert mode should use same model for all
-    assert_eq!(
-        expert_config.model_fast,
-        expert_config.model_smart
-    );
+    assert_eq!(expert_config.model_fast, expert_config.model_smart);
 
     // Default should have different models
-    assert_ne!(
-        default_config.model_fast,
-        default_config.model_smart
-    );
+    assert_ne!(default_config.model_fast, default_config.model_smart);
 }

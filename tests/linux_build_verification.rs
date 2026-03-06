@@ -11,9 +11,9 @@
 // Or run the built binary:
 //   ./target/x86_64-unknown-linux-musl/release/ltmatrix --version
 
-use std::process::Command;
-use std::path::Path;
 use std::env;
+use std::path::Path;
+use std::process::Command;
 
 /// Helper function to get the path to the ltmatrix binary
 fn get_binary_path() -> String {
@@ -53,8 +53,7 @@ fn test_binary_exists() {
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        let metadata = path.metadata()
-            .expect("Failed to read binary metadata");
+        let metadata = path.metadata().expect("Failed to read binary metadata");
         let permissions = metadata.permissions();
         let mode = permissions.mode();
 
@@ -137,9 +136,7 @@ fn test_static_linking() {
     }
 
     // Use 'ldd' to check dynamic dependencies
-    let output = Command::new("ldd")
-        .arg(&binary_path)
-        .output();
+    let output = Command::new("ldd").arg(&binary_path).output();
 
     match output {
         Ok(output) => {
@@ -154,7 +151,8 @@ fn test_static_linking() {
                 println!("✓ Binary is fully statically linked");
             } else {
                 // Check if dependencies are minimal
-                let lines: Vec<&str> = ldd_output.lines()
+                let lines: Vec<&str> = ldd_output
+                    .lines()
                     .filter(|line| !line.contains("ld-musl") && !line.trim().is_empty())
                     .collect();
 
@@ -186,9 +184,7 @@ fn test_cli_subcommands() {
     }
 
     // Test that we can list available subcommands
-    let output = Command::new(&binary_path)
-        .arg("help")
-        .output();
+    let output = Command::new(&binary_path).arg("help").output();
 
     if let Ok(output) = output {
         let help_text = String::from_utf8_lossy(&output.stdout);
@@ -221,16 +217,10 @@ fn test_no_crash_on_basic_commands() {
     }
 
     // Test various basic commands that shouldn't crash
-    let test_args = vec![
-        vec!["--version"],
-        vec!["--help"],
-        vec!["help"],
-    ];
+    let test_args = vec![vec!["--version"], vec!["--help"], vec!["help"]];
 
     for args in test_args {
-        let output = Command::new(&binary_path)
-            .args(&args)
-            .output();
+        let output = Command::new(&binary_path).args(&args).output();
 
         match output {
             Ok(output) => {
@@ -300,10 +290,7 @@ fn test_binary_properties() {
     );
 
     // Check file size is non-zero
-    assert!(
-        metadata.len() > 0,
-        "Binary has zero size"
-    );
+    assert!(metadata.len() > 0, "Binary has zero size");
 }
 
 #[cfg(test)]
@@ -330,10 +317,7 @@ mod regression_tests {
         if let Ok(output) = output {
             // Should fail gracefully, not crash
             let status = output.status.code().unwrap_or(-1);
-            assert!(
-                status >= 0,
-                "Binary crashed with invalid config path"
-            );
+            assert!(status >= 0, "Binary crashed with invalid config path");
         }
     }
 
@@ -349,17 +333,12 @@ mod regression_tests {
 
         let long_arg = "a".repeat(10000);
 
-        let output = Command::new(&binary_path)
-            .arg(&long_arg)
-            .output();
+        let output = Command::new(&binary_path).arg(&long_arg).output();
 
         if let Ok(output) = output {
             // Should handle gracefully, not buffer overflow
             let status = output.status.code().unwrap_or(-1);
-            assert!(
-                status >= 0,
-                "Binary crashed with very long argument"
-            );
+            assert!(status >= 0, "Binary crashed with very long argument");
         }
     }
 }

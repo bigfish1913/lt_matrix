@@ -6,10 +6,10 @@
 //! - Default values for all fields
 //! - Agent backends, models, timeouts, retry limits
 
-use ltmatrix::config::settings::{Config, AgentConfig, ModeConfig};
+use ltmatrix::config::agent::AgentBackend;
 use ltmatrix::config::agent::AgentConfig as AgentModuleConfig;
 use ltmatrix::config::modes::{ExecutionMode, ModeConfig as ModeModuleConfig};
-use ltmatrix::config::agent::AgentBackend;
+use ltmatrix::config::settings::{AgentConfig, Config, ModeConfig};
 
 // ============================================================================
 // Verification: Config Struct Exists with Required Fields
@@ -171,8 +171,8 @@ fn test_mode_module_config_default_values() {
     assert_eq!(config.model_smart, None);
     assert_eq!(config.max_depth, 3);
     assert_eq!(config.max_retries, 3);
-    assert!(config.run_tests);  // Default: true
-    assert!(config.verify);      // Default: true
+    assert!(config.run_tests); // Default: true
+    assert!(config.verify); // Default: true
     assert_eq!(config.timeout_plan, 120);
     assert_eq!(config.timeout_exec, 3600);
 }
@@ -413,7 +413,10 @@ fn test_agent_config_get_command() {
 
     // Should return custom command if set
     let custom_config = AgentModuleConfig::new("test").with_command("my-custom-agent");
-    assert_eq!(custom_config.get_command(&AgentBackend::Claude), "my-custom-agent");
+    assert_eq!(
+        custom_config.get_command(&AgentBackend::Claude),
+        "my-custom-agent"
+    );
 }
 
 #[test]
@@ -421,17 +424,23 @@ fn test_multiple_agents_in_config() {
     let mut config = Config::default();
 
     // Add multiple agents
-    config.agents.insert("claude".to_string(), AgentConfig {
-        command: Some("claude".to_string()),
-        model: Some("claude-sonnet-4-6".to_string()),
-        timeout: Some(3600),
-    });
+    config.agents.insert(
+        "claude".to_string(),
+        AgentConfig {
+            command: Some("claude".to_string()),
+            model: Some("claude-sonnet-4-6".to_string()),
+            timeout: Some(3600),
+        },
+    );
 
-    config.agents.insert("opencode".to_string(), AgentConfig {
-        command: Some("opencode".to_string()),
-        model: Some("gpt-4".to_string()),
-        timeout: Some(1800),
-    });
+    config.agents.insert(
+        "opencode".to_string(),
+        AgentConfig {
+            command: Some("opencode".to_string()),
+            model: Some("gpt-4".to_string()),
+            timeout: Some(1800),
+        },
+    );
 
     assert_eq!(config.agents.len(), 2);
     assert!(config.agents.contains_key("claude"));

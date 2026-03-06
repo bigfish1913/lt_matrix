@@ -24,9 +24,18 @@ fn test_main_man_page_generation() {
 
     // Verify man page contains expected content
     let content = fs::read_to_string(&main_man_page).expect("Failed to read man page");
-    assert!(content.contains(".TH ltmatrix"), "Man page should have TH macro");
-    assert!(content.contains("ltmatrix"), "Man page should mention ltmatrix");
-    assert!(content.contains("Automate software development tasks"), "Man page should have description");
+    assert!(
+        content.contains(".TH ltmatrix"),
+        "Man page should have TH macro"
+    );
+    assert!(
+        content.contains("ltmatrix"),
+        "Man page should mention ltmatrix"
+    );
+    assert!(
+        content.contains("Automate software development tasks"),
+        "Man page should have description"
+    );
 }
 
 /// Test that man pages are generated for all subcommands
@@ -39,17 +48,29 @@ fn test_subcommand_man_pages() {
 
     // Check for release subcommand man page
     let release_man_page = output_dir.join("ltmatrix-release.1");
-    assert!(release_man_page.exists(), "Release subcommand man page should exist");
+    assert!(
+        release_man_page.exists(),
+        "Release subcommand man page should exist"
+    );
 
     // Check for completions subcommand man page
     let completions_man_page = output_dir.join("ltmatrix-completions.1");
-    assert!(completions_man_page.exists(), "Completions subcommand man page should exist");
+    assert!(
+        completions_man_page.exists(),
+        "Completions subcommand man page should exist"
+    );
 
     // Verify release man page content
-    let release_content = fs::read_to_string(&release_man_page)
-        .expect("Failed to read release man page");
-    assert!(release_content.contains("release"), "Release man page should mention release");
-    assert!(release_content.contains(".TH"), "Release man page should have TH macro");
+    let release_content =
+        fs::read_to_string(&release_man_page).expect("Failed to read release man page");
+    assert!(
+        release_content.contains("release"),
+        "Release man page should mention release"
+    );
+    assert!(
+        release_content.contains(".TH"),
+        "Release man page should have TH macro"
+    );
 }
 
 /// Test that generated man pages are valid roff format
@@ -65,8 +86,14 @@ fn test_man_page_valid_roff() {
 
     // Basic roff validation - check for required macros
     assert!(content.contains(".TH"), "Must have TH macro (title header)");
-    assert!(content.contains(".SH"), "Must have SH macro (section header)");
-    assert!(content.contains(".TP"), "Must have TP macro (tagged paragraph)");
+    assert!(
+        content.contains(".SH"),
+        "Must have SH macro (section header)"
+    );
+    assert!(
+        content.contains(".TP"),
+        "Must have TP macro (tagged paragraph)"
+    );
 
     // Check that .TH appears early in the file (within first 5 lines)
     let lines: Vec<&str> = content.lines().collect();
@@ -88,6 +115,9 @@ fn test_man_page_sections() {
     // Check for standard man page sections
     assert!(content.contains("NAME"), "Must have NAME section");
     assert!(content.contains("SYNOPSIS"), "Must have SYNOPSIS section");
-    assert!(content.contains("DESCRIPTION"), "Must have DESCRIPTION section");
+    assert!(
+        content.contains("DESCRIPTION"),
+        "Must have DESCRIPTION section"
+    );
     assert!(content.contains("OPTIONS"), "Must have OPTIONS section");
 }

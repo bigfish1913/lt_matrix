@@ -135,16 +135,16 @@ fn validate_dependencies(task_map: &HashMap<String, Task>) -> Result<()> {
     for (task_id, task) in task_map.iter() {
         for dep_id in &task.depends_on {
             if !task_map.contains_key(dep_id) {
-                missing_deps.push(format!("{} depends on non-existent task {}", task_id, dep_id));
+                missing_deps.push(format!(
+                    "{} depends on non-existent task {}",
+                    task_id, dep_id
+                ));
             }
         }
     }
 
     if !missing_deps.is_empty() {
-        bail!(
-            "Missing task dependencies:\n{}",
-            missing_deps.join("\n")
-        );
+        bail!("Missing task dependencies:\n{}", missing_deps.join("\n"));
     }
 
     debug!("All dependencies validated successfully");
@@ -188,13 +188,9 @@ fn detect_cycles(task_map: &HashMap<String, Task>) -> Result<CycleDetectionResul
 
     for task_id in task_map.keys() {
         if !visited.contains(task_id) {
-            if let Some(cycle) = dfs_detect_cycle(
-                task_id,
-                task_map,
-                &mut visited,
-                &mut rec_stack,
-                &mut path,
-            ) {
+            if let Some(cycle) =
+                dfs_detect_cycle(task_id, task_map, &mut visited, &mut rec_stack, &mut path)
+            {
                 return Ok(CycleDetectionResult {
                     has_cycle: true,
                     cycle_path: cycle,
@@ -225,9 +221,7 @@ fn dfs_detect_cycle(
     if let Some(task) = task_map.get(task_id) {
         for dep_id in &task.depends_on {
             if !visited.contains(dep_id) {
-                if let Some(cycle) =
-                    dfs_detect_cycle(dep_id, task_map, visited, rec_stack, path)
-                {
+                if let Some(cycle) = dfs_detect_cycle(dep_id, task_map, visited, rec_stack, path) {
                     return Some(cycle);
                 }
             } else if rec_stack.contains(dep_id) {
@@ -438,7 +432,10 @@ pub fn calculate_graph_statistics(task_map: &HashMap<String, Task>) -> Result<Gr
     let total_edges = graph.values().map(|v| v.len()).sum();
 
     // Count root tasks (no dependencies) and leaf tasks (no dependents)
-    let root_tasks = task_map.values().filter(|t| t.depends_on.is_empty()).count();
+    let root_tasks = task_map
+        .values()
+        .filter(|t| t.depends_on.is_empty())
+        .count();
 
     let leaf_tasks = task_map
         .keys()
@@ -579,7 +576,10 @@ mod tests {
 
         let result = schedule_tasks(tasks);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Circular dependency"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Circular dependency"));
     }
 
     #[test]
@@ -624,8 +624,8 @@ mod tests {
 
         // Path should be either task-1 -> task-2 -> task-4/task-5 or task-1 -> task-3 -> task-6
         assert!(
-            plan.critical_path.contains(&"task-2".to_string()) ||
-                plan.critical_path.contains(&"task-3".to_string())
+            plan.critical_path.contains(&"task-2".to_string())
+                || plan.critical_path.contains(&"task-3".to_string())
         );
     }
 
@@ -637,10 +637,8 @@ mod tests {
             create_test_task("task-3", vec!["task-1", "task-2"]),
         ];
 
-        let task_map: HashMap<String, Task> = tasks
-            .into_iter()
-            .map(|t| (t.id.clone(), t))
-            .collect();
+        let task_map: HashMap<String, Task> =
+            tasks.into_iter().map(|t| (t.id.clone(), t)).collect();
 
         let stats = calculate_graph_statistics(&task_map).unwrap();
 
@@ -677,10 +675,8 @@ mod tests {
             create_test_task("task-2", vec!["task-1"]),
         ];
 
-        let task_map: HashMap<String, Task> = tasks
-            .into_iter()
-            .map(|t| (t.id.clone(), t))
-            .collect();
+        let task_map: HashMap<String, Task> =
+            tasks.into_iter().map(|t| (t.id.clone(), t)).collect();
 
         let diagram = generate_mermaid_diagram(&task_map);
 
@@ -719,8 +715,8 @@ mod tests {
         // One of task-2 or task-3 should be parallelizable (equal length paths)
         // The implementation may choose either as the critical path
         assert!(
-            plan.parallelizable_tasks.contains(&"task-2".to_string()) ||
-                plan.parallelizable_tasks.contains(&"task-3".to_string()),
+            plan.parallelizable_tasks.contains(&"task-2".to_string())
+                || plan.parallelizable_tasks.contains(&"task-3".to_string()),
             "Either task-2 or task-3 should be parallelizable"
         );
     }

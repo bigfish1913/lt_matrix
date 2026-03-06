@@ -3,12 +3,9 @@
 //! This module provides high-level Git repository operations including
 //! initialization, .gitignore generation, and branch management.
 
-use std::path::Path;
 use anyhow::{Context, Result};
-use git2::{
-    Repository, RepositoryInitOptions, Signature,
-    Time, Oid,
-};
+use git2::{Oid, Repository, RepositoryInitOptions, Signature, Time};
+use std::path::Path;
 
 /// Initializes a new Git repository in the specified directory.
 ///
@@ -37,8 +34,7 @@ use git2::{
 /// ```
 pub fn init_repo(path: &Path) -> Result<Repository> {
     // Ensure the directory exists
-    std::fs::create_dir_all(path)
-        .context("Failed to create repository directory")?;
+    std::fs::create_dir_all(path).context("Failed to create repository directory")?;
 
     // Handle nested repository protection
     if let Some(parent) = path.parent() {
@@ -51,14 +47,15 @@ pub fn init_repo(path: &Path) -> Result<Repository> {
     let mut opts = RepositoryInitOptions::new();
     opts.no_reinit(true); // Don't re-initialize if already a git repo
 
-    let repo = Repository::init_opts(path, &opts)
-        .context("Failed to initialize git repository")?;
+    let repo = Repository::init_opts(path, &opts).context("Failed to initialize git repository")?;
 
     // Configure user identity
     let mut config = repo.config()?;
-    config.set_str("user.email", "ltmatrix@agent")
+    config
+        .set_str("user.email", "ltmatrix@agent")
         .context("Failed to set user.email")?;
-    config.set_str("user.name", "Ltmatrix Agent")
+    config
+        .set_str("user.name", "Ltmatrix Agent")
         .context("Failed to set user.name")?;
 
     // Generate .gitignore
@@ -94,7 +91,8 @@ pub fn init_repo(path: &Path) -> Result<Repository> {
 pub fn generate_gitignore(path: &Path) -> Result<()> {
     let gitignore_path = path.join(".gitignore");
 
-    let gitignore_content = "# ── Node / JS / TS ──────────────────────────────────────────────────────────
+    let gitignore_content =
+        "# ── Node / JS / TS ──────────────────────────────────────────────────────────
 node_modules/
 npm-debug.log*
 yarn-debug.log*
@@ -265,20 +263,23 @@ pnpm-debug.log*
 /// ```
 pub fn checkout(repo: &Repository, branch_name: &str) -> Result<Oid> {
     // Check if branch already exists
-    let branch_exists = repo.find_branch(branch_name, git2::BranchType::Local).is_ok();
+    let branch_exists = repo
+        .find_branch(branch_name, git2::BranchType::Local)
+        .is_ok();
 
     if !branch_exists {
         // Create new branch at current HEAD
-        let head = repo.head()
-            .context("Failed to get HEAD reference")?;
-        let head_commit = head.peel_to_commit()
+        let head = repo.head().context("Failed to get HEAD reference")?;
+        let head_commit = head
+            .peel_to_commit()
             .context("Failed to peel HEAD to commit")?;
         repo.branch(branch_name, &head_commit, false)
             .context("Failed to create branch")?;
     }
 
     // Get the target branch's commit
-    let obj = repo.revparse_single(&format!("refs/heads/{}", branch_name))?
+    let obj = repo
+        .revparse_single(&format!("refs/heads/{}", branch_name))?
         .peel_to_commit()
         .context("Failed to peel to commit")?;
 
@@ -319,11 +320,9 @@ pub fn checkout(repo: &Repository, branch_name: &str) -> Result<Oid> {
 /// # Ok::<(), anyhow::Error>(())
 /// ```
 pub fn get_current_branch(repo: &Repository) -> Result<String> {
-    let head = repo.head()
-        .context("Failed to get HEAD reference")?;
+    let head = repo.head().context("Failed to get HEAD reference")?;
 
-    let branch_name = head.shorthand()
-        .context("Failed to get branch name")?;
+    let branch_name = head.shorthand().context("Failed to get branch name")?;
 
     Ok(branch_name.to_string())
 }
@@ -350,11 +349,13 @@ fn protect_nested_repo(workspace_path: &Path, parent_path: &Path) -> Result<()> 
     };
 
     // Get the parent repository root
-    let parent_workdir = parent_repo.workdir()
+    let parent_workdir = parent_repo
+        .workdir()
         .context("Failed to get parent repository workdir")?;
 
     // Calculate relative path from parent to workspace
-    let rel_ws = workspace_path.strip_prefix(parent_workdir)
+    let rel_ws = workspace_path
+        .strip_prefix(parent_workdir)
         .context("Workspace is not inside parent repository")?;
 
     let entry = format!("/{}/\n", rel_ws.display());
@@ -362,8 +363,7 @@ fn protect_nested_repo(workspace_path: &Path, parent_path: &Path) -> Result<()> 
 
     // Read existing .gitignore or create empty string
     let existing = if parent_gitignore.exists() {
-        std::fs::read_to_string(&parent_gitignore)
-            .context("Failed to read parent .gitignore")?
+        std::fs::read_to_string(&parent_gitignore).context("Failed to read parent .gitignore")?
     } else {
         String::new()
     };
@@ -381,8 +381,7 @@ fn protect_nested_repo(workspace_path: &Path, parent_path: &Path) -> Result<()> 
         content.push_str(comment);
         content.push_str(&entry);
 
-        std::fs::write(&parent_gitignore, content)
-            .context("Failed to write parent .gitignore")?;
+        std::fs::write(&parent_gitignore, content).context("Failed to write parent .gitignore")?;
 
         tracing::info!(
             "Added {} to parent .gitignore to hide nested repo",
@@ -435,163 +434,156 @@ mod tests {
 
         // Create commit
         let tree = repo.find_tree(tree_oid)?;
-        let oid = repo.commit(
-            Some("HEAD"),
-            &sig,
-            &sig,
-            "Initial commit",
-            &tree,
-            &[],
-        )?;
+        let oid = repo.commit(Some("HEAD"), &sig, &sig, "Initial commit", &tree, &[])?;
 
         Ok(oid)
     }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use tempfile::TempDir;
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use tempfile::TempDir;
 
-    #[test]
-    fn test_init_repo_creates_repository() {
-        let temp_dir = TempDir::new().unwrap();
-        let repo_path = temp_dir.path();
+        #[test]
+        fn test_init_repo_creates_repository() {
+            let temp_dir = TempDir::new().unwrap();
+            let repo_path = temp_dir.path();
 
-        let repo = init_repo(repo_path).unwrap();
+            let repo = init_repo(repo_path).unwrap();
 
-        // Verify repository was created
-        assert!(repo_path.join(".git").exists());
-        assert!(repo_path.join(".gitignore").exists());
+            // Verify repository was created
+            assert!(repo_path.join(".git").exists());
+            assert!(repo_path.join(".gitignore").exists());
 
-        // Verify git config
-        let config = repo.config().unwrap();
-        let email = config.get_string("user.email").unwrap();
-        let name = config.get_string("user.name").unwrap();
-        assert_eq!(email, "ltmatrix@agent");
-        assert_eq!(name, "Ltmatrix Agent");
+            // Verify git config
+            let config = repo.config().unwrap();
+            let email = config.get_string("user.email").unwrap();
+            let name = config.get_string("user.name").unwrap();
+            assert_eq!(email, "ltmatrix@agent");
+            assert_eq!(name, "Ltmatrix Agent");
+        }
+
+        #[test]
+        fn test_generate_gitignore_creates_file() {
+            let temp_dir = TempDir::new().unwrap();
+            let repo_path = temp_dir.path();
+
+            generate_gitignore(repo_path).unwrap();
+
+            let gitignore_path = repo_path.join(".gitignore");
+            assert!(gitignore_path.exists());
+
+            let content = std::fs::read_to_string(&gitignore_path).unwrap();
+
+            // Verify some key patterns are present
+            assert!(content.contains("node_modules/"));
+            assert!(content.contains("__pycache__/"));
+            assert!(content.contains("/target/"));
+            assert!(content.contains(".env"));
+        }
+
+        #[test]
+        fn test_checkout_creates_new_branch() {
+            let temp_dir = TempDir::new().unwrap();
+            let repo_path = temp_dir.path();
+
+            let repo = init_repo(repo_path).unwrap();
+
+            // Create an initial commit first
+            create_initial_commit(&repo).unwrap();
+
+            let _head_commit = checkout(&repo, "feature-branch").unwrap();
+
+            // Verify we're on the new branch
+            let branch = get_current_branch(&repo).unwrap();
+            assert_eq!(branch, "feature-branch");
+        }
+
+        #[test]
+        fn test_checkout_switches_existing_branch() {
+            let temp_dir = TempDir::new().unwrap();
+            let repo_path = temp_dir.path();
+
+            let repo = init_repo(repo_path).unwrap();
+
+            // Create an initial commit first
+            create_initial_commit(&repo).unwrap();
+
+            // Create a branch
+            checkout(&repo, "existing-branch").unwrap();
+
+            // Switch back to master (default branch)
+            let _main_head = repo.head().unwrap();
+            repo.set_head("refs/heads/master").unwrap();
+
+            // Switch back to the existing branch
+            checkout(&repo, "existing-branch").unwrap();
+
+            let branch = get_current_branch(&repo).unwrap();
+            assert_eq!(branch, "existing-branch");
+        }
+
+        #[test]
+        fn test_get_current_branch() {
+            let temp_dir = TempDir::new().unwrap();
+            let repo_path = temp_dir.path();
+
+            let repo = init_repo(repo_path).unwrap();
+
+            // Create an initial commit first
+            create_initial_commit(&repo).unwrap();
+
+            // Default branch should be "master" (git2 default)
+            let branch = get_current_branch(&repo).unwrap();
+            assert_eq!(branch, "master");
+
+            // Create and checkout a new branch
+            checkout(&repo, "test-branch").unwrap();
+            let branch = get_current_branch(&repo).unwrap();
+            assert_eq!(branch, "test-branch");
+        }
+
+        #[test]
+        fn test_create_signature() {
+            let sig = create_signature("Test Author", "test@example.com").unwrap();
+
+            assert_eq!(sig.name(), Some("Test Author"));
+            assert_eq!(sig.email(), Some("test@example.com"));
+        }
+
+        #[test]
+        fn test_protect_nested_repo() {
+            // Create parent repository
+            let parent_dir = TempDir::new().unwrap();
+            let _parent_repo = Repository::init(parent_dir.path()).unwrap();
+
+            // Create child workspace inside parent
+            let workspace_path = parent_dir.path().join("workspace");
+
+            protect_nested_repo(&workspace_path, parent_dir.path()).unwrap();
+
+            // Verify parent .gitignore was updated
+            let parent_gitignore = parent_dir.path().join(".gitignore");
+            assert!(parent_gitignore.exists());
+
+            let content = std::fs::read_to_string(&parent_gitignore).unwrap();
+            assert!(content.contains("/workspace/"));
+        }
+
+        #[test]
+        fn test_generate_gitignore_idempotent() {
+            let temp_dir = TempDir::new().unwrap();
+            let repo_path = temp_dir.path();
+
+            // Call generate_gitignore twice
+            generate_gitignore(repo_path).unwrap();
+            let first_content = std::fs::read_to_string(repo_path.join(".gitignore")).unwrap();
+
+            generate_gitignore(repo_path).unwrap();
+            let second_content = std::fs::read_to_string(repo_path.join(".gitignore")).unwrap();
+
+            // Content should be identical
+            assert_eq!(first_content, second_content);
+        }
     }
-
-    #[test]
-    fn test_generate_gitignore_creates_file() {
-        let temp_dir = TempDir::new().unwrap();
-        let repo_path = temp_dir.path();
-
-        generate_gitignore(repo_path).unwrap();
-
-        let gitignore_path = repo_path.join(".gitignore");
-        assert!(gitignore_path.exists());
-
-        let content = std::fs::read_to_string(&gitignore_path).unwrap();
-
-        // Verify some key patterns are present
-        assert!(content.contains("node_modules/"));
-        assert!(content.contains("__pycache__/"));
-        assert!(content.contains("/target/"));
-        assert!(content.contains(".env"));
-    }
-
-    #[test]
-    fn test_checkout_creates_new_branch() {
-        let temp_dir = TempDir::new().unwrap();
-        let repo_path = temp_dir.path();
-
-        let repo = init_repo(repo_path).unwrap();
-
-        // Create an initial commit first
-        create_initial_commit(&repo).unwrap();
-
-        let _head_commit = checkout(&repo, "feature-branch").unwrap();
-
-        // Verify we're on the new branch
-        let branch = get_current_branch(&repo).unwrap();
-        assert_eq!(branch, "feature-branch");
-    }
-
-    #[test]
-    fn test_checkout_switches_existing_branch() {
-        let temp_dir = TempDir::new().unwrap();
-        let repo_path = temp_dir.path();
-
-        let repo = init_repo(repo_path).unwrap();
-
-        // Create an initial commit first
-        create_initial_commit(&repo).unwrap();
-
-        // Create a branch
-        checkout(&repo, "existing-branch").unwrap();
-
-        // Switch back to master (default branch)
-        let _main_head = repo.head().unwrap();
-        repo.set_head("refs/heads/master").unwrap();
-
-        // Switch back to the existing branch
-        checkout(&repo, "existing-branch").unwrap();
-
-        let branch = get_current_branch(&repo).unwrap();
-        assert_eq!(branch, "existing-branch");
-    }
-
-    #[test]
-    fn test_get_current_branch() {
-        let temp_dir = TempDir::new().unwrap();
-        let repo_path = temp_dir.path();
-
-        let repo = init_repo(repo_path).unwrap();
-
-        // Create an initial commit first
-        create_initial_commit(&repo).unwrap();
-
-        // Default branch should be "master" (git2 default)
-        let branch = get_current_branch(&repo).unwrap();
-        assert_eq!(branch, "master");
-
-        // Create and checkout a new branch
-        checkout(&repo, "test-branch").unwrap();
-        let branch = get_current_branch(&repo).unwrap();
-        assert_eq!(branch, "test-branch");
-    }
-
-    #[test]
-    fn test_create_signature() {
-        let sig = create_signature("Test Author", "test@example.com").unwrap();
-
-        assert_eq!(sig.name(), Some("Test Author"));
-        assert_eq!(sig.email(), Some("test@example.com"));
-    }
-
-    #[test]
-    fn test_protect_nested_repo() {
-        // Create parent repository
-        let parent_dir = TempDir::new().unwrap();
-        let _parent_repo = Repository::init(parent_dir.path()).unwrap();
-
-        // Create child workspace inside parent
-        let workspace_path = parent_dir.path().join("workspace");
-
-        protect_nested_repo(&workspace_path, parent_dir.path()).unwrap();
-
-        // Verify parent .gitignore was updated
-        let parent_gitignore = parent_dir.path().join(".gitignore");
-        assert!(parent_gitignore.exists());
-
-        let content = std::fs::read_to_string(&parent_gitignore).unwrap();
-        assert!(content.contains("/workspace/"));
-    }
-
-    #[test]
-    fn test_generate_gitignore_idempotent() {
-        let temp_dir = TempDir::new().unwrap();
-        let repo_path = temp_dir.path();
-
-        // Call generate_gitignore twice
-        generate_gitignore(repo_path).unwrap();
-        let first_content = std::fs::read_to_string(repo_path.join(".gitignore")).unwrap();
-
-        generate_gitignore(repo_path).unwrap();
-        let second_content = std::fs::read_to_string(repo_path.join(".gitignore")).unwrap();
-
-        // Content should be identical
-        assert_eq!(first_content, second_content);
-    }
-}
 }

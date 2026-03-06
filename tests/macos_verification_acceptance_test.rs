@@ -24,9 +24,9 @@
 
 #![cfg(target_os = "macos")]
 
+use std::env;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::env;
 
 // ============================================================================
 // Test Configuration and Helpers
@@ -128,8 +128,8 @@ mod acceptance_criterion_1 {
             return;
         }
 
-        let output = execute_binary(&binary, &["--version"])
-            .expect("Intel binary --version should work");
+        let output =
+            execute_binary(&binary, &["--version"]).expect("Intel binary --version should work");
 
         assert!(
             output.contains("ltmatrix"),
@@ -149,8 +149,7 @@ mod acceptance_criterion_1 {
             return;
         }
 
-        let output = execute_binary(&binary, &["--help"])
-            .expect("Intel binary --help should work");
+        let output = execute_binary(&binary, &["--help"]).expect("Intel binary --help should work");
 
         assert!(
             output.contains("Usage:") || output.contains("USAGE:"),
@@ -170,8 +169,7 @@ mod acceptance_criterion_1 {
             return;
         }
 
-        let deps = check_otool_dependencies(&binary)
-            .expect("otool should be available on macOS");
+        let deps = check_otool_dependencies(&binary).expect("otool should be available on macOS");
 
         println!("✅ AC1.4: Intel binary dependencies verified:");
         for line in deps.lines() {
@@ -218,15 +216,18 @@ mod acceptance_criterion_2 {
             return;
         }
 
-        let output = execute_binary(&binary, &["--version"])
-            .expect("ARM binary --version should work");
+        let output =
+            execute_binary(&binary, &["--version"]).expect("ARM binary --version should work");
 
         assert!(
             output.contains("ltmatrix"),
             "Version output should contain 'ltmatrix'"
         );
 
-        println!("✅ AC2.2: Apple Silicon binary --version works: {}", output.trim());
+        println!(
+            "✅ AC2.2: Apple Silicon binary --version works: {}",
+            output.trim()
+        );
     }
 
     /// AC2.3: Apple Silicon binary executes --help
@@ -239,8 +240,7 @@ mod acceptance_criterion_2 {
             return;
         }
 
-        let output = execute_binary(&binary, &["--help"])
-            .expect("ARM binary --help should work");
+        let output = execute_binary(&binary, &["--help"]).expect("ARM binary --help should work");
 
         assert!(
             output.contains("Usage:") || output.contains("USAGE:"),
@@ -260,8 +260,7 @@ mod acceptance_criterion_2 {
             return;
         }
 
-        let deps = check_otool_dependencies(&binary)
-            .expect("otool should be available on macOS");
+        let deps = check_otool_dependencies(&binary).expect("otool should be available on macOS");
 
         println!("✅ AC2.4: Apple Silicon binary dependencies verified:");
         for line in deps.lines() {
@@ -294,11 +293,10 @@ mod acceptance_criterion_3 {
             return;
         }
 
-        let intel_version = execute_binary(&intel, &["--version"])
-            .expect("Intel --version should work");
+        let intel_version =
+            execute_binary(&intel, &["--version"]).expect("Intel --version should work");
 
-        let arm_version = execute_binary(&arm, &["--version"])
-            .expect("ARM --version should work");
+        let arm_version = execute_binary(&arm, &["--version"]).expect("ARM --version should work");
 
         assert_eq!(
             intel_version, arm_version,
@@ -351,8 +349,7 @@ mod acceptance_criterion_3 {
                 continue;
             }
 
-            let output = execute_binary(&binary, &["--help"])
-                .expect("Help command should work");
+            let output = execute_binary(&binary, &["--help"]).expect("Help command should work");
 
             // Check for common help text patterns
             let has_usage = output.contains("Usage:") || output.contains("USAGE:");
@@ -388,8 +385,7 @@ mod acceptance_criterion_4 {
             return;
         }
 
-        let deps = check_otool_dependencies(&binary)
-            .expect("otool should be available");
+        let deps = check_otool_dependencies(&binary).expect("otool should be available");
 
         // Check for expected macOS system frameworks
         let has_system_lib = deps.contains("libSystem") || deps.contains("libSystem.B.dylib");
@@ -414,8 +410,7 @@ mod acceptance_criterion_4 {
             return;
         }
 
-        let deps = check_otool_dependencies(&binary)
-            .expect("otool should be available");
+        let deps = check_otool_dependencies(&binary).expect("otool should be available");
 
         // Check for expected macOS system frameworks
         let has_system_lib = deps.contains("libSystem") || deps.contains("libSystem.B.dylib");
@@ -447,8 +442,7 @@ mod acceptance_criterion_4 {
                 continue;
             }
 
-            let deps = check_otool_dependencies(&binary)
-                .expect("otool should be available");
+            let deps = check_otool_dependencies(&binary).expect("otool should be available");
 
             for pattern in &suspicious_patterns {
                 assert!(
@@ -475,10 +469,8 @@ mod acceptance_criterion_4 {
             return;
         }
 
-        let intel_deps = check_otool_dependencies(&intel)
-            .expect("otool should be available");
-        let arm_deps = check_otool_dependencies(&arm)
-            .expect("otool should be available");
+        let intel_deps = check_otool_dependencies(&intel).expect("otool should be available");
+        let arm_deps = check_otool_dependencies(&arm).expect("otool should be available");
 
         // Both should link to CoreFoundation if present
         let intel_cf = intel_deps.contains("CoreFoundation");

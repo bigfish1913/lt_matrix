@@ -7,16 +7,12 @@
 //! - Git repository detection
 //! - Commit message generation
 
+use git2::Repository;
+use ltmatrix::git::{checkout, create_branch, init_repo};
 use ltmatrix::models::{Task, TaskStatus};
 use ltmatrix::pipeline::commit::{commit_tasks, CommitConfig, CommitSummary};
-use ltmatrix::git::{
-    init_repo,
-    create_branch,
-    checkout,
-};
-use git2::Repository;
-use tempfile::TempDir;
 use std::fs;
+use tempfile::TempDir;
 
 /// Helper to create a test task
 fn create_test_task(id: &str, title: &str) -> Task {
@@ -34,7 +30,8 @@ fn create_test_repo() -> (TempDir, Repository) {
     let sig = ltmatrix::git::repository::create_signature("Test", "test@example.com").unwrap();
     let tree_oid = repo.treebuilder(None).unwrap().write().unwrap();
     let tree = repo.find_tree(tree_oid).unwrap();
-    repo.commit(Some("HEAD"), &sig, &sig, "Initial commit", &tree, &[]).unwrap();
+    repo.commit(Some("HEAD"), &sig, &sig, "Initial commit", &tree, &[])
+        .unwrap();
     drop(tree); // Drop before moving repo
 
     (temp_dir, repo)

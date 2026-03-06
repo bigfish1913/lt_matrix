@@ -38,8 +38,7 @@ async fn test_execution_with_empty_task_list() {
 #[tokio::test]
 async fn test_task_with_no_dependencies() {
     let task = Task::new("task-1", "Standalone", "No dependencies");
-    let task_map: HashMap<String, Task> =
-        [(task.id.clone(), task)].into_iter().collect();
+    let task_map: HashMap<String, Task> = [(task.id.clone(), task)].into_iter().collect();
 
     let order = ltmatrix::pipeline::execute::get_execution_order(&task_map).unwrap();
 
@@ -52,8 +51,7 @@ async fn test_task_with_nonexistent_dependency() {
     let mut task = Task::new("task-1", "Test", "Test task");
     task.depends_on = vec!["nonexistent-task".to_string()];
 
-    let task_map: HashMap<String, Task> =
-        [(task.id.clone(), task.clone())].into_iter().collect();
+    let task_map: HashMap<String, Task> = [(task.id.clone(), task.clone())].into_iter().collect();
     let completed_tasks: HashSet<String> = HashSet::new();
 
     // Should not be able to execute with missing dependency
@@ -132,14 +130,17 @@ async fn test_load_empty_memory_file() {
 #[tokio::test]
 async fn test_task_context_with_empty_memory() {
     let task = Task::new("task-1", "Test", "Test task");
-    let task_map: HashMap<String, Task> =
-        [(task.id.clone(), task.clone())].into_iter().collect();
+    let task_map: HashMap<String, Task> = [(task.id.clone(), task.clone())].into_iter().collect();
     let completed_tasks: HashSet<String> = HashSet::new();
     let project_memory = "";
 
-    let context =
-        ltmatrix::pipeline::execute::build_task_context(&task, &task_map, &completed_tasks, project_memory)
-            .unwrap();
+    let context = ltmatrix::pipeline::execute::build_task_context(
+        &task,
+        &task_map,
+        &completed_tasks,
+        project_memory,
+    )
+    .unwrap();
 
     // Should have basic task info even without memory
     assert!(context.contains("Task: Test"));
@@ -149,16 +150,19 @@ async fn test_task_context_with_empty_memory() {
 #[tokio::test]
 async fn test_task_context_with_large_memory() {
     let task = Task::new("task-1", "Test", "Test task");
-    let task_map: HashMap<String, Task> =
-        [(task.id.clone(), task.clone())].into_iter().collect();
+    let task_map: HashMap<String, Task> = [(task.id.clone(), task.clone())].into_iter().collect();
     let completed_tasks: HashSet<String> = HashSet::new();
 
     // Create large memory content (100KB)
     let large_memory = "x".repeat(100_000);
 
-    let context =
-        ltmatrix::pipeline::execute::build_task_context(&task, &task_map, &completed_tasks, &large_memory)
-            .unwrap();
+    let context = ltmatrix::pipeline::execute::build_task_context(
+        &task,
+        &task_map,
+        &completed_tasks,
+        &large_memory,
+    )
+    .unwrap();
 
     // Should handle large memory
     assert!(context.len() > 100_000);
@@ -225,8 +229,7 @@ async fn test_execution_order_with_duplicate_tasks() {
     let task1 = Task::new("task-1", "First", "First");
     let task1_dup = Task::new("task-1", "First Duplicate", "Duplicate ID");
 
-    let task_map: HashMap<String, Task> =
-        [(task1.id.clone(), task1)].into_iter().collect();
+    let task_map: HashMap<String, Task> = [(task1.id.clone(), task1)].into_iter().collect();
 
     // HashMap should handle duplicates by keeping last value
     assert_eq!(task_map.len(), 1);
@@ -240,8 +243,7 @@ async fn test_task_with_self_dependency() {
     let mut task = Task::new("task-1", "Self Dependent", "Depends on self");
     task.depends_on = vec!["task-1".to_string()];
 
-    let task_map: HashMap<String, Task> =
-        [(task.id.clone(), task.clone())].into_iter().collect();
+    let task_map: HashMap<String, Task> = [(task.id.clone(), task.clone())].into_iter().collect();
     let completed_tasks: HashSet<String> = HashSet::new();
 
     // Cannot execute if depends on self and not completed
@@ -390,14 +392,17 @@ async fn test_execution_config_retry_values() {
 async fn test_build_task_context_with_long_description() {
     let long_desc = "A".repeat(10_000);
     let task = Task::new("task-1", "Long Task", long_desc);
-    let task_map: HashMap<String, Task> =
-        [(task.id.clone(), task.clone())].into_iter().collect();
+    let task_map: HashMap<String, Task> = [(task.id.clone(), task.clone())].into_iter().collect();
     let completed_tasks: HashSet<String> = HashSet::new();
     let project_memory = "";
 
-    let context =
-        ltmatrix::pipeline::execute::build_task_context(&task, &task_map, &completed_tasks, project_memory)
-            .unwrap();
+    let context = ltmatrix::pipeline::execute::build_task_context(
+        &task,
+        &task_map,
+        &completed_tasks,
+        project_memory,
+    )
+    .unwrap();
 
     // Should handle long descriptions
     assert!(context.len() > 10_000);
@@ -435,6 +440,9 @@ async fn test_execution_statistics_with_all_complexity_zero() {
     };
 
     // This represents an edge case where complexity wasn't tracked
-    assert_eq!(stats.simple_tasks + stats.moderate_tasks + stats.complex_tasks, 0);
+    assert_eq!(
+        stats.simple_tasks + stats.moderate_tasks + stats.complex_tasks,
+        0
+    );
     assert_eq!(stats.total_tasks, 10);
 }

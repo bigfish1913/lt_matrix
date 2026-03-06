@@ -125,9 +125,9 @@ async fn test_dry_run_statistics_are_consistent() {
     // Verify statistics are internally consistent
     assert_eq!(
         result.statistics.total_tasks,
-        result.statistics.simple_tasks +
-        result.statistics.moderate_tasks +
-        result.statistics.complex_tasks
+        result.statistics.simple_tasks
+            + result.statistics.moderate_tasks
+            + result.statistics.complex_tasks
     );
 
     // Verify execution depth matches plan
@@ -143,10 +143,7 @@ async fn test_dry_run_statistics_are_consistent() {
     );
 
     // Verify total tasks in plan matches result
-    assert_eq!(
-        result.execution_plan.total_tasks,
-        result.tasks.len()
-    );
+    assert_eq!(result.execution_plan.total_tasks, result.tasks.len());
 }
 
 #[tokio::test]
@@ -220,10 +217,20 @@ async fn test_dry_run_critical_path_is_valid_sequence() {
 
     // Verify critical path is in execution order
     for (i, task_id) in result.execution_plan.critical_path.iter().enumerate() {
-        if let Some(pos) = result.execution_plan.execution_order.iter().position(|id| id == task_id) {
+        if let Some(pos) = result
+            .execution_plan
+            .execution_order
+            .iter()
+            .position(|id| id == task_id)
+        {
             // All tasks before this in critical path should come before in execution order
             for prev_task_id in &result.execution_plan.critical_path[..i] {
-                if let Some(prev_pos) = result.execution_plan.execution_order.iter().position(|id| id == prev_task_id) {
+                if let Some(prev_pos) = result
+                    .execution_plan
+                    .execution_order
+                    .iter()
+                    .position(|id| id == prev_task_id)
+                {
                     assert!(
                         prev_pos < pos,
                         "Previous critical path task {} should come before {} in execution order",
@@ -295,7 +302,11 @@ async fn test_dry_run_config_variations() {
     assert!(result.is_ok());
 
     // Test with different execution modes
-    for mode in [ExecutionMode::Fast, ExecutionMode::Standard, ExecutionMode::Expert] {
+    for mode in [
+        ExecutionMode::Fast,
+        ExecutionMode::Standard,
+        ExecutionMode::Expert,
+    ] {
         let config = DryRunConfig {
             execution_mode: mode.clone(),
             ..Default::default()

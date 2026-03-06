@@ -10,12 +10,10 @@
 //!
 //! Tests are organized by acceptance criterion.
 
-use ltmatrix::feature::{
-    FeatureFlag, FeatureFlags, FeatureConfig, RolloutConfig,
-};
+use ltmatrix::feature::{FeatureConfig, FeatureFlag, FeatureFlags, RolloutConfig};
 use std::collections::HashMap;
-use tempfile::TempDir;
 use std::fs;
+use tempfile::TempDir;
 
 // ============================================================================
 // Acceptance Criterion 1: Enable/disable experimental features via config
@@ -31,7 +29,6 @@ fn acceptance_1_1_feature_flag_enum_exists() {
         FeatureFlag::EnableKimiCodeBackend,
         FeatureFlag::EnableCodexBackend,
         FeatureFlag::EnableCustomBackend,
-
         // Pipeline features
         FeatureFlag::EnableParallelExecution,
         FeatureFlag::EnableSmartCache,
@@ -40,20 +37,17 @@ fn acceptance_1_1_feature_flag_enum_exists() {
         FeatureFlag::EnableTaskDependencyGraph,
         FeatureFlag::EnableTaskBatching,
         FeatureFlag::EnablePipelineOptimization,
-
         // Scheduler features
         FeatureFlag::EnablePriorityScheduler,
         FeatureFlag::EnableAdaptiveScheduler,
         FeatureFlag::EnableMlScheduler,
         FeatureFlag::EnableFairShareScheduler,
         FeatureFlag::EnableDeadlineScheduler,
-
         // Monitoring features
         FeatureFlag::EnableDetailedMetrics,
         FeatureFlag::EnableProfiling,
         FeatureFlag::EnableMonitoringDashboard,
         FeatureFlag::EnableAlerting,
-
         // Development features
         FeatureFlag::EnableVerboseDebug,
         FeatureFlag::EnableTracing,
@@ -167,9 +161,11 @@ fn acceptance_2_1_rollout_config_percentage_based() {
     }
 
     // Should be approximately 50% (allow 20% margin for hash distribution)
-    assert!(enabled_count >= 30 && enabled_count <= 70,
+    assert!(
+        enabled_count >= 30 && enabled_count <= 70,
         "Rollout at 50% should enable approximately 50% of users, got {}%",
-        enabled_count);
+        enabled_count
+    );
 }
 
 #[test]
@@ -190,8 +186,7 @@ fn acceptance_2_2_rollout_config_whitelist() {
 #[test]
 fn acceptance_2_3_rollout_config_blacklist() {
     // Create rollout at 100% with blacklist
-    let rollout = RolloutConfig::new(100)
-        .with_excluded_user("problematic_user");
+    let rollout = RolloutConfig::new(100).with_excluded_user("problematic_user");
 
     // Blacklisted user should be disabled
     assert!(!rollout.is_enabled_for("problematic_user"));
@@ -227,16 +222,10 @@ fn acceptance_2_5_feature_flags_with_rollout() {
     let flags = FeatureFlags::new(config);
 
     // Regular users should not have the feature
-    assert!(!flags.is_enabled_for_user(
-        FeatureFlag::EnableParallelExecution,
-        "regular_user"
-    ));
+    assert!(!flags.is_enabled_for_user(FeatureFlag::EnableParallelExecution, "regular_user"));
 
     // Whitelisted user should have the feature
-    assert!(flags.is_enabled_for_user(
-        FeatureFlag::EnableParallelExecution,
-        "special_user"
-    ));
+    assert!(flags.is_enabled_for_user(FeatureFlag::EnableParallelExecution, "special_user"));
 }
 
 #[test]
@@ -269,14 +258,8 @@ excluded_users = ["user3"]
     assert!(rollout.excluded_users.contains("user3"));
 
     // Verify rollout behavior
-    assert!(flags.is_enabled_for_user(
-        FeatureFlag::EnableParallelExecution,
-        "user1"
-    ));
-    assert!(!flags.is_enabled_for_user(
-        FeatureFlag::EnableParallelExecution,
-        "user4"
-    ));
+    assert!(flags.is_enabled_for_user(FeatureFlag::EnableParallelExecution, "user1"));
+    assert!(!flags.is_enabled_for_user(FeatureFlag::EnableParallelExecution, "user4"));
 }
 
 // ============================================================================
@@ -296,12 +279,17 @@ fn acceptance_3_1_all_agent_backend_flags_exist() {
     for flag in backend_flags {
         // Each flag should have a description
         let desc = flag.description();
-        assert!(!desc.is_empty(), "Agent backend flag should have a description");
+        assert!(
+            !desc.is_empty(),
+            "Agent backend flag should have a description"
+        );
 
         // Each flag should have a valid config key
         let key = flag.config_key();
-        assert!(key.contains("backend") || key.contains("opus") || key.contains("opencode"),
-            "Agent backend flag key should be descriptive");
+        assert!(
+            key.contains("backend") || key.contains("opus") || key.contains("opencode"),
+            "Agent backend flag key should be descriptive"
+        );
     }
 }
 
@@ -354,14 +342,18 @@ fn acceptance_3_5_agent_backend_rollout() {
 
     // Should vary by user - test with more users for statistical significance
     let results: Vec<bool> = (0..20)
-        .map(|i| flags.is_enabled_for_user(FeatureFlag::EnableClaudeOpusBackend, &format!("user{}", i)))
+        .map(|i| {
+            flags.is_enabled_for_user(FeatureFlag::EnableClaudeOpusBackend, &format!("user{}", i))
+        })
         .collect();
 
     // Not all should be the same at 25%
     let all_enabled = results.iter().all(|&r| r);
     let all_disabled = results.iter().all(|&r| !r);
-    assert!(!all_enabled && !all_disabled,
-        "At 25% rollout, some users should have it and some shouldn't");
+    assert!(
+        !all_enabled && !all_disabled,
+        "At 25% rollout, some users should have it and some shouldn't"
+    );
 }
 
 // ============================================================================
@@ -451,16 +443,11 @@ fn acceptance_4_5_pipeline_feature_rollout() {
     let flags = FeatureFlags::new(config);
 
     // Beta tester should have it
-    assert!(flags.is_enabled_for_user(
-        FeatureFlag::EnableIncrementalBuilds,
-        "beta_tester"
-    ));
+    assert!(flags.is_enabled_for_user(FeatureFlag::EnableIncrementalBuilds, "beta_tester"));
 
     // Regular user at 10% might not have it (depends on hash)
-    let regular_user_has_it = flags.is_enabled_for_user(
-        FeatureFlag::EnableIncrementalBuilds,
-        "regular_user"
-    );
+    let regular_user_has_it =
+        flags.is_enabled_for_user(FeatureFlag::EnableIncrementalBuilds, "regular_user");
     // We can't assert the exact value due to hash, but we can verify the function works
     let _ = regular_user_has_it;
 }
@@ -529,10 +516,7 @@ fn acceptance_5_4_scheduler_rollout() {
     let flags = FeatureFlags::new(config);
 
     // Function should work correctly
-    let user_result = flags.is_enabled_for_user(
-        FeatureFlag::EnablePriorityScheduler,
-        "test_user"
-    );
+    let user_result = flags.is_enabled_for_user(FeatureFlag::EnablePriorityScheduler, "test_user");
     let _ = user_result; // We can't assert exact value due to hash
 }
 
@@ -571,7 +555,6 @@ fn acceptance_6_1_all_feature_flags_have_descriptions() {
         EnableKimiCodeBackend,
         EnableCodexBackend,
         EnableCustomBackend,
-
         // Pipeline
         EnableParallelExecution,
         EnableSmartCache,
@@ -580,20 +563,17 @@ fn acceptance_6_1_all_feature_flags_have_descriptions() {
         EnableTaskDependencyGraph,
         EnableTaskBatching,
         EnablePipelineOptimization,
-
         // Scheduler
         EnablePriorityScheduler,
         EnableAdaptiveScheduler,
         EnableMlScheduler,
         EnableFairShareScheduler,
         EnableDeadlineScheduler,
-
         // Monitoring
         EnableDetailedMetrics,
         EnableProfiling,
         EnableMonitoringDashboard,
         EnableAlerting,
-
         // Development
         EnableVerboseDebug,
         EnableTracing,
@@ -603,23 +583,36 @@ fn acceptance_6_1_all_feature_flags_have_descriptions() {
 
     for flag in all_flags {
         let desc = flag.description();
-        assert!(!desc.is_empty(),
-            "Feature flag {:?} should have a description", flag);
-        assert!(desc.len() > 10,
-            "Description for {:?} should be meaningful (got: {})", flag, desc);
+        assert!(
+            !desc.is_empty(),
+            "Feature flag {:?} should have a description",
+            flag
+        );
+        assert!(
+            desc.len() > 10,
+            "Description for {:?} should be meaningful (got: {})",
+            flag,
+            desc
+        );
     }
 }
 
 #[test]
 fn acceptance_6_2_descriptions_are_meaningful() {
     // Descriptions should contain relevant keywords
-    assert!(FeatureFlag::EnableParallelExecution.description()
+    assert!(FeatureFlag::EnableParallelExecution
+        .description()
         .contains("parallel"));
-    assert!(FeatureFlag::EnableSmartCache.description()
-        .to_lowercase().contains("cach"));
-    assert!(FeatureFlag::EnableMlScheduler.description()
-        .to_lowercase().contains("ml"));
-    assert!(FeatureFlag::EnableDetailedMetrics.description()
+    assert!(FeatureFlag::EnableSmartCache
+        .description()
+        .to_lowercase()
+        .contains("cach"));
+    assert!(FeatureFlag::EnableMlScheduler
+        .description()
+        .to_lowercase()
+        .contains("ml"));
+    assert!(FeatureFlag::EnableDetailedMetrics
+        .description()
         .contains("metrics"));
 }
 
@@ -658,8 +651,12 @@ fn acceptance_6_3_config_keys_follow_naming_convention() {
     for flag in all_flags {
         let key = flag.config_key();
         // All config keys should start with "enable_"
-        assert!(key.starts_with("enable_"),
-            "Config key for {:?} should start with 'enable_', got: {}", flag, key);
+        assert!(
+            key.starts_with("enable_"),
+            "Config key for {:?} should start with 'enable_', got: {}",
+            flag,
+            key
+        );
         // All config keys should be snake_case
         assert!(!key.contains("-"), "Config key should not contain hyphens");
         assert!(!key.contains(" "), "Config key should not contain spaces");
@@ -676,7 +673,10 @@ fn comprehensive_all_features_disabled() {
     let enabled = flags.enabled_flags();
 
     // No features should be enabled
-    assert!(enabled.is_empty(), "all_disabled() should have no enabled features");
+    assert!(
+        enabled.is_empty(),
+        "all_disabled() should have no enabled features"
+    );
 }
 
 #[test]
@@ -686,12 +686,17 @@ fn comprehensive_only_stable_features_enabled() {
     let experimental = flags.enabled_experimental_flags();
 
     // Should have some enabled features
-    assert!(!enabled.is_empty(), "stable_enabled() should have some enabled features");
+    assert!(
+        !enabled.is_empty(),
+        "stable_enabled() should have some enabled features"
+    );
 
     // Should not have experimental features enabled
-    assert!(experimental.is_empty(),
+    assert!(
+        experimental.is_empty(),
         "stable_enabled() should not enable experimental features, but found: {:?}",
-        experimental);
+        experimental
+    );
 }
 
 #[test]
@@ -717,18 +722,30 @@ fn comprehensive_serialization_roundtrip() {
     let loaded = FeatureFlags::load_from_file(&config_path).unwrap();
 
     // Verify all flags match
-    assert_eq!(loaded.is_enabled(FeatureFlag::EnableClaudeOpusBackend),
-        flags.is_enabled(FeatureFlag::EnableClaudeOpusBackend));
-    assert_eq!(loaded.is_enabled(FeatureFlag::EnableParallelExecution),
-        flags.is_enabled(FeatureFlag::EnableParallelExecution));
-    assert_eq!(loaded.is_enabled(FeatureFlag::EnableDistributedTasks),
-        flags.is_enabled(FeatureFlag::EnableDistributedTasks));
-    assert_eq!(loaded.is_enabled(FeatureFlag::EnableMlScheduler),
-        flags.is_enabled(FeatureFlag::EnableMlScheduler));
-    assert_eq!(loaded.is_enabled(FeatureFlag::EnableMonitoringDashboard),
-        flags.is_enabled(FeatureFlag::EnableMonitoringDashboard));
-    assert_eq!(loaded.is_enabled(FeatureFlag::EnableExperimentalCommands),
-        flags.is_enabled(FeatureFlag::EnableExperimentalCommands));
+    assert_eq!(
+        loaded.is_enabled(FeatureFlag::EnableClaudeOpusBackend),
+        flags.is_enabled(FeatureFlag::EnableClaudeOpusBackend)
+    );
+    assert_eq!(
+        loaded.is_enabled(FeatureFlag::EnableParallelExecution),
+        flags.is_enabled(FeatureFlag::EnableParallelExecution)
+    );
+    assert_eq!(
+        loaded.is_enabled(FeatureFlag::EnableDistributedTasks),
+        flags.is_enabled(FeatureFlag::EnableDistributedTasks)
+    );
+    assert_eq!(
+        loaded.is_enabled(FeatureFlag::EnableMlScheduler),
+        flags.is_enabled(FeatureFlag::EnableMlScheduler)
+    );
+    assert_eq!(
+        loaded.is_enabled(FeatureFlag::EnableMonitoringDashboard),
+        flags.is_enabled(FeatureFlag::EnableMonitoringDashboard)
+    );
+    assert_eq!(
+        loaded.is_enabled(FeatureFlag::EnableExperimentalCommands),
+        flags.is_enabled(FeatureFlag::EnableExperimentalCommands)
+    );
 }
 
 #[test]
@@ -738,15 +755,21 @@ fn comprehensive_production_safe_defaults() {
     let experimental = flags.enabled_experimental_flags();
 
     // No experimental features should be enabled by default
-    assert!(experimental.is_empty(),
+    assert!(
+        experimental.is_empty(),
         "Default configuration should not enable experimental features, but found: {:?}",
-        experimental);
+        experimental
+    );
 
     // Stable features like parallel execution and smart cache should be enabled
-    assert!(flags.is_enabled(FeatureFlag::EnableParallelExecution),
-        "Parallel execution should be enabled by default");
-    assert!(flags.is_enabled(FeatureFlag::EnableSmartCache),
-        "Smart cache should be enabled by default");
+    assert!(
+        flags.is_enabled(FeatureFlag::EnableParallelExecution),
+        "Parallel execution should be enabled by default"
+    );
+    assert!(
+        flags.is_enabled(FeatureFlag::EnableSmartCache),
+        "Smart cache should be enabled by default"
+    );
 }
 
 #[test]
@@ -764,8 +787,14 @@ fn comprehensive_feature_categories() {
     let enabled = flags.enabled_flags();
 
     // Should have features from different categories
-    let pipeline_count = enabled.iter()
-        .filter(|f| matches!(f, FeatureFlag::EnableParallelExecution | FeatureFlag::EnableSmartCache))
+    let pipeline_count = enabled
+        .iter()
+        .filter(|f| {
+            matches!(
+                f,
+                FeatureFlag::EnableParallelExecution | FeatureFlag::EnableSmartCache
+            )
+        })
         .count();
 
     assert!(pipeline_count > 0, "Should have pipeline features enabled");

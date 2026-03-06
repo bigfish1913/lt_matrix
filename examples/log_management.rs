@@ -2,7 +2,7 @@
 //!
 //! Run with: cargo run --example log_management
 
-use ltmatrix::logging::{LogManager, init_logging_with_management, LogLevel};
+use ltmatrix::logging::{init_logging_with_management, LogLevel, LogManager};
 use std::thread;
 use std::time::Duration;
 use tempfile::TempDir;
@@ -46,7 +46,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for info in &log_info {
         let filename = info.path.file_name().unwrap_or_else(|| "unknown".as_ref());
         let size_kb = info.size / 1024;
-        println!("   - {} ({} KB, {} days old)", filename.to_string_lossy(), size_kb, info.age_days);
+        println!(
+            "   - {} ({} KB, {} days old)",
+            filename.to_string_lossy(),
+            size_kb,
+            info.age_days
+        );
     }
 
     // Demo 6: Create multiple log files to demonstrate rotation
@@ -60,7 +65,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         use std::fs::File;
         use std::io::Write;
         let mut file = File::create(&log_path)?;
-        writeln!(file, "Log file {} - Created at {:?}", i, chrono::Local::now())?;
+        writeln!(
+            file,
+            "Log file {} - Created at {:?}",
+            i,
+            chrono::Local::now()
+        )?;
         writeln!(file, "This is test content for rotation demo")?;
 
         thread::sleep(Duration::from_millis(50));

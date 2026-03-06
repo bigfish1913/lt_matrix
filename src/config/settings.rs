@@ -9,8 +9,8 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use tracing::debug;
 
-use crate::models::Agent;
 use crate::feature::FeatureConfig;
+use crate::models::Agent;
 
 /// Root configuration structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -322,8 +322,7 @@ fn merge_agent_configs(
 ///
 /// Returns `~/.ltmatrix/config.toml`
 pub fn get_global_config_path() -> Result<PathBuf> {
-    let home = dirs::home_dir()
-        .context("Failed to determine home directory")?;
+    let home = dirs::home_dir().context("Failed to determine home directory")?;
 
     Ok(home.join(".ltmatrix").join("config.toml"))
 }
@@ -441,9 +440,9 @@ impl From<crate::cli::Args> for CliOverrides {
             regenerate_plan: args.regenerate_plan,
             on_blocked: args.on_blocked.map(|s| s.to_string()),
             mcp_config: args.mcp_config,
-            progress: None, // Not currently exposed in CLI
+            progress: None,  // Not currently exposed in CLI
             run_tests: None, // Not currently exposed in CLI
-            verify: None, // Not currently exposed in CLI
+            verify: None,    // Not currently exposed in CLI
         }
     }
 }
@@ -479,8 +478,9 @@ pub fn load_config() -> Result<Config> {
 /// ```no_run
 /// use ltmatrix::cli::Args;
 /// use ltmatrix::config::settings::load_config_from_args;
+/// use clap::Parser;
 ///
-/// let args = Args::try_parse_from(["ltmatrix", "--agent", "claude", "goal"])?;
+/// let args = Args::parse_from(["ltmatrix", "--agent", "claude", "goal"]);
 /// let config = load_config_from_args(args)?;
 /// # Ok::<(), anyhow::Error>(())
 /// ```
@@ -644,11 +644,7 @@ fn apply_cli_overrides(mut config: Config, overrides: CliOverrides) -> Config {
 }
 
 /// Apply mode-specific overrides to configuration
-fn apply_mode_overrides(
-    config: &mut Config,
-    mode_name: &str,
-    overrides: &CliOverrides,
-) {
+fn apply_mode_overrides(config: &mut Config, mode_name: &str, overrides: &CliOverrides) {
     match mode_name {
         "fast" => {
             // Override fast mode settings
@@ -717,7 +713,8 @@ pub fn validate_config(config: &Config) -> Result<()> {
     // Special case: if default is "claude" (the built-in default) and no agents are defined,
     // skip validation - this represents Config::default() with no config loaded
     if let Some(ref default_agent) = config.default {
-        let is_builtin_default_with_no_agents = default_agent == "claude" && config.agents.is_empty();
+        let is_builtin_default_with_no_agents =
+            default_agent == "claude" && config.agents.is_empty();
         if !is_builtin_default_with_no_agents && !config.agents.contains_key(default_agent) {
             anyhow::bail!(
                 "Default agent '{}' is not defined in configuration. Available agents: {}",
@@ -832,12 +829,14 @@ fn validate_mode_config(mode_name: &str, mode_config: &Option<ModeConfig>) -> Re
 ///
 /// Returns an `Agent` instance or an error if required fields are missing.
 pub fn agent_config_to_agent(name: &str, config: &AgentConfig) -> Result<Agent> {
-    let command = config.command
+    let command = config
+        .command
         .as_ref()
         .ok_or_else(|| anyhow::anyhow!("Agent '{}' missing 'command' field", name))?
         .clone();
 
-    let model = config.model
+    let model = config
+        .model
         .as_ref()
         .ok_or_else(|| anyhow::anyhow!("Agent '{}' missing 'model' field", name))?
         .clone();
@@ -857,11 +856,13 @@ pub fn agent_config_to_agent(name: &str, config: &AgentConfig) -> Result<Agent> 
 ///
 /// Returns the default `Agent` or an error if not found.
 pub fn get_default_agent(config: &Config) -> Result<Agent> {
-    let agent_name = config.default
+    let agent_name = config
+        .default
         .as_ref()
         .ok_or_else(|| anyhow::anyhow!("No default agent configured"))?;
 
-    let agent_config = config.agents
+    let agent_config = config
+        .agents
         .get(agent_name)
         .ok_or_else(|| anyhow::anyhow!("Default agent '{}' not found in config", agent_name))?;
 
@@ -871,8 +872,8 @@ pub fn get_default_agent(config: &Config) -> Result<Agent> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::TempDir;
     use clap::Parser;
+    use tempfile::TempDir;
 
     #[test]
     fn test_default_config() {
@@ -931,7 +932,10 @@ file = "/tmp/ltmatrix.log"
         assert_eq!(config.output.colored, false);
 
         assert_eq!(config.logging.level, LogLevel::Debug);
-        assert_eq!(config.logging.file, Some(PathBuf::from("/tmp/ltmatrix.log")));
+        assert_eq!(
+            config.logging.file,
+            Some(PathBuf::from("/tmp/ltmatrix.log"))
+        );
     }
 
     #[test]
@@ -951,11 +955,14 @@ agent = "claude"
             default: Some("global-agent".to_string()),
             agents: {
                 let mut map = HashMap::new();
-                map.insert("agent1".to_string(), AgentConfig {
-                    command: Some("cmd1".to_string()),
-                    model: Some("model1".to_string()),
-                    timeout: Some(100),
-                });
+                map.insert(
+                    "agent1".to_string(),
+                    AgentConfig {
+                        command: Some("cmd1".to_string()),
+                        model: Some("model1".to_string()),
+                        timeout: Some(100),
+                    },
+                );
                 map
             },
             modes: ModeConfigs {
@@ -987,20 +994,26 @@ agent = "claude"
             default: Some("project-agent".to_string()),
             agents: {
                 let mut map = HashMap::new();
-                map.insert("agent1".to_string(), AgentConfig {
-                    command: Some("cmd1-overridden".to_string()),  // Override command
-                    model: None,  // Keep global model
-                    timeout: Some(200),  // Override timeout
-                });
-                map.insert("agent2".to_string(), AgentConfig {
-                    command: Some("cmd2".to_string()),
-                    model: Some("model2".to_string()),
-                    timeout: Some(150),
-                });
+                map.insert(
+                    "agent1".to_string(),
+                    AgentConfig {
+                        command: Some("cmd1-overridden".to_string()), // Override command
+                        model: None,                                  // Keep global model
+                        timeout: Some(200),                           // Override timeout
+                    },
+                );
+                map.insert(
+                    "agent2".to_string(),
+                    AgentConfig {
+                        command: Some("cmd2".to_string()),
+                        model: Some("model2".to_string()),
+                        timeout: Some(150),
+                    },
+                );
                 map
             },
             modes: ModeConfigs {
-                fast: None,  // Keep global fast
+                fast: None, // Keep global fast
                 standard: Some(ModeConfig {
                     model: Some("project-standard".to_string()),
                     run_tests: true,
@@ -1013,12 +1026,12 @@ agent = "claude"
                 expert: None,
             },
             output: OutputConfig {
-                format: OutputFormat::Json,  // Override format
-                colored: false,  // Override colored
-                progress: true,  // Keep global progress
+                format: OutputFormat::Json, // Override format
+                colored: false,             // Override colored
+                progress: true,             // Keep global progress
             },
             logging: LoggingConfig {
-                level: LogLevel::Debug,  // Override level
+                level: LogLevel::Debug, // Override level
                 file: None,
             },
             features: FeatureConfig::default(),
@@ -1032,8 +1045,8 @@ agent = "claude"
         // agent1 should be merged
         let agent1 = &merged.agents["agent1"];
         assert_eq!(agent1.command, Some("cmd1-overridden".to_string()));
-        assert_eq!(agent1.model, Some("model1".to_string()));  // From global
-        assert_eq!(agent1.timeout, Some(200));  // From project
+        assert_eq!(agent1.model, Some("model1".to_string())); // From global
+        assert_eq!(agent1.timeout, Some(200)); // From project
 
         // agent2 should be from project only
         let agent2 = &merged.agents["agent2"];
@@ -1041,11 +1054,17 @@ agent = "claude"
 
         // Fast mode from global
         assert!(merged.modes.fast.is_some());
-        assert_eq!(merged.modes.fast.unwrap().model, Some("global-fast".to_string()));
+        assert_eq!(
+            merged.modes.fast.unwrap().model,
+            Some("global-fast".to_string())
+        );
 
         // Standard mode from project
         assert!(merged.modes.standard.is_some());
-        assert_eq!(merged.modes.standard.unwrap().model, Some("project-standard".to_string()));
+        assert_eq!(
+            merged.modes.standard.unwrap().model,
+            Some("project-standard".to_string())
+        );
 
         // Output settings from project (with some from global)
         assert_eq!(merged.output.format, OutputFormat::Json);
@@ -1098,7 +1117,10 @@ agent = "claude"
 
         let result = agent_config_to_agent("test-agent", &config);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("missing 'command'"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("missing 'command'"));
     }
 
     #[test]
@@ -1123,7 +1145,7 @@ agent = "claude"
         };
 
         let agent = agent_config_to_agent("test-agent", &config).unwrap();
-        assert_eq!(agent.timeout, 3600);  // Default timeout
+        assert_eq!(agent.timeout, 3600); // Default timeout
     }
 
     #[test]
@@ -1376,11 +1398,14 @@ agent = "claude"
             default: Some("claude".to_string()),
             agents: {
                 let mut map = HashMap::new();
-                map.insert("claude".to_string(), AgentConfig {
-                    command: Some("claude".to_string()),
-                    model: Some("claude-sonnet-4-6".to_string()),
-                    timeout: None,
-                });
+                map.insert(
+                    "claude".to_string(),
+                    AgentConfig {
+                        command: Some("claude".to_string()),
+                        model: Some("claude-sonnet-4-6".to_string()),
+                        timeout: None,
+                    },
+                );
                 map
             },
             modes: ModeConfigs {
@@ -1418,15 +1443,15 @@ agent = "claude"
             on_blocked: None,
             mcp_config: None,
             progress: None,
-            run_tests: Some(true),  // Override from false to true
-            verify: Some(false),    // Override from true to false
+            run_tests: Some(true), // Override from false to true
+            verify: Some(false),   // Override from true to false
         };
 
         let merged = apply_cli_overrides(config, overrides);
         assert_eq!(merged.modes.fast.as_ref().unwrap().max_retries, 5);
         assert_eq!(merged.modes.fast.as_ref().unwrap().timeout_exec, 2400);
-        assert_eq!(merged.modes.fast.as_ref().unwrap().run_tests, true);   // Overridden
-        assert_eq!(merged.modes.fast.as_ref().unwrap().verify, false);     // Overridden
+        assert_eq!(merged.modes.fast.as_ref().unwrap().run_tests, true); // Overridden
+        assert_eq!(merged.modes.fast.as_ref().unwrap().verify, false); // Overridden
     }
 
     // ============================================================================
@@ -1459,7 +1484,10 @@ agent = "claude"
 
         let result = validate_config(&config);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("not defined in configuration"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("not defined in configuration"));
     }
 
     #[test]
@@ -1524,7 +1552,10 @@ agent = "claude"
 
         let result = validate_mode_config("test", &Some(config));
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("exceeding recommended maximum"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("exceeding recommended maximum"));
     }
 
     #[test]
@@ -1541,7 +1572,10 @@ agent = "claude"
 
         let result = validate_mode_config("test", &Some(config));
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("exceeding recommended maximum"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("exceeding recommended maximum"));
     }
 
     #[test]
@@ -1592,7 +1626,10 @@ agent = "claude"
 
         let result = validate_mode_config("standard", &Some(config));
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("less than recommended minimum"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("less than recommended minimum"));
     }
 
     #[test]
@@ -1671,11 +1708,8 @@ agent = "claude"
     #[test]
     fn test_load_config_from_args_basic() {
         // Test with the default "claude" agent which will pass validation
-        let args = crate::cli::Args::try_parse_from([
-            "ltmatrix",
-            "--agent", "claude",
-            "goal"
-        ]).expect("Failed to parse args");
+        let args = crate::cli::Args::try_parse_from(["ltmatrix", "--agent", "claude", "goal"])
+            .expect("Failed to parse args");
 
         let result = load_config_from_args(args);
         assert!(result.is_ok());
@@ -1686,11 +1720,8 @@ agent = "claude"
 
     #[test]
     fn test_load_config_from_args_with_mode() {
-        let args = crate::cli::Args::try_parse_from([
-            "ltmatrix",
-            "--fast",
-            "goal"
-        ]).expect("Failed to parse args");
+        let args = crate::cli::Args::try_parse_from(["ltmatrix", "--fast", "goal"])
+            .expect("Failed to parse args");
 
         let result = load_config_from_args(args);
         assert!(result.is_ok());
@@ -1702,11 +1733,8 @@ agent = "claude"
 
     #[test]
     fn test_load_config_from_args_with_output_format() {
-        let args = crate::cli::Args::try_parse_from([
-            "ltmatrix",
-            "--output", "json",
-            "goal"
-        ]).expect("Failed to parse args");
+        let args = crate::cli::Args::try_parse_from(["ltmatrix", "--output", "json", "goal"])
+            .expect("Failed to parse args");
 
         let result = load_config_from_args(args);
         assert!(result.is_ok());
@@ -1719,10 +1747,13 @@ agent = "claude"
     fn test_load_config_from_args_with_log_settings() {
         let args = crate::cli::Args::try_parse_from([
             "ltmatrix",
-            "--log-level", "debug",
-            "--log-file", "/tmp/test.log",
-            "goal"
-        ]).expect("Failed to parse args");
+            "--log-level",
+            "debug",
+            "--log-file",
+            "/tmp/test.log",
+            "goal",
+        ])
+        .expect("Failed to parse args");
 
         let result = load_config_from_args(args);
         assert!(result.is_ok());
@@ -1734,11 +1765,8 @@ agent = "claude"
 
     #[test]
     fn test_load_config_from_args_no_color() {
-        let args = crate::cli::Args::try_parse_from([
-            "ltmatrix",
-            "--no-color",
-            "goal"
-        ]).expect("Failed to parse args");
+        let args = crate::cli::Args::try_parse_from(["ltmatrix", "--no-color", "goal"])
+            .expect("Failed to parse args");
 
         let result = load_config_from_args(args);
         assert!(result.is_ok());
@@ -1751,16 +1779,24 @@ agent = "claude"
     fn test_load_config_from_args_with_all_overrides() {
         let args = crate::cli::Args::try_parse_from([
             "ltmatrix",
-            "--agent", "claude",
-            "--mode", "expert",
-            "--output", "json",
-            "--log-level", "trace",
-            "--log-file", "/tmp/custom.log",
-            "--max-retries", "7",
-            "--timeout", "2400",
+            "--agent",
+            "claude",
+            "--mode",
+            "expert",
+            "--output",
+            "json",
+            "--log-level",
+            "trace",
+            "--log-file",
+            "/tmp/custom.log",
+            "--max-retries",
+            "7",
+            "--timeout",
+            "2400",
             "--no-color",
-            "goal"
-        ]).expect("Failed to parse args");
+            "goal",
+        ])
+        .expect("Failed to parse args");
 
         let result = load_config_from_args(args);
         assert!(result.is_ok());
@@ -1778,16 +1814,24 @@ agent = "claude"
         // Test all fields are properly converted (no validation required)
         let args = crate::cli::Args::try_parse_from([
             "ltmatrix",
-            "--agent", "test-agent",
-            "--mode", "fast",
-            "--output", "json",
-            "--log-level", "debug",
-            "--log-file", "/tmp/test.log",
-            "--max-retries", "5",
-            "--timeout", "1800",
+            "--agent",
+            "test-agent",
+            "--mode",
+            "fast",
+            "--output",
+            "json",
+            "--log-level",
+            "debug",
+            "--log-file",
+            "/tmp/test.log",
+            "--max-retries",
+            "5",
+            "--timeout",
+            "1800",
             "--no-color",
-            "goal"
-        ]).expect("Failed to parse args");
+            "goal",
+        ])
+        .expect("Failed to parse args");
 
         let overrides: CliOverrides = args.into();
 
@@ -1803,11 +1847,8 @@ agent = "claude"
 
     #[test]
     fn test_args_to_overrides_with_expert_flag() {
-        let args = crate::cli::Args::try_parse_from([
-            "ltmatrix",
-            "--expert",
-            "goal"
-        ]).expect("Failed to parse args");
+        let args = crate::cli::Args::try_parse_from(["ltmatrix", "--expert", "goal"])
+            .expect("Failed to parse args");
 
         let overrides: CliOverrides = args.into();
         assert_eq!(overrides.mode, Some("expert".to_string()));
@@ -1815,10 +1856,8 @@ agent = "claude"
 
     #[test]
     fn test_args_to_overrides_without_mode_flags() {
-        let args = crate::cli::Args::try_parse_from([
-            "ltmatrix",
-            "goal"
-        ]).expect("Failed to parse args");
+        let args =
+            crate::cli::Args::try_parse_from(["ltmatrix", "goal"]).expect("Failed to parse args");
 
         let overrides: CliOverrides = args.into();
         assert_eq!(overrides.mode, None); // No mode specified
@@ -1827,11 +1866,9 @@ agent = "claude"
     #[test]
     fn test_args_to_overrides_partial_fields() {
         // Test with only some fields set (no validation required for conversion)
-        let args = crate::cli::Args::try_parse_from([
-            "ltmatrix",
-            "--agent", "partial-agent",
-            "goal"
-        ]).expect("Failed to parse args");
+        let args =
+            crate::cli::Args::try_parse_from(["ltmatrix", "--agent", "partial-agent", "goal"])
+                .expect("Failed to parse args");
 
         let overrides: CliOverrides = args.into();
 

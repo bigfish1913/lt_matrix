@@ -7,13 +7,13 @@
 //! - Agent configuration loading
 
 use ltmatrix::config::settings::{
-    Config, ModeConfigs, OutputConfig, LoggingConfig, OutputFormat, LogLevel,
-    load_config_file, merge_configs, agent_config_to_agent, get_default_agent,
-    get_global_config_path, get_project_config_path,
+    agent_config_to_agent, get_default_agent, get_global_config_path, get_project_config_path,
+    load_config_file, merge_configs, Config, LogLevel, LoggingConfig, ModeConfigs, OutputConfig,
+    OutputFormat,
 };
-use tempfile::TempDir;
 use std::fs;
 use std::path::PathBuf;
+use tempfile::TempDir;
 
 // ============================================================================
 // TOML Parsing Tests
@@ -133,7 +133,8 @@ fn test_parse_invalid_toml_syntax() {
     ];
 
     for toml_content in invalid_tomls {
-        let result: Result<Config, _> = toml::from_str(toml_content).map_err(|e| anyhow::anyhow!(e));
+        let result: Result<Config, _> =
+            toml::from_str(toml_content).map_err(|e| anyhow::anyhow!(e));
         assert!(result.is_err(), "Should fail to parse: {}", toml_content);
     }
 }
@@ -214,7 +215,7 @@ model = "claude-sonnet-4-6"
 
     // Agent timeout should use default (3600) when not specified
     let claude = &config.agents["claude"];
-    assert_eq!(claude.timeout, None);  // Not specified, will use default when converting
+    assert_eq!(claude.timeout, None); // Not specified, will use default when converting
 
     // Output should use defaults
     assert_eq!(config.output.format, OutputFormat::Text);
@@ -255,7 +256,10 @@ fn test_agent_config_missing_required_fields() {
 
     let result = agent_config_to_agent("test", &config_no_command);
     assert!(result.is_err());
-    assert!(result.unwrap_err().to_string().contains("missing 'command'"));
+    assert!(result
+        .unwrap_err()
+        .to_string()
+        .contains("missing 'command'"));
 
     // Missing model
     let config_no_model = ltmatrix::config::settings::AgentConfig {
@@ -274,11 +278,11 @@ fn test_agent_config_default_timeout() {
     let config = ltmatrix::config::settings::AgentConfig {
         command: Some("test-cmd".to_string()),
         model: Some("test-model".to_string()),
-        timeout: None,  // Not specified
+        timeout: None, // Not specified
     };
 
     let agent = agent_config_to_agent("test", &config).unwrap();
-    assert_eq!(agent.timeout, 3600);  // Should use default
+    assert_eq!(agent.timeout, 3600); // Should use default
 }
 
 #[test]
@@ -299,7 +303,9 @@ fn test_get_default_agent() {
     };
 
     config.agents.insert("claude".to_string(), claude_config);
-    config.agents.insert("opencode".to_string(), opencode_config);
+    config
+        .agents
+        .insert("opencode".to_string(), opencode_config);
     config.default = Some("claude".to_string());
 
     let agent = get_default_agent(&config).unwrap();
@@ -328,7 +334,9 @@ fn test_merge_configs_project_overrides_global() {
         model: Some("global-model".to_string()),
         timeout: Some(1000),
     };
-    global.agents.insert("shared-agent".to_string(), global_agent);
+    global
+        .agents
+        .insert("shared-agent".to_string(), global_agent);
 
     let mut project = Config::default();
     project.default = Some("project-agent".to_string());
@@ -338,7 +346,9 @@ fn test_merge_configs_project_overrides_global() {
         model: Some("project-model".to_string()),
         timeout: Some(2000),
     };
-    project.agents.insert("shared-agent".to_string(), project_agent);
+    project
+        .agents
+        .insert("shared-agent".to_string(), project_agent);
 
     let merged = merge_configs(Some(global), Some(project));
 
@@ -361,7 +371,9 @@ fn test_merge_configs_preserves_global_when_not_in_project() {
         model: Some("global-model".to_string()),
         timeout: Some(1000),
     };
-    global.agents.insert("global-only".to_string(), global_agent);
+    global
+        .agents
+        .insert("global-only".to_string(), global_agent);
 
     let project = Config {
         default: None,
@@ -418,8 +430,14 @@ fn test_merge_configs_modes() {
     assert!(merged.modes.fast.is_some());
     assert!(merged.modes.standard.is_some());
 
-    assert_eq!(merged.modes.fast.unwrap().model, Some("global-fast".to_string()));
-    assert_eq!(merged.modes.standard.unwrap().model, Some("project-standard".to_string()));
+    assert_eq!(
+        merged.modes.fast.unwrap().model,
+        Some("global-fast".to_string())
+    );
+    assert_eq!(
+        merged.modes.standard.unwrap().model,
+        Some("project-standard".to_string())
+    );
 }
 
 // ============================================================================
@@ -536,10 +554,7 @@ fn test_log_level_serialization() {
     ];
 
     for level in levels {
-        let config = LoggingConfig {
-            level,
-            file: None,
-        };
+        let config = LoggingConfig { level, file: None };
         let toml_string = toml::to_string(&config).unwrap();
 
         // Verify we can deserialize it back
@@ -551,11 +566,14 @@ fn test_log_level_serialization() {
 #[test]
 fn test_config_serialization_roundtrip() {
     let mut agents = std::collections::HashMap::new();
-    agents.insert("claude".to_string(), ltmatrix::config::settings::AgentConfig {
-        command: Some("claude".to_string()),
-        model: Some("claude-sonnet-4-6".to_string()),
-        timeout: Some(3600),
-    });
+    agents.insert(
+        "claude".to_string(),
+        ltmatrix::config::settings::AgentConfig {
+            command: Some("claude".to_string()),
+            model: Some("claude-sonnet-4-6".to_string()),
+            timeout: Some(3600),
+        },
+    );
 
     let original_config = Config {
         default: Some("claude".to_string()),
@@ -594,7 +612,10 @@ fn test_config_serialization_roundtrip() {
     // Verify
     assert_eq!(deserialized.default, original_config.default);
     assert_eq!(deserialized.agents.len(), original_config.agents.len());
-    assert_eq!(deserialized.modes.fast.is_some(), original_config.modes.fast.is_some());
+    assert_eq!(
+        deserialized.modes.fast.is_some(),
+        original_config.modes.fast.is_some()
+    );
     assert_eq!(deserialized.output.format, original_config.output.format);
 }
 
@@ -652,7 +673,10 @@ model = "claude-sonnet-4-6"
 
     let config: Config = toml::from_str(toml_content).unwrap();
     let claude = &config.agents["claude"];
-    assert_eq!(claude.command, Some("claude --arg1 value1 --arg2 'value with spaces'".to_string()));
+    assert_eq!(
+        claude.command,
+        Some("claude --arg1 value1 --arg2 'value with spaces'".to_string())
+    );
 }
 
 #[test]
@@ -685,13 +709,18 @@ fn test_cli_output_format_overrides_config() {
 
     // In the actual implementation, CLI args would override config
     // For testing, we verify the precedence order is understood
-    assert_ne!(config.output.format, cli_format,
-               "CLI override should change the format from config default");
+    assert_ne!(
+        config.output.format, cli_format,
+        "CLI override should change the format from config default"
+    );
 
     // After applying CLI override
     config.output.format = cli_format;
-    assert_eq!(config.output.format, OutputFormat::Text,
-               "CLI override should be applied to config");
+    assert_eq!(
+        config.output.format,
+        OutputFormat::Text,
+        "CLI override should be applied to config"
+    );
 }
 
 #[test]
@@ -702,13 +731,18 @@ fn test_cli_log_level_overrides_config() {
     // Simulate CLI override to Debug level
     let cli_level = LogLevel::Debug;
 
-    assert_ne!(config.logging.level, cli_level,
-               "CLI log level override should differ from config");
+    assert_ne!(
+        config.logging.level, cli_level,
+        "CLI log level override should differ from config"
+    );
 
     // After applying CLI override
     config.logging.level = cli_level;
-    assert_eq!(config.logging.level, LogLevel::Debug,
-               "CLI log level override should be applied");
+    assert_eq!(
+        config.logging.level,
+        LogLevel::Debug,
+        "CLI log level override should be applied"
+    );
 }
 
 #[test]
@@ -724,8 +758,10 @@ fn test_cli_mode_overrides_config() {
     assert_eq!(cli_expert_mode.to_string(), "expert");
 
     // CLI flags should take precedence over config mode settings
-    assert_ne!(cli_fast_mode, cli_expert_mode,
-               "Different CLI mode flags should produce different modes");
+    assert_ne!(
+        cli_fast_mode, cli_expert_mode,
+        "Different CLI mode flags should produce different modes"
+    );
 }
 
 #[test]
@@ -740,22 +776,33 @@ fn test_precedence_order() {
     // 2. Global config would override defaults
     let mut global_config = default_config.clone();
     global_config.output.format = OutputFormat::Json;
-    assert_eq!(global_config.output.format, OutputFormat::Json,
-               "Global config should override default");
+    assert_eq!(
+        global_config.output.format,
+        OutputFormat::Json,
+        "Global config should override default"
+    );
 
     // 3. Project config would override global
     let mut project_config = global_config;
     project_config.logging.level = LogLevel::Debug;
-    assert_eq!(project_config.output.format, OutputFormat::Json,
-               "Project config should preserve global settings not overridden");
-    assert_eq!(project_config.logging.level, LogLevel::Debug,
-               "Project config should override global settings");
+    assert_eq!(
+        project_config.output.format,
+        OutputFormat::Json,
+        "Project config should preserve global settings not overridden"
+    );
+    assert_eq!(
+        project_config.logging.level,
+        LogLevel::Debug,
+        "Project config should override global settings"
+    );
 
     // 4. CLI args would override project
     let cli_format = OutputFormat::Text;
     let final_config_with_cli = project_config;
-    assert_ne!(final_config_with_cli.output.format, cli_format,
-               "Config format should differ from CLI override before application");
+    assert_ne!(
+        final_config_with_cli.output.format, cli_format,
+        "Config format should differ from CLI override before application"
+    );
 }
 
 #[test]
@@ -770,13 +817,17 @@ fn test_cli_timeout_overrides_agent_config() {
     let cli_timeout = 7200; // 2 hours
 
     let mut agent = agent_config_to_agent("test", &agent_config).unwrap();
-    assert_ne!(agent.timeout, cli_timeout,
-               "Agent timeout should differ from CLI override");
+    assert_ne!(
+        agent.timeout, cli_timeout,
+        "Agent timeout should differ from CLI override"
+    );
 
     // After applying CLI override
     agent.timeout = cli_timeout;
-    assert_eq!(agent.timeout, 7200,
-               "CLI timeout override should be applied");
+    assert_eq!(
+        agent.timeout, 7200,
+        "CLI timeout override should be applied"
+    );
 }
 
 #[test]
@@ -784,20 +835,26 @@ fn test_cli_max_retries_overrides_mode_config() {
     use ltmatrix::config::modes::ModeConfig;
 
     let mode_config = ModeConfig::standard_mode();
-    assert_eq!(mode_config.max_retries, 3,
-               "Standard mode should have 3 retries by default");
+    assert_eq!(
+        mode_config.max_retries, 3,
+        "Standard mode should have 3 retries by default"
+    );
 
     // CLI --max-retries argument should override mode config
     let cli_max_retries = 5;
 
-    assert_ne!(mode_config.max_retries, cli_max_retries,
-               "Mode config retries should differ from CLI override");
+    assert_ne!(
+        mode_config.max_retries, cli_max_retries,
+        "Mode config retries should differ from CLI override"
+    );
 
     // In actual implementation, CLI would override
     let mut overridden_config = mode_config;
     overridden_config.max_retries = cli_max_retries;
-    assert_eq!(overridden_config.max_retries, 5,
-               "CLI max-retries should override mode config");
+    assert_eq!(
+        overridden_config.max_retries, 5,
+        "CLI max-retries should override mode config"
+    );
 }
 
 #[test]
@@ -824,14 +881,25 @@ fn test_partial_cli_overrides() {
     config.output.format = cli_format;
 
     // Other settings should remain from config
-    assert_eq!(config.output.format, OutputFormat::Text,
-               "CLI override should change format");
-    assert_eq!(config.output.colored, false,
-               "Config colored setting should be preserved");
-    assert_eq!(config.logging.level, LogLevel::Debug,
-               "Config log level should be preserved");
-    assert_eq!(config.logging.file, Some(PathBuf::from("/tmp/test.log")),
-               "Config log file should be preserved");
+    assert_eq!(
+        config.output.format,
+        OutputFormat::Text,
+        "CLI override should change format"
+    );
+    assert_eq!(
+        config.output.colored, false,
+        "Config colored setting should be preserved"
+    );
+    assert_eq!(
+        config.logging.level,
+        LogLevel::Debug,
+        "Config log level should be preserved"
+    );
+    assert_eq!(
+        config.logging.file,
+        Some(PathBuf::from("/tmp/test.log")),
+        "Config log file should be preserved"
+    );
 }
 
 #[test]
@@ -852,18 +920,25 @@ fn test_cli_agent_override() {
     };
 
     config.agents.insert("claude".to_string(), claude_config);
-    config.agents.insert("opencode".to_string(), opencode_config);
+    config
+        .agents
+        .insert("opencode".to_string(), opencode_config);
 
     // CLI --agent argument should override default agent setting
     let cli_agent = "opencode";
     config.default = Some(cli_agent.to_string());
 
-    assert_eq!(config.default, Some("opencode".to_string()),
-               "CLI agent override should change default agent");
+    assert_eq!(
+        config.default,
+        Some("opencode".to_string()),
+        "CLI agent override should change default agent"
+    );
 
     let agent = get_default_agent(&config).unwrap();
-    assert_eq!(agent.name, "opencode",
-               "Default agent from config should match CLI override");
+    assert_eq!(
+        agent.name, "opencode",
+        "Default agent from config should match CLI override"
+    );
 }
 
 // ============================================================================

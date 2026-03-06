@@ -2,7 +2,7 @@
 
 use ltmatrix::models::{Task, TaskComplexity};
 use ltmatrix::pipeline::execute::{
-    ExecuteConfig, build_task_context, build_execution_prompt, get_execution_order,
+    build_execution_prompt, build_task_context, get_execution_order, ExecuteConfig,
 };
 use std::collections::{HashMap, HashSet};
 
@@ -23,8 +23,7 @@ fn test_build_execution_prompt_structure() {
 #[test]
 fn test_build_task_context_with_memory() {
     let task = Task::new("task-1", "Test Task", "Implementation task");
-    let task_map: HashMap<String, Task> =
-        [(task.id.clone(), task.clone())].into_iter().collect();
+    let task_map: HashMap<String, Task> = [(task.id.clone(), task.clone())].into_iter().collect();
     let completed_tasks: HashSet<String> = HashSet::new();
     let project_memory = "# Architecture\nWe use MVC pattern";
 
@@ -115,7 +114,10 @@ fn test_execute_config_defaults() {
     assert_eq!(config.max_retries, 3);
     assert_eq!(config.timeout, 3600);
     assert!(config.enable_sessions);
-    assert_eq!(config.memory_file, std::path::PathBuf::from(".claude/memory.md"));
+    assert_eq!(
+        config.memory_file,
+        std::path::PathBuf::from(".claude/memory.md")
+    );
 }
 
 #[test]

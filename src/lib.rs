@@ -6,20 +6,20 @@
 // Core data models (must come first as other modules depend on them)
 pub mod models;
 
+pub mod agent;
 pub mod cli;
 pub mod config;
-pub mod feature;
-pub mod man;
-pub mod agent;
-pub mod pipeline;
-pub mod tasks;
-pub mod git;
-pub mod memory;
-pub mod logging;
-pub mod progress;
-pub mod output;
 pub mod dryrun;
+pub mod feature;
+pub mod git;
 pub mod interactive;
+pub mod logging;
+pub mod man;
+pub mod memory;
+pub mod output;
+pub mod pipeline;
+pub mod progress;
+pub mod tasks;
 pub mod terminal;
 
 // Re-export commonly used types

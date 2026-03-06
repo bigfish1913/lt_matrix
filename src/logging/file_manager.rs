@@ -259,7 +259,10 @@ impl LogManager {
     /// # Returns
     ///
     /// The number of files removed
-    fn remove_files_not_in_list(&self, files_to_keep: &[(DateTime<Local>, PathBuf)]) -> io::Result<usize> {
+    fn remove_files_not_in_list(
+        &self,
+        files_to_keep: &[(DateTime<Local>, PathBuf)],
+    ) -> io::Result<usize> {
         let keep_paths: std::collections::HashSet<_> =
             files_to_keep.iter().map(|(_, path)| path).collect();
 
@@ -460,7 +463,10 @@ mod tests {
         let log_path = manager.create_log_file().unwrap();
 
         assert!(log_path.exists());
-        assert!(log_path.starts_with(temp_dir.path()) || log_path.starts_with(temp_dir.path().to_string_lossy().as_ref()));
+        assert!(
+            log_path.starts_with(temp_dir.path())
+                || log_path.starts_with(temp_dir.path().to_string_lossy().as_ref())
+        );
         assert!(log_path.extension().unwrap() == "log");
     }
 
@@ -485,7 +491,10 @@ mod tests {
 
         // Check that we have at least 2 files
         let log_info_before = manager.get_log_info().unwrap();
-        assert!(log_info_before.len() >= 2, "Should have at least 2 log files before cleanup");
+        assert!(
+            log_info_before.len() >= 2,
+            "Should have at least 2 log files before cleanup"
+        );
 
         // Cleanup should remove at least one file
         let removed = manager.cleanup_old_logs().unwrap();
@@ -493,7 +502,10 @@ mod tests {
 
         // Check that we have fewer files now
         let log_info_after = manager.get_log_info().unwrap();
-        assert!(log_info_after.len() < log_info_before.len(), "Should have fewer files after cleanup");
+        assert!(
+            log_info_after.len() < log_info_before.len(),
+            "Should have fewer files after cleanup"
+        );
     }
 
     #[test]

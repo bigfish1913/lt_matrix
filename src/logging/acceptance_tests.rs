@@ -9,12 +9,12 @@
 //!
 //! Run with: cargo test --package ltmatrix --lib --tests logging::acceptance_tests
 
-use crate::logging::{init_logging, init_api_trace_logging, LogLevel};
+use crate::logging::formatter::{current_timestamp, format_timestamp, TIMESTAMP_FORMAT};
 use crate::logging::level::LogLevel as LogLevelEnum;
-use crate::logging::formatter::{format_timestamp, current_timestamp, TIMESTAMP_FORMAT};
-use tempfile::TempDir;
+use crate::logging::{init_api_trace_logging, init_logging, LogLevel};
 use std::thread;
 use std::time::Duration;
+use tempfile::TempDir;
 
 fn flush_logs() {
     thread::sleep(Duration::from_millis(100));
@@ -79,21 +79,42 @@ mod acceptance_tests {
         use std::str::FromStr;
 
         // Verify all levels parse correctly
-        assert_eq!(LogLevelEnum::from_str("trace").unwrap(), LogLevelEnum::Trace);
-        assert_eq!(LogLevelEnum::from_str("debug").unwrap(), LogLevelEnum::Debug);
+        assert_eq!(
+            LogLevelEnum::from_str("trace").unwrap(),
+            LogLevelEnum::Trace
+        );
+        assert_eq!(
+            LogLevelEnum::from_str("debug").unwrap(),
+            LogLevelEnum::Debug
+        );
         assert_eq!(LogLevelEnum::from_str("info").unwrap(), LogLevelEnum::Info);
         assert_eq!(LogLevelEnum::from_str("warn").unwrap(), LogLevelEnum::Warn);
-        assert_eq!(LogLevelEnum::from_str("error").unwrap(), LogLevelEnum::Error);
+        assert_eq!(
+            LogLevelEnum::from_str("error").unwrap(),
+            LogLevelEnum::Error
+        );
 
         // Verify case insensitivity
-        assert_eq!(LogLevelEnum::from_str("TRACE").unwrap(), LogLevelEnum::Trace);
-        assert_eq!(LogLevelEnum::from_str("DEBUG").unwrap(), LogLevelEnum::Debug);
+        assert_eq!(
+            LogLevelEnum::from_str("TRACE").unwrap(),
+            LogLevelEnum::Trace
+        );
+        assert_eq!(
+            LogLevelEnum::from_str("DEBUG").unwrap(),
+            LogLevelEnum::Debug
+        );
         assert_eq!(LogLevelEnum::from_str("INFO").unwrap(), LogLevelEnum::Info);
         assert_eq!(LogLevelEnum::from_str("WARN").unwrap(), LogLevelEnum::Warn);
-        assert_eq!(LogLevelEnum::from_str("ERROR").unwrap(), LogLevelEnum::Error);
+        assert_eq!(
+            LogLevelEnum::from_str("ERROR").unwrap(),
+            LogLevelEnum::Error
+        );
 
         // Verify "warning" alias
-        assert_eq!(LogLevelEnum::from_str("warning").unwrap(), LogLevelEnum::Warn);
+        assert_eq!(
+            LogLevelEnum::from_str("warning").unwrap(),
+            LogLevelEnum::Warn
+        );
     }
 
     #[test]
@@ -109,7 +130,11 @@ mod acceptance_tests {
 
         for level in levels {
             let result = init_logging(level, None::<&str>);
-            assert!(result.is_ok(), "Failed to initialize with level: {:?}", level);
+            assert!(
+                result.is_ok(),
+                "Failed to initialize with level: {:?}",
+                level
+            );
             // Note: Can't test all levels sequentially due to global logger limitation
             break;
         }
@@ -231,8 +256,8 @@ mod acceptance_tests {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let log_path = temp_dir.path().join("daily.log");
 
-        let _guard = init_logging(LogLevel::Info, Some(log_path.as_path()))
-            .expect("Failed to init logging");
+        let _guard =
+            init_logging(LogLevel::Info, Some(log_path.as_path())).expect("Failed to init logging");
 
         // Implementation uses rolling::daily for rotation
         // Verified via code review
@@ -276,8 +301,7 @@ mod acceptance_tests {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let log_path = temp_dir.path().join("api-trace.log");
 
-        let _guard = init_api_trace_logging(&log_path)
-            .expect("Failed to init API trace logging");
+        let _guard = init_api_trace_logging(&log_path).expect("Failed to init API trace logging");
 
         // API trace logger should capture:
         // - ltmatrix=trace
@@ -303,8 +327,8 @@ mod acceptance_tests {
         ];
 
         for level in levels {
-            let _guard = init_logging(level, Some(log_path.as_path()))
-                .expect("Failed to init logging");
+            let _guard =
+                init_logging(level, Some(log_path.as_path())).expect("Failed to init logging");
 
             // Non-TRACE levels should reduce noise:
             // - reqwest=info
@@ -371,8 +395,7 @@ mod acceptance_tests {
         let log_path = temp_dir.path().join("same-level.log");
 
         let level = LogLevelEnum::Debug;
-        let _guard = init_logging(level, Some(log_path.as_path()))
-            .expect("Failed to init logging");
+        let _guard = init_logging(level, Some(log_path.as_path())).expect("Failed to init logging");
 
         // Both console and file should use the same log level
         // Verified via implementation
@@ -401,11 +424,7 @@ mod acceptance_tests {
         tracing::error!("Error message");
 
         // Test structured logging
-        tracing::info!(
-            user_id = 42,
-            action = "test",
-            "Structured log message"
-        );
+        tracing::info!(user_id = 42, action = "test", "Structured log message");
 
         flush_logs();
 
@@ -417,8 +436,7 @@ mod acceptance_tests {
     fn acceptance_integration_default_initialization() {
         use crate::logging::init_default_logging;
 
-        let _guard = init_default_logging()
-            .expect("Failed to init default logging");
+        let _guard = init_default_logging().expect("Failed to init default logging");
 
         // Default initialization should work
         tracing::info!("Default logging test");

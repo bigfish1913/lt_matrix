@@ -61,9 +61,17 @@ fn emit_build_info(target: &str) {
 
     println!("cargo:warning=Build configuration:");
     println!("cargo:warning=  Target: {}", target);
-    println!("cargo:warning=  Profile: {}", if is_release { "release" } else { "debug" });
+    println!(
+        "cargo:warning=  Profile: {}",
+        if is_release { "release" } else { "debug" }
+    );
     println!("cargo:warning=  Opt-level: {}", opt_level);
-    println!("cargo:warning=  Static linking: {}",
-        if target.contains("musl") { "yes (musl)" } else { "no (dynamic)" }
+    println!(
+        "cargo:warning=  Static linking: {}",
+        if target.contains("musl") {
+            "yes (musl)"
+        } else {
+            "no (dynamic)"
+        }
     );
 }

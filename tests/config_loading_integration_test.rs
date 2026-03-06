@@ -8,12 +8,12 @@
 //! - Auto-discovery and merging of config sources
 
 use ltmatrix::config::settings::{
-    Config, load_config, load_config_file, merge_configs,
-    get_global_config_path, get_project_config_path,
+    get_global_config_path, get_project_config_path, load_config, load_config_file, merge_configs,
+    Config,
 };
-use tempfile::TempDir;
 use std::fs;
 use std::path::PathBuf;
+use tempfile::TempDir;
 
 // ============================================================================
 // Auto-Discovery Tests (load_config function)
@@ -32,7 +32,10 @@ fn test_load_config_with_no_files() {
     // Should not fail even with no config files
     // Note: load_config() may still load system-wide configs, so we just verify it succeeds
     let result = load_config();
-    assert!(result.is_ok(), "load_config should succeed with no config files");
+    assert!(
+        result.is_ok(),
+        "load_config should succeed with no config files"
+    );
 
     let config = result.unwrap();
     // At minimum, should have a default agent configured
@@ -70,7 +73,10 @@ level = "warn"
     fs::write(&global_config_path, global_config_content).unwrap();
 
     // Verify file exists
-    assert!(global_config_path.exists(), "Global config file should exist");
+    assert!(
+        global_config_path.exists(),
+        "Global config file should exist"
+    );
 
     // Load the config file directly from the path
     let config = load_config_file(&global_config_path).unwrap();
@@ -115,7 +121,10 @@ file = "/tmp/project.log"
     let config = load_config_file(&project_config_path).unwrap();
     assert_eq!(config.default, Some("project-agent".to_string()));
     assert_eq!(config.agents.len(), 1);
-    assert_eq!(config.output.format, ltmatrix::config::settings::OutputFormat::Text);
+    assert_eq!(
+        config.output.format,
+        ltmatrix::config::settings::OutputFormat::Text
+    );
     assert_eq!(config.output.progress, false);
 }
 
@@ -127,7 +136,9 @@ fn test_load_config_merges_global_and_project() {
     let global_dir = temp_dir.path().join("global");
     fs::create_dir_all(&global_dir).unwrap();
     let global_config = global_dir.join("config.toml");
-    fs::write(&global_config, r#"
+    fs::write(
+        &global_config,
+        r#"
 default = "global-default"
 
 [agents.agent1]
@@ -148,14 +159,18 @@ max_retries = 1
 max_depth = 2
 timeout_plan = 60
 timeout_exec = 1800
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     // Create project config directory structure
     let project_dir = temp_dir.path().join("project");
     let project_ltmatrix_dir = project_dir.join(".ltmatrix");
     fs::create_dir_all(&project_ltmatrix_dir).unwrap();
     let project_config = project_ltmatrix_dir.join("config.toml");
-    fs::write(&project_config, r#"
+    fs::write(
+        &project_config,
+        r#"
 default = "project-default"
 
 [agents.agent1]
@@ -176,7 +191,9 @@ max_retries = 3
 max_depth = 3
 timeout_plan = 120
 timeout_exec = 3600
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     // Verify files exist
     assert!(global_config.exists(), "Global config should exist");
@@ -232,10 +249,14 @@ fn test_load_config_file_malformed_toml() {
     let config_path = temp_dir.path().join("config.toml");
 
     // Write malformed TOML
-    fs::write(&config_path, r#"
+    fs::write(
+        &config_path,
+        r#"
 [agents
 command = "test"
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     let result = load_config_file(&config_path);
     assert!(result.is_err());
@@ -328,11 +349,15 @@ fn test_load_config_file_only_comments() {
     let config_path = temp_dir.path().join("config.toml");
 
     // Write file with only comments
-    fs::write(&config_path, r#"
+    fs::write(
+        &config_path,
+        r#"
 # This is a comment
 # Another comment
 # default = "test"
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     let result = load_config_file(&config_path);
     // File with only comments is valid TOML
@@ -355,8 +380,16 @@ fn test_get_global_config_path_format() {
     let path_str = path.to_string_lossy();
 
     // Should contain .ltmatrix and config.toml
-    assert!(path_str.contains(".ltmatrix"), "Path should contain .ltmatrix: {}", path_str);
-    assert!(path_str.contains("config.toml"), "Path should contain config.toml: {}", path_str);
+    assert!(
+        path_str.contains(".ltmatrix"),
+        "Path should contain .ltmatrix: {}",
+        path_str
+    );
+    assert!(
+        path_str.contains("config.toml"),
+        "Path should contain config.toml: {}",
+        path_str
+    );
 }
 
 #[test]
@@ -368,8 +401,16 @@ fn test_get_project_config_path_format() {
     let path_str = path.to_string_lossy();
 
     // Should contain .ltmatrix and config.toml
-    assert!(path_str.contains(".ltmatrix"), "Path should contain .ltmatrix: {}", path_str);
-    assert!(path_str.contains("config.toml"), "Path should contain config.toml: {}", path_str);
+    assert!(
+        path_str.contains(".ltmatrix"),
+        "Path should contain .ltmatrix: {}",
+        path_str
+    );
+    assert!(
+        path_str.contains("config.toml"),
+        "Path should contain config.toml: {}",
+        path_str
+    );
 
     // Should be relative to current directory
     let current_dir = std::env::current_dir().unwrap();
@@ -386,7 +427,10 @@ fn test_config_path_functions_are_consistent() {
     let project_path = get_project_config_path().unwrap();
 
     // Both should exist
-    assert!(global_path.as_path().to_string_lossy().contains(".ltmatrix"));
+    assert!(global_path
+        .as_path()
+        .to_string_lossy()
+        .contains(".ltmatrix"));
     assert!(project_path.to_string_lossy().contains(".ltmatrix"));
 
     // Both should end with config.toml
@@ -429,14 +473,18 @@ fn test_merge_configs_with_none_values() {
     let temp_dir = TempDir::new().unwrap();
     let config_path = temp_dir.path().join("config.toml");
 
-    fs::write(&config_path, r#"
+    fs::write(
+        &config_path,
+        r#"
 default = "test"
 
 [agents.test]
 command = "test"
 model = "test"
 timeout = 1000
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     let config = load_config_file(&config_path).unwrap();
 
@@ -459,7 +507,10 @@ fn test_config_precedence_order() {
 
     // Default config
     let default_config = Config::default();
-    assert_eq!(default_config.output.format, ltmatrix::config::settings::OutputFormat::Text);
+    assert_eq!(
+        default_config.output.format,
+        ltmatrix::config::settings::OutputFormat::Text
+    );
 
     // Global config (would override default)
     let mut global_config = default_config.clone();
@@ -474,10 +525,16 @@ fn test_config_precedence_order() {
     let merged = merge_configs(Some(global_config), Some(project_config));
 
     // Project overrides global for logging
-    assert_eq!(merged.logging.level, ltmatrix::config::settings::LogLevel::Debug);
+    assert_eq!(
+        merged.logging.level,
+        ltmatrix::config::settings::LogLevel::Debug
+    );
 
     // Project's output format is kept (both had Json)
-    assert_eq!(merged.output.format, ltmatrix::config::settings::OutputFormat::Json);
+    assert_eq!(
+        merged.output.format,
+        ltmatrix::config::settings::OutputFormat::Json
+    );
 }
 
 // ============================================================================
@@ -604,6 +661,12 @@ timeout = 3600
     let config = load_config_file(&config_path).unwrap();
     let test_agent = &config.agents["test"];
 
-    assert_eq!(test_agent.command, Some("agent --arg 'value with spaces' --other=\"quoted\"".to_string()));
-    assert_eq!(test_agent.model, Some("model-with_special.chars".to_string()));
+    assert_eq!(
+        test_agent.command,
+        Some("agent --arg 'value with spaces' --other=\"quoted\"".to_string())
+    );
+    assert_eq!(
+        test_agent.model,
+        Some("model-with_special.chars".to_string())
+    );
 }

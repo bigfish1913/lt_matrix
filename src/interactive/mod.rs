@@ -6,6 +6,4 @@
 
 pub mod clarify;
 
-pub use clarify::{
-    ClarificationQuestion, ClarificationSession, QuestionType,
-};
+pub use clarify::{ClarificationQuestion, ClarificationSession, QuestionType};

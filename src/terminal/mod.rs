@@ -79,7 +79,7 @@ impl Default for ColorConfig {
 /// Styles a text string with the given color if colors are enabled
 ///
 /// # Arguments
-    ///
+///
 /// * `text` - The text to style
 /// * `color` - The color to apply
 /// * `config` - The color configuration

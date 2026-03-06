@@ -3,12 +3,10 @@
 //! These tests verify the feature flag system works correctly in various
 //! real-world scenarios and integrates properly with other components.
 
-use ltmatrix::feature::{
-    FeatureFlag, FeatureFlags, FeatureConfig, RolloutConfig,
-};
+use ltmatrix::feature::{FeatureConfig, FeatureFlag, FeatureFlags, RolloutConfig};
 use std::collections::HashMap;
-use tempfile::TempDir;
 use std::fs;
+use tempfile::TempDir;
 
 // ============================================================================
 // Integration with file system
@@ -25,8 +23,10 @@ fn integration_load_from_nonexistent_file() {
 
     let err = result.unwrap_err();
     let err_msg = err.to_string();
-    assert!(err_msg.contains("Failed to read") || err_msg.contains("No such file"),
-        "Error should mention file read failure");
+    assert!(
+        err_msg.contains("Failed to read") || err_msg.contains("No such file"),
+        "Error should mention file read failure"
+    );
 }
 
 #[test]
@@ -85,8 +85,10 @@ fn integration_load_malformed_toml() {
 
     let err = result.unwrap_err();
     let err_msg = err.to_string();
-    assert!(err_msg.contains("Failed to parse") || err_msg.contains("TOML"),
-        "Error should mention parse failure");
+    assert!(
+        err_msg.contains("Failed to parse") || err_msg.contains("TOML"),
+        "Error should mention parse failure"
+    );
 }
 
 #[test]
@@ -138,7 +140,10 @@ fn integration_save_to_readonly_directory() {
     perms.set_readonly(false);
     fs::set_permissions(&readonly_dir, perms).unwrap();
 
-    assert!(result.is_err(), "Should fail to write to readonly directory");
+    assert!(
+        result.is_err(),
+        "Should fail to write to readonly directory"
+    );
 }
 
 // ============================================================================
@@ -251,20 +256,11 @@ percentage = 100
     assert_eq!(cache_rollout.unwrap().percentage, 100);
 
     // Verify behavior
-    assert!(flags.is_enabled_for_user(
-        FeatureFlag::EnableParallelExecution,
-        "beta_user1"
-    ));
-    assert!(!flags.is_enabled_for_user(
-        FeatureFlag::EnableParallelExecution,
-        "blocked_user"
-    ));
+    assert!(flags.is_enabled_for_user(FeatureFlag::EnableParallelExecution, "beta_user1"));
+    assert!(!flags.is_enabled_for_user(FeatureFlag::EnableParallelExecution, "blocked_user"));
 
     // Smart cache at 100% should be enabled for everyone
-    assert!(flags.is_enabled_for_user(
-        FeatureFlag::EnableSmartCache,
-        "any_user"
-    ));
+    assert!(flags.is_enabled_for_user(FeatureFlag::EnableSmartCache, "any_user"));
 }
 
 #[test]
@@ -336,8 +332,10 @@ fn integration_rollout_deterministic_for_user() {
 
     // All results should be the same
     let first = results[0];
-    assert!(results.iter().all(|&r| r == first),
-        "Rollout should be deterministic for the same user");
+    assert!(
+        results.iter().all(|&r| r == first),
+        "Rollout should be deterministic for the same user"
+    );
 }
 
 #[test]
@@ -355,9 +353,11 @@ fn integration_rollout_distribution() {
 
     // Should be approximately 50% (allow 10% margin for statistical variance)
     let percentage = (enabled_count as f64 / 1000.0) * 100.0;
-    assert!(percentage >= 40.0 && percentage <= 60.0,
+    assert!(
+        percentage >= 40.0 && percentage <= 60.0,
         "Rollout distribution at 50% should be approximately 50%, got {:.1}%",
-        percentage);
+        percentage
+    );
 }
 
 #[test]
@@ -366,16 +366,20 @@ fn integration_rollout_edge_cases() {
     let zero_rollout = RolloutConfig::new(0);
     for i in 0..100 {
         let user = format!("user_{}", i);
-        assert!(!zero_rollout.is_enabled_for(&user),
-            "0% rollout should disable all users");
+        assert!(
+            !zero_rollout.is_enabled_for(&user),
+            "0% rollout should disable all users"
+        );
     }
 
     // 100% should enable everyone (unless blacklisted)
     let full_rollout = RolloutConfig::new(100);
     for i in 0..100 {
         let user = format!("user_{}", i);
-        assert!(full_rollout.is_enabled_for(&user),
-            "100% rollout should enable all users");
+        assert!(
+            full_rollout.is_enabled_for(&user),
+            "100% rollout should enable all users"
+        );
     }
 }
 
@@ -424,8 +428,10 @@ fn integration_concurrent_read_access() {
         .collect();
 
     // All reads should return the same value
-    assert!(results.iter().all(|&r| r == true),
-        "Concurrent reads should be consistent");
+    assert!(
+        results.iter().all(|&r| r == true),
+        "Concurrent reads should be consistent"
+    );
 }
 
 #[test]
@@ -472,14 +478,8 @@ fn integration_scenario_beta_rollout() {
     let flags = FeatureFlags::new(config);
 
     // Only beta testers should have it
-    assert!(flags.is_enabled_for_user(
-        FeatureFlag::EnableIncrementalBuilds,
-        "beta_tester_1"
-    ));
-    assert!(!flags.is_enabled_for_user(
-        FeatureFlag::EnableIncrementalBuilds,
-        "regular_user"
-    ));
+    assert!(flags.is_enabled_for_user(FeatureFlag::EnableIncrementalBuilds, "beta_tester_1"));
+    assert!(!flags.is_enabled_for_user(FeatureFlag::EnableIncrementalBuilds, "regular_user"));
 }
 
 #[test]
@@ -501,11 +501,16 @@ fn integration_scenario_gradual_rollout_increase() {
 
     // At 10%, not all users should have it
     let count_10 = (0..100)
-        .map(|i| flags.is_enabled_for_user(FeatureFlag::EnablePriorityScheduler, &format!("user_{}", i)))
+        .map(|i| {
+            flags.is_enabled_for_user(FeatureFlag::EnablePriorityScheduler, &format!("user_{}", i))
+        })
         .filter(|&e| e)
         .count();
 
-    assert!(count_10 < 50, "At 10% rollout, less than half of users should have it");
+    assert!(
+        count_10 < 50,
+        "At 10% rollout, less than half of users should have it"
+    );
 
     // Stage 2: Increase to 50%
     let mut config2 = FeatureConfig::default();
@@ -521,11 +526,16 @@ fn integration_scenario_gradual_rollout_increase() {
     let flags = FeatureFlags::new(config2);
 
     let count_50 = (0..100)
-        .map(|i| flags.is_enabled_for_user(FeatureFlag::EnablePriorityScheduler, &format!("user_{}", i)))
+        .map(|i| {
+            flags.is_enabled_for_user(FeatureFlag::EnablePriorityScheduler, &format!("user_{}", i))
+        })
         .filter(|&e| e)
         .count();
 
-    assert!(count_50 > count_10, "Increasing rollout should enable more users");
+    assert!(
+        count_50 > count_10,
+        "Increasing rollout should enable more users"
+    );
 }
 
 #[test]
@@ -546,20 +556,11 @@ fn integration_scenario_problematic_user_blacklist() {
     let flags = FeatureFlags::new(config);
 
     // Problematic users should not have it
-    assert!(!flags.is_enabled_for_user(
-        FeatureFlag::EnableSmartCache,
-        "problematic_user_1"
-    ));
-    assert!(!flags.is_enabled_for_user(
-        FeatureFlag::EnableSmartCache,
-        "problematic_user_2"
-    ));
+    assert!(!flags.is_enabled_for_user(FeatureFlag::EnableSmartCache, "problematic_user_1"));
+    assert!(!flags.is_enabled_for_user(FeatureFlag::EnableSmartCache, "problematic_user_2"));
 
     // All other users should have it
-    assert!(flags.is_enabled_for_user(
-        FeatureFlag::EnableSmartCache,
-        "normal_user"
-    ));
+    assert!(flags.is_enabled_for_user(FeatureFlag::EnableSmartCache, "normal_user"));
 }
 
 #[test]
@@ -588,24 +589,16 @@ fn integration_scenario_a_b_testing_different_rollouts() {
     let flags = FeatureFlags::new(config);
 
     // Parallel execution at 100% - everyone has it
-    assert!(flags.is_enabled_for_user(
-        FeatureFlag::EnableParallelExecution,
-        "any_user"
-    ));
+    assert!(flags.is_enabled_for_user(FeatureFlag::EnableParallelExecution, "any_user"));
 
     // Smart cache at 50% - some users have it
-    let cache_result = flags.is_enabled_for_user(
-        FeatureFlag::EnableSmartCache,
-        "test_user"
-    );
+    let cache_result = flags.is_enabled_for_user(FeatureFlag::EnableSmartCache, "test_user");
     // We can't assert the exact value, but the function should work
     let _ = cache_result;
 
     // Priority scheduler at 25% - fewer users have it
-    let scheduler_result = flags.is_enabled_for_user(
-        FeatureFlag::EnablePriorityScheduler,
-        "test_user"
-    );
+    let scheduler_result =
+        flags.is_enabled_for_user(FeatureFlag::EnablePriorityScheduler, "test_user");
     let _ = scheduler_result;
 }
 
@@ -616,13 +609,17 @@ fn integration_scenario_production_safety() {
 
     // Check that no experimental features are enabled
     let experimental = flags.enabled_experimental_flags();
-    assert!(experimental.is_empty(),
+    assert!(
+        experimental.is_empty(),
         "Production config should not enable experimental features by default. Found: {:?}",
-        experimental);
+        experimental
+    );
 
     // Check that stable features are enabled
-    assert!(flags.is_enabled(FeatureFlag::EnableParallelExecution),
-        "Stable features like parallel execution should be enabled");
+    assert!(
+        flags.is_enabled(FeatureFlag::EnableParallelExecution),
+        "Stable features like parallel execution should be enabled"
+    );
 
     // Try to enable an experimental feature explicitly
     let mut config = FeatureConfig::default();
@@ -651,7 +648,10 @@ fn integration_scenario_feature_discovery() {
 
     // Should be able to filter experimental features
     let experimental = flags.enabled_experimental_flags();
-    assert!(experimental.is_empty(), "stable_enabled() should not enable experimental features");
+    assert!(
+        experimental.is_empty(),
+        "stable_enabled() should not enable experimental features"
+    );
 
     // Now enable some experimental features
     let mut config = FeatureConfig::default();
@@ -709,8 +709,11 @@ fn integration_large_whitelist_performance() {
     // All whitelisted users should be enabled
     for i in 0..1000 {
         let user = format!("whitelisted_user_{}", i);
-        assert!(rollout.is_enabled_for(&user),
-            "Whitelisted user {} should be enabled", user);
+        assert!(
+            rollout.is_enabled_for(&user),
+            "Whitelisted user {} should be enabled",
+            user
+        );
     }
 
     // Non-whitelisted user should not be enabled
@@ -730,8 +733,11 @@ fn integration_large_blacklist_performance() {
     // All blacklisted users should not be enabled
     for i in 0..1000 {
         let user = format!("blacklisted_user_{}", i);
-        assert!(!rollout.is_enabled_for(&user),
-            "Blacklisted user {} should not be enabled", user);
+        assert!(
+            !rollout.is_enabled_for(&user),
+            "Blacklisted user {} should not be enabled",
+            user
+        );
     }
 
     // Non-blacklisted user should be enabled

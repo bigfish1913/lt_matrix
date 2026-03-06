@@ -87,14 +87,10 @@ pub struct TaskAssessment {
 }
 
 /// Assesses a list of tasks and enriches them with complexity ratings and subtasks
-pub async fn assess_tasks(
-    tasks: Vec<Task>,
-    config: &AssessConfig,
-) -> Result<Vec<Task>> {
+pub async fn assess_tasks(tasks: Vec<Task>, config: &AssessConfig) -> Result<Vec<Task>> {
     info!("Starting assessment stage for {} tasks", tasks.len());
 
-    let agent = ClaudeAgent::new()
-        .context("Failed to create Claude agent for assessment")?;
+    let agent = ClaudeAgent::new().context("Failed to create Claude agent for assessment")?;
 
     let mut assessed_tasks = Vec::with_capacity(tasks.len());
 
@@ -125,13 +121,13 @@ pub async fn assess_tasks(
 
                 assessed_tasks.push(task);
 
-                debug!(
-                    "Task {} assessed as {:?}",
-                    task_id, task_complexity
-                );
+                debug!("Task {} assessed as {:?}", task_id, task_complexity);
             }
             Err(e) => {
-                warn!("Failed to assess task {}: {}, using default complexity", task.id, e);
+                warn!(
+                    "Failed to assess task {}: {}, using default complexity",
+                    task.id, e
+                );
                 // Use default complexity for failed assessments
                 task.complexity = TaskComplexity::Moderate;
                 task.started_at = Some(chrono::Utc::now());
@@ -140,7 +136,10 @@ pub async fn assess_tasks(
         }
     }
 
-    info!("Assessment stage completed for {} tasks", assessed_tasks.len());
+    info!(
+        "Assessment stage completed for {} tasks",
+        assessed_tasks.len()
+    );
     Ok(assessed_tasks)
 }
 
@@ -155,13 +154,15 @@ async fn assess_single_task(
     if current_depth >= config.max_depth {
         debug!(
             "Reached max depth {} for task {}, using simple assessment",
-            config.max_depth,
-            task.id
+            config.max_depth, task.id
         );
         return Ok(TaskAssessment {
             complexity: TaskComplexity::Moderate,
             subtasks: Vec::new(),
-            recommended_model: config.mode_config.model_for_complexity(&TaskComplexity::Moderate).to_string(),
+            recommended_model: config
+                .mode_config
+                .model_for_complexity(&TaskComplexity::Moderate)
+                .to_string(),
             estimated_time_minutes: None,
         });
     }
@@ -266,12 +267,11 @@ fn parse_assessment_response(
     config: &AssessConfig,
 ) -> Result<TaskAssessment> {
     // Extract JSON from response
-    let json_str = extract_json_block(response)
-        .context("No JSON block found in assessment response")?;
+    let json_str =
+        extract_json_block(response).context("No JSON block found in assessment response")?;
 
     // Parse JSON
-    let json: Value = serde_json::from_str(json_str)
-        .context("Failed to parse assessment JSON")?;
+    let json: Value = serde_json::from_str(json_str).context("Failed to parse assessment JSON")?;
 
     // Extract complexity
     let complexity_str = json["complexity"]
@@ -291,15 +291,11 @@ fn parse_assessment_response(
     // Extract recommended model
     let recommended_model = json["recommended_model"]
         .as_str()
-        .unwrap_or_else(|| {
-            config.mode_config.model_for_complexity(&complexity)
-        })
+        .unwrap_or_else(|| config.mode_config.model_for_complexity(&complexity))
         .to_string();
 
     // Extract estimated time
-    let estimated_time_minutes = json["estimated_time_minutes"]
-        .as_u64()
-        .map(|v| v as u32);
+    let estimated_time_minutes = json["estimated_time_minutes"].as_u64().map(|v| v as u32);
 
     // Extract subtasks if present
     let subtasks = if let Some(subtasks_array) = json["subtasks"].as_array() {
@@ -591,7 +587,10 @@ Some text after."#;
     fn test_extract_json_block_no_json() {
         let response = "This response has no JSON block in it.";
         let result = extract_json_block(response);
-        assert!(result.is_none(), "Should return None when no JSON block found");
+        assert!(
+            result.is_none(),
+            "Should return None when no JSON block found"
+        );
     }
 
     #[test]
@@ -716,7 +715,10 @@ Some text after."#;
         let config = AssessConfig::default();
 
         let result = parse_assessment_response(response, &task, &config);
-        assert!(result.is_err(), "Should return error when no JSON block found");
+        assert!(
+            result.is_err(),
+            "Should return error when no JSON block found"
+        );
     }
 
     #[test]
@@ -820,13 +822,11 @@ Some text after."#;
 
     #[test]
     fn test_assign_models_to_tasks_simple() {
-        let mut tasks = vec![
-            {
-                let mut t = Task::new("task-1", "Simple", "Simple task");
-                t.complexity = TaskComplexity::Simple;
-                t
-            },
-        ];
+        let mut tasks = vec![{
+            let mut t = Task::new("task-1", "Simple", "Simple task");
+            t.complexity = TaskComplexity::Simple;
+            t
+        }];
 
         let config = AssessConfig::default();
         assign_models_to_tasks(&mut tasks, &config);
@@ -835,20 +835,16 @@ Some text after."#;
 
     #[test]
     fn test_assign_models_to_tasks_with_subtasks() {
-        let mut tasks = vec![
-            {
-                let mut t = Task::new("task-1", "Complex", "Complex with subtasks");
-                t.complexity = TaskComplexity::Complex;
-                t.subtasks = vec![
-                    {
-                        let mut st = Task::new("task-1-1", "Simple Subtask", "Simple");
-                        st.complexity = TaskComplexity::Simple;
-                        st
-                    },
-                ];
-                t
-            },
-        ];
+        let mut tasks = vec![{
+            let mut t = Task::new("task-1", "Complex", "Complex with subtasks");
+            t.complexity = TaskComplexity::Complex;
+            t.subtasks = vec![{
+                let mut st = Task::new("task-1-1", "Simple Subtask", "Simple");
+                st.complexity = TaskComplexity::Simple;
+                st
+            }];
+            t
+        }];
 
         let config = AssessConfig::default();
         assign_models_to_tasks(&mut tasks, &config);
@@ -931,8 +927,14 @@ Some text after."#;
         let assessment = parse_assessment_response(response, &task, &config).unwrap();
         assert_eq!(assessment.subtasks.len(), 4);
         assert!(assessment.subtasks[0].depends_on.is_empty());
-        assert_eq!(assessment.subtasks[1].depends_on, vec!["design".to_string()]);
-        assert_eq!(assessment.subtasks[2].depends_on, vec!["migrate".to_string()]);
+        assert_eq!(
+            assessment.subtasks[1].depends_on,
+            vec!["design".to_string()]
+        );
+        assert_eq!(
+            assessment.subtasks[2].depends_on,
+            vec!["migrate".to_string()]
+        );
         assert_eq!(assessment.subtasks[3].depends_on.len(), 2);
     }
 

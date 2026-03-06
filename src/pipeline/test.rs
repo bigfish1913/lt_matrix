@@ -3,9 +3,9 @@
 //! This module handles automatic detection and execution of tests across
 //! multiple frameworks: pytest, npm, Go, and Cargo.
 
+use anyhow::{Context, Result};
 use std::fs;
 use std::path::{Path, PathBuf};
-use anyhow::{Context, Result};
 
 /// Supported testing frameworks
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -51,7 +51,10 @@ impl TestFramework {
 
     /// Returns true if this framework has configuration files
     pub fn has_config(&self) -> bool {
-        matches!(self, TestFramework::Pytest | TestFramework::Npm | TestFramework::Cargo)
+        matches!(
+            self,
+            TestFramework::Pytest | TestFramework::Npm | TestFramework::Cargo
+        )
     }
 }
 
@@ -275,14 +278,12 @@ fn detect_npm(project_dir: &Path) -> Result<Option<FrameworkDetection>> {
     }
 
     // Parse package.json to check for test scripts
-    let content = fs::read_to_string(&package_json)
-        .context("Failed to read package.json")?;
+    let content = fs::read_to_string(&package_json).context("Failed to read package.json")?;
 
-    let parsed: serde_json::Value = serde_json::from_str(&content)
-        .context("Failed to parse package.json")?;
+    let parsed: serde_json::Value =
+        serde_json::from_str(&content).context("Failed to parse package.json")?;
 
-    let mut detection = FrameworkDetection::new(TestFramework::Npm)
-        .with_config(package_json);
+    let mut detection = FrameworkDetection::new(TestFramework::Npm).with_config(package_json);
 
     let mut found_indicators = 0;
 
@@ -293,7 +294,12 @@ fn detect_npm(project_dir: &Path) -> Result<Option<FrameworkDetection>> {
         }
 
         // Also check for related test scripts
-        for key in ["test:watch", "test:coverage", "test:unit", "test:integration"] {
+        for key in [
+            "test:watch",
+            "test:coverage",
+            "test:unit",
+            "test:integration",
+        ] {
             if scripts.contains_key(key) {
                 found_indicators += 1;
                 break;
@@ -304,8 +310,15 @@ fn detect_npm(project_dir: &Path) -> Result<Option<FrameworkDetection>> {
     // Check for devDependencies with test frameworks
     if let Some(dev_deps) = parsed.get("devDependencies").and_then(|d| d.as_object()) {
         let test_frameworks = [
-            "jest", "mocha", "jasmine", "karma", "ava", "vitest",
-            "@jest/globals", "ts-jest", "babel-jest",
+            "jest",
+            "mocha",
+            "jasmine",
+            "karma",
+            "ava",
+            "vitest",
+            "@jest/globals",
+            "ts-jest",
+            "babel-jest",
         ];
 
         for framework in test_frameworks {
@@ -354,8 +367,7 @@ fn scan_directory_for_test_attributes(dir: &Path) -> Result<bool> {
         return Ok(false);
     }
 
-    let entries = fs::read_dir(dir)
-        .context("Failed to read directory")?;
+    let entries = fs::read_dir(dir).context("Failed to read directory")?;
 
     for entry in entries.flatten() {
         let path = entry.path();
@@ -381,8 +393,7 @@ fn scan_directory_for_test_modules(dir: &Path) -> Result<bool> {
         return Ok(false);
     }
 
-    let entries = fs::read_dir(dir)
-        .context("Failed to read directory")?;
+    let entries = fs::read_dir(dir).context("Failed to read directory")?;
 
     for entry in entries.flatten() {
         let path = entry.path();
@@ -409,8 +420,7 @@ fn find_files_with_suffix(dir: &Path, suffix: &str) -> Result<Vec<PathBuf>> {
     }
 
     let mut results = Vec::new();
-    let entries = fs::read_dir(dir)
-        .context("Failed to read directory")?;
+    let entries = fs::read_dir(dir).context("Failed to read directory")?;
 
     for entry in entries.flatten() {
         let path = entry.path();
@@ -433,8 +443,7 @@ fn find_files_with_prefix(dir: &Path, prefix: &str, extension: &str) -> Result<V
     }
 
     let mut results = Vec::new();
-    let entries = fs::read_dir(dir)
-        .context("Failed to read directory")?;
+    let entries = fs::read_dir(dir).context("Failed to read directory")?;
 
     for entry in entries.flatten() {
         let path = entry.path();
@@ -452,11 +461,9 @@ fn find_files_with_prefix(dir: &Path, prefix: &str, extension: &str) -> Result<V
 
 /// Parses a TOML configuration file and extracts specific sections
 pub fn parse_toml_section(file_path: &Path, section: &str) -> Result<Option<toml::Table>> {
-    let content = fs::read_to_string(file_path)
-        .context("Failed to read TOML file")?;
+    let content = fs::read_to_string(file_path).context("Failed to read TOML file")?;
 
-    let parsed: toml::Table = toml::from_str(&content)
-        .context("Failed to parse TOML file")?;
+    let parsed: toml::Table = toml::from_str(&content).context("Failed to parse TOML file")?;
 
     // Navigate to the specified section
     let keys: Vec<&str> = section.split('.').collect();
@@ -486,8 +493,7 @@ pub fn directory_exists_and_accessible(path: &Path) -> bool {
 
 /// Reads the first N lines of a file (useful for checking shebangs, etc.)
 pub fn read_file_lines(path: &Path, max_lines: usize) -> Result<Vec<String>> {
-    let content = fs::read_to_string(path)
-        .context("Failed to read file")?;
+    let content = fs::read_to_string(path).context("Failed to read file")?;
 
     Ok(content.lines().take(max_lines).map(String::from).collect())
 }
@@ -649,7 +655,9 @@ mod tests {
     #[test]
     fn test_directory_checks() {
         assert!(directory_exists_and_accessible(Path::new("src")));
-        assert!(!directory_exists_and_accessible(Path::new("nonexistent_dir")));
+        assert!(!directory_exists_and_accessible(Path::new(
+            "nonexistent_dir"
+        )));
         assert!(!directory_exists_and_accessible(Path::new("Cargo.toml"))); // File, not directory
     }
 
@@ -718,9 +726,7 @@ mod tests {
         ];
 
         // Verify each framework has a unique display name
-        let display_names: Vec<_> = frameworks.iter()
-            .map(|f| f.display_name())
-            .collect();
+        let display_names: Vec<_> = frameworks.iter().map(|f| f.display_name()).collect();
         let unique_names: std::collections::HashSet<_> = display_names.iter().collect();
         assert_eq!(unique_names.len(), frameworks.len());
 

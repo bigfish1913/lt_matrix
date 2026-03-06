@@ -49,8 +49,7 @@ fn test_man_page_overwrite() {
     fs::create_dir_all(&output_dir).expect("Failed to create output directory");
 
     // Generate man pages first time
-    ltmatrix::man::generate_man_pages(&output_dir)
-        .expect("First generation should succeed");
+    ltmatrix::man::generate_man_pages(&output_dir).expect("First generation should succeed");
 
     let main_man = output_dir.join("ltmatrix.1");
     let first_content = fs::read_to_string(&main_man).expect("Failed to read first man page");
@@ -59,8 +58,7 @@ fn test_man_page_overwrite() {
     fs::write(&main_man, "modified content").expect("Failed to modify man page");
 
     // Generate again
-    ltmatrix::man::generate_man_pages(&output_dir)
-        .expect("Second generation should succeed");
+    ltmatrix::man::generate_man_pages(&output_dir).expect("Second generation should succeed");
 
     let second_content = fs::read_to_string(&main_man).expect("Failed to read second man page");
 
@@ -86,16 +84,14 @@ fn test_man_page_generation_idempotent() {
     fs::create_dir_all(&output_dir2).expect("Failed to create output directory 2");
 
     // Generate twice
-    ltmatrix::man::generate_man_pages(&output_dir1)
-        .expect("First generation should succeed");
-    ltmatrix::man::generate_man_pages(&output_dir2)
-        .expect("Second generation should succeed");
+    ltmatrix::man::generate_man_pages(&output_dir1).expect("First generation should succeed");
+    ltmatrix::man::generate_man_pages(&output_dir2).expect("Second generation should succeed");
 
     // Compare main man pages
-    let man1 = fs::read_to_string(output_dir1.join("ltmatrix.1"))
-        .expect("Failed to read first man page");
-    let man2 = fs::read_to_string(output_dir2.join("ltmatrix.1"))
-        .expect("Failed to read second man page");
+    let man1 =
+        fs::read_to_string(output_dir1.join("ltmatrix.1")).expect("Failed to read first man page");
+    let man2 =
+        fs::read_to_string(output_dir2.join("ltmatrix.1")).expect("Failed to read second man page");
 
     assert_eq!(man1, man2, "Man page generation should be idempotent");
 }

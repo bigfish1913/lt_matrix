@@ -185,8 +185,7 @@ pub async fn verify_tasks(
     }
 
     // Create Claude agent for verification
-    let agent = ClaudeAgent::new()
-        .context("Failed to create Claude agent for verification")?;
+    let agent = ClaudeAgent::new().context("Failed to create Claude agent for verification")?;
 
     // Filter to only completed tasks
     let completed_tasks: Vec<_> = tasks
@@ -219,16 +218,12 @@ pub async fn verify_tasks(
                         || config.on_blocked == OnBlockedStrategy::Fail
                     {
                         updated_task.status = TaskStatus::Failed;
-                        updated_task.error = Some(format!(
-                            "Verification failed: {}",
-                            result.reasoning
-                        ));
+                        updated_task.error =
+                            Some(format!("Verification failed: {}", result.reasoning));
                     } else if config.on_blocked == OnBlockedStrategy::Block {
                         updated_task.status = TaskStatus::Blocked;
-                        updated_task.error = Some(format!(
-                            "Blocked pending fix: {}",
-                            result.reasoning
-                        ));
+                        updated_task.error =
+                            Some(format!("Blocked pending fix: {}", result.reasoning));
                     }
                     // If strategy is Retry, task stays in current state
                     // for the execute stage to handle
@@ -261,7 +256,10 @@ pub async fn verify_tasks(
     }
 
     let elapsed = start_time.elapsed().as_secs();
-    info!("Verification stage completed: {}/{} passed in {}s", passed, total, elapsed);
+    info!(
+        "Verification stage completed: {}/{} passed in {}s",
+        passed, total, elapsed
+    );
 
     let summary = VerificationSummary {
         total_tasks: total,
@@ -351,14 +349,12 @@ Begin your verification now. Examine the codebase thoroughly and provide your as
 }
 
 /// Parse the verification response from Claude
-fn parse_verification_response(
-    task: &Task,
-    response: String,
-) -> Result<VerificationResult> {
+fn parse_verification_response(task: &Task, response: String) -> Result<VerificationResult> {
     // Look for JSON in the response
     let json_str = if let Some(start) = response.find("```json") {
         let start = start + 7;
-        let end = response[start..].find("```")
+        let end = response[start..]
+            .find("```")
             .context("Unterminated JSON block in verification response")?;
         response[start..start + end].trim().to_string()
     } else if let Some(start) = response.find('{') {
@@ -395,26 +391,35 @@ fn parse_verification_response(
 
     Ok(VerificationResult {
         task: task.clone(),
-        passed: parsed.get("passed")
+        passed: parsed
+            .get("passed")
             .and_then(|v| v.as_bool())
             .unwrap_or(true),
-        reasoning: parsed.get("reasoning")
+        reasoning: parsed
+            .get("reasoning")
             .and_then(|v| v.as_str())
             .unwrap_or("No reasoning provided")
             .to_string(),
-        unmet_criteria: parsed.get("unmet_criteria")
+        unmet_criteria: parsed
+            .get("unmet_criteria")
             .and_then(|v| v.as_array())
-            .map(|arr| arr.iter()
-                .filter_map(|v| v.as_str().map(String::from))
-                .collect())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|v| v.as_str().map(String::from))
+                    .collect()
+            })
             .unwrap_or_default(),
-        suggestions: parsed.get("suggestions")
+        suggestions: parsed
+            .get("suggestions")
             .and_then(|v| v.as_array())
-            .map(|arr| arr.iter()
-                .filter_map(|v| v.as_str().map(String::from))
-                .collect())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|v| v.as_str().map(String::from))
+                    .collect()
+            })
             .unwrap_or_default(),
-        retry_recommended: parsed.get("retry_recommended")
+        retry_recommended: parsed
+            .get("retry_recommended")
             .and_then(|v| v.as_bool())
             .unwrap_or(false),
     })
@@ -433,7 +438,10 @@ pub fn display_verification_summary(summary: &VerificationSummary) {
         println!("\n--- Detailed Results ---");
         for result in &summary.results {
             let status = if result.passed { "PASS" } else { "FAIL" };
-            println!("{} - Task {}: {}", status, result.task.id, result.task.title);
+            println!(
+                "{} - Task {}: {}",
+                status, result.task.id, result.task.title
+            );
             if !result.passed {
                 println!("  Reason: {}", result.reasoning);
                 if !result.unmet_criteria.is_empty() {
@@ -522,7 +530,8 @@ Some text here.
 ```
 
 More text.
-"#.to_string();
+"#
+        .to_string();
 
         let result = parse_verification_response(&task, response).unwrap();
         assert!(result.passed);
@@ -544,7 +553,8 @@ More text.
   "retry_recommended": true
 }
 ```
-"#.to_string();
+"#
+        .to_string();
 
         let result = parse_verification_response(&task, response).unwrap();
         assert!(!result.passed);

@@ -97,9 +97,12 @@ pub async fn run_dry_run(goal: &str, config: &DryRunConfig) -> Result<DryRunResu
     info!("Assessed {} tasks", assessed_tasks.len());
 
     // Step 3: Create execution plan
-    let execution_plan = schedule_tasks(assessed_tasks.clone())
-        .context("Failed to create execution plan")?;
-    info!("Created execution plan with {} levels", execution_plan.max_depth);
+    let execution_plan =
+        schedule_tasks(assessed_tasks.clone()).context("Failed to create execution plan")?;
+    info!(
+        "Created execution plan with {} levels",
+        execution_plan.max_depth
+    );
 
     // Step 4: Calculate statistics
     let statistics = calculate_dry_run_statistics(&assessed_tasks, &execution_plan);
@@ -136,27 +139,27 @@ fn generate_tasks_for_goal(goal: &str) -> Result<Vec<Task>> {
         Task::new(
             "task-1",
             "Analyze requirements",
-            &format!("Understand and clarify requirements for: {}", goal)
+            &format!("Understand and clarify requirements for: {}", goal),
         ),
         Task::new(
             "task-2",
             "Design solution",
-            "Create a technical design for the implementation"
+            "Create a technical design for the implementation",
         ),
         Task::new(
             "task-3",
             "Implement core functionality",
-            "Implement the main features and logic"
+            "Implement the main features and logic",
         ),
         Task::new(
             "task-4",
             "Write tests",
-            "Create comprehensive unit and integration tests"
+            "Create comprehensive unit and integration tests",
         ),
         Task::new(
             "task-5",
             "Documentation",
-            "Write documentation and usage examples"
+            "Write documentation and usage examples",
         ),
     ];
 
@@ -214,9 +217,18 @@ fn display_text_result(
     use console::style;
 
     println!();
-    println!("{}", style("╔═══════════════════════════════════════════════════════════════╗").bold());
-    println!("{}", style("║           LTMATRIX - DRY RUN MODE                            ║").bold());
-    println!("{}", style("╚═══════════════════════════════════════════════════════════════╝").bold());
+    println!(
+        "{}",
+        style("╔═══════════════════════════════════════════════════════════════╗").bold()
+    );
+    println!(
+        "{}",
+        style("║           LTMATRIX - DRY RUN MODE                            ║").bold()
+    );
+    println!(
+        "{}",
+        style("╚═══════════════════════════════════════════════════════════════╝").bold()
+    );
     println!();
 
     // Display goal
@@ -228,15 +240,30 @@ fn display_text_result(
     println!("{}", style("Summary:").bold().cyan());
     println!("  Total Tasks: {}", stats.total_tasks);
     println!("  Execution Depth: {} levels", stats.execution_depth);
-    println!("  Critical Path Length: {} tasks", stats.critical_path_length);
+    println!(
+        "  Critical Path Length: {} tasks",
+        stats.critical_path_length
+    );
     println!("  Parallelizable Tasks: {}", stats.parallelizable_count);
     println!();
 
     // Display complexity breakdown
     println!("{}", style("Complexity Breakdown:").bold().cyan());
-    println!("  Simple: {} {}", stats.simple_tasks, style("(fast model)").dim());
-    println!("  Moderate: {} {}", stats.moderate_tasks, style("(standard model)").dim());
-    println!("  Complex: {} {}", stats.complex_tasks, style("(smart model)").dim());
+    println!(
+        "  Simple: {} {}",
+        stats.simple_tasks,
+        style("(fast model)").dim()
+    );
+    println!(
+        "  Moderate: {} {}",
+        stats.moderate_tasks,
+        style("(standard model)").dim()
+    );
+    println!(
+        "  Complex: {} {}",
+        stats.complex_tasks,
+        style("(smart model)").dim()
+    );
     println!();
 
     // Display subtask information
@@ -264,7 +291,13 @@ fn display_text_result(
                 format!(" [depends on: {}]", task.depends_on.join(", "))
             };
 
-            println!("    {} {}{} {}", complexity_label, task.id, deps, style(format!("- {}", task.title)).dim());
+            println!(
+                "    {} {}{} {}",
+                complexity_label,
+                task.id,
+                deps,
+                style(format!("- {}", task.title)).dim()
+            );
         }
         println!();
     }

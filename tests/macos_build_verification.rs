@@ -16,9 +16,9 @@
 
 #![cfg(target_os = "macos")]
 
-use std::process::Command;
-use std::path::Path;
 use std::env;
+use std::path::Path;
+use std::process::Command;
 
 /// Helper function to get the path to the ltmatrix binary
 fn get_binary_path() -> String {
@@ -56,8 +56,7 @@ fn test_binary_exists() {
 
     // On Unix-like systems (including macOS), check if it's executable
     use std::os::unix::fs::PermissionsExt;
-    let metadata = path.metadata()
-        .expect("Failed to read binary metadata");
+    let metadata = path.metadata().expect("Failed to read binary metadata");
     let permissions = metadata.permissions();
     let mode = permissions.mode();
 
@@ -204,12 +203,12 @@ fn test_code_signing_status() {
                 println!("Code signing details: {}", codesign_output);
 
                 // Check for ad-hoc signing (acceptable for development)
-                if codesign_output.contains("adhoc") ||
-                   stderr_output.contains("Signature=adhoc") {
+                if codesign_output.contains("adhoc") || stderr_output.contains("Signature=adhoc") {
                     println!("✓ Binary has ad-hoc signature (acceptable for development)");
-                } else if codesign_output.contains("Mac Developer") ||
-                          codesign_output.contains("Developer ID") ||
-                          stderr_output.contains("Authority") {
+                } else if codesign_output.contains("Mac Developer")
+                    || codesign_output.contains("Developer ID")
+                    || stderr_output.contains("Authority")
+                {
                     println!("✓ Binary has proper developer signature");
                 }
             } else {
@@ -247,7 +246,7 @@ fn test_adhoc_signing() {
         .arg("--force")
         .arg("--deep")
         .arg("--sign")
-        .arg("-")  // "-" indicates ad-hoc signing
+        .arg("-") // "-" indicates ad-hoc signing
         .arg(&binary_path)
         .output();
 
@@ -297,10 +296,7 @@ fn test_dynamic_dependencies() {
     }
 
     // Use 'otool -L' to check linked libraries
-    let output = Command::new("otool")
-        .arg("-L")
-        .arg(&binary_path)
-        .output();
+    let output = Command::new("otool").arg("-L").arg(&binary_path).output();
 
     match output {
         Ok(output) => {
@@ -319,12 +315,15 @@ fn test_dynamic_dependencies() {
                     "/usr/local/lib",
                     "/opt/homebrew/lib",
                     "/homebrew/lib",
-                    ".dylib",  // Non-system dylib
+                    ".dylib", // Non-system dylib
                 ];
 
                 for pattern in suspicious_patterns {
                     if otool_output.contains(pattern) {
-                        eprintln!("⚠ Warning: Found suspicious dependency pattern: {}", pattern);
+                        eprintln!(
+                            "⚠ Warning: Found suspicious dependency pattern: {}",
+                            pattern
+                        );
                     }
                 }
             } else {
@@ -348,9 +347,7 @@ fn test_no_hardcoded_paths() {
     }
 
     // Use 'strings' to check for hardcoded paths
-    let output = Command::new("strings")
-        .arg(&binary_path)
-        .output();
+    let output = Command::new("strings").arg(&binary_path).output();
 
     match output {
         Ok(output) => {
@@ -359,10 +356,10 @@ fn test_no_hardcoded_paths() {
 
                 // Check for problematic hardcoded paths
                 let problematic_paths = vec![
-                    "/home/",           // Linux-specific
-                    "C:\\",             // Windows-specific
-                    "/usr/local/lib",   // Non-system path
-                    "/opt/homebrew",    // Homebrew path
+                    "/home/",         // Linux-specific
+                    "C:\\",           // Windows-specific
+                    "/usr/local/lib", // Non-system path
+                    "/opt/homebrew",  // Homebrew path
                 ];
 
                 for path in problematic_paths {
@@ -418,7 +415,10 @@ fn test_binary_entitlements() {
 
                 for entitlement in unexpected_entitlements {
                     if entitlements.contains(entitlement) {
-                        eprintln!("⚠ Warning: Binary has unexpected entitlement: {}", entitlement);
+                        eprintln!(
+                            "⚠ Warning: Binary has unexpected entitlement: {}",
+                            entitlement
+                        );
                     }
                 }
             } else {
@@ -443,9 +443,7 @@ fn test_cli_subcommands() {
     }
 
     // Test that we can list available subcommands
-    let output = Command::new(&binary_path)
-        .arg("help")
-        .output();
+    let output = Command::new(&binary_path).arg("help").output();
 
     if let Ok(output) = output {
         let help_text = String::from_utf8_lossy(&output.stdout);
@@ -478,16 +476,10 @@ fn test_no_crash_on_basic_commands() {
     }
 
     // Test various basic commands that shouldn't crash
-    let test_args = vec![
-        vec!["--version"],
-        vec!["--help"],
-        vec!["help"],
-    ];
+    let test_args = vec![vec!["--version"], vec!["--help"], vec!["help"]];
 
     for args in test_args {
-        let output = Command::new(&binary_path)
-            .args(&args)
-            .output();
+        let output = Command::new(&binary_path).args(&args).output();
 
         match output {
             Ok(output) => {
@@ -557,10 +549,7 @@ fn test_binary_properties() {
     );
 
     // Check file size is non-zero
-    assert!(
-        metadata.len() > 0,
-        "Binary has zero size"
-    );
+    assert!(metadata.len() > 0, "Binary has zero size");
 }
 
 /// Test Gatekeeper acceptance
@@ -578,9 +567,7 @@ fn test_gatekeeper_acceptance() {
     }
 
     // Try to execute the binary - Gatekeeper would block if there's an issue
-    let output = Command::new(&binary_path)
-        .arg("--version")
-        .output();
+    let output = Command::new(&binary_path).arg("--version").output();
 
     match output {
         Ok(output) => {
@@ -624,10 +611,7 @@ mod regression_tests {
         if let Ok(output) = output {
             // Should fail gracefully, not crash
             let status = output.status.code().unwrap_or(-1);
-            assert!(
-                status >= 0,
-                "Binary crashed with invalid config path"
-            );
+            assert!(status >= 0, "Binary crashed with invalid config path");
         }
     }
 
@@ -643,17 +627,12 @@ mod regression_tests {
 
         let long_arg = "a".repeat(10000);
 
-        let output = Command::new(&binary_path)
-            .arg(&long_arg)
-            .output();
+        let output = Command::new(&binary_path).arg(&long_arg).output();
 
         if let Ok(output) = output {
             // Should handle gracefully, not buffer overflow
             let status = output.status.code().unwrap_or(-1);
-            assert!(
-                status >= 0,
-                "Binary crashed with very long argument"
-            );
+            assert!(status >= 0, "Binary crashed with very long argument");
         }
     }
 
@@ -684,9 +663,7 @@ mod regression_tests {
 
             if symlink(&binary_path, &symlink_path).is_ok() {
                 // Test execution via symlink
-                let output = Command::new(&symlink_path)
-                    .arg("--version")
-                    .output();
+                let output = Command::new(&symlink_path).arg("--version").output();
 
                 if let Ok(output) = output {
                     // Should work the same as direct execution
@@ -717,10 +694,7 @@ mod linker_verification {
         }
 
         // Use 'otool -l' to check load commands
-        let output = Command::new("otool")
-            .arg("-l")
-            .arg(&binary_path)
-            .output();
+        let output = Command::new("otool").arg("-l").arg(&binary_path).output();
 
         match output {
             Ok(output) => {
@@ -759,10 +733,7 @@ mod dependency_compatibility {
         }
 
         // Check linked libraries for compatibility issues
-        let output = Command::new("otool")
-            .arg("-L")
-            .arg(&binary_path)
-            .output();
+        let output = Command::new("otool").arg("-L").arg(&binary_path).output();
 
         match output {
             Ok(output) => {
@@ -770,12 +741,7 @@ mod dependency_compatibility {
                     let deps = String::from_utf8_lossy(&output.stdout);
 
                     // Check for Linux-specific libraries (should not be present)
-                    let linux_libs = vec![
-                        "linux-vdso",
-                        "ld-linux",
-                        "libssl.so",
-                        "libcrypto.so",
-                    ];
+                    let linux_libs = vec!["linux-vdso", "ld-linux", "libssl.so", "libcrypto.so"];
 
                     for lib in linux_libs {
                         assert!(
@@ -786,10 +752,7 @@ mod dependency_compatibility {
                     }
 
                     // Check for expected macOS frameworks
-                    let macos_frameworks = vec![
-                        "CoreFoundation",
-                        "Security",
-                    ];
+                    let macos_frameworks = vec!["CoreFoundation", "Security"];
 
                     for framework in &macos_frameworks {
                         if deps.contains(framework) {

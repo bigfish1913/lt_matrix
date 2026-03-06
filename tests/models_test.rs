@@ -33,20 +33,32 @@ fn test_task_with_dependencies() {
     task.depends_on = vec!["task-1".to_string(), "task-0".to_string()];
 
     let mut completed = HashSet::new();
-    assert!(!task.can_execute(&completed), "Should not execute with no completed deps");
+    assert!(
+        !task.can_execute(&completed),
+        "Should not execute with no completed deps"
+    );
 
     completed.insert("task-1".to_string());
-    assert!(!task.can_execute(&completed), "Should not execute with partial deps");
+    assert!(
+        !task.can_execute(&completed),
+        "Should not execute with partial deps"
+    );
 
     completed.insert("task-0".to_string());
-    assert!(task.can_execute(&completed), "Should execute with all deps completed");
+    assert!(
+        task.can_execute(&completed),
+        "Should execute with all deps completed"
+    );
 }
 
 #[test]
 fn test_task_with_no_dependencies() {
     let task = Task::new("task-3", "Independent Task", "No dependencies");
     let completed = HashSet::new();
-    assert!(task.can_execute(&completed), "Task with no deps should always be executable");
+    assert!(
+        task.can_execute(&completed),
+        "Task with no deps should always be executable"
+    );
 }
 
 #[test]
@@ -78,12 +90,24 @@ fn test_task_retry_logic() {
     // Failed, no retries
     task.status = TaskStatus::Failed;
     task.retry_count = 0;
-    assert!(task.can_retry(3), "Failed task with no retries should be retryable");
-    assert!(task.can_retry(1), "Failed task within retry limit should be retryable");
+    assert!(
+        task.can_retry(3),
+        "Failed task with no retries should be retryable"
+    );
+    assert!(
+        task.can_retry(1),
+        "Failed task within retry limit should be retryable"
+    );
 
     task.retry_count = 3;
-    assert!(!task.can_retry(3), "Failed task at retry limit should not be retryable");
-    assert!(!task.can_retry(2), "Failed task over retry limit should not be retryable");
+    assert!(
+        !task.can_retry(3),
+        "Failed task at retry limit should not be retryable"
+    );
+    assert!(
+        !task.can_retry(2),
+        "Failed task over retry limit should not be retryable"
+    );
 }
 
 #[test]
@@ -164,7 +188,8 @@ fn test_task_status_serialization() {
 
     for status in statuses {
         let json = serde_json::to_string(&status).expect("Failed to serialize status");
-        let deserialized: TaskStatus = serde_json::from_str(&json).expect("Failed to deserialize status");
+        let deserialized: TaskStatus =
+            serde_json::from_str(&json).expect("Failed to deserialize status");
 
         assert_eq!(deserialized, status, "Status should round-trip correctly");
     }
@@ -189,9 +214,13 @@ fn test_task_complexity_serialization() {
 
     for complexity in complexities {
         let json = serde_json::to_string(&complexity).expect("Failed to serialize complexity");
-        let deserialized: TaskComplexity = serde_json::from_str(&json).expect("Failed to deserialize");
+        let deserialized: TaskComplexity =
+            serde_json::from_str(&json).expect("Failed to deserialize");
 
-        assert_eq!(deserialized, complexity, "Complexity should round-trip correctly");
+        assert_eq!(
+            deserialized, complexity,
+            "Complexity should round-trip correctly"
+        );
     }
 }
 
@@ -208,10 +237,12 @@ fn test_agent_creation() {
 
 #[test]
 fn test_agent_default_marker() {
-    let agent = Agent::new("default-agent", "default-command", "default-model", 600)
-        .with_default();
+    let agent = Agent::new("default-agent", "default-command", "default-model", 600).with_default();
 
-    assert!(agent.is_default, "with_default() should set is_default to true");
+    assert!(
+        agent.is_default,
+        "with_default() should set is_default to true"
+    );
 }
 
 #[test]
@@ -222,13 +253,16 @@ fn test_agent_claude_default() {
     assert_eq!(agent.command, "claude");
     assert_eq!(agent.model, "claude-sonnet-4-6");
     assert_eq!(agent.timeout, 3600);
-    assert!(agent.is_default, "Claude default should be marked as default");
+    assert!(
+        agent.is_default,
+        "Claude default should be marked as default"
+    );
 }
 
 #[test]
 fn test_agent_serialization() {
-    let agent = Agent::new("serialize-agent", "serialize-cmd", "serialize-model", 120)
-        .with_default();
+    let agent =
+        Agent::new("serialize-agent", "serialize-cmd", "serialize-model", 120).with_default();
 
     let json = serde_json::to_string(&agent).expect("Failed to serialize agent");
     assert!(json.contains("\"name\":\"serialize-agent\""));
@@ -249,7 +283,8 @@ fn test_execution_mode_serialization() {
 
     for mode in modes {
         let json = serde_json::to_string(&mode).expect("Failed to serialize mode");
-        let deserialized: ExecutionMode = serde_json::from_str(&json).expect("Failed to deserialize mode");
+        let deserialized: ExecutionMode =
+            serde_json::from_str(&json).expect("Failed to deserialize mode");
 
         assert_eq!(deserialized, mode, "Mode should round-trip correctly");
     }
@@ -262,9 +297,18 @@ fn test_execution_mode_default() {
 
 #[test]
 fn test_execution_mode_run_tests() {
-    assert!(!ExecutionMode::Fast.run_tests(), "Fast mode should not run tests");
-    assert!(ExecutionMode::Standard.run_tests(), "Standard mode should run tests");
-    assert!(ExecutionMode::Expert.run_tests(), "Expert mode should run tests");
+    assert!(
+        !ExecutionMode::Fast.run_tests(),
+        "Fast mode should not run tests"
+    );
+    assert!(
+        ExecutionMode::Standard.run_tests(),
+        "Standard mode should run tests"
+    );
+    assert!(
+        ExecutionMode::Expert.run_tests(),
+        "Expert mode should run tests"
+    );
 }
 
 #[test]
@@ -302,7 +346,8 @@ fn test_pipeline_stage_serialization() {
 
     for stage in stages {
         let json = serde_json::to_string(&stage).expect("Failed to serialize stage");
-        let deserialized: PipelineStage = serde_json::from_str(&json).expect("Failed to deserialize stage");
+        let deserialized: PipelineStage =
+            serde_json::from_str(&json).expect("Failed to deserialize stage");
 
         assert_eq!(deserialized, stage, "Stage should round-trip correctly");
     }
@@ -326,15 +371,24 @@ fn test_pipeline_stage_requires_agent() {
     assert!(PipelineStage::Execute.requires_agent());
     assert!(PipelineStage::Test.requires_agent());
     assert!(PipelineStage::Verify.requires_agent());
-    assert!(!PipelineStage::Commit.requires_agent(), "Commit stage should not require agent");
-    assert!(!PipelineStage::Memory.requires_agent(), "Memory stage should not require agent");
+    assert!(
+        !PipelineStage::Commit.requires_agent(),
+        "Commit stage should not require agent"
+    );
+    assert!(
+        !PipelineStage::Memory.requires_agent(),
+        "Memory stage should not require agent"
+    );
 }
 
 #[test]
 fn test_pipeline_stage_fast_mode() {
     let pipeline = PipelineStage::pipeline_for_mode(ExecutionMode::Fast);
 
-    assert!(!pipeline.contains(&PipelineStage::Test), "Fast mode should skip Test stage");
+    assert!(
+        !pipeline.contains(&PipelineStage::Test),
+        "Fast mode should skip Test stage"
+    );
     assert!(pipeline.contains(&PipelineStage::Generate));
     assert!(pipeline.contains(&PipelineStage::Execute));
     assert!(pipeline.contains(&PipelineStage::Commit));
@@ -349,7 +403,10 @@ fn test_pipeline_stage_fast_mode() {
 fn test_pipeline_stage_standard_mode() {
     let pipeline = PipelineStage::pipeline_for_mode(ExecutionMode::Standard);
 
-    assert!(pipeline.contains(&PipelineStage::Test), "Standard mode should include Test stage");
+    assert!(
+        pipeline.contains(&PipelineStage::Test),
+        "Standard mode should include Test stage"
+    );
     assert!(pipeline.contains(&PipelineStage::Verify));
     assert!(pipeline.contains(&PipelineStage::Memory));
 
@@ -361,12 +418,18 @@ fn test_pipeline_stage_standard_mode() {
 fn test_pipeline_stage_expert_mode() {
     let pipeline = PipelineStage::pipeline_for_mode(ExecutionMode::Expert);
 
-    assert!(pipeline.contains(&PipelineStage::Test), "Expert mode should include Test stage");
+    assert!(
+        pipeline.contains(&PipelineStage::Test),
+        "Expert mode should include Test stage"
+    );
     assert_eq!(pipeline.len(), 7, "Expert mode should have all 7 stages");
 
     // Expert mode should have same pipeline as Standard
     let standard_pipeline = PipelineStage::pipeline_for_mode(ExecutionMode::Standard);
-    assert_eq!(pipeline, standard_pipeline, "Expert and Standard modes should have same pipeline");
+    assert_eq!(
+        pipeline, standard_pipeline,
+        "Expert and Standard modes should have same pipeline"
+    );
 }
 
 #[test]
@@ -446,7 +509,8 @@ fn test_mode_config_serialization() {
     assert!(json.contains("\"model_fast\":\"fast-model\""));
     assert!(json.contains("\"run_tests\":true"));
 
-    let deserialized: ModeConfig = serde_json::from_str(&json).expect("Failed to deserialize config");
+    let deserialized: ModeConfig =
+        serde_json::from_str(&json).expect("Failed to deserialize config");
     assert_eq!(deserialized.model_fast, config.model_fast);
     assert_eq!(deserialized.run_tests, config.run_tests);
 }
@@ -467,7 +531,8 @@ fn test_complex_task_with_nested_subtasks() {
 
     // Test serialization preserves nesting
     let json = serde_json::to_string(&root).expect("Failed to serialize nested tasks");
-    let deserialized: Task = serde_json::from_str(&json).expect("Failed to deserialize nested tasks");
+    let deserialized: Task =
+        serde_json::from_str(&json).expect("Failed to deserialize nested tasks");
 
     assert_eq!(deserialized.subtasks.len(), 1);
     assert_eq!(deserialized.subtasks[0].subtasks.len(), 1);
@@ -492,10 +557,16 @@ fn test_task_with_multiple_dependencies() {
 
     completed.insert("dep-3".to_string());
     completed.insert("dep-4".to_string());
-    assert!(!task.can_execute(&completed), "Should need all dependencies");
+    assert!(
+        !task.can_execute(&completed),
+        "Should need all dependencies"
+    );
 
     completed.insert("dep-2".to_string());
-    assert!(task.can_execute(&completed), "Should execute with all dependencies");
+    assert!(
+        task.can_execute(&completed),
+        "Should execute with all dependencies"
+    );
 }
 
 #[test]
@@ -547,7 +618,10 @@ fn test_pipeline_stage_ordering_consistency() {
         PipelineStage::Memory,
     ];
 
-    assert_eq!(pipeline1, expected_order, "Pipeline should be in expected order");
+    assert_eq!(
+        pipeline1, expected_order,
+        "Pipeline should be in expected order"
+    );
 }
 
 #[test]
@@ -572,8 +646,13 @@ fn test_all_task_statuses_serializable_roundtrip() {
     ];
 
     for (expected_str, status) in statuses {
-        let json = serde_json::to_string(&status).expect(&format!("Failed to serialize {:?}", status));
-        assert!(json.contains(expected_str), "JSON should contain '{}'", expected_str);
+        let json =
+            serde_json::to_string(&status).expect(&format!("Failed to serialize {:?}", status));
+        assert!(
+            json.contains(expected_str),
+            "JSON should contain '{}'",
+            expected_str
+        );
 
         let deserialized: TaskStatus = serde_json::from_str(&json).expect("Failed to deserialize");
         assert_eq!(deserialized, status, "Status should round-trip correctly");

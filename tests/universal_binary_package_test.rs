@@ -27,11 +27,11 @@
 
 #![cfg(target_os = "macos")]
 
+use std::env;
+use std::fs;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::fs;
-use std::env;
-use std::io::Read;
 use tempfile::TempDir;
 
 /// Test configuration
@@ -50,23 +50,17 @@ impl TestConfig {
         let project_root = Self::find_project_root();
 
         // Allow version override via environment
-        let version = env::var("LTMATRIX_VERSION")
-            .ok()
-            .unwrap_or_else(|| {
-                // Try to read from Cargo.toml
-                if let Ok(toml) = fs::read_to_string(project_root.join("Cargo.toml")) {
-                    toml.lines()
-                        .find(|line| line.starts_with("version = "))
-                        .and_then(|line| {
-                            line.split('"')
-                                .nth(1)
-                                .map(|v| v.to_string())
-                        })
-                        .unwrap_or_else(|| "0.1.0".to_string())
-                } else {
-                    "0.1.0".to_string()
-                }
-            });
+        let version = env::var("LTMATRIX_VERSION").ok().unwrap_or_else(|| {
+            // Try to read from Cargo.toml
+            if let Ok(toml) = fs::read_to_string(project_root.join("Cargo.toml")) {
+                toml.lines()
+                    .find(|line| line.starts_with("version = "))
+                    .and_then(|line| line.split('"').nth(1).map(|v| v.to_string()))
+                    .unwrap_or_else(|| "0.1.0".to_string())
+            } else {
+                "0.1.0".to_string()
+            }
+        });
 
         // Allow binary path overrides
         let intel_binary = env::var("LTMATRIX_INTEL_BINARY")
@@ -114,17 +108,22 @@ impl TestConfig {
 
     /// Get the expected package directory name
     fn package_dir(&self) -> PathBuf {
-        self.dist_dir.join(format!("ltmatrix-{}-macos-universal", self.version))
+        self.dist_dir
+            .join(format!("ltmatrix-{}-macos-universal", self.version))
     }
 
     /// Get the expected tarball path
     fn tarball_path(&self) -> PathBuf {
-        self.dist_dir.join(format!("ltmatrix-{}-macos-universal.tar.gz", self.version))
+        self.dist_dir
+            .join(format!("ltmatrix-{}-macos-universal.tar.gz", self.version))
     }
 
     /// Get the expected checksum path
     fn checksum_path(&self) -> PathBuf {
-        self.dist_dir.join(format!("ltmatrix-{}-macos-universal.tar.gz.sha256", self.version))
+        self.dist_dir.join(format!(
+            "ltmatrix-{}-macos-universal.tar.gz.sha256",
+            self.version
+        ))
     }
 }
 
@@ -153,14 +152,9 @@ fn run_command(binary: &Path, args: &[&str]) -> Result<String, String> {
 /// Helper function to run shell command and return output
 fn run_shell_command(cmd: &str) -> Result<String, String> {
     let output = if cfg!(target_os = "macos") {
-        Command::new("sh")
-            .arg("-c")
-            .arg(cmd)
-            .output()
+        Command::new("sh").arg("-c").arg(cmd).output()
     } else {
-        Command::new("cmd")
-            .args(&["/C", cmd])
-            .output()
+        Command::new("cmd").args(&["/C", cmd]).output()
     };
 
     let output = output.map_err(|e| format!("Failed to execute shell command '{}': {}", cmd, e))?;
@@ -212,12 +206,18 @@ mod universal_binary_creation_tests {
         let config = TestConfig::load();
 
         if !config.universal_binary.exists() {
-            eprintln!("⚠ Universal binary not found: {:?}", config.universal_binary);
+            eprintln!(
+                "⚠ Universal binary not found: {:?}",
+                config.universal_binary
+            );
             eprintln!("  Create with: ./scripts/create-universal-binary.sh");
             return;
         }
 
-        assert!(config.universal_binary.exists(), "Universal binary not found");
+        assert!(
+            config.universal_binary.exists(),
+            "Universal binary not found"
+        );
     }
 
     #[test]
@@ -396,7 +396,13 @@ mod universal_binary_creation_tests {
                     // Try to apply ad-hoc signing
                     eprintln!("Attempting to apply ad-hoc signature...");
                     let sign_output = Command::new("codesign")
-                        .args(&["--force", "--deep", "--sign", "-", config.universal_binary.to_str().unwrap()])
+                        .args(&[
+                            "--force",
+                            "--deep",
+                            "--sign",
+                            "-",
+                            config.universal_binary.to_str().unwrap(),
+                        ])
                         .output();
 
                     if let Ok(sign) = sign_output {
@@ -430,7 +436,10 @@ mod distribution_package_tests {
 
         if !package_dir.exists() {
             eprintln!("⚠ Package directory not found: {:?}", package_dir);
-            eprintln!("  Create with: ./scripts/package-macos.sh {}", config.version);
+            eprintln!(
+                "  Create with: ./scripts/package-macos.sh {}",
+                config.version
+            );
             return;
         }
 
@@ -445,7 +454,10 @@ mod distribution_package_tests {
 
         if !tarball.exists() {
             eprintln!("⚠ Tarball not found: {:?}", tarball);
-            eprintln!("  Create with: ./scripts/package-macos.sh {}", config.version);
+            eprintln!(
+                "  Create with: ./scripts/package-macos.sh {}",
+                config.version
+            );
             return;
         }
 
@@ -486,11 +498,7 @@ mod distribution_package_tests {
         let permissions = metadata.permissions();
         let mode = permissions.mode();
 
-        assert_eq!(
-            mode & 0o111,
-            0o111,
-            "Binary is not executable"
-        );
+        assert_eq!(mode & 0o111, 0o111, "Binary is not executable");
 
         println!("✓ Package contains executable binary");
     }
@@ -509,8 +517,7 @@ mod distribution_package_tests {
         assert!(readme.exists(), "Package missing README.md");
 
         // Verify README contains expected sections
-        let contents = fs::read_to_string(&readme)
-            .expect("Failed to read README.md");
+        let contents = fs::read_to_string(&readme).expect("Failed to read README.md");
 
         let expected_sections = vec![
             "# ltmatrix",
@@ -546,8 +553,7 @@ mod distribution_package_tests {
             return;
         }
 
-        let contents = fs::read_to_string(&readme)
-            .expect("Failed to read README.md");
+        let contents = fs::read_to_string(&readme).expect("Failed to read README.md");
 
         assert!(
             contents.contains(&config.version),
@@ -573,19 +579,16 @@ mod distribution_package_tests {
 
         // Check it's executable
         use std::os::unix::fs::PermissionsExt;
-        let metadata = install_script.metadata().expect("Failed to read install.sh metadata");
+        let metadata = install_script
+            .metadata()
+            .expect("Failed to read install.sh metadata");
         let permissions = metadata.permissions();
         let mode = permissions.mode();
 
-        assert_eq!(
-            mode & 0o111,
-            0o111,
-            "install.sh is not executable"
-        );
+        assert_eq!(mode & 0o111, 0o111, "install.sh is not executable");
 
         // Verify script contains expected content
-        let contents = fs::read_to_string(&install_script)
-            .expect("Failed to read install.sh");
+        let contents = fs::read_to_string(&install_script).expect("Failed to read install.sh");
 
         assert!(
             contents.contains("#!/bin/bash"),
@@ -615,15 +618,13 @@ mod distribution_package_tests {
 
         // Check it's executable
         use std::os::unix::fs::PermissionsExt;
-        let metadata = uninstall_script.metadata().expect("Failed to read uninstall.sh metadata");
+        let metadata = uninstall_script
+            .metadata()
+            .expect("Failed to read uninstall.sh metadata");
         let permissions = metadata.permissions();
         let mode = permissions.mode();
 
-        assert_eq!(
-            mode & 0o111,
-            0o111,
-            "uninstall.sh is not executable"
-        );
+        assert_eq!(mode & 0o111, 0o111, "uninstall.sh is not executable");
 
         println!("✓ Package contains uninstall.sh");
     }
@@ -684,19 +685,10 @@ mod distribution_package_tests {
         let contents = String::from_utf8_lossy(&output.stdout);
         println!("Tarball contents:\n{}", contents);
 
-        let expected_files = vec![
-            "ltmatrix",
-            "README.md",
-            "install.sh",
-            "uninstall.sh",
-        ];
+        let expected_files = vec!["ltmatrix", "README.md", "install.sh", "uninstall.sh"];
 
         for file in expected_files {
-            assert!(
-                contents.contains(file),
-                "Tarball missing file: {}",
-                file
-            );
+            assert!(contents.contains(file), "Tarball missing file: {}", file);
         }
 
         println!("✓ Tarball contains all expected files");
@@ -714,8 +706,8 @@ mod distribution_package_tests {
         }
 
         // Read checksum file
-        let checksum_content = fs::read_to_string(&checksum_file)
-            .expect("Failed to read checksum file");
+        let checksum_content =
+            fs::read_to_string(&checksum_file).expect("Failed to read checksum file");
 
         println!("Checksum file content: {}", checksum_content);
 
@@ -726,7 +718,10 @@ mod distribution_package_tests {
         );
 
         assert!(
-            checksum_content.contains(&format!("ltmatrix-{}-macos-universal.tar.gz", config.version)),
+            checksum_content.contains(&format!(
+                "ltmatrix-{}-macos-universal.tar.gz",
+                config.version
+            )),
             "Checksum file doesn't reference correct tarball"
         );
 
@@ -743,8 +738,7 @@ mod distribution_package_tests {
             return;
         }
 
-        let metadata = fs::metadata(&tarball)
-            .expect("Failed to read tarball metadata");
+        let metadata = fs::metadata(&tarball).expect("Failed to read tarball metadata");
 
         let size_bytes = metadata.len();
         let size_mb = size_bytes as f64 / (1024.0 * 1024.0);
@@ -985,7 +979,11 @@ mod integration_tests {
 
         // Print summary
         println!("\n=== Package Workflow Summary ===");
-        println!("Completed ({}/{}):", steps_completed.len(), steps_completed.len() + steps_failed.len());
+        println!(
+            "Completed ({}/{}):",
+            steps_completed.len(),
+            steps_completed.len() + steps_failed.len()
+        );
         for step in &steps_completed {
             println!("  ✓ {}", step);
         }
@@ -1080,8 +1078,7 @@ mod integration_tests {
             return;
         }
 
-        let contents = fs::read_to_string(&readme)
-            .expect("Failed to read README.md");
+        let contents = fs::read_to_string(&readme).expect("Failed to read README.md");
 
         // Check for comprehensive documentation
         let required_sections = vec![
@@ -1095,22 +1092,21 @@ mod integration_tests {
             ("## System Requirements", "System requirements section"),
             ("## Support", "Support section"),
             ("## License", "License section"),
-
             // Installation methods
             ("Quick Install", "Quick install instructions"),
-            ("Alternative Locations", "Alternative installation locations"),
-
+            (
+                "Alternative Locations",
+                "Alternative installation locations",
+            ),
             // Verification steps
             ("## Verification", "Verification section"),
             ("--version", "Version verification"),
             ("--help", "Help verification"),
             ("lipo -info", "Architecture verification"),
-
             // Troubleshooting
             ("Command not found", "Command not found troubleshooting"),
             ("Cannot be opened", "Gatekeeper troubleshooting"),
             ("Code signing", "Code signing troubleshooting"),
-
             // Metadata
             ("Version:", "Version metadata"),
             ("Platform:", "Platform metadata"),
@@ -1133,7 +1129,8 @@ mod integration_tests {
         }
 
         // Allow some flexibility - at least 80% of sections should be present
-        let coverage = (required_sections.len() - missing.len()) as f64 / required_sections.len() as f64;
+        let coverage =
+            (required_sections.len() - missing.len()) as f64 / required_sections.len() as f64;
 
         assert!(
             coverage >= 0.8,

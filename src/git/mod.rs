@@ -19,46 +19,27 @@
 //! # Ok::<(), anyhow::Error>(())
 //! ```
 
-pub mod repository;
 pub mod branch;
 pub mod commit;
 pub mod merge;
+pub mod repository;
 
 // Re-export commonly used functions
 pub use repository::{
-    init_repo,
-    checkout,
-    generate_gitignore,
-    get_current_branch,
-    create_signature,
+    checkout, create_signature, generate_gitignore, get_current_branch, init_repo,
 };
 
 // Re-export branch functions
 pub use branch::{
-    create_branch,
-    validate_branch_name,
-    branch_exists,
-    list_branches,
-    delete_branch,
-    get_current_branch_name,
-    is_head_detached,
+    branch_exists, create_branch, delete_branch, get_current_branch_name, is_head_detached,
+    list_branches, validate_branch_name,
 };
 
 // Re-export commit functions
 pub use commit::{
-    commit_changes,
-    stage_files,
-    stage_all,
-    create_commit,
-    get_head_commit,
-    has_staged_changes,
-    has_unstaged_changes,
-    validate_commit_message,
-    amend_commit,
-    short_commit_id,
+    amend_commit, commit_changes, create_commit, get_head_commit, has_staged_changes,
+    has_unstaged_changes, short_commit_id, stage_all, stage_files, validate_commit_message,
 };
 
 // Re-export merge functions
-pub use merge::{
-    merge_with_squash,
-};
+pub use merge::merge_with_squash;

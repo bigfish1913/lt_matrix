@@ -3,8 +3,8 @@
 //! This module provides branch creation, listing, deletion, and validation
 //! with comprehensive error handling for conflicts and invalid branch names.
 
-use anyhow::{Context, Result, bail};
-use git2::{Repository, BranchType, Branch};
+use anyhow::{bail, Context, Result};
+use git2::{Branch, BranchType, Repository};
 
 /// Creates a new branch in the repository.
 ///
@@ -46,14 +46,17 @@ pub fn create_branch<'a>(repo: &'a Repository, branch_name: &str) -> Result<Bran
     }
 
     // Get HEAD commit
-    let head = repo.head()
+    let head = repo
+        .head()
         .context("Cannot create branch: repository has no commits yet (HEAD is unborn)")?;
 
-    let target = head.peel_to_commit()
+    let target = head
+        .peel_to_commit()
         .context("Failed to peel HEAD to commit")?;
 
     // Create the branch
-    let branch = repo.branch(branch_name, &target, false)
+    let branch = repo
+        .branch(branch_name, &target, false)
         .context("Failed to create branch")?;
 
     tracing::info!("Created branch: {}", branch_name);
@@ -102,7 +105,13 @@ pub fn validate_branch_name(branch_name: &str) -> Result<()> {
     }
 
     // Check for reserved branch names
-    let reserved = ["HEAD", "FETCH_HEAD", "ORIG_HEAD", "MERGE_HEAD", "CHERRY_PICK_HEAD"];
+    let reserved = [
+        "HEAD",
+        "FETCH_HEAD",
+        "ORIG_HEAD",
+        "MERGE_HEAD",
+        "CHERRY_PICK_HEAD",
+    ];
     if reserved.contains(&branch_name) {
         bail!("'{}' is a reserved branch name", branch_name);
     }
@@ -194,13 +203,15 @@ pub fn branch_exists(repo: &Repository, branch_name: &str) -> bool {
 /// # Ok::<(), anyhow::Error>(())
 /// ```
 pub fn list_branches(repo: &Repository) -> Result<Vec<String>> {
-    let branches = repo.branches(Some(BranchType::Local))
+    let branches = repo
+        .branches(Some(BranchType::Local))
         .context("Failed to list branches")?;
 
     let mut branch_names = Vec::new();
     for branch_result in branches {
         let (branch, _branch_type) = branch_result.context("Failed to read branch")?;
-        let name = branch.name()
+        let name = branch
+            .name()
             .context("Branch has invalid name")?
             .ok_or_else(|| anyhow::anyhow!("Branch name is None"))?;
         branch_names.push(name.to_string());
@@ -239,7 +250,8 @@ pub fn list_branches(repo: &Repository) -> Result<Vec<String>> {
 /// ```
 pub fn delete_branch(repo: &Repository, branch_name: &str) -> Result<()> {
     // Check if branch exists
-    let mut branch = repo.find_branch(branch_name, BranchType::Local)
+    let mut branch = repo
+        .find_branch(branch_name, BranchType::Local)
         .context("Failed to find branch")?;
 
     // Check if it's the current branch
@@ -252,8 +264,7 @@ pub fn delete_branch(repo: &Repository, branch_name: &str) -> Result<()> {
     }
 
     // Delete the branch
-    branch.delete()
-        .context("Failed to delete branch")?;
+    branch.delete().context("Failed to delete branch")?;
 
     tracing::info!("Deleted branch: {}", branch_name);
 
@@ -282,10 +293,10 @@ pub fn delete_branch(repo: &Repository, branch_name: &str) -> Result<()> {
 /// # Ok::<(), anyhow::Error>(())
 /// ```
 pub fn get_current_branch_name(repo: &Repository) -> Result<String> {
-    let head = repo.head()
-        .context("Failed to get HEAD reference")?;
+    let head = repo.head().context("Failed to get HEAD reference")?;
 
-    let branch_name = head.shorthand()
+    let branch_name = head
+        .shorthand()
         .context("Failed to get branch name (detached HEAD?)")?;
 
     Ok(branch_name.to_string())
@@ -320,8 +331,8 @@ pub fn is_head_detached(repo: &Repository) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::git::repository::{create_signature, init_repo};
     use tempfile::TempDir;
-    use crate::git::repository::{init_repo, create_signature};
 
     /// Helper function to create an initial commit for testing
     fn create_initial_commit(repo: &Repository) -> Result<git2::Oid> {
@@ -332,14 +343,7 @@ mod tests {
 
         // Create commit
         let tree = repo.find_tree(tree_oid)?;
-        let oid = repo.commit(
-            Some("HEAD"),
-            &sig,
-            &sig,
-            "Initial commit",
-            &tree,
-            &[],
-        )?;
+        let oid = repo.commit(Some("HEAD"), &sig, &sig, "Initial commit", &tree, &[])?;
 
         Ok(oid)
     }

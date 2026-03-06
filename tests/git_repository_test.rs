@@ -7,9 +7,11 @@
 //! - Nested repository protection
 //! - Error handling patterns
 
-use ltmatrix::git::{init_repo, checkout, generate_gitignore, get_current_branch, create_signature};
-use tempfile::TempDir;
 use git2::Repository;
+use ltmatrix::git::{
+    checkout, create_signature, generate_gitignore, get_current_branch, init_repo,
+};
+use tempfile::TempDir;
 
 /// Helper function to create an initial commit for testing
 fn create_initial_commit(repo: &Repository) -> anyhow::Result<git2::Oid> {
@@ -20,14 +22,7 @@ fn create_initial_commit(repo: &Repository) -> anyhow::Result<git2::Oid> {
 
     // Create commit
     let tree = repo.find_tree(tree_oid)?;
-    let oid = repo.commit(
-        Some("HEAD"),
-        &sig,
-        &sig,
-        "Initial commit",
-        &tree,
-        &[],
-    )?;
+    let oid = repo.commit(Some("HEAD"), &sig, &sig, "Initial commit", &tree, &[])?;
 
     Ok(oid)
 }
@@ -41,21 +36,37 @@ fn test_init_repo_creates_repository() {
     let repo = init_repo(repo_path).expect("Failed to initialize repository");
 
     // Verify .git directory exists
-    assert!(repo_path.join(".git").exists(), ".git directory should exist");
+    assert!(
+        repo_path.join(".git").exists(),
+        ".git directory should exist"
+    );
 
     // Verify .gitignore file exists
-    assert!(repo_path.join(".gitignore").exists(), ".gitignore file should exist");
+    assert!(
+        repo_path.join(".gitignore").exists(),
+        ".gitignore file should exist"
+    );
 
     // Verify repository is valid and empty
     assert!(repo.is_empty().unwrap(), "New repository should be empty");
-    assert!(repo.head().is_err(), "New repository should not have HEAD yet");
+    assert!(
+        repo.head().is_err(),
+        "New repository should not have HEAD yet"
+    );
 
     // Verify git configuration
     let config = repo.config().expect("Failed to get config");
-    let email = config.get_string("user.email").expect("Failed to get user.email");
-    let name = config.get_string("user.name").expect("Failed to get user.name");
+    let email = config
+        .get_string("user.email")
+        .expect("Failed to get user.email");
+    let name = config
+        .get_string("user.name")
+        .expect("Failed to get user.name");
 
-    assert_eq!(email, "ltmatrix@agent", "user.email should be set correctly");
+    assert_eq!(
+        email, "ltmatrix@agent",
+        "user.email should be set correctly"
+    );
     assert_eq!(name, "Ltmatrix Agent", "user.name should be set correctly");
 }
 
@@ -70,23 +81,40 @@ fn test_generate_gitignore_contains_expected_patterns() {
     let gitignore_path = repo_path.join(".gitignore");
     assert!(gitignore_path.exists(), ".gitignore should exist");
 
-    let content = std::fs::read_to_string(&gitignore_path)
-        .expect("Failed to read .gitignore");
+    let content = std::fs::read_to_string(&gitignore_path).expect("Failed to read .gitignore");
 
     // Verify Node.js patterns
-    assert!(content.contains("node_modules/"), "Should contain node_modules pattern");
-    assert!(content.contains("npm-debug.log*"), "Should contain npm debug log pattern");
+    assert!(
+        content.contains("node_modules/"),
+        "Should contain node_modules pattern"
+    );
+    assert!(
+        content.contains("npm-debug.log*"),
+        "Should contain npm debug log pattern"
+    );
 
     // Verify Python patterns
-    assert!(content.contains("__pycache__/"), "Should contain pycache pattern");
+    assert!(
+        content.contains("__pycache__/"),
+        "Should contain pycache pattern"
+    );
     assert!(content.contains(".venv/"), "Should contain venv pattern");
 
     // Verify Rust patterns
-    assert!(content.contains("/target/"), "Should contain target directory pattern");
+    assert!(
+        content.contains("/target/"),
+        "Should contain target directory pattern"
+    );
 
     // Verify IDE patterns
-    assert!(content.contains(".idea/"), "Should contain IntelliJ IDEA pattern");
-    assert!(content.contains(".vscode/"), "Should contain VSCode pattern");
+    assert!(
+        content.contains(".idea/"),
+        "Should contain IntelliJ IDEA pattern"
+    );
+    assert!(
+        content.contains(".vscode/"),
+        "Should contain VSCode pattern"
+    );
 
     // Verify environment files
     assert!(content.contains(".env"), "Should contain .env pattern");
@@ -126,19 +154,21 @@ fn test_checkout_creates_new_branch() {
     create_initial_commit(&repo).expect("Failed to create initial commit");
 
     // Checkout new branch
-    let head_commit = checkout(&repo, "feature-branch")
-        .expect("Failed to checkout feature-branch");
+    let head_commit = checkout(&repo, "feature-branch").expect("Failed to checkout feature-branch");
 
     // Verify branch was created
-    let branch = repo.find_branch("feature-branch", git2::BranchType::Local)
+    let branch = repo
+        .find_branch("feature-branch", git2::BranchType::Local)
         .expect("Branch should exist");
 
     assert!(branch.is_head(), "New branch should be checked out");
 
     // Verify current branch
-    let current_branch = get_current_branch(&repo)
-        .expect("Failed to get current branch");
-    assert_eq!(current_branch, "feature-branch", "Should be on feature-branch");
+    let current_branch = get_current_branch(&repo).expect("Failed to get current branch");
+    assert_eq!(
+        current_branch, "feature-branch",
+        "Should be on feature-branch"
+    );
 
     // Verify HEAD commit is returned
     assert!(!head_commit.is_zero(), "HEAD commit should be valid");
@@ -164,15 +194,13 @@ fn test_checkout_switches_existing_branch() {
     // Switch back to first branch
     checkout(&repo, "branch-one").expect("Failed to switch to branch-one");
 
-    let current_branch = get_current_branch(&repo)
-        .expect("Failed to get current branch");
+    let current_branch = get_current_branch(&repo).expect("Failed to get current branch");
     assert_eq!(current_branch, "branch-one", "Should be on branch-one");
 
     // Switch to second branch again
     checkout(&repo, "branch-two").expect("Failed to switch to branch-two");
 
-    let current_branch = get_current_branch(&repo)
-        .expect("Failed to get current branch");
+    let current_branch = get_current_branch(&repo).expect("Failed to get current branch");
     assert_eq!(current_branch, "branch-two", "Should be on branch-two");
 }
 
@@ -188,30 +216,28 @@ fn test_get_current_branch_returns_correct_name() {
     create_initial_commit(&repo).expect("Failed to create initial commit");
 
     // Default branch should be "master" (git2 default)
-    let branch = get_current_branch(&repo)
-        .expect("Failed to get current branch");
+    let branch = get_current_branch(&repo).expect("Failed to get current branch");
     assert_eq!(branch, "master", "Default branch should be master");
 
     // Create and checkout a new branch
     checkout(&repo, "test-branch").expect("Failed to checkout test-branch");
 
-    let branch = get_current_branch(&repo)
-        .expect("Failed to get current branch after checkout");
+    let branch = get_current_branch(&repo).expect("Failed to get current branch after checkout");
     assert_eq!(branch, "test-branch", "Should be on test-branch");
 
     // Create another branch
     checkout(&repo, "another-branch").expect("Failed to checkout another-branch");
 
-    let branch = get_current_branch(&repo)
-        .expect("Failed to get current branch after second checkout");
+    let branch =
+        get_current_branch(&repo).expect("Failed to get current branch after second checkout");
     assert_eq!(branch, "another-branch", "Should be on another-branch");
 }
 
 /// Test create_signature creates a valid Git signature
 #[test]
 fn test_create_signature_creates_valid_signature() {
-    let sig = create_signature("Test Author", "test@example.com")
-        .expect("Failed to create signature");
+    let sig =
+        create_signature("Test Author", "test@example.com").expect("Failed to create signature");
 
     assert_eq!(sig.name(), Some("Test Author"), "Name should match");
     assert_eq!(sig.email(), Some("test@example.com"), "Email should match");
@@ -233,8 +259,8 @@ fn test_create_signature_creates_valid_signature() {
 fn test_nested_repo_protection() {
     // Create parent repository
     let parent_dir = TempDir::new().expect("Failed to create parent temp dir");
-    let _parent_repo = Repository::init(parent_dir.path())
-        .expect("Failed to init parent repository");
+    let _parent_repo =
+        Repository::init(parent_dir.path()).expect("Failed to init parent repository");
 
     // Create child workspace path
     let workspace_path = parent_dir.path().join("nested-workspace");
@@ -246,13 +272,17 @@ fn test_nested_repo_protection() {
     let parent_gitignore = parent_dir.path().join(".gitignore");
     assert!(parent_gitignore.exists(), "Parent .gitignore should exist");
 
-    let content = std::fs::read_to_string(&parent_gitignore)
-        .expect("Failed to read parent .gitignore");
+    let content =
+        std::fs::read_to_string(&parent_gitignore).expect("Failed to read parent .gitignore");
 
-    assert!(content.contains("/nested-workspace/"),
-            "Parent .gitignore should contain child workspace path");
-    assert!(content.contains("ltmatrix workspace"),
-            "Parent .gitignore should have comment explaining the entry");
+    assert!(
+        content.contains("/nested-workspace/"),
+        "Parent .gitignore should contain child workspace path"
+    );
+    assert!(
+        content.contains("ltmatrix workspace"),
+        "Parent .gitignore should have comment explaining the entry"
+    );
 }
 
 /// Test error handling when trying to checkout without initial commit
@@ -266,7 +296,10 @@ fn test_checkout_fails_without_initial_commit() {
     // Try to checkout without initial commit - should fail
     let result = checkout(&repo, "new-branch");
 
-    assert!(result.is_err(), "Checkout should fail without initial commit");
+    assert!(
+        result.is_err(),
+        "Checkout should fail without initial commit"
+    );
 }
 
 /// Test error handling when getting current branch without initial commit
@@ -280,7 +313,10 @@ fn test_get_current_branch_fails_without_initial_commit() {
     // Try to get current branch without initial commit - should fail
     let result = get_current_branch(&repo);
 
-    assert!(result.is_err(), "get_current_branch should fail without initial commit");
+    assert!(
+        result.is_err(),
+        "get_current_branch should fail without initial commit"
+    );
 }
 
 /// Test that init_repo cannot reinitialize an existing repository (protection against reinit)
@@ -295,11 +331,21 @@ fn test_init_repo_prevents_reinitialization() {
     // Try to initialize repository second time (should fail due to no_reinit)
     let result = init_repo(repo_path);
 
-    assert!(result.is_err(), "Should not allow reinitialization of existing repository");
+    assert!(
+        result.is_err(),
+        "Should not allow reinitialization of existing repository"
+    );
 
     // Original repository should still be accessible and valid
-    assert!(repo1.path().exists(), "Original repo .git directory should still exist");
-    assert_eq!(repo1.workdir(), Some(repo_path), "Original repo workdir should still be valid");
+    assert!(
+        repo1.path().exists(),
+        "Original repo .git directory should still exist"
+    );
+    assert_eq!(
+        repo1.workdir(),
+        Some(repo_path),
+        "Original repo workdir should still be valid"
+    );
 }
 
 /// Test multiple branch operations in sequence
@@ -321,7 +367,8 @@ fn test_multiple_branch_operations() {
 
     // Verify all branches exist
     for branch in &branches {
-        let _branch_obj = repo.find_branch(branch, git2::BranchType::Local)
+        let _branch_obj = repo
+            .find_branch(branch, git2::BranchType::Local)
             .expect(&format!("Branch {} should exist", branch));
         // If we can find it, it's valid
     }
@@ -340,17 +387,28 @@ fn test_gitignore_structure_and_formatting() {
 
     generate_gitignore(repo_path).expect("Failed to generate .gitignore");
 
-    let content = std::fs::read_to_string(repo_path.join(".gitignore"))
-        .expect("Failed to read .gitignore");
+    let content =
+        std::fs::read_to_string(repo_path.join(".gitignore")).expect("Failed to read .gitignore");
 
     // Verify it has section headers
     assert!(content.contains("───"), "Should have section separators");
 
     // Verify it has multiple sections
-    let sections = vec!["Node / JS / TS", "Python", "Rust", "Go", "Java", "IDEs", "Build tools"];
+    let sections = vec![
+        "Node / JS / TS",
+        "Python",
+        "Rust",
+        "Go",
+        "Java",
+        "IDEs",
+        "Build tools",
+    ];
     for section in sections {
-        assert!(content.contains(section),
-                "Should have section for {}", section);
+        assert!(
+            content.contains(section),
+            "Should have section for {}",
+            section
+        );
     }
 
     // Verify proper line endings (no trailing whitespace on important lines)
@@ -373,12 +431,18 @@ fn test_repository_configuration_persists() {
 
     // Reopen repository and verify configuration persists
     let repo2 = Repository::open(repo_path).expect("Failed to reopen repository");
-    let config2 = repo2.config().expect("Failed to get config from reopened repo");
+    let config2 = repo2
+        .config()
+        .expect("Failed to get config from reopened repo");
 
-    assert_eq!(config2.get_string("user.email").unwrap(),
-               "ltmatrix@agent",
-               "user.email should persist");
-    assert_eq!(config2.get_string("user.name").unwrap(),
-               "Ltmatrix Agent",
-               "user.name should persist");
+    assert_eq!(
+        config2.get_string("user.email").unwrap(),
+        "ltmatrix@agent",
+        "user.email should persist"
+    );
+    assert_eq!(
+        config2.get_string("user.name").unwrap(),
+        "Ltmatrix Agent",
+        "user.name should persist"
+    );
 }

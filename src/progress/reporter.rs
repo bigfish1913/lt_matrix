@@ -55,7 +55,10 @@ pub fn report_task_start(task_id: &str, task_title: &str, config: Option<Reporte
     let title_colored = terminal::bold(task_title, color_config.inner);
     let start_colored = terminal::info("Starting", color_config.inner);
 
-    println!("{} {} task: {}", start_colored, task_id_colored, title_colored);
+    println!(
+        "{} {} task: {}",
+        start_colored, task_id_colored, title_colored
+    );
 }
 
 /// Reports a task completion with color
@@ -79,10 +82,16 @@ pub fn report_task_complete(
 
     if success {
         let complete_colored = terminal::success("Completed", color_config.inner);
-        println!("{} {} task: {}", complete_colored, task_id_colored, title_colored);
+        println!(
+            "{} {} task: {}",
+            complete_colored, task_id_colored, title_colored
+        );
     } else {
         let failed_colored = terminal::error("Failed", color_config.inner);
-        println!("{} {} task: {}", failed_colored, task_id_colored, title_colored);
+        println!(
+            "{} {} task: {}",
+            failed_colored, task_id_colored, title_colored
+        );
     }
 }
 
@@ -100,7 +109,10 @@ pub fn report_task_error(task_id: &str, error_msg: &str, config: Option<Reporter
     let error_colored = terminal::error("Error", color_config.inner);
     let msg_colored = terminal::dim(error_msg, color_config.inner);
 
-    println!("{} in task {}: {}", error_colored, task_id_colored, msg_colored);
+    println!(
+        "{} in task {}: {}",
+        error_colored, task_id_colored, msg_colored
+    );
 }
 
 /// Reports a task retry
@@ -124,7 +136,10 @@ pub fn report_task_retry(
     let retry_msg = format!("(attempt {}/{})", retry_count, max_retries);
     let retry_msg_colored = terminal::dim(&retry_msg, color_config.inner);
 
-    println!("{} {} task {}", retry_colored, task_id_colored, retry_msg_colored);
+    println!(
+        "{} {} task {}",
+        retry_colored, task_id_colored, retry_msg_colored
+    );
 }
 
 /// Reports a task being blocked
@@ -134,15 +149,26 @@ pub fn report_task_retry(
 /// * `task_id` - The task identifier
 /// * `reason` - Optional reason for being blocked
 /// * `config` - Optional color configuration
-pub fn report_task_blocked(task_id: &str, reason: Option<&str>, config: Option<ReporterColorConfig>) {
+pub fn report_task_blocked(
+    task_id: &str,
+    reason: Option<&str>,
+    config: Option<ReporterColorConfig>,
+) {
     let color_config = config.unwrap_or_default();
 
     let task_id_colored = terminal::dim(task_id, color_config.inner);
-    let blocked_colored = terminal::style_text("Blocked", terminal::Color::BrightMagenta, color_config.inner);
+    let blocked_colored = terminal::style_text(
+        "Blocked",
+        terminal::Color::BrightMagenta,
+        color_config.inner,
+    );
 
     if let Some(reason_msg) = reason {
         let reason_colored = terminal::dim(reason_msg, color_config.inner);
-        println!("{} {} task: {}", blocked_colored, task_id_colored, reason_colored);
+        println!(
+            "{} {} task: {}",
+            blocked_colored, task_id_colored, reason_colored
+        );
     } else {
         println!("{} {} task", blocked_colored, task_id_colored);
     }
@@ -164,12 +190,16 @@ pub fn report_progress_summary(
 ) {
     let color_config = config.unwrap_or_default();
 
-    let completed_colored = terminal::success(&format!("{} completed", completed), color_config.inner);
+    let completed_colored =
+        terminal::success(&format!("{} completed", completed), color_config.inner);
     let total_colored = terminal::dim(&format!("/ {} total", total), color_config.inner);
 
     if failed > 0 {
         let failed_colored = terminal::error(&format!(", {} failed", failed), color_config.inner);
-        println!("Progress: {}{}{}", completed_colored, total_colored, failed_colored);
+        println!(
+            "Progress: {}{}{}",
+            completed_colored, total_colored, failed_colored
+        );
     } else {
         println!("Progress: {}{}", completed_colored, total_colored);
     }

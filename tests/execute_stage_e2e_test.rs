@@ -8,14 +8,14 @@
 //! - Multi-task dependency resolution
 //! - Error handling and failure scenarios
 
-use ltmatrix::models::{ModeConfig, Task, TaskComplexity, TaskStatus};
-use ltmatrix::pipeline::execute::ExecuteConfig;
+use async_trait::async_trait;
 use ltmatrix::agent::backend::{AgentBackend, AgentResponse, ExecutionConfig};
 use ltmatrix::agent::session::SessionManager;
+use ltmatrix::models::{ModeConfig, Task, TaskComplexity, TaskStatus};
+use ltmatrix::pipeline::execute::ExecuteConfig;
 use std::path::PathBuf;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use async_trait::async_trait;
+use std::sync::Arc;
 use tokio::fs;
 
 /// Mock agent that simulates successful execution
@@ -26,7 +26,11 @@ struct _SuccessfulMockAgent {
 
 #[async_trait]
 impl AgentBackend for _SuccessfulMockAgent {
-    async fn execute(&self, prompt: &str, _config: &ExecutionConfig) -> anyhow::Result<AgentResponse> {
+    async fn execute(
+        &self,
+        prompt: &str,
+        _config: &ExecutionConfig,
+    ) -> anyhow::Result<AgentResponse> {
         self.call_count.fetch_add(1, Ordering::SeqCst);
         Ok(AgentResponse {
             output: format!("Executed: {}", prompt.lines().next().unwrap_or("")),
@@ -51,12 +55,14 @@ impl AgentBackend for _SuccessfulMockAgent {
 
     fn agent(&self) -> &ltmatrix::models::Agent {
         static AGENT: std::sync::OnceLock<ltmatrix::models::Agent> = std::sync::OnceLock::new();
-        AGENT.get_or_init(|| ltmatrix::models::Agent::new(
-            "mock-successful",
-            "Mock Successful Agent",
-            "mock-model",
-            3600,
-        ))
+        AGENT.get_or_init(|| {
+            ltmatrix::models::Agent::new(
+                "mock-successful",
+                "Mock Successful Agent",
+                "mock-model",
+                3600,
+            )
+        })
     }
 }
 
@@ -69,7 +75,11 @@ struct _FlakyMockAgent {
 
 #[async_trait]
 impl AgentBackend for _FlakyMockAgent {
-    async fn execute(&self, _prompt: &str, _config: &ExecutionConfig) -> anyhow::Result<AgentResponse> {
+    async fn execute(
+        &self,
+        _prompt: &str,
+        _config: &ExecutionConfig,
+    ) -> anyhow::Result<AgentResponse> {
         let count = self.call_count.fetch_add(1, Ordering::SeqCst);
 
         if count < self.fail_until {
@@ -104,12 +114,9 @@ impl AgentBackend for _FlakyMockAgent {
 
     fn agent(&self) -> &ltmatrix::models::Agent {
         static AGENT: std::sync::OnceLock<ltmatrix::models::Agent> = std::sync::OnceLock::new();
-        AGENT.get_or_init(|| ltmatrix::models::Agent::new(
-            "mock-flaky",
-            "Mock Flaky Agent",
-            "mock-model",
-            3600,
-        ))
+        AGENT.get_or_init(|| {
+            ltmatrix::models::Agent::new("mock-flaky", "Mock Flaky Agent", "mock-model", 3600)
+        })
     }
 }
 
@@ -158,10 +165,8 @@ async fn test_execute_multiple_tasks_with_dependencies() {
     let tasks = vec![task1.clone(), task2.clone(), task3.clone()];
 
     // Verify execution order
-    let task_map: std::collections::HashMap<String, Task> = tasks
-        .into_iter()
-        .map(|t| (t.id.clone(), t))
-        .collect();
+    let task_map: std::collections::HashMap<String, Task> =
+        tasks.into_iter().map(|t| (t.id.clone(), t)).collect();
 
     let order = ltmatrix::pipeline::execute::get_execution_order(&task_map).unwrap();
 
@@ -252,13 +257,9 @@ async fn test_build_task_context_with_completed_dependencies() {
     let mut completed_tasks: std::collections::HashSet<String> = std::collections::HashSet::new();
     completed_tasks.insert("task-1".to_string());
 
-    let context = ltmatrix::pipeline::execute::build_task_context(
-        &task2,
-        &task_map,
-        &completed_tasks,
-        "",
-    )
-    .unwrap();
+    let context =
+        ltmatrix::pipeline::execute::build_task_context(&task2, &task_map, &completed_tasks, "")
+            .unwrap();
 
     // Should show completed dependency
     assert!(context.contains("Dependencies"));
@@ -384,7 +385,10 @@ async fn test_execution_statistics_tracking() {
     assert_eq!(stats.total_time, 1800);
 
     // Verify complexity breakdown
-    assert_eq!(stats.simple_tasks + stats.moderate_tasks + stats.complex_tasks, 10);
+    assert_eq!(
+        stats.simple_tasks + stats.moderate_tasks + stats.complex_tasks,
+        10
+    );
 
     // Verify sessions
     assert_eq!(stats.sessions_reused, 4);
@@ -493,13 +497,9 @@ async fn test_task_context_with_no_dependencies() {
         [(task.id.clone(), task.clone())].into_iter().collect();
     let completed_tasks: std::collections::HashSet<String> = std::collections::HashSet::new();
 
-    let context = ltmatrix::pipeline::execute::build_task_context(
-        &task,
-        &task_map,
-        &completed_tasks,
-        "",
-    )
-    .unwrap();
+    let context =
+        ltmatrix::pipeline::execute::build_task_context(&task, &task_map, &completed_tasks, "")
+            .unwrap();
 
     // Should have task info but no dependency section
     assert!(context.contains("Task: Independent"));

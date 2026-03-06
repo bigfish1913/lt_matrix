@@ -79,10 +79,12 @@ impl SessionManager {
         let sessions_dir = base_dir.as_ref().join(".ltmatrix").join("sessions");
 
         // Ensure sessions directory exists
-        std::fs::create_dir_all(&sessions_dir)
-            .context("Failed to create sessions directory")?;
+        std::fs::create_dir_all(&sessions_dir).context("Failed to create sessions directory")?;
 
-        info!("Session manager initialized with directory: {:?}", sessions_dir);
+        info!(
+            "Session manager initialized with directory: {:?}",
+            sessions_dir
+        );
 
         Ok(SessionManager { sessions_dir })
     }
@@ -108,7 +110,10 @@ impl SessionManager {
         // Write session data to file
         self.save_session(&session).await?;
 
-        debug!("Created new session: {} ({:?})", session.session_id, file_path);
+        debug!(
+            "Created new session: {} ({:?})",
+            session.session_id, file_path
+        );
 
         Ok(session)
     }
@@ -122,16 +127,20 @@ impl SessionManager {
         };
 
         // Read and parse session file
-        let content = fs::read_to_string(&entry.path()).await
+        let content = fs::read_to_string(&entry.path())
+            .await
             .context("Failed to read session file")?;
 
-        let mut session: SessionData = serde_json::from_str(&content)
-            .context("Failed to parse session file")?;
+        let mut session: SessionData =
+            serde_json::from_str(&content).context("Failed to parse session file")?;
 
         session.file_path = entry.path().to_path_buf();
         session.mark_accessed();
 
-        debug!("Loaded session: {} (reused {} times)", session.session_id, session.reuse_count);
+        debug!(
+            "Loaded session: {} (reused {} times)",
+            session.session_id, session.reuse_count
+        );
 
         // Save updated access time
         self.save_session(&session).await?;
@@ -141,10 +150,11 @@ impl SessionManager {
 
     /// Save session data to disk
     pub async fn save_session(&self, session: &SessionData) -> Result<()> {
-        let content = serde_json::to_string_pretty(session)
-            .context("Failed to serialize session data")?;
+        let content =
+            serde_json::to_string_pretty(session).context("Failed to serialize session data")?;
 
-        fs::write(&session.file_path, content).await
+        fs::write(&session.file_path, content)
+            .await
             .context("Failed to write session file")?;
 
         Ok(())
@@ -157,7 +167,8 @@ impl SessionManager {
             None => return Ok(false),
         };
 
-        fs::remove_file(entry.path()).await
+        fs::remove_file(entry.path())
+            .await
             .context("Failed to delete session file")?;
 
         debug!("Deleted session: {}", session_id);
@@ -167,7 +178,8 @@ impl SessionManager {
 
     /// Clean up stale session files
     pub async fn cleanup_stale_sessions(&self) -> Result<usize> {
-        let mut entries = fs::read_dir(&self.sessions_dir).await
+        let mut entries = fs::read_dir(&self.sessions_dir)
+            .await
             .context("Failed to read sessions directory")?;
 
         let mut cleaned = 0;
@@ -185,7 +197,8 @@ impl SessionManager {
                 Ok(content) => {
                     match serde_json::from_str::<SessionData>(&content) {
                         Ok(session) if session.is_stale() => {
-                            fs::remove_file(&path).await
+                            fs::remove_file(&path)
+                                .await
                                 .context("Failed to remove stale session")?;
                             cleaned += 1;
                             debug!("Removed stale session: {}", session.session_id);
@@ -213,7 +226,8 @@ impl SessionManager {
 
     /// Find a session file by session ID
     async fn find_session_file(&self, session_id: &str) -> Result<Option<fs::DirEntry>> {
-        let mut entries = fs::read_dir(&self.sessions_dir).await
+        let mut entries = fs::read_dir(&self.sessions_dir)
+            .await
             .context("Failed to read sessions directory")?;
 
         while let Some(entry) = entries.next_entry().await? {
@@ -230,7 +244,8 @@ impl SessionManager {
 
     /// Get all session files
     pub async fn list_sessions(&self) -> Result<Vec<SessionData>> {
-        let mut entries = fs::read_dir(&self.sessions_dir).await
+        let mut entries = fs::read_dir(&self.sessions_dir)
+            .await
             .context("Failed to read sessions directory")?;
 
         let mut sessions = Vec::new();
@@ -278,10 +293,17 @@ mod tests {
         let manager = SessionManager::new(temp_dir.path()).unwrap();
 
         // Create session
-        let session = manager.create_session("claude", "claude-sonnet-4-6").await.unwrap();
+        let session = manager
+            .create_session("claude", "claude-sonnet-4-6")
+            .await
+            .unwrap();
 
         // Load session
-        let loaded = manager.load_session(&session.session_id).await.unwrap().unwrap();
+        let loaded = manager
+            .load_session(&session.session_id)
+            .await
+            .unwrap()
+            .unwrap();
 
         assert_eq!(loaded.session_id, session.session_id);
         assert_eq!(loaded.agent_name, "claude");
@@ -293,7 +315,10 @@ mod tests {
         let temp_dir = tempfile::tempdir().unwrap();
         let manager = SessionManager::new(temp_dir.path()).unwrap();
 
-        let mut session = manager.create_session("claude", "claude-sonnet-4-6").await.unwrap();
+        let mut session = manager
+            .create_session("claude", "claude-sonnet-4-6")
+            .await
+            .unwrap();
         assert_eq!(session.reuse_count, 0);
 
         session.mark_accessed();

@@ -2,11 +2,11 @@
 //!
 //! Run with: cargo run --example terminal_colors
 
-use ltmatrix::terminal::{self, ColorConfig};
 use ltmatrix::progress::{
-    create_progress_bar, create_spinner, report_task_start, report_task_complete,
-    report_progress_summary,
+    create_progress_bar, create_spinner, report_progress_summary, report_task_complete,
+    report_task_start,
 };
+use ltmatrix::terminal::{self, ColorConfig};
 use std::thread;
 use std::time::Duration;
 
@@ -28,7 +28,11 @@ fn main() {
     println!("   {}", terminal::error("Error message", config));
     println!("   {}", terminal::warning("Warning message", config));
     println!("   {}", terminal::info("Info message", config));
-    println!("   {} {}", terminal::bold("Bold text", config), terminal::dim("Dim text", config));
+    println!(
+        "   {} {}",
+        terminal::bold("Bold text", config),
+        terminal::dim("Dim text", config)
+    );
     println!();
 
     // Demo 3: Task status colors
@@ -82,7 +86,10 @@ fn main() {
     println!("   {}", terminal::success("Success", plain_config));
     println!("   {}", terminal::error("Error", plain_config));
     println!("   {}", terminal::warning("Warning", plain_config));
-    println!("   {}", terminal::colorize_status("completed", plain_config));
+    println!(
+        "   {}",
+        terminal::colorize_status("completed", plain_config)
+    );
     println!();
 
     println!("=== Demo Complete ===");

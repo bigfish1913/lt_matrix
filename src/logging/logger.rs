@@ -7,18 +7,17 @@
 //! - Special TRACE level handling for API calls
 //! - Automatic log file management with LogManager
 
+use crate::logging::file_manager::LogManager;
+use crate::logging::level::LogLevel;
+use std::io;
+use std::path::Path;
+use tracing_appender::{non_blocking, rolling};
 use tracing_subscriber::{
     fmt::{self, format::FmtSpan},
-    util::SubscriberInitExt,
     layer::SubscriberExt,
-    EnvFilter,
-    Registry,
+    util::SubscriberInitExt,
+    EnvFilter, Registry,
 };
-use tracing_appender::{rolling, non_blocking};
-use std::path::Path;
-use std::io;
-use crate::logging::level::LogLevel;
-use crate::logging::file_manager::LogManager;
 
 /// Guard for the non-blocking writer
 ///
@@ -64,8 +63,15 @@ pub fn init_logging(level: LogLevel, log_file: Option<impl AsRef<Path>>) -> io::
 
     // Initialize logging based on whether we have a file
     if let Some(ref file_path) = log_file {
-        let log_dir = file_path.as_ref().parent().unwrap_or_else(|| Path::new("."));
-        let file_name = file_path.as_ref().file_stem().and_then(|s| s.to_str()).unwrap_or("ltmatrix");
+        let log_dir = file_path
+            .as_ref()
+            .parent()
+            .unwrap_or_else(|| Path::new("."));
+        let file_name = file_path
+            .as_ref()
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("ltmatrix");
 
         let file_appender = rolling::daily(log_dir, file_name);
         let (_non_blocking, worker_guard) = non_blocking(file_appender);
@@ -86,7 +92,9 @@ pub fn init_logging(level: LogLevel, log_file: Option<impl AsRef<Path>>) -> io::
         let path: &Path = file_path.as_ref();
         tracing::info!("Logging to file: {}", path.display());
 
-        Ok(LogGuard { _guard: Some(worker_guard) })
+        Ok(LogGuard {
+            _guard: Some(worker_guard),
+        })
     } else {
         // Console only logging - use try_init to handle tests
         let _ = tracing_subscriber::fmt()
@@ -192,19 +200,21 @@ pub fn init_api_trace_logging(log_file: impl AsRef<Path>) -> io::Result<non_bloc
     let env_filter = EnvFilter::new("ltmatrix=trace,reqwest=trace,hyper=trace,api=trace");
 
     let log_dir = log_file.as_ref().parent().unwrap_or_else(|| Path::new("."));
-    let file_name = log_file.as_ref().file_stem().and_then(|s| s.to_str()).unwrap_or("api-trace");
+    let file_name = log_file
+        .as_ref()
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("api-trace");
 
     let file_appender = rolling::daily(log_dir, file_name);
     let (non_blocking, guard) = non_blocking(file_appender);
 
-    let subscriber = Registry::default()
-        .with(env_filter)
-        .with(
-            fmt::layer()
-                .with_writer(non_blocking)
-                .with_span_events(FmtSpan::FULL)
-                .with_ansi(false),
-        );
+    let subscriber = Registry::default().with(env_filter).with(
+        fmt::layer()
+            .with_writer(non_blocking)
+            .with_span_events(FmtSpan::FULL)
+            .with_ansi(false),
+    );
 
     // Use try_init to handle tests that may have already set a dispatcher
     let _ = subscriber.try_init();

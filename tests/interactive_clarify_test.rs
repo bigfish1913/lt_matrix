@@ -4,9 +4,9 @@
 //! for the --ask flag, which prompts users for clarification before
 //! generating execution plans.
 
+use clap::Parser;
 use ltmatrix::cli::args::Args;
 use ltmatrix::interactive::clarify::{ClarificationQuestion, ClarificationSession, QuestionType};
-use clap::Parser;
 
 #[cfg(test)]
 mod unit_tests {
@@ -60,7 +60,11 @@ mod unit_tests {
             id: "auth_method".to_string(),
             question_text: "Which authentication method?".to_string(),
             question_type: QuestionType::Choice,
-            options: Some(vec!["JWT".to_string(), "OAuth".to_string(), "Session".to_string()]),
+            options: Some(vec![
+                "JWT".to_string(),
+                "OAuth".to_string(),
+                "Session".to_string(),
+            ]),
             default_value: Some("JWT".to_string()),
             required: true,
             multi_select: false,
@@ -115,7 +119,10 @@ mod unit_tests {
 
         let result = session.skip_question("skippable");
         assert!(result.is_ok());
-        assert_eq!(session.answers.get("skippable"), Some(&"default_value".to_string()));
+        assert_eq!(
+            session.answers.get("skippable"),
+            Some(&"default_value".to_string())
+        );
     }
 
     #[test]
@@ -244,7 +251,10 @@ mod integration_tests {
         let questions = generate_questions_for_goal(goal);
 
         // Clear goals should generate fewer or no questions
-        assert!(questions.len() < 3, "Clear goals should require minimal clarification");
+        assert!(
+            questions.len() < 3,
+            "Clear goals should require minimal clarification"
+        );
     }
 
     #[test]
@@ -268,7 +278,10 @@ mod integration_tests {
         // Multi-select answers should be comma-separated
         let result = session.answer_question("features", "Feature A, Feature C");
         assert!(result.is_ok());
-        assert_eq!(session.answers.get("features"), Some(&"Feature A, Feature C".to_string()));
+        assert_eq!(
+            session.answers.get("features"),
+            Some(&"Feature A, Feature C".to_string())
+        );
     }
 
     #[test]
@@ -405,7 +418,8 @@ fn generate_questions_for_goal(goal: &str) -> Vec<ClarificationQuestion> {
         });
     }
 
-    if goal_lower.contains("api") && !goal_lower.contains("rest") && !goal_lower.contains("graphql") {
+    if goal_lower.contains("api") && !goal_lower.contains("rest") && !goal_lower.contains("graphql")
+    {
         questions.push(ClarificationQuestion {
             id: "api_type".to_string(),
             question_text: "What type of API should be built?".to_string(),
@@ -425,7 +439,8 @@ fn generate_questions_for_goal(goal: &str) -> Vec<ClarificationQuestion> {
         // Very short goals are ambiguous
         questions.push(ClarificationQuestion {
             id: "clarification".to_string(),
-            question_text: "Could you provide more details about what you'd like to accomplish?".to_string(),
+            question_text: "Could you provide more details about what you'd like to accomplish?"
+                .to_string(),
             question_type: QuestionType::Text,
             options: None,
             default_value: None,

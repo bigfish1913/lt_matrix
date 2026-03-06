@@ -11,10 +11,7 @@ use tempfile::TempDir;
 
 /// Helper to parse CLI args
 fn parse_args(args: &[&str]) -> Args {
-    Args::try_parse_from(
-        std::iter::once("ltmatrix").chain(args.iter().cloned()),
-    )
-    .unwrap()
+    Args::try_parse_from(std::iter::once("ltmatrix").chain(args.iter().cloned())).unwrap()
 }
 
 /// Helper to create a minimal execution result for testing
@@ -96,11 +93,14 @@ fn test_cli_output_with_mode_override() {
 #[test]
 fn test_cli_output_with_all_options() {
     let args = parse_args(&[
-        "--output", "json",
+        "--output",
+        "json",
         "--dry-run",
-        "--log-level", "debug",
-        "--max-retries", "5",
-        "test goal"
+        "--log-level",
+        "debug",
+        "--max-retries",
+        "5",
+        "test goal",
     ]);
 
     assert_eq!(args.output, Some(OutputFormat::Json));
@@ -235,7 +235,12 @@ async fn test_report_file_different_formats() {
             .await
             .unwrap();
 
-        assert!(output_path.exists(), "Failed for format: {:?} with file: {}", format, filename);
+        assert!(
+            output_path.exists(),
+            "Failed for format: {:?} with file: {}",
+            format,
+            filename
+        );
 
         let content = tokio::fs::read_to_string(&output_path).await.unwrap();
         assert!(!content.is_empty());
@@ -370,11 +375,19 @@ fn test_output_format_display() {
 fn test_all_output_formats_produce_output() {
     let result = create_minimal_result();
 
-    for format in [OutputFormat::Text, OutputFormat::Json, OutputFormat::JsonCompact] {
+    for format in [
+        OutputFormat::Text,
+        OutputFormat::Json,
+        OutputFormat::JsonCompact,
+    ] {
         let formatter = create_formatter(format);
         let output = formatter.format_result(&result).unwrap();
 
-        assert!(!output.is_empty(), "Format {:?} produced empty output", format);
+        assert!(
+            !output.is_empty(),
+            "Format {:?} produced empty output",
+            format
+        );
     }
 }
 
@@ -414,7 +427,11 @@ fn test_scenario_successful_task_execution() {
     task1.status = TaskStatus::Completed;
     task1.complexity = TaskComplexity::Moderate;
 
-    let mut task2 = Task::new("task-2", "Implement API endpoints", "Create login/signup routes");
+    let mut task2 = Task::new(
+        "task-2",
+        "Implement API endpoints",
+        "Create login/signup routes",
+    );
     task2.status = TaskStatus::Completed;
     task2.complexity = TaskComplexity::Complex;
     task2.depends_on = vec!["task-1".to_string()];
@@ -446,7 +463,11 @@ fn test_scenario_partial_failure_with_retries() {
     task1.status = TaskStatus::Completed;
     task1.complexity = TaskComplexity::Simple;
 
-    let mut task2 = Task::new("task-2", "Add error middleware", "Error handling middleware");
+    let mut task2 = Task::new(
+        "task-2",
+        "Add error middleware",
+        "Error handling middleware",
+    );
     task2.status = TaskStatus::Completed;
     task2.complexity = TaskComplexity::Moderate;
     task2.retry_count = 2; // Failed twice before succeeding
@@ -538,7 +559,11 @@ fn test_scenario_mixed_complexity_breakdown() {
     moderate_task.status = TaskStatus::Completed;
     moderate_task.complexity = TaskComplexity::Moderate;
 
-    let mut complex_task = Task::new("task-3", "Implement payment processing", "Stripe integration");
+    let mut complex_task = Task::new(
+        "task-3",
+        "Implement payment processing",
+        "Stripe integration",
+    );
     complex_task.status = TaskStatus::Completed;
     complex_task.complexity = TaskComplexity::Complex;
 

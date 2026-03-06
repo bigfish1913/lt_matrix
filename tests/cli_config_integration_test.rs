@@ -10,12 +10,14 @@
 //! - CLI overrides properly merge with loaded configs
 //! - Precedence is correct: CLI > Project > Global > Defaults
 
-use ltmatrix::cli::Args;
-use ltmatrix::config::settings::{CliOverrides, OutputFormat, LogLevel, load_config_with_overrides};
 use clap::Parser;
-use tempfile::TempDir;
+use ltmatrix::cli::Args;
+use ltmatrix::config::settings::{
+    load_config_with_overrides, CliOverrides, LogLevel, OutputFormat,
+};
 use std::fs;
 use std::path::{Path, PathBuf};
+use tempfile::TempDir;
 
 /// Helper to restore current directory when dropped
 struct DirGuard {
@@ -59,8 +61,8 @@ fn test_cli_args_to_overrides_agent_mapping() {
 #[test]
 fn test_cli_args_to_overrides_mode_mapping() {
     // Test that --mode CLI arg maps to CliOverrides::mode
-    let args = Args::try_parse_from(["ltmatrix", "--mode", "fast", "goal"])
-        .expect("Failed to parse args");
+    let args =
+        Args::try_parse_from(["ltmatrix", "--mode", "fast", "goal"]).expect("Failed to parse args");
 
     let overrides: CliOverrides = args.into();
 
@@ -70,8 +72,7 @@ fn test_cli_args_to_overrides_mode_mapping() {
 #[test]
 fn test_cli_args_to_overrides_fast_flag() {
     // Test that --fast flag maps to CliOverrides::mode with "fast"
-    let args = Args::try_parse_from(["ltmatrix", "--fast", "goal"])
-        .expect("Failed to parse args");
+    let args = Args::try_parse_from(["ltmatrix", "--fast", "goal"]).expect("Failed to parse args");
 
     let overrides: CliOverrides = args.into();
 
@@ -81,8 +82,8 @@ fn test_cli_args_to_overrides_fast_flag() {
 #[test]
 fn test_cli_args_to_overrides_expert_flag() {
     // Test that --expert flag maps to CliOverrides::mode with "expert"
-    let args = Args::try_parse_from(["ltmatrix", "--expert", "goal"])
-        .expect("Failed to parse args");
+    let args =
+        Args::try_parse_from(["ltmatrix", "--expert", "goal"]).expect("Failed to parse args");
 
     let overrides: CliOverrides = args.into();
 
@@ -128,8 +129,13 @@ fn test_cli_args_to_overrides_log_level() {
 
         let overrides: CliOverrides = args.into();
 
-        assert_eq!(overrides.log_level, Some(expected),
-            "Log level '{}' should map to {:?}", cli_value, expected);
+        assert_eq!(
+            overrides.log_level,
+            Some(expected),
+            "Log level '{}' should map to {:?}",
+            cli_value,
+            expected
+        );
     }
 }
 
@@ -141,7 +147,10 @@ fn test_cli_args_to_overrides_log_file() {
 
     let overrides: CliOverrides = args.into();
 
-    assert_eq!(overrides.log_file, Some(PathBuf::from("/var/log/ltmatrix.log")));
+    assert_eq!(
+        overrides.log_file,
+        Some(PathBuf::from("/var/log/ltmatrix.log"))
+    );
 }
 
 #[test]
@@ -169,8 +178,8 @@ fn test_cli_args_to_overrides_timeout() {
 #[test]
 fn test_cli_args_to_overrides_no_color_flag() {
     // Test that --no-color maps to CliOverrides::no_color
-    let args = Args::try_parse_from(["ltmatrix", "--no-color", "goal"])
-        .expect("Failed to parse args");
+    let args =
+        Args::try_parse_from(["ltmatrix", "--no-color", "goal"]).expect("Failed to parse args");
 
     let overrides: CliOverrides = args.into();
 
@@ -180,8 +189,7 @@ fn test_cli_args_to_overrides_no_color_flag() {
 #[test]
 fn test_cli_args_to_overrides_none_values() {
     // Test that unspecified CLI args result in None values in CliOverrides
-    let args = Args::try_parse_from(["ltmatrix", "goal"])
-        .expect("Failed to parse args");
+    let args = Args::try_parse_from(["ltmatrix", "goal"]).expect("Failed to parse args");
 
     let overrides: CliOverrides = args.into();
 
@@ -235,10 +243,13 @@ level = "info"
     // Parse CLI args with overrides
     let args = Args::try_parse_from([
         "ltmatrix",
-        "--output", "json",
-        "--log-level", "debug",
-        "goal"
-    ]).expect("Failed to parse args");
+        "--output",
+        "json",
+        "--log-level",
+        "debug",
+        "goal",
+    ])
+    .expect("Failed to parse args");
 
     let overrides: CliOverrides = args.into();
     let result = load_config_with_overrides(Some(overrides));
@@ -246,7 +257,11 @@ level = "info"
     if let Err(ref e) = result {
         eprintln!("Error loading config: {}", e);
     }
-    assert!(result.is_ok(), "load_config_with_overrides should succeed: {:?}", result);
+    assert!(
+        result.is_ok(),
+        "load_config_with_overrides should succeed: {:?}",
+        result
+    );
     let config = result.unwrap();
 
     // CLI overrides should take precedence
@@ -271,8 +286,9 @@ fn test_cli_override_precedence_over_project_config() {
 format = "text"
 [logging]
 level = "warn"
-"#
-    ).unwrap();
+"#,
+    )
+    .unwrap();
 
     let _guard = DirGuard::new();
     _guard.change_to(temp_dir.path());
@@ -280,10 +296,13 @@ level = "warn"
     // CLI overrides should beat project config
     let args = Args::try_parse_from([
         "ltmatrix",
-        "--output", "json",
-        "--log-level", "debug",
-        "goal"
-    ]).expect("Failed to parse args");
+        "--output",
+        "json",
+        "--log-level",
+        "debug",
+        "goal",
+    ])
+    .expect("Failed to parse args");
 
     let overrides: CliOverrides = args.into();
     let result = load_config_with_overrides(Some(overrides));
@@ -300,16 +319,24 @@ fn test_multiple_cli_overrides_simultaneously() {
     // Test that multiple CLI overrides work together
     let args = Args::try_parse_from([
         "ltmatrix",
-        "--agent", "test-agent",
-        "--mode", "fast",
-        "--output", "json",
-        "--log-level", "trace",
-        "--log-file", "/tmp/test.log",
-        "--max-retries", "5",
-        "--timeout", "1800",
+        "--agent",
+        "test-agent",
+        "--mode",
+        "fast",
+        "--output",
+        "json",
+        "--log-level",
+        "trace",
+        "--log-file",
+        "/tmp/test.log",
+        "--max-retries",
+        "5",
+        "--timeout",
+        "1800",
         "--no-color",
-        "goal"
-    ]).expect("Failed to parse args");
+        "goal",
+    ])
+    .expect("Failed to parse args");
 
     let overrides: CliOverrides = args.into();
 
@@ -353,14 +380,13 @@ fn test_log_level_type_conversion() {
 fn test_mode_string_conversion() {
     // Verify mode flags convert to correct string values
     // Test with --fast flag
-    let args = Args::try_parse_from(["ltmatrix", "--fast", "goal"])
-        .expect("Failed to parse args");
+    let args = Args::try_parse_from(["ltmatrix", "--fast", "goal"]).expect("Failed to parse args");
     let overrides: CliOverrides = args.into();
     assert_eq!(overrides.mode, Some("fast".to_string()));
 
     // Test with --expert flag
-    let args = Args::try_parse_from(["ltmatrix", "--expert", "goal"])
-        .expect("Failed to parse args");
+    let args =
+        Args::try_parse_from(["ltmatrix", "--expert", "goal"]).expect("Failed to parse args");
     let overrides: CliOverrides = args.into();
     assert_eq!(overrides.mode, Some("expert".to_string()));
 
@@ -378,12 +404,8 @@ fn test_mode_string_conversion() {
 #[test]
 fn test_cli_override_with_subcommand() {
     // Test that subcommands (release, completions, man) don't interfere with override parsing
-    let args = Args::try_parse_from([
-        "ltmatrix",
-        "--agent", "test-agent",
-        "completions",
-        "bash"
-    ]).expect("Failed to parse args");
+    let args = Args::try_parse_from(["ltmatrix", "--agent", "test-agent", "completions", "bash"])
+        .expect("Failed to parse args");
 
     let overrides: CliOverrides = args.into();
 
@@ -394,8 +416,7 @@ fn test_cli_override_with_subcommand() {
 #[test]
 fn test_cli_args_default_mode() {
     // When no mode flag is specified, mode should be None (not "standard")
-    let args = Args::try_parse_from(["ltmatrix", "goal"])
-        .expect("Failed to parse args");
+    let args = Args::try_parse_from(["ltmatrix", "goal"]).expect("Failed to parse args");
 
     let overrides: CliOverrides = args.into();
 
@@ -423,8 +444,8 @@ fn test_cli_override_max_retries_boundary() {
 #[test]
 fn test_cli_override_timeout_boundary() {
     // Test boundary values for timeout
-    let args = Args::try_parse_from(["ltmatrix", "--timeout", "1", "goal"])
-        .expect("Failed to parse args");
+    let args =
+        Args::try_parse_from(["ltmatrix", "--timeout", "1", "goal"]).expect("Failed to parse args");
 
     let overrides: CliOverrides = args.into();
     assert_eq!(overrides.timeout, Some(1));
@@ -463,8 +484,9 @@ format = "text"
 
 [logging]
 level = "warn"
-"#
-    ).unwrap();
+"#,
+    )
+    .unwrap();
 
     // Create a custom config file that should be used
     let custom_config = temp_dir.path().join("custom-config.toml");
@@ -482,8 +504,9 @@ format = "json"
 
 [logging]
 level = "debug"
-"#
-    ).unwrap();
+"#,
+    )
+    .unwrap();
 
     let _guard = DirGuard::new();
     _guard.change_to(temp_dir.path());
@@ -491,23 +514,38 @@ level = "debug"
     // Use --config to specify custom config
     let args = Args::try_parse_from([
         "ltmatrix",
-        "--config", custom_config.to_str().unwrap(),
-        "goal"
-    ]).expect("Failed to parse args");
+        "--config",
+        custom_config.to_str().unwrap(),
+        "goal",
+    ])
+    .expect("Failed to parse args");
 
     let overrides: CliOverrides = args.into();
     let result = load_config_with_overrides(Some(overrides));
 
-    assert!(result.is_ok(), "load_config_with_overrides should succeed: {:?}", result);
+    assert!(
+        result.is_ok(),
+        "load_config_with_overrides should succeed: {:?}",
+        result
+    );
     let config = result.unwrap();
 
     // Should load from custom config, not project config
-    assert_eq!(config.default, Some("custom-agent".to_string()),
-        "Should use custom config default, not project config");
-    assert_eq!(config.output.format, OutputFormat::Json,
-        "Should use custom config output format, not project config");
-    assert_eq!(config.logging.level, LogLevel::Debug,
-        "Should use custom config log level, not project config");
+    assert_eq!(
+        config.default,
+        Some("custom-agent".to_string()),
+        "Should use custom config default, not project config"
+    );
+    assert_eq!(
+        config.output.format,
+        OutputFormat::Json,
+        "Should use custom config output format, not project config"
+    );
+    assert_eq!(
+        config.logging.level,
+        LogLevel::Debug,
+        "Should use custom config log level, not project config"
+    );
 }
 
 #[test]
@@ -523,16 +561,20 @@ fn test_custom_config_file_fails_on_invalid_path() {
     // Use --config to specify non-existent file
     let args = Args::try_parse_from([
         "ltmatrix",
-        "--config", nonexistent_path.to_str().unwrap(),
-        "goal"
-    ]).expect("Failed to parse args");
+        "--config",
+        nonexistent_path.to_str().unwrap(),
+        "goal",
+    ])
+    .expect("Failed to parse args");
 
     let overrides: CliOverrides = args.into();
     let result = load_config_with_overrides(Some(overrides));
 
     // Should fail because custom config doesn't exist
-    assert!(result.is_err(),
-        "load_config_with_overrides should fail when custom config doesn't exist");
+    assert!(
+        result.is_err(),
+        "load_config_with_overrides should fail when custom config doesn't exist"
+    );
 }
 
 #[test]
@@ -546,8 +588,9 @@ fn test_custom_config_file_fails_on_invalid_toml() {
         &custom_config,
         r#"
 this is not valid toml at all [[[
-"#
-    ).unwrap();
+"#,
+    )
+    .unwrap();
 
     let _guard = DirGuard::new();
     _guard.change_to(temp_dir.path());
@@ -555,16 +598,20 @@ this is not valid toml at all [[[
     // Use --config to specify invalid config
     let args = Args::try_parse_from([
         "ltmatrix",
-        "--config", custom_config.to_str().unwrap(),
-        "goal"
-    ]).expect("Failed to parse args");
+        "--config",
+        custom_config.to_str().unwrap(),
+        "goal",
+    ])
+    .expect("Failed to parse args");
 
     let overrides: CliOverrides = args.into();
     let result = load_config_with_overrides(Some(overrides));
 
     // Should fail because custom config is invalid
-    assert!(result.is_err(),
-        "load_config_with_overrides should fail when custom config is invalid TOML");
+    assert!(
+        result.is_err(),
+        "load_config_with_overrides should fail when custom config is invalid TOML"
+    );
 }
 
 #[test]
@@ -592,8 +639,9 @@ format = "text"
 
 [logging]
 level = "info"
-"#
-    ).unwrap();
+"#,
+    )
+    .unwrap();
 
     let _guard = DirGuard::new();
     _guard.change_to(temp_dir.path());
@@ -601,26 +649,44 @@ level = "info"
     // Use --config with CLI overrides
     let args = Args::try_parse_from([
         "ltmatrix",
-        "--config", custom_config.to_str().unwrap(),
-        "--agent", "cli-override-agent",
-        "--output", "json",
-        "--log-level", "trace",
-        "goal"
-    ]).expect("Failed to parse args");
+        "--config",
+        custom_config.to_str().unwrap(),
+        "--agent",
+        "cli-override-agent",
+        "--output",
+        "json",
+        "--log-level",
+        "trace",
+        "goal",
+    ])
+    .expect("Failed to parse args");
 
     let overrides: CliOverrides = args.into();
     let result = load_config_with_overrides(Some(overrides));
 
-    assert!(result.is_ok(), "load_config_with_overrides should succeed: {:?}", result);
+    assert!(
+        result.is_ok(),
+        "load_config_with_overrides should succeed: {:?}",
+        result
+    );
     let config = result.unwrap();
 
     // CLI overrides should take precedence over custom config
-    assert_eq!(config.default, Some("cli-override-agent".to_string()),
-        "CLI override should beat custom config");
-    assert_eq!(config.output.format, OutputFormat::Json,
-        "CLI override should beat custom config");
-    assert_eq!(config.logging.level, LogLevel::Trace,
-        "CLI override should beat custom config");
+    assert_eq!(
+        config.default,
+        Some("cli-override-agent".to_string()),
+        "CLI override should beat custom config"
+    );
+    assert_eq!(
+        config.output.format,
+        OutputFormat::Json,
+        "CLI override should beat custom config"
+    );
+    assert_eq!(
+        config.logging.level,
+        LogLevel::Trace,
+        "CLI override should beat custom config"
+    );
 }
 
 #[test]
@@ -647,18 +713,16 @@ format = "json"
 
 [logging]
 level = "debug"
-"#
-    ).unwrap();
+"#,
+    )
+    .unwrap();
 
     // Change to temp directory within a scope to ensure proper cleanup
     let result = {
         std::env::set_current_dir(temp_dir.path()).unwrap();
 
         // No --config flag, should use standard paths
-        let args = Args::try_parse_from([
-            "ltmatrix",
-            "goal"
-        ]).expect("Failed to parse args");
+        let args = Args::try_parse_from(["ltmatrix", "goal"]).expect("Failed to parse args");
 
         let overrides: CliOverrides = args.into();
         load_config_with_overrides(Some(overrides))
@@ -667,16 +731,29 @@ level = "debug"
     // Restore directory immediately after scope
     std::env::set_current_dir(&current_dir).unwrap();
 
-    assert!(result.is_ok(), "load_config_with_overrides should succeed: {:?}", result);
+    assert!(
+        result.is_ok(),
+        "load_config_with_overrides should succeed: {:?}",
+        result
+    );
     let config = result.unwrap();
 
     // Should load from project config
-    assert_eq!(config.default, Some("project-agent".to_string()),
-        "Should use project config when no --config specified");
-    assert_eq!(config.output.format, OutputFormat::Json,
-        "Should use project config when no --config specified");
-    assert_eq!(config.logging.level, LogLevel::Debug,
-        "Should use project config when no --config specified");
+    assert_eq!(
+        config.default,
+        Some("project-agent".to_string()),
+        "Should use project config when no --config specified"
+    );
+    assert_eq!(
+        config.output.format,
+        OutputFormat::Json,
+        "Should use project config when no --config specified"
+    );
+    assert_eq!(
+        config.logging.level,
+        LogLevel::Debug,
+        "Should use project config when no --config specified"
+    );
 }
 
 // ============================================================================
@@ -714,8 +791,9 @@ format = "text"
 
 [logging]
 level = "info"
-"#
-    ).unwrap();
+"#,
+    )
+    .unwrap();
 
     let _guard = DirGuard::new();
     _guard.change_to(temp_dir.path());
@@ -723,15 +801,22 @@ level = "info"
     // Parse comprehensive CLI args
     let args = Args::try_parse_from([
         "ltmatrix",
-        "--mode", "expert",
-        "--output", "json-compact",
-        "--log-level", "trace",
-        "--log-file", "custom.log",
-        "--max-retries", "7",
-        "--timeout", "2400",
+        "--mode",
+        "expert",
+        "--output",
+        "json-compact",
+        "--log-level",
+        "trace",
+        "--log-file",
+        "custom.log",
+        "--max-retries",
+        "7",
+        "--timeout",
+        "2400",
         "--no-color",
-        "implement feature"
-    ]).expect("Failed to parse args");
+        "implement feature",
+    ])
+    .expect("Failed to parse args");
 
     // Convert to overrides
     let overrides: CliOverrides = args.into();
@@ -742,7 +827,11 @@ level = "info"
     if let Err(ref e) = result {
         eprintln!("Error loading config: {}", e);
     }
-    assert!(result.is_ok(), "load_config_with_overrides should succeed: {:?}", result);
+    assert!(
+        result.is_ok(),
+        "load_config_with_overrides should succeed: {:?}",
+        result
+    );
     let config = result.unwrap();
 
     // Verify all CLI overrides took effect

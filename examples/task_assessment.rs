@@ -16,18 +16,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Task::new(
             "task-1",
             "Add login form",
-            "Create a simple login form with username and password fields"
+            "Create a simple login form with username and password fields",
         ),
         Task::new(
             "task-2",
             "Implement user authentication",
             "Build a complete authentication system with OAuth, JWT tokens, \
-             session management, and multi-factor authentication support"
+             session management, and multi-factor authentication support",
         ),
         Task::new(
             "task-3",
             "Write unit tests",
-            "Add unit tests for the user registration module"
+            "Add unit tests for the user registration module",
         ),
     ];
 
@@ -50,17 +50,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Task::new(
             "task-2-1",
             "Design authentication schema",
-            "Create database schema for users and sessions"
+            "Create database schema for users and sessions",
         ),
         Task::new(
             "task-2-2",
             "Implement OAuth providers",
-            "Add support for Google, GitHub, and Twitter OAuth"
+            "Add support for Google, GitHub, and Twitter OAuth",
         ),
         Task::new(
             "task-2-3",
             "Create JWT token system",
-            "Implement JWT generation, validation, and refresh logic"
+            "Implement JWT generation, validation, and refresh logic",
         ),
     ];
 

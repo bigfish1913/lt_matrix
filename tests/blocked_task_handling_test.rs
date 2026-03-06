@@ -82,10 +82,8 @@ mod blocked_strategy_tests {
         let task3 = create_task("task-3", "Independent task", vec![]);
 
         let mut tasks = vec![task1, task2, task3];
-        let task_map: HashMap<String, Task> = tasks
-            .iter()
-            .map(|t| (t.id.clone(), t.clone()))
-            .collect();
+        let task_map: HashMap<String, Task> =
+            tasks.iter().map(|t| (t.id.clone(), t.clone())).collect();
 
         let completed: std::collections::HashSet<String> = std::collections::HashSet::new();
 
@@ -132,12 +130,10 @@ mod blocked_strategy_tests {
         let task1 = create_failed_task("task-1", "Failed task", "Error");
         let mut task2 = create_task("task-2", "Dependent task", vec!["task-1"]);
 
-        let task_map: HashMap<String, Task> = [
-            (task1.id.clone(), task1),
-            (task2.id.clone(), task2.clone()),
-        ]
-        .into_iter()
-        .collect();
+        let task_map: HashMap<String, Task> =
+            [(task1.id.clone(), task1), (task2.id.clone(), task2.clone())]
+                .into_iter()
+                .collect();
 
         let completed: std::collections::HashSet<String> = std::collections::HashSet::new();
 
@@ -193,9 +189,7 @@ mod blocked_strategy_tests {
         let blocking_count = task3
             .depends_on
             .iter()
-            .filter(|dep| {
-                task_map.get(*dep).map_or(false, |t| t.is_failed())
-            })
+            .filter(|dep| task_map.get(*dep).map_or(false, |t| t.is_failed()))
             .count();
 
         assert_eq!(blocking_count, 2);
@@ -229,8 +223,7 @@ mod blocked_strategy_tests {
             .depends_on
             .iter()
             .filter(|dep| {
-                !completed.contains(*dep) ||
-                task_map.get(*dep).map_or(false, |t| t.is_failed())
+                !completed.contains(*dep) || task_map.get(*dep).map_or(false, |t| t.is_failed())
             })
             .collect();
 
@@ -285,8 +278,10 @@ mod blocked_strategy_tests {
         }
 
         assert!(!blocked_by_chain.is_empty());
-        assert!(blocked_by_chain.contains(&"task-1".to_string()) ||
-                blocked_by_chain.contains(&"task-2".to_string()));
+        assert!(
+            blocked_by_chain.contains(&"task-1".to_string())
+                || blocked_by_chain.contains(&"task-2".to_string())
+        );
     }
 
     #[test]
@@ -328,23 +323,27 @@ mod blocked_strategy_tests {
             vec!["task-1", "task-nonexistent"],
         );
 
-        let task_map: HashMap<String, Task> = [
-            (task1.id.clone(), task1),
-            (task2.id.clone(), task2.clone()),
-        ]
-        .into_iter()
-        .collect();
+        let task_map: HashMap<String, Task> =
+            [(task1.id.clone(), task1), (task2.id.clone(), task2.clone())]
+                .into_iter()
+                .collect();
 
         let mut completed = std::collections::HashSet::new();
         completed.insert("task-1".to_string());
 
         // task-2 references a non-existent dependency
         // It should not be executable because the dependency doesn't exist in the map
-        let missing_dep = task2.depends_on.iter().any(|dep| !task_map.contains_key(dep));
+        let missing_dep = task2
+            .depends_on
+            .iter()
+            .any(|dep| !task_map.contains_key(dep));
         assert!(missing_dep);
 
         // Can't execute if dependency is missing
-        let has_missing = task2.depends_on.iter().any(|dep| !task_map.contains_key(dep));
+        let has_missing = task2
+            .depends_on
+            .iter()
+            .any(|dep| !task_map.contains_key(dep));
         assert!(has_missing || !task2.can_execute(&completed));
     }
 
@@ -422,13 +421,19 @@ mod blocked_strategy_tests {
 
         for i in 0..=max_retries {
             if i < max_retries {
-                assert!(task.can_retry(max_retries),
-                        "Task should be retryable at attempt {}", i);
+                assert!(
+                    task.can_retry(max_retries),
+                    "Task should be retryable at attempt {}",
+                    i
+                );
                 task.retry_count = i + 1;
             } else {
                 // After max retries, should not retry
-                assert!(!task.can_retry(max_retries),
-                        "Task should not be retryable after {} attempts", max_retries);
+                assert!(
+                    !task.can_retry(max_retries),
+                    "Task should not be retryable after {} attempts",
+                    max_retries
+                );
             }
         }
     }
@@ -447,10 +452,8 @@ mod blocked_strategy_integration_tests {
             create_task("task-3", "Top", vec!["task-2"]),
         ];
 
-        let task_map: HashMap<String, Task> = tasks
-            .into_iter()
-            .map(|t| (t.id.clone(), t))
-            .collect();
+        let task_map: HashMap<String, Task> =
+            tasks.into_iter().map(|t| (t.id.clone(), t)).collect();
 
         // Simulate task-1 completing
         let mut completed = std::collections::HashSet::new();
@@ -480,10 +483,8 @@ mod blocked_strategy_integration_tests {
             create_task("task-4", "Join", vec!["task-2", "task-3"]),
         ];
 
-        let task_map: HashMap<String, Task> = tasks
-            .into_iter()
-            .map(|t| (t.id.clone(), t))
-            .collect();
+        let task_map: HashMap<String, Task> =
+            tasks.into_iter().map(|t| (t.id.clone(), t)).collect();
 
         // After task-1 completes
         let mut completed = std::collections::HashSet::new();
@@ -521,10 +522,8 @@ mod blocked_strategy_integration_tests {
             create_task("task-4", "Blocked by 0", vec!["task-0"]),
         ];
 
-        let task_map: HashMap<String, Task> = tasks
-            .into_iter()
-            .map(|t| (t.id.clone(), t))
-            .collect();
+        let task_map: HashMap<String, Task> =
+            tasks.into_iter().map(|t| (t.id.clone(), t)).collect();
 
         let completed: std::collections::HashSet<String> = std::collections::HashSet::new();
 
@@ -558,8 +557,10 @@ mod blocked_strategy_integration_tests {
 
             // Strategy should be one of the valid options
             match strategy {
-                BlockedStrategy::Skip | BlockedStrategy::Abort |
-                BlockedStrategy::Retry | BlockedStrategy::Ask => {
+                BlockedStrategy::Skip
+                | BlockedStrategy::Abort
+                | BlockedStrategy::Retry
+                | BlockedStrategy::Ask => {
                     // Valid strategy
                 }
             }
@@ -580,10 +581,8 @@ mod blocked_task_statistics_tests {
             create_task("task-4", "Independent", vec![]),
         ];
 
-        let task_map: HashMap<String, Task> = tasks
-            .into_iter()
-            .map(|t| (t.id.clone(), t))
-            .collect();
+        let task_map: HashMap<String, Task> =
+            tasks.into_iter().map(|t| (t.id.clone(), t)).collect();
 
         let completed: std::collections::HashSet<String> = std::collections::HashSet::new();
 
@@ -608,10 +607,8 @@ mod blocked_task_statistics_tests {
             create_task("task-4", "Blocked by one", vec!["task-1"]),
         ];
 
-        let task_map: HashMap<String, Task> = tasks
-            .into_iter()
-            .map(|t| (t.id.clone(), t))
-            .collect();
+        let task_map: HashMap<String, Task> =
+            tasks.into_iter().map(|t| (t.id.clone(), t)).collect();
 
         let completed: std::collections::HashSet<String> = std::collections::HashSet::new();
 
@@ -620,9 +617,7 @@ mod blocked_task_statistics_tests {
         let blockers: Vec<_> = task3
             .depends_on
             .iter()
-            .filter(|dep| {
-                task_map.get(*dep).map_or(false, |t| t.is_failed())
-            })
+            .filter(|dep| task_map.get(*dep).map_or(false, |t| t.is_failed()))
             .collect();
 
         assert_eq!(blockers.len(), 2);
@@ -632,9 +627,7 @@ mod blocked_task_statistics_tests {
         let blockers4: Vec<_> = task4
             .depends_on
             .iter()
-            .filter(|dep| {
-                task_map.get(*dep).map_or(false, |t| t.is_failed())
-            })
+            .filter(|dep| task_map.get(*dep).map_or(false, |t| t.is_failed()))
             .collect();
 
         assert_eq!(blockers4.len(), 1);

@@ -8,11 +8,11 @@
 //! - Edge cases and error conditions
 //! - Integration with command execution
 
+use clap::Parser;
 use ltmatrix::cli::args::{
-    Args, Command, ExecutionModeArg, OutputFormat, LogLevel, BlockedStrategy, Shell,
+    Args, BlockedStrategy, Command, ExecutionModeArg, LogLevel, OutputFormat, Shell,
 };
 use ltmatrix::cli::command::execute_command;
-use clap::Parser;
 use std::path::PathBuf;
 
 // =============================================================================
@@ -41,8 +41,12 @@ fn test_parse_goal_only() {
 
 #[test]
 fn test_parse_goal_with_quotes() {
-    let args = Args::try_parse_from(["ltmatrix", "add \"error handling\" to all endpoints"]).unwrap();
-    assert_eq!(args.goal, Some("add \"error handling\" to all endpoints".to_string()));
+    let args =
+        Args::try_parse_from(["ltmatrix", "add \"error handling\" to all endpoints"]).unwrap();
+    assert_eq!(
+        args.goal,
+        Some("add \"error handling\" to all endpoints".to_string())
+    );
 }
 
 // =============================================================================
@@ -212,7 +216,8 @@ fn test_log_level_to_tracing_level() {
 
 #[test]
 fn test_log_file_flag() {
-    let args = Args::try_parse_from(["ltmatrix", "--log-file", "/var/log/ltmatrix.log", "task"]).unwrap();
+    let args =
+        Args::try_parse_from(["ltmatrix", "--log-file", "/var/log/ltmatrix.log", "task"]).unwrap();
     assert_eq!(args.log_file, Some(PathBuf::from("/var/log/ltmatrix.log")));
 }
 
@@ -298,7 +303,8 @@ fn test_blocked_strategy_display() {
 
 #[test]
 fn test_mcp_config_flag() {
-    let args = Args::try_parse_from(["ltmatrix", "--mcp-config", "/path/to/mcp.json", "task"]).unwrap();
+    let args =
+        Args::try_parse_from(["ltmatrix", "--mcp-config", "/path/to/mcp.json", "task"]).unwrap();
     assert_eq!(args.mcp_config, Some(PathBuf::from("/path/to/mcp.json")));
 }
 
@@ -322,9 +328,18 @@ fn test_release_subcommand() {
 
 #[test]
 fn test_release_with_target() {
-    let args = Args::try_parse_from(["ltmatrix", "release", "--target", "x86_64-unknown-linux-musl"]).unwrap();
+    let args = Args::try_parse_from([
+        "ltmatrix",
+        "release",
+        "--target",
+        "x86_64-unknown-linux-musl",
+    ])
+    .unwrap();
     if let Some(Command::Release(release_args)) = args.command {
-        assert_eq!(release_args.target, Some("x86_64-unknown-linux-musl".to_string()));
+        assert_eq!(
+            release_args.target,
+            Some("x86_64-unknown-linux-musl".to_string())
+        );
     } else {
         panic!("Expected Release command");
     }
@@ -438,13 +453,18 @@ fn test_multiple_flags_combination() {
     let args = Args::try_parse_from([
         "ltmatrix",
         "--fast",
-        "--output", "json",
-        "--log-level", "debug",
-        "--max-retries", "3",
-        "--timeout", "1800",
+        "--output",
+        "json",
+        "--log-level",
+        "debug",
+        "--max-retries",
+        "3",
+        "--timeout",
+        "1800",
         "--dry-run",
-        "complex task"
-    ]).unwrap();
+        "complex task",
+    ])
+    .unwrap();
 
     assert!(args.fast);
     assert_eq!(args.output, Some(OutputFormat::Json));
@@ -461,18 +481,28 @@ fn test_expert_mode_with_all_options() {
     let args = Args::try_parse_from([
         "ltmatrix",
         "--expert",
-        "--agent", "claude-opus",
-        "--config", "/custom/config.toml",
-        "--output", "json-compact",
-        "--log-level", "trace",
-        "--log-file", "/var/log/ltmatrix.log",
-        "--max-retries", "5",
-        "--timeout", "7200",
-        "--on-blocked", "ask",
-        "--mcp-config", "/custom/mcp.json",
+        "--agent",
+        "claude-opus",
+        "--config",
+        "/custom/config.toml",
+        "--output",
+        "json-compact",
+        "--log-level",
+        "trace",
+        "--log-file",
+        "/var/log/ltmatrix.log",
+        "--max-retries",
+        "5",
+        "--timeout",
+        "7200",
+        "--on-blocked",
+        "ask",
+        "--mcp-config",
+        "/custom/mcp.json",
         "--regenerate-plan",
-        "expert task"
-    ]).unwrap();
+        "expert task",
+    ])
+    .unwrap();
 
     assert!(args.expert);
     assert_eq!(args.agent, Some("claude-opus".to_string()));
@@ -560,7 +590,10 @@ fn test_execution_mode_display() {
 fn test_execution_mode_conversion_to_model() {
     use ltmatrix::models::ExecutionMode;
     assert_eq!(ExecutionModeArg::Fast.to_model(), ExecutionMode::Fast);
-    assert_eq!(ExecutionModeArg::Standard.to_model(), ExecutionMode::Standard);
+    assert_eq!(
+        ExecutionModeArg::Standard.to_model(),
+        ExecutionMode::Standard
+    );
     assert_eq!(ExecutionModeArg::Expert.to_model(), ExecutionMode::Expert);
 }
 
@@ -586,7 +619,10 @@ fn test_execute_run_without_goal() {
 fn test_execute_release_command() {
     let args = Args::try_parse_from(["ltmatrix", "release"]).unwrap();
     let result = execute_command(args);
-    assert!(result.is_ok(), "Should execute release command successfully");
+    assert!(
+        result.is_ok(),
+        "Should execute release command successfully"
+    );
 }
 
 #[test]
@@ -594,19 +630,28 @@ fn test_execute_release_with_options() {
     let args = Args::try_parse_from([
         "ltmatrix",
         "release",
-        "--target", "x86_64-pc-windows-msvc",
-        "--output", "./dist",
-        "--archive"
-    ]).unwrap();
+        "--target",
+        "x86_64-pc-windows-msvc",
+        "--output",
+        "./dist",
+        "--archive",
+    ])
+    .unwrap();
     let result = execute_command(args);
-    assert!(result.is_ok(), "Should execute release with options successfully");
+    assert!(
+        result.is_ok(),
+        "Should execute release with options successfully"
+    );
 }
 
 #[test]
 fn test_execute_completions_command() {
     let args = Args::try_parse_from(["ltmatrix", "completions", "bash"]).unwrap();
     let result = execute_command(args);
-    assert!(result.is_ok(), "Should execute completions command successfully");
+    assert!(
+        result.is_ok(),
+        "Should execute completions command successfully"
+    );
 }
 
 #[test]
@@ -616,7 +661,11 @@ fn test_execute_completions_all_shells() {
     for shell in shells {
         let args = Args::try_parse_from(["ltmatrix", "completions", shell]).unwrap();
         let result = execute_command(args);
-        assert!(result.is_ok(), "Should execute completions for {} successfully", shell);
+        assert!(
+            result.is_ok(),
+            "Should execute completions for {} successfully",
+            shell
+        );
     }
 }
 
@@ -632,8 +681,12 @@ fn test_config_path_relative() {
 
 #[test]
 fn test_config_path_absolute() {
-    let args = Args::try_parse_from(["ltmatrix", "--config", "/etc/ltmatrix/config.toml", "task"]).unwrap();
-    assert_eq!(args.config, Some(PathBuf::from("/etc/ltmatrix/config.toml")));
+    let args = Args::try_parse_from(["ltmatrix", "--config", "/etc/ltmatrix/config.toml", "task"])
+        .unwrap();
+    assert_eq!(
+        args.config,
+        Some(PathBuf::from("/etc/ltmatrix/config.toml"))
+    );
 }
 
 #[test]
@@ -645,7 +698,8 @@ fn test_config_path_with_dots() {
 #[test]
 fn test_log_file_path_with_tilde() {
     // Note: This will be literal "~" - expansion is handled by the shell
-    let args = Args::try_parse_from(["ltmatrix", "--log-file", "~/logs/ltmatrix.log", "task"]).unwrap();
+    let args =
+        Args::try_parse_from(["ltmatrix", "--log-file", "~/logs/ltmatrix.log", "task"]).unwrap();
     assert_eq!(args.log_file, Some(PathBuf::from("~/logs/ltmatrix.log")));
 }
 
@@ -702,10 +756,13 @@ fn test_realistic_fast_development_workflow() {
     let args = Args::try_parse_from([
         "ltmatrix",
         "--fast",
-        "--output", "json",
-        "--log-level", "warn",
-        "add user authentication"
-    ]).unwrap();
+        "--output",
+        "json",
+        "--log-level",
+        "warn",
+        "add user authentication",
+    ])
+    .unwrap();
 
     assert_eq!(args.get_execution_mode(), ExecutionModeArg::Fast);
     assert_eq!(args.output, Some(OutputFormat::Json));
@@ -718,13 +775,19 @@ fn test_realistic_expert_development_workflow() {
     let args = Args::try_parse_from([
         "ltmatrix",
         "--expert",
-        "--agent", "claude-opus",
-        "--log-level", "debug",
-        "--max-retries", "5",
-        "--timeout", "7200",
-        "--on-blocked", "ask",
-        "implement distributed caching system"
-    ]).unwrap();
+        "--agent",
+        "claude-opus",
+        "--log-level",
+        "debug",
+        "--max-retries",
+        "5",
+        "--timeout",
+        "7200",
+        "--on-blocked",
+        "ask",
+        "implement distributed caching system",
+    ])
+    .unwrap();
 
     assert_eq!(args.get_execution_mode(), ExecutionModeArg::Expert);
     assert_eq!(args.agent, Some("claude-opus".to_string()));
@@ -732,7 +795,10 @@ fn test_realistic_expert_development_workflow() {
     assert_eq!(args.max_retries, Some(5));
     assert_eq!(args.timeout, Some(7200));
     assert_eq!(args.on_blocked, Some(BlockedStrategy::Ask));
-    assert_eq!(args.goal, Some("implement distributed caching system".to_string()));
+    assert_eq!(
+        args.goal,
+        Some("implement distributed caching system".to_string())
+    );
 }
 
 #[test]
@@ -740,13 +806,19 @@ fn test_realistic_release_workflow() {
     let args = Args::try_parse_from([
         "ltmatrix",
         "release",
-        "--target", "x86_64-unknown-linux-gnu",
-        "--output", "./release",
-        "--archive"
-    ]).unwrap();
+        "--target",
+        "x86_64-unknown-linux-gnu",
+        "--output",
+        "./release",
+        "--archive",
+    ])
+    .unwrap();
 
     if let Some(Command::Release(release_args)) = args.command {
-        assert_eq!(release_args.target, Some("x86_64-unknown-linux-gnu".to_string()));
+        assert_eq!(
+            release_args.target,
+            Some("x86_64-unknown-linux-gnu".to_string())
+        );
         assert_eq!(release_args.output, PathBuf::from("./release"));
         assert!(release_args.archive);
     } else {
@@ -758,18 +830,25 @@ fn test_realistic_release_workflow() {
 fn test_realistic_debugging_workflow() {
     let args = Args::try_parse_from([
         "ltmatrix",
-        "--log-level", "trace",
-        "--log-file", "debug.log",
-        "--on-blocked", "ask",
+        "--log-level",
+        "trace",
+        "--log-file",
+        "debug.log",
+        "--on-blocked",
+        "ask",
         "--regenerate-plan",
-        "fix memory leak in worker pool"
-    ]).unwrap();
+        "fix memory leak in worker pool",
+    ])
+    .unwrap();
 
     assert_eq!(args.log_level, Some(LogLevel::Trace));
     assert_eq!(args.log_file, Some(PathBuf::from("debug.log")));
     assert_eq!(args.on_blocked, Some(BlockedStrategy::Ask));
     assert!(args.regenerate_plan);
-    assert_eq!(args.goal, Some("fix memory leak in worker pool".to_string()));
+    assert_eq!(
+        args.goal,
+        Some("fix memory leak in worker pool".to_string())
+    );
 }
 
 #[test]
@@ -777,9 +856,12 @@ fn test_resuming_interrupted_work() {
     let args = Args::try_parse_from([
         "ltmatrix",
         "--resume",
-        "--log-level", "info",
-        "--on-blocked", "retry"
-    ]).unwrap();
+        "--log-level",
+        "info",
+        "--on-blocked",
+        "retry",
+    ])
+    .unwrap();
 
     assert!(args.resume);
     assert_eq!(args.log_level, Some(LogLevel::Info));

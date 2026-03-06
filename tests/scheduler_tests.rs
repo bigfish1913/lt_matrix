@@ -25,7 +25,10 @@ fn create_task(id: &str, deps: Vec<&str>) -> Task {
 
 /// Helper to create a task map from a vector of tasks
 fn create_task_map(tasks: Vec<Task>) -> std::collections::HashMap<String, Task> {
-    tasks.into_iter().map(|task| (task.id.clone(), task)).collect()
+    tasks
+        .into_iter()
+        .map(|task| (task.id.clone(), task))
+        .collect()
 }
 
 // ============================================================================
@@ -67,14 +70,20 @@ fn test_topological_sort_linear_chain() {
     let plan = schedule_tasks(tasks).expect("Should schedule linear chain");
 
     // Verify execution order respects dependencies
-    assert_eq!(plan.execution_order, vec!["task-1", "task-2", "task-3", "task-4"]);
+    assert_eq!(
+        plan.execution_order,
+        vec!["task-1", "task-2", "task-3", "task-4"]
+    );
 
     // Each task is in its own level (no parallelism)
     assert_eq!(plan.max_depth, 4);
     assert_eq!(plan.execution_levels.len(), 4);
 
     // Verify critical path includes all tasks
-    assert_eq!(plan.critical_path, vec!["task-1", "task-2", "task-3", "task-4"]);
+    assert_eq!(
+        plan.critical_path,
+        vec!["task-1", "task-2", "task-3", "task-4"]
+    );
 
     // No parallelizable tasks in linear chain
     assert_eq!(plan.parallelizable_tasks.len(), 0);
@@ -102,7 +111,10 @@ fn test_topological_sort_diamond_pattern() {
         .iter()
         .map(|t| t.id.clone())
         .collect();
-    assert_eq!(level_2_ids, HashSet::from(["task-2".to_string(), "task-3".to_string()]));
+    assert_eq!(
+        level_2_ids,
+        HashSet::from(["task-2".to_string(), "task-3".to_string()])
+    );
 
     // Level 3: task-4
     assert_eq!(plan.execution_levels[2].len(), 1);
@@ -210,7 +222,10 @@ fn test_cycle_detection_simple_cycle() {
     assert!(result.is_err(), "Should detect cycle");
 
     let err_msg = result.unwrap_err().to_string();
-    assert!(err_msg.contains("Circular dependency"), "Error should mention circular dependency");
+    assert!(
+        err_msg.contains("Circular dependency"),
+        "Error should mention circular dependency"
+    );
     assert!(err_msg.contains("task-"), "Error should include task IDs");
 }
 
@@ -643,7 +658,10 @@ fn test_execution_plan_visualization_comprehensive() {
     assert!(viz.contains("Total Tasks: 4"));
     assert!(viz.contains("Max Depth: 3"));
     assert!(viz.contains("Critical Path Length: 3"));
-    assert!(viz.contains(&format!("Parallelizable Tasks: {}", plan.parallelizable_tasks.len())));
+    assert!(viz.contains(&format!(
+        "Parallelizable Tasks: {}",
+        plan.parallelizable_tasks.len()
+    )));
     assert!(viz.contains("Level 1:"));
     assert!(viz.contains("Level 2:"));
     assert!(viz.contains("Level 3:"));
@@ -730,7 +748,9 @@ fn test_fan_in_fan_out_pattern() {
     }
 
     // Fan in
-    let deps = (1..=10).map(|i| format!("branch-{}", i)).collect::<Vec<_>>();
+    let deps = (1..=10)
+        .map(|i| format!("branch-{}", i))
+        .collect::<Vec<_>>();
     let dep_refs: Vec<&str> = deps.iter().map(|s| s.as_str()).collect();
     tasks.push(create_task("merge", dep_refs));
 
@@ -765,9 +785,7 @@ fn test_execution_order_preserves_dependencies() {
     ];
 
     let plan = schedule_tasks(tasks.clone()).unwrap();
-    let pos = |id: &str| -> usize {
-        plan.execution_order.iter().position(|x| x == id).unwrap()
-    };
+    let pos = |id: &str| -> usize { plan.execution_order.iter().position(|x| x == id).unwrap() };
 
     // For each task, verify all dependencies come before it
     let task_map: std::collections::HashMap<String, Task> =
@@ -900,9 +918,8 @@ fn test_full_pipeline_integration() {
     assert!(plan.max_depth >= 3 && plan.max_depth <= 6);
 
     // Verify we have reasonable parallelism
-    let stats = calculate_graph_statistics(
-        &tasks.into_iter().map(|t| (t.id.clone(), t)).collect()
-    ).unwrap();
+    let stats = calculate_graph_statistics(&tasks.into_iter().map(|t| (t.id.clone(), t)).collect())
+        .unwrap();
     assert!(stats.parallelism_factor > 1.0);
 
     // Verify execution order is valid
@@ -978,7 +995,10 @@ fn test_fully_connected_graph() {
     assert_eq!(plan.critical_path.len(), 5);
 
     // Execution order must be sequential
-    assert_eq!(plan.execution_order, vec!["task-1", "task-2", "task-3", "task-4", "task-5"]);
+    assert_eq!(
+        plan.execution_order,
+        vec!["task-1", "task-2", "task-3", "task-4", "task-5"]
+    );
 }
 
 #[test]
@@ -1012,9 +1032,18 @@ fn test_deterministic_valid_topological_ordering() {
     };
 
     // Verify all orders are valid topological sorts
-    assert!(is_valid_order(&plan1), "Plan 1 should have valid topological order");
-    assert!(is_valid_order(&plan2), "Plan 2 should have valid topological order");
-    assert!(is_valid_order(&plan3), "Plan 3 should have valid topological order");
+    assert!(
+        is_valid_order(&plan1),
+        "Plan 1 should have valid topological order"
+    );
+    assert!(
+        is_valid_order(&plan2),
+        "Plan 2 should have valid topological order"
+    );
+    assert!(
+        is_valid_order(&plan3),
+        "Plan 3 should have valid topological order"
+    );
 
     // Verify structure is consistent (same depth, same number of levels)
     assert_eq!(plan1.max_depth, plan2.max_depth);
@@ -1070,8 +1099,17 @@ fn test_deterministic_valid_topological_ordering_complex() {
     let num_levels = results[0].execution_levels.len();
 
     for (i, result) in results.iter().enumerate() {
-        assert_eq!(result.max_depth, max_depth, "Plan {} should have same depth", i);
-        assert_eq!(result.execution_levels.len(), num_levels, "Plan {} should have same number of levels", i);
+        assert_eq!(
+            result.max_depth, max_depth,
+            "Plan {} should have same depth",
+            i
+        );
+        assert_eq!(
+            result.execution_levels.len(),
+            num_levels,
+            "Plan {} should have same number of levels",
+            i
+        );
     }
 }
 
@@ -1094,10 +1132,7 @@ fn test_single_task_edge_case() {
 #[test]
 fn test_two_independent_tasks() {
     // Minimal test for parallelism with two tasks
-    let tasks = vec![
-        create_task("task-a", vec![]),
-        create_task("task-b", vec![]),
-    ];
+    let tasks = vec![create_task("task-a", vec![]), create_task("task-b", vec![])];
 
     let plan = schedule_tasks(tasks).expect("Should schedule two independent tasks");
 

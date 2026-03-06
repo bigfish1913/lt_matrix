@@ -33,8 +33,8 @@ impl ClaudeAgent {
     /// Create a new Claude agent with default configuration
     pub fn new() -> Result<Self> {
         let agent = Agent::claude_default();
-        let session_manager = SessionManager::default_manager()
-            .context("Failed to create session manager")?;
+        let session_manager =
+            SessionManager::default_manager().context("Failed to create session manager")?;
 
         Ok(ClaudeAgent {
             agent,
@@ -121,10 +121,7 @@ impl ClaudeAgent {
                 tokio::time::sleep(delay).await;
             }
 
-            match self
-                .execute_single_attempt(prompt, config, session)
-                .await
-            {
+            match self.execute_single_attempt(prompt, config, session).await {
                 Ok(response) => {
                     if attempt > 0 {
                         info!("Execution succeeded on attempt {}", attempt + 1);
@@ -222,10 +219,7 @@ impl ClaudeAgent {
             .await
             .context("Failed to wait for Claude process")?;
 
-        debug!(
-            "Claude process exited with status: {}",
-            status
-        );
+        debug!("Claude process exited with status: {}", status);
 
         // Check for errors
         let error = if !status.success() {
@@ -277,10 +271,7 @@ impl ClaudeAgent {
     }
 
     /// Get or create a session for this execution
-    async fn get_session(
-        &self,
-        config: &ExecutionConfig,
-    ) -> Result<Option<SessionData>> {
+    async fn get_session(&self, config: &ExecutionConfig) -> Result<Option<SessionData>> {
         if !config.enable_session {
             return Ok(None);
         }
@@ -302,10 +293,7 @@ impl ClaudeAgent {
 #[async_trait]
 impl AgentBackend for ClaudeAgent {
     async fn execute(&self, prompt: &str, config: &ExecutionConfig) -> Result<AgentResponse> {
-        info!(
-            "Executing Claude prompt with model {}",
-            config.model
-        );
+        info!("Executing Claude prompt with model {}", config.model);
 
         // Verify Claude command is available
         self.verify_claude_command().await?;
@@ -314,7 +302,9 @@ impl AgentBackend for ClaudeAgent {
         let session = self.get_session(config).await?;
 
         // Execute with retry
-        let response = self.execute_with_retry(prompt, config, session.as_ref()).await?;
+        let response = self
+            .execute_with_retry(prompt, config, session.as_ref())
+            .await?;
 
         Ok(response)
     }

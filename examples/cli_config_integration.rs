@@ -12,11 +12,15 @@ fn main() -> anyhow::Result<()> {
 
     let args = Args::try_parse_from([
         "ltmatrix",
-        "--agent", "claude",
-        "--mode", "fast",
-        "--output", "json",
-        "--log-level", "debug",
-        "goal: build a REST API"
+        "--agent",
+        "claude",
+        "--mode",
+        "fast",
+        "--output",
+        "json",
+        "--log-level",
+        "debug",
+        "goal: build a REST API",
     ])?;
 
     let config = load_config_from_args(args)?;

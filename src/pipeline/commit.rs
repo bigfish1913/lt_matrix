@@ -9,20 +9,15 @@
 //! - Handles merge conflicts with user notification
 //! - Skips if not a git repository or on error
 
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 use git2::Repository;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
-use tracing::{info, warn, error, debug};
+use tracing::{debug, error, info, warn};
 
 use crate::git::{
-    create_branch,
-    checkout,
+    checkout, commit_changes, create_branch, delete_branch, get_current_branch, merge_with_squash,
     stage_all,
-    commit_changes,
-    merge_with_squash,
-    delete_branch,
-    get_current_branch,
 };
 use crate::models::Task;
 
@@ -249,17 +244,13 @@ pub async fn commit_tasks(
     let base_branch = if let Some(ref branch) = config.base_branch {
         branch.clone()
     } else {
-        get_current_branch(&repo)
-            .context("Failed to get current branch")?
+        get_current_branch(&repo).context("Failed to get current branch")?
     };
 
     info!("Using base branch: {}", base_branch);
 
     // Filter for completed tasks
-    let completed_tasks: Vec<Task> = tasks
-        .into_iter()
-        .filter(|t| t.is_completed())
-        .collect();
+    let completed_tasks: Vec<Task> = tasks.into_iter().filter(|t| t.is_completed()).collect();
 
     debug!("Found {} completed tasks to commit", completed_tasks.len());
 
@@ -305,9 +296,7 @@ pub async fn commit_tasks(
 
     info!(
         "Commit stage completed: {}/{} tasks committed, {} conflicts",
-        summary.committed_tasks,
-        total_tasks,
-        summary.conflicts
+        summary.committed_tasks, total_tasks, summary.conflicts
     );
 
     Ok((results, summary))
@@ -436,7 +425,10 @@ async fn commit_task_with_branch(
                 error!("Merge conflicts for task {}: {}", task.id, error_msg);
 
                 // Don't delete the branch so user can resolve conflicts
-                warn!("Task branch '{}' preserved for manual conflict resolution", task_branch);
+                warn!(
+                    "Task branch '{}' preserved for manual conflict resolution",
+                    task_branch
+                );
             } else {
                 result.error = Some(format!("Failed to merge: {}", e));
                 error!("Failed to merge task {}: {}", task.id, e);
@@ -508,12 +500,10 @@ fn create_and_checkout_task_branch(repo: &Repository, branch_name: &str) -> Resu
     }
 
     // Create new branch
-    create_branch(repo, branch_name)
-        .context("Failed to create task branch")?;
+    create_branch(repo, branch_name).context("Failed to create task branch")?;
 
     // Checkout the branch
-    checkout(repo, branch_name)
-        .context("Failed to checkout task branch")?;
+    checkout(repo, branch_name).context("Failed to checkout task branch")?;
 
     debug!("Created and checked out task branch: {}", branch_name);
 
@@ -716,7 +706,8 @@ mod tests {
         let sig = crate::git::repository::create_signature("Test", "test@example.com").unwrap();
         let tree_oid = repo.treebuilder(None).unwrap().write().unwrap();
         let tree = repo.find_tree(tree_oid).unwrap();
-        repo.commit(Some("HEAD"), &sig, &sig, "Initial", &tree, &[]).unwrap();
+        repo.commit(Some("HEAD"), &sig, &sig, "Initial", &tree, &[])
+            .unwrap();
 
         // Create and checkout task branch
         let result = create_and_checkout_task_branch(&repo, "task-test-1");
@@ -739,7 +730,8 @@ mod tests {
         let sig = crate::git::repository::create_signature("Test", "test@example.com").unwrap();
         let tree_oid = repo.treebuilder(None).unwrap().write().unwrap();
         let tree = repo.find_tree(tree_oid).unwrap();
-        repo.commit(Some("HEAD"), &sig, &sig, "Initial", &tree, &[]).unwrap();
+        repo.commit(Some("HEAD"), &sig, &sig, "Initial", &tree, &[])
+            .unwrap();
 
         // Create branch once
         create_and_checkout_task_branch(&repo, "task-test-2").unwrap();

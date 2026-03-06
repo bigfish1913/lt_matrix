@@ -8,10 +8,10 @@
 //! - Log rotation configuration
 //! - Real-world usage scenarios
 
-use crate::logging::{init_logging, init_default_logging, init_api_trace_logging, LogLevel};
-use tempfile::TempDir;
+use crate::logging::{init_api_trace_logging, init_default_logging, init_logging, LogLevel};
 use std::thread;
 use std::time::Duration;
+use tempfile::TempDir;
 
 #[cfg(test)]
 mod tests {
@@ -31,8 +31,8 @@ mod tests {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let log_path = temp_dir.path().join("test.log");
 
-        let _guard = init_logging(LogLevel::Info, Some(log_path.as_path()))
-            .expect("Failed to init logging");
+        let _guard =
+            init_logging(LogLevel::Info, Some(log_path.as_path())).expect("Failed to init logging");
 
         // Log some messages
         tracing::info!("Test info message");
@@ -48,8 +48,7 @@ mod tests {
 
     #[test]
     fn test_end_to_end_console_logging() {
-        let _guard = init_logging(LogLevel::Info, None::<&str>)
-            .expect("Failed to init logging");
+        let _guard = init_logging(LogLevel::Info, None::<&str>).expect("Failed to init logging");
 
         // These should log to console
         tracing::info!("Console info message");
@@ -66,8 +65,7 @@ mod tests {
 
     #[test]
     fn test_log_level_filtering() {
-        let _guard = init_logging(LogLevel::Warn, None::<&str>)
-            .expect("Failed to init logging");
+        let _guard = init_logging(LogLevel::Warn, None::<&str>).expect("Failed to init logging");
 
         // INFO should not appear
         tracing::info!("This should not be logged");
@@ -94,8 +92,7 @@ mod tests {
         ];
 
         for test_level in levels {
-            let _guard = init_logging(test_level, None::<&str>)
-                .expect("Failed to init logging");
+            let _guard = init_logging(test_level, None::<&str>).expect("Failed to init logging");
 
             // Test that lower levels are filtered
             // (Can't verify without capturing output)
@@ -126,8 +123,7 @@ mod tests {
 
     #[test]
     fn test_init_default_logging() {
-        let _guard = init_default_logging()
-            .expect("Failed to init default logging");
+        let _guard = init_default_logging().expect("Failed to init default logging");
 
         // Should use INFO level
         tracing::info!("Default info message");
@@ -148,8 +144,7 @@ mod tests {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let log_path = temp_dir.path().join("api-trace.log");
 
-        let _guard = init_api_trace_logging(&log_path)
-            .expect("Failed to init API trace logging");
+        let _guard = init_api_trace_logging(&log_path).expect("Failed to init API trace logging");
 
         // API trace logger should capture everything
         tracing::trace!("API trace message");
@@ -163,8 +158,7 @@ mod tests {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let log_path = temp_dir.path().join("api-deps.log");
 
-        let _guard = init_api_trace_logging(&log_path)
-            .expect("Failed to init API trace logging");
+        let _guard = init_api_trace_logging(&log_path).expect("Failed to init API trace logging");
 
         // API trace logging should also capture reqwest/hyper logs
         // (Can't easily test without making actual HTTP requests)
@@ -182,8 +176,8 @@ mod tests {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let log_path = temp_dir.path().join("creation-test.log");
 
-        let _guard = init_logging(LogLevel::Info, Some(log_path.as_path()))
-            .expect("Failed to init logging");
+        let _guard =
+            init_logging(LogLevel::Info, Some(log_path.as_path())).expect("Failed to init logging");
 
         tracing::info!("Test message for file creation");
         flush_and_wait();
@@ -199,8 +193,8 @@ mod tests {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let log_path = temp_dir.path().join("rotation-test.log");
 
-        let _guard = init_logging(LogLevel::Info, Some(log_path.as_path()))
-            .expect("Failed to init logging");
+        let _guard =
+            init_logging(LogLevel::Info, Some(log_path.as_path())).expect("Failed to init logging");
 
         // Log rotation is configured but not fully implemented
         // Constants: MAX_LOG_SIZE = 10MB, MAX_LOG_FILES = 5
@@ -214,8 +208,8 @@ mod tests {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let log_path = temp_dir.path().join("daily-test.log");
 
-        let _guard = init_logging(LogLevel::Info, Some(log_path.as_path()))
-            .expect("Failed to init logging");
+        let _guard =
+            init_logging(LogLevel::Info, Some(log_path.as_path())).expect("Failed to init logging");
 
         // Implementation uses rolling::daily for log rotation
         // This test documents expected behavior
@@ -232,8 +226,8 @@ mod tests {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let log_path = temp_dir.path().join("timestamp-test.log");
 
-        let _guard = init_logging(LogLevel::Info, Some(log_path.as_path()))
-            .expect("Failed to init logging");
+        let _guard =
+            init_logging(LogLevel::Info, Some(log_path.as_path())).expect("Failed to init logging");
 
         tracing::info!("Message with timestamp");
         flush_and_wait();
@@ -264,8 +258,7 @@ mod tests {
 
     #[test]
     fn test_log_module_path() {
-        let _guard = init_logging(LogLevel::Info, None::<&str>)
-            .expect("Failed to init logging");
+        let _guard = init_logging(LogLevel::Info, None::<&str>).expect("Failed to init logging");
 
         // Module path should be included in logs
         tracing::info!("Message from test module");
@@ -274,8 +267,7 @@ mod tests {
 
     #[test]
     fn test_log_target_filtering() {
-        let _guard = init_logging(LogLevel::Debug, None::<&str>)
-            .expect("Failed to init logging");
+        let _guard = init_logging(LogLevel::Debug, None::<&str>).expect("Failed to init logging");
 
         // Different targets (modules) should be logged
         tracing::info!(target = "test_target", "Message with custom target");
@@ -288,8 +280,7 @@ mod tests {
 
     #[test]
     fn test_structured_logging_fields() {
-        let _guard = init_logging(LogLevel::Info, None::<&str>)
-            .expect("Failed to init logging");
+        let _guard = init_logging(LogLevel::Info, None::<&str>).expect("Failed to init logging");
 
         // Structured fields should be captured
         tracing::info!(
@@ -307,17 +298,12 @@ mod tests {
 
     #[test]
     fn test_structured_logging_with_values() {
-        let _guard = init_logging(LogLevel::Info, None::<&str>)
-            .expect("Failed to init logging");
+        let _guard = init_logging(LogLevel::Info, None::<&str>).expect("Failed to init logging");
 
         let user_id = 123u64;
         let status = "active";
 
-        tracing::info!(
-            user_id,
-            status,
-            "User status updated"
-        );
+        tracing::info!(user_id, status, "User status updated");
     }
 
     // ============================================================================
@@ -326,8 +312,7 @@ mod tests {
 
     #[test]
     fn test_logging_with_invalid_utf8() {
-        let _guard = init_logging(LogLevel::Info, None::<&str>)
-            .expect("Failed to init logging");
+        let _guard = init_logging(LogLevel::Info, None::<&str>).expect("Failed to init logging");
 
         // Should handle various string content
         tracing::info!("Valid UTF-8: {}", "Hello, 世界!");
@@ -337,8 +322,7 @@ mod tests {
 
     #[test]
     fn test_logging_with_large_messages() {
-        let _guard = init_logging(LogLevel::Info, None::<&str>)
-            .expect("Failed to init logging");
+        let _guard = init_logging(LogLevel::Info, None::<&str>).expect("Failed to init logging");
 
         let large_message = "x".repeat(10000);
         tracing::info!("Large message: {}", large_message);
@@ -353,8 +337,7 @@ mod tests {
 
     #[test]
     fn test_concurrent_logging() {
-        let _guard = init_logging(LogLevel::Info, None::<&str>)
-            .expect("Failed to init logging");
+        let _guard = init_logging(LogLevel::Info, None::<&str>).expect("Failed to init logging");
 
         let handles: Vec<_> = (0..10)
             .map(|i| {
@@ -379,8 +362,7 @@ mod tests {
 
     #[test]
     fn test_logging_performance() {
-        let _guard = init_logging(LogLevel::Info, None::<&str>)
-            .expect("Failed to init logging");
+        let _guard = init_logging(LogLevel::Info, None::<&str>).expect("Failed to init logging");
 
         let start = std::time::Instant::now();
 
@@ -401,8 +383,7 @@ mod tests {
 
     #[test]
     fn test_task_completion_logging() {
-        let _guard = init_logging(LogLevel::Info, None::<&str>)
-            .expect("Failed to init logging");
+        let _guard = init_logging(LogLevel::Info, None::<&str>).expect("Failed to init logging");
 
         // Simulate task completion scenario
         let task_id = "task-001";
@@ -415,8 +396,7 @@ mod tests {
 
     #[test]
     fn test_error_handling_scenario() {
-        let _guard = init_logging(LogLevel::Info, None::<&str>)
-            .expect("Failed to init logging");
+        let _guard = init_logging(LogLevel::Info, None::<&str>).expect("Failed to init logging");
 
         // Simulate error handling scenario
         let error = "Failed to open file";
@@ -454,8 +434,8 @@ mod tests {
         // Test Windows-style paths (even on Unix)
         let log_path = temp_dir.path().join("logs").join("app.log");
 
-        let _guard = init_logging(LogLevel::Info, Some(log_path.as_path()))
-            .expect("Failed to init logging");
+        let _guard =
+            init_logging(LogLevel::Info, Some(log_path.as_path())).expect("Failed to init logging");
         let _ = PathBuf::new();
     }
 
@@ -466,8 +446,8 @@ mod tests {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let log_path = temp_dir.path().join("test app.log");
 
-        let _guard = init_logging(LogLevel::Info, Some(log_path.as_path()))
-            .expect("Failed to init logging");
+        let _guard =
+            init_logging(LogLevel::Info, Some(log_path.as_path())).expect("Failed to init logging");
         let _ = Path::new(&temp_dir.path());
     }
 
@@ -492,8 +472,7 @@ mod tests {
     #[test]
     fn test_logging_reinitialization() {
         // Test that reinitialization is handled (or fails gracefully)
-        let _guard1 = init_logging(LogLevel::Info, None::<&str>)
-            .expect("Failed to init logging");
+        let _guard1 = init_logging(LogLevel::Info, None::<&str>).expect("Failed to init logging");
 
         // Second initialization may fail or be ignored
         let result2 = init_logging(LogLevel::Debug, None::<&str>);
@@ -513,8 +492,8 @@ mod tests {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let log_path = temp_dir.path().join("long-running.log");
 
-        let _guard = init_logging(LogLevel::Info, Some(log_path.as_path()))
-            .expect("Failed to init logging");
+        let _guard =
+            init_logging(LogLevel::Info, Some(log_path.as_path())).expect("Failed to init logging");
 
         // Simulate long-running task with periodic logging
         for i in 0..10 {

@@ -12,13 +12,8 @@ mod cli_parsing_tests {
 
     #[test]
     fn test_parse_on_blocked_skip() {
-        let args = Args::try_parse_from([
-            "ltmatrix",
-            "--on-blocked",
-            "skip",
-            "test goal",
-        ])
-        .expect("Failed to parse args");
+        let args = Args::try_parse_from(["ltmatrix", "--on-blocked", "skip", "test goal"])
+            .expect("Failed to parse args");
 
         assert_eq!(args.on_blocked, Some(BlockedStrategy::Skip));
         assert_eq!(args.goal, Some("test goal".to_string()));
@@ -26,47 +21,31 @@ mod cli_parsing_tests {
 
     #[test]
     fn test_parse_on_blocked_ask() {
-        let args = Args::try_parse_from([
-            "ltmatrix",
-            "--on-blocked",
-            "ask",
-            "test goal",
-        ])
-        .expect("Failed to parse args");
+        let args = Args::try_parse_from(["ltmatrix", "--on-blocked", "ask", "test goal"])
+            .expect("Failed to parse args");
 
         assert_eq!(args.on_blocked, Some(BlockedStrategy::Ask));
     }
 
     #[test]
     fn test_parse_on_blocked_abort() {
-        let args = Args::try_parse_from([
-            "ltmatrix",
-            "--on-blocked",
-            "abort",
-            "test goal",
-        ])
-        .expect("Failed to parse args");
+        let args = Args::try_parse_from(["ltmatrix", "--on-blocked", "abort", "test goal"])
+            .expect("Failed to parse args");
 
         assert_eq!(args.on_blocked, Some(BlockedStrategy::Abort));
     }
 
     #[test]
     fn test_parse_on_blocked_retry() {
-        let args = Args::try_parse_from([
-            "ltmatrix",
-            "--on-blocked",
-            "retry",
-            "test goal",
-        ])
-        .expect("Failed to parse args");
+        let args = Args::try_parse_from(["ltmatrix", "--on-blocked", "retry", "test goal"])
+            .expect("Failed to parse args");
 
         assert_eq!(args.on_blocked, Some(BlockedStrategy::Retry));
     }
 
     #[test]
     fn test_on_blocked_flag_optional() {
-        let args = Args::try_parse_from(["ltmatrix", "test goal"])
-            .expect("Failed to parse args");
+        let args = Args::try_parse_from(["ltmatrix", "test goal"]).expect("Failed to parse args");
 
         assert_eq!(args.on_blocked, None);
     }
@@ -91,14 +70,9 @@ mod cli_parsing_tests {
 
     #[test]
     fn test_on_blocked_with_expert_mode() {
-        let args = Args::try_parse_from([
-            "ltmatrix",
-            "--expert",
-            "--on-blocked",
-            "retry",
-            "test goal",
-        ])
-        .expect("Failed to parse args");
+        let args =
+            Args::try_parse_from(["ltmatrix", "--expert", "--on-blocked", "retry", "test goal"])
+                .expect("Failed to parse args");
 
         assert!(args.expert);
         assert_eq!(args.on_blocked, Some(BlockedStrategy::Retry));
@@ -123,54 +97,29 @@ mod cli_parsing_tests {
     fn test_on_blocked_case_sensitive() {
         // The strategy names should be case-sensitive
         // "skip" should work
-        let args = Args::try_parse_from([
-            "ltmatrix",
-            "--on-blocked",
-            "skip",
-            "test goal",
-        ]);
+        let args = Args::try_parse_from(["ltmatrix", "--on-blocked", "skip", "test goal"]);
         assert!(args.is_ok());
 
         // "Skip" should fail (case-sensitive)
-        let args = Args::try_parse_from([
-            "ltmatrix",
-            "--on-blocked",
-            "Skip",
-            "test goal",
-        ]);
+        let args = Args::try_parse_from(["ltmatrix", "--on-blocked", "Skip", "test goal"]);
         assert!(args.is_err());
 
         // "SKIP" should fail
-        let args = Args::try_parse_from([
-            "ltmatrix",
-            "--on-blocked",
-            "SKIP",
-            "test goal",
-        ]);
+        let args = Args::try_parse_from(["ltmatrix", "--on-blocked", "SKIP", "test goal"]);
         assert!(args.is_err());
     }
 
     #[test]
     fn test_invalid_on_blocked_value() {
-        let args = Args::try_parse_from([
-            "ltmatrix",
-            "--on-blocked",
-            "invalid",
-            "test goal",
-        ]);
+        let args = Args::try_parse_from(["ltmatrix", "--on-blocked", "invalid", "test goal"]);
 
         assert!(args.is_err(), "Should reject invalid strategy value");
     }
 
     #[test]
     fn test_on_blocked_with_resume() {
-        let args = Args::try_parse_from([
-            "ltmatrix",
-            "--resume",
-            "--on-blocked",
-            "ask",
-        ])
-        .expect("Failed to parse args");
+        let args = Args::try_parse_from(["ltmatrix", "--resume", "--on-blocked", "ask"])
+            .expect("Failed to parse args");
 
         assert!(args.resume);
         assert_eq!(args.on_blocked, Some(BlockedStrategy::Ask));
@@ -189,10 +138,7 @@ mod cli_parsing_tests {
         ])
         .expect("Failed to parse args");
 
-        assert_eq!(
-            args.config,
-            Some(std::path::PathBuf::from("custom.toml"))
-        );
+        assert_eq!(args.config, Some(std::path::PathBuf::from("custom.toml")));
         assert_eq!(args.on_blocked, Some(BlockedStrategy::Retry));
     }
 
@@ -208,10 +154,7 @@ mod cli_parsing_tests {
         ])
         .expect("Failed to parse args");
 
-        assert_eq!(
-            args.output,
-            Some(ltmatrix::cli::args::OutputFormat::Json)
-        );
+        assert_eq!(args.output, Some(ltmatrix::cli::args::OutputFormat::Json));
         assert_eq!(args.on_blocked, Some(BlockedStrategy::Skip));
     }
 
@@ -221,10 +164,14 @@ mod cli_parsing_tests {
             "ltmatrix",
             "--fast",
             "--dry-run",
-            "--output", "json",
-            "--log-level", "trace",
-            "--on-blocked", "abort",
-            "--max-retries", "5",
+            "--output",
+            "json",
+            "--log-level",
+            "trace",
+            "--on-blocked",
+            "abort",
+            "--max-retries",
+            "5",
             "test goal",
         ])
         .expect("Failed to parse args");
@@ -310,13 +257,9 @@ mod strategy_behavior_tests {
         assert_eq!(strategies.len(), 4, "Should have 4 strategies");
 
         // Each strategy should have a unique string representation
-        let strategy_strings: Vec<String> = strategies
-            .iter()
-            .map(|s| s.to_string())
-            .collect();
+        let strategy_strings: Vec<String> = strategies.iter().map(|s| s.to_string()).collect();
 
-        let unique_strings: std::collections::HashSet<_> =
-            strategy_strings.iter().collect();
+        let unique_strings: std::collections::HashSet<_> = strategy_strings.iter().collect();
 
         assert_eq!(
             unique_strings.len(),
@@ -328,8 +271,8 @@ mod strategy_behavior_tests {
     #[test]
     fn test_strategy_default_behavior() {
         // Test that we can determine default behavior when no strategy is specified
-        let args_no_strategy = Args::try_parse_from(["ltmatrix", "test goal"])
-            .expect("Failed to parse args");
+        let args_no_strategy =
+            Args::try_parse_from(["ltmatrix", "test goal"]).expect("Failed to parse args");
 
         assert_eq!(args_no_strategy.on_blocked, None);
 
@@ -338,8 +281,10 @@ mod strategy_behavior_tests {
         let default_strategy = BlockedStrategy::Retry; // Example default
         assert!(matches!(
             default_strategy,
-            BlockedStrategy::Skip | BlockedStrategy::Retry |
-            BlockedStrategy::Abort | BlockedStrategy::Ask
+            BlockedStrategy::Skip
+                | BlockedStrategy::Retry
+                | BlockedStrategy::Abort
+                | BlockedStrategy::Ask
         ));
     }
 }
@@ -376,18 +321,25 @@ mod error_handling_tests {
         // When multiple --on-blocked flags are provided, clap should reject them
         let args = Args::try_parse_from([
             "ltmatrix",
-            "--on-blocked", "skip",
-            "--on-blocked", "retry",
+            "--on-blocked",
+            "skip",
+            "--on-blocked",
+            "retry",
             "test goal",
         ]);
 
         // This should fail because --on-blocked cannot be used multiple times
-        assert!(args.is_err(), "Multiple --on-blocked flags should not be allowed");
+        assert!(
+            args.is_err(),
+            "Multiple --on-blocked flags should not be allowed"
+        );
         let err = args.unwrap_err();
         // Verify the error message mentions the issue
-        assert!(err.to_string().contains("cannot be used multiple times")
+        assert!(
+            err.to_string().contains("cannot be used multiple times")
                 || err.to_string().contains("--on-blocked"),
-                "Error should mention that --on-blocked cannot be used multiple times");
+            "Error should mention that --on-blocked cannot be used multiple times"
+        );
     }
 }
 
@@ -423,14 +375,9 @@ mod integration_scenarios_tests {
     #[test]
     fn test_scenario_fast_mode_with_skip() {
         // Common scenario: fast mode with skip strategy
-        let args = Args::try_parse_from([
-            "ltmatrix",
-            "--fast",
-            "--on-blocked",
-            "skip",
-            "quick fix",
-        ])
-        .expect("Failed to parse args");
+        let args =
+            Args::try_parse_from(["ltmatrix", "--fast", "--on-blocked", "skip", "quick fix"])
+                .expect("Failed to parse args");
 
         assert!(args.fast);
         assert_eq!(args.on_blocked, Some(BlockedStrategy::Skip));
@@ -472,13 +419,8 @@ mod integration_scenarios_tests {
     #[test]
     fn test_scenario_resume_with_ask() {
         // Common scenario: resume with ask for interactive recovery
-        let args = Args::try_parse_from([
-            "ltmatrix",
-            "--resume",
-            "--on-blocked",
-            "ask",
-        ])
-        .expect("Failed to parse args");
+        let args = Args::try_parse_from(["ltmatrix", "--resume", "--on-blocked", "ask"])
+            .expect("Failed to parse args");
 
         assert!(args.resume);
         assert_eq!(args.on_blocked, Some(BlockedStrategy::Ask));
@@ -489,9 +431,12 @@ mod integration_scenarios_tests {
         // Scenario: debugging with detailed output and skip strategy
         let args = Args::try_parse_from([
             "ltmatrix",
-            "--log-level", "debug",
-            "--output", "json",
-            "--on-blocked", "skip",
+            "--log-level",
+            "debug",
+            "--output",
+            "json",
+            "--on-blocked",
+            "skip",
             "debug issue",
         ])
         .expect("Failed to parse args");
@@ -506,8 +451,10 @@ mod integration_scenarios_tests {
         // Scenario: using custom config with retry strategy
         let args = Args::try_parse_from([
             "ltmatrix",
-            "--config", "/path/to/config.toml",
-            "--on-blocked", "retry",
+            "--config",
+            "/path/to/config.toml",
+            "--on-blocked",
+            "retry",
             "build feature",
         ])
         .expect("Failed to parse args");
@@ -524,8 +471,10 @@ mod integration_scenarios_tests {
         // Scenario: custom max retries with retry strategy
         let args = Args::try_parse_from([
             "ltmatrix",
-            "--max-retries", "10",
-            "--on-blocked", "retry",
+            "--max-retries",
+            "10",
+            "--on-blocked",
+            "retry",
             "complex task",
         ])
         .expect("Failed to parse args");

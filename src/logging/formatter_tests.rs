@@ -6,8 +6,7 @@
 //! - Level formatting
 
 use crate::logging::formatter::{
-    format_timestamp, current_timestamp, format_level,
-    TIMESTAMP_FORMAT,
+    current_timestamp, format_level, format_timestamp, TIMESTAMP_FORMAT,
 };
 use crate::terminal::{self, ColorConfig};
 use chrono::{DateTime, Local};
@@ -28,11 +27,17 @@ mod tests {
         let formatted = format_timestamp(dt);
 
         // Should match format: YYYY-MM-DD HH:MM:SS.mmm
-        assert!(formatted.len() >= 23, "Timestamp should be at least 23 characters");
+        assert!(
+            formatted.len() >= 23,
+            "Timestamp should be at least 23 characters"
+        );
 
         // Check for separators
         assert!(formatted.contains('-'), "Should contain date separators");
-        assert!(formatted.contains(' '), "Should contain space between date and time");
+        assert!(
+            formatted.contains(' '),
+            "Should contain space between date and time"
+        );
         assert!(formatted.contains(':'), "Should contain time separators");
     }
 
@@ -48,7 +53,10 @@ mod tests {
 
     #[test]
     fn test_format_timestamp_chrono_compatibility() {
-        let dt = Local.with_ymd_and_hms(2024, 3, 15, 14, 30, 45).single().unwrap();
+        let dt = Local
+            .with_ymd_and_hms(2024, 3, 15, 14, 30, 45)
+            .single()
+            .unwrap();
         let formatted = format_timestamp(dt);
 
         // Should contain the date and time
@@ -67,10 +75,15 @@ mod tests {
 
         // Timestamps should be different (unless very unlucky)
         // Note: This test might rarely fail if called exactly at same millisecond
-        let ts1_parsed = DateTime::parse_from_str(&format!("{}+00:00", ts1), "%Y-%m-%d %H:%M:%S%.3f%z");
-        let ts2_parsed = DateTime::parse_from_str(&format!("{}+00:00", ts2), "%Y-%m-%d %H:%M:%S%.3f%z");
+        let ts1_parsed =
+            DateTime::parse_from_str(&format!("{}+00:00", ts1), "%Y-%m-%d %H:%M:%S%.3f%z");
+        let ts2_parsed =
+            DateTime::parse_from_str(&format!("{}+00:00", ts2), "%Y-%m-%d %H:%M:%S%.3f%z");
 
-        assert!(ts1_parsed.is_ok() || ts2_parsed.is_ok(), "Timestamps should be parseable");
+        assert!(
+            ts1_parsed.is_ok() || ts2_parsed.is_ok(),
+            "Timestamps should be parseable"
+        );
     }
 
     #[test]
@@ -103,8 +116,12 @@ mod tests {
 
         for (level, expected_name) in test_cases {
             let formatted = format_level(&level);
-            assert!(formatted.contains(expected_name),
-                "Formatted level should contain '{}', got: {}", expected_name, formatted);
+            assert!(
+                formatted.contains(expected_name),
+                "Formatted level should contain '{}', got: {}",
+                expected_name,
+                formatted
+            );
         }
     }
 
@@ -129,8 +146,11 @@ mod tests {
         for (i, level1) in levels.iter().enumerate() {
             for (j, level2) in levels.iter().enumerate() {
                 if i != j {
-                    assert_ne!(level1, level2,
-                        "Levels at indices {} and {} should be different", i, j);
+                    assert_ne!(
+                        level1, level2,
+                        "Levels at indices {} and {} should be different",
+                        i, j
+                    );
                 }
             }
         }
@@ -168,7 +188,10 @@ mod tests {
     #[test]
     fn test_format_timestamp_empty_input() {
         // Timestamp should handle various datetime values
-        let dt = Local.with_ymd_and_hms(1970, 1, 1, 0, 0, 0).single().unwrap();
+        let dt = Local
+            .with_ymd_and_hms(1970, 1, 1, 0, 0, 0)
+            .single()
+            .unwrap();
         let formatted = format_timestamp(dt);
         assert!(!formatted.is_empty());
         assert!(formatted.contains("1970"));
@@ -176,7 +199,10 @@ mod tests {
 
     #[test]
     fn test_format_timestamp_future_date() {
-        let dt = Local.with_ymd_and_hms(2099, 12, 31, 23, 59, 59).single().unwrap();
+        let dt = Local
+            .with_ymd_and_hms(2099, 12, 31, 23, 59, 59)
+            .single()
+            .unwrap();
         let formatted = format_timestamp(dt);
         assert!(!formatted.is_empty());
         assert!(formatted.contains("2099"));

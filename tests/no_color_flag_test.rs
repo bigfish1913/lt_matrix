@@ -45,7 +45,10 @@ mod tests {
             "test goal",
         ])
         .unwrap();
-        assert!(args.no_color, "--no-color should work alongside other flags");
+        assert!(
+            args.no_color,
+            "--no-color should work alongside other flags"
+        );
         assert!(args.fast);
         assert_eq!(args.log_level, Some(ltmatrix::cli::args::LogLevel::Debug));
     }
@@ -67,7 +70,10 @@ mod tests {
             ColorConfig::auto()
         };
 
-        assert!(!config.is_enabled(), "ColorConfig should be plain when --no-color is set");
+        assert!(
+            !config.is_enabled(),
+            "ColorConfig should be plain when --no-color is set"
+        );
     }
 
     #[test]
@@ -91,7 +97,10 @@ mod tests {
 
         // When NO_COLOR is set and we check it, colors should be disabled
         let config = ColorConfig::with_config(true, true);
-        assert!(!config.is_enabled(), "NO_COLOR should disable colors when check_no_color=true");
+        assert!(
+            !config.is_enabled(),
+            "NO_COLOR should disable colors when check_no_color=true"
+        );
 
         env::remove_var("NO_COLOR");
     }
@@ -102,7 +111,10 @@ mod tests {
 
         // When NO_COLOR is set but we don't check it, colors should be enabled
         let config = ColorConfig::with_config(true, false);
-        assert!(config.is_enabled(), "NO_COLOR should be ignored when check_no_color=false");
+        assert!(
+            config.is_enabled(),
+            "NO_COLOR should be ignored when check_no_color=false"
+        );
 
         env::remove_var("NO_COLOR");
     }
@@ -125,7 +137,10 @@ mod tests {
             ColorConfig::auto()
         };
 
-        assert!(!config.is_enabled(), "CLI --no-color should override NO_COLOR env var");
+        assert!(
+            !config.is_enabled(),
+            "CLI --no-color should override NO_COLOR env var"
+        );
 
         env::remove_var("NO_COLOR");
     }
@@ -137,7 +152,10 @@ mod tests {
         // Simulate the integration logic that should be in the main application
         let config = create_color_config_from_args(&args);
 
-        assert!(!config.is_enabled(), "ColorConfig should be disabled with --no-color flag");
+        assert!(
+            !config.is_enabled(),
+            "ColorConfig should be disabled with --no-color flag"
+        );
     }
 
     #[test]
@@ -217,7 +235,10 @@ mod tests {
             Args::try_parse_from(["ltmatrix", "--no-color", "release", "--archive"]).unwrap();
         let config = create_color_config_from_args(&args);
 
-        assert!(!config.is_enabled(), "--no-color should work with release subcommand");
+        assert!(
+            !config.is_enabled(),
+            "--no-color should work with release subcommand"
+        );
     }
 
     #[test]
@@ -225,7 +246,10 @@ mod tests {
         let args = Args::try_parse_from(["ltmatrix", "--no-color", "completions", "bash"]).unwrap();
         let config = create_color_config_from_args(&args);
 
-        assert!(!config.is_enabled(), "--no-color should work with completions subcommand");
+        assert!(
+            !config.is_enabled(),
+            "--no-color should work with completions subcommand"
+        );
     }
 
     // =========================================================================
@@ -243,13 +267,11 @@ mod tests {
     fn test_no_color_position_independence() {
         // Test that --no-color works regardless of position in command line
         let args1 = Args::try_parse_from(["ltmatrix", "--no-color", "test"]).unwrap();
-        let args2 =
-            Args::try_parse_from(["ltmatrix", "--fast", "--no-color", "test"]).unwrap();
-        let args3 =
-            Args::try_parse_from(["ltmatrix", "test", "--no-color"]).unwrap_or_else(|_| {
-                // clap might not accept flags after the goal
-                Args::try_parse_from(["ltmatrix", "--no-color", "test"]).unwrap()
-            });
+        let args2 = Args::try_parse_from(["ltmatrix", "--fast", "--no-color", "test"]).unwrap();
+        let args3 = Args::try_parse_from(["ltmatrix", "test", "--no-color"]).unwrap_or_else(|_| {
+            // clap might not accept flags after the goal
+            Args::try_parse_from(["ltmatrix", "--no-color", "test"]).unwrap()
+        });
 
         assert!(args1.no_color);
         assert!(args2.no_color);
@@ -270,7 +292,11 @@ mod tests {
 
         for args_vec in &test_cases {
             let args = Args::try_parse_from(args_vec.as_slice()).unwrap();
-            assert!(args.no_color, "--no-color should be set in combination: {:?}", args_vec);
+            assert!(
+                args.no_color,
+                "--no-color should be set in combination: {:?}",
+                args_vec
+            );
         }
     }
 

@@ -10,12 +10,12 @@
 //! Tests are organized by acceptance criterion.
 
 use ltmatrix::config::settings::{
-    Config, load_config, load_config_file, merge_configs,
-    get_global_config_path, get_project_config_path,
+    get_global_config_path, get_project_config_path, load_config, load_config_file, merge_configs,
+    Config,
 };
-use tempfile::TempDir;
 use std::fs;
 use std::path::PathBuf;
+use tempfile::TempDir;
 
 // ============================================================================
 // Acceptance Criterion 1: Load TOML files from ~/.ltmatrix/config.toml
@@ -31,10 +31,16 @@ fn acceptance_1_1_global_config_path_exists() {
     let path_str = path.to_string_lossy();
 
     // Path should contain .ltmatrix
-    assert!(path_str.contains(".ltmatrix"), "Path should contain .ltmatrix");
+    assert!(
+        path_str.contains(".ltmatrix"),
+        "Path should contain .ltmatrix"
+    );
 
     // Path should end with config.toml
-    assert!(path_str.ends_with("config.toml"), "Path should end with config.toml");
+    assert!(
+        path_str.ends_with("config.toml"),
+        "Path should end with config.toml"
+    );
 }
 
 #[test]
@@ -107,8 +113,14 @@ level = "info"
 
     let config = result.unwrap();
     assert!(config.modes.fast.is_some());
-    assert_eq!(config.output.format, ltmatrix::config::settings::OutputFormat::Text);
-    assert_eq!(config.logging.level, ltmatrix::config::settings::LogLevel::Info);
+    assert_eq!(
+        config.output.format,
+        ltmatrix::config::settings::OutputFormat::Text
+    );
+    assert_eq!(
+        config.logging.level,
+        ltmatrix::config::settings::LogLevel::Info
+    );
 }
 
 // ============================================================================
@@ -118,16 +130,25 @@ level = "info"
 #[test]
 fn acceptance_2_1_project_config_path_exists() {
     let result = get_project_config_path();
-    assert!(result.is_some(), "Should be able to get project config path");
+    assert!(
+        result.is_some(),
+        "Should be able to get project config path"
+    );
 
     let path = result.unwrap();
     let path_str = path.to_string_lossy();
 
     // Path should contain .ltmatrix
-    assert!(path_str.contains(".ltmatrix"), "Path should contain .ltmatrix");
+    assert!(
+        path_str.contains(".ltmatrix"),
+        "Path should contain .ltmatrix"
+    );
 
     // Path should end with config.toml
-    assert!(path_str.ends_with("config.toml"), "Path should end with config.toml");
+    assert!(
+        path_str.ends_with("config.toml"),
+        "Path should end with config.toml"
+    );
 }
 
 #[test]
@@ -165,26 +186,34 @@ fn acceptance_2_3_project_config_overrides_global() {
     let global_dir = temp_dir.path().join("home").join(".ltmatrix");
     fs::create_dir_all(&global_dir).unwrap();
     let global_config = global_dir.join("config.toml");
-    fs::write(&global_config, r#"
+    fs::write(
+        &global_config,
+        r#"
 default = "global-agent"
 
 [agents.shared]
 command = "global-command"
 model = "global-model"
 timeout = 1000
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     // Create project config
     let project_dir = temp_dir.path().join("project").join(".ltmatrix");
     fs::create_dir_all(&project_dir).unwrap();
     let project_config = project_dir.join("config.toml");
-    fs::write(&project_config, r#"
+    fs::write(
+        &project_config,
+        r#"
 default = "project-agent"
 
 [agents.shared]
 command = "project-command"
 timeout = 2000
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     // Load both
     let global = load_config_file(&global_config).unwrap();
@@ -216,7 +245,10 @@ fn acceptance_3_1_missing_global_config_returns_error() {
     let nonexistent_path = PathBuf::from("/nonexistent/path/.ltmatrix/config.toml");
     let result = load_config_file(&nonexistent_path);
 
-    assert!(result.is_err(), "Should return error for missing config file");
+    assert!(
+        result.is_err(),
+        "Should return error for missing config file"
+    );
 
     let error_msg = result.unwrap_err().to_string();
     assert!(
@@ -230,7 +262,10 @@ fn acceptance_3_2_missing_project_config_returns_error() {
     let nonexistent_path = PathBuf::from("/tmp/nonexistent_project/.ltmatrix/config.toml");
     let result = load_config_file(&nonexistent_path);
 
-    assert!(result.is_err(), "Should return error for missing config file");
+    assert!(
+        result.is_err(),
+        "Should return error for missing config file"
+    );
 }
 
 #[test]
@@ -243,7 +278,10 @@ fn acceptance_3_3_load_config_handles_missing_files_gracefully() {
 
     // load_config should still succeed (returning defaults)
     let result = load_config();
-    assert!(result.is_ok(), "load_config should succeed even with missing files");
+    assert!(
+        result.is_ok(),
+        "load_config should succeed even with missing files"
+    );
 
     let config = result.unwrap();
     assert!(config.default.is_some(), "Should have default config");
@@ -261,10 +299,14 @@ fn acceptance_4_1_malformed_toml_returns_error() {
     let config_path = temp_dir.path().join("config.toml");
 
     // Write malformed TOML
-    fs::write(&config_path, r#"
+    fs::write(
+        &config_path,
+        r#"
 [agents
 command = "test"
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     let result = load_config_file(&config_path);
     assert!(result.is_err(), "Should return error for malformed TOML");
@@ -292,7 +334,11 @@ fn acceptance_4_2_invalid_syntax_returns_descriptive_error() {
         fs::write(&config_path, sample).unwrap();
 
         let result = load_config_file(&config_path);
-        assert!(result.is_err(), "Should fail for invalid syntax: {}", sample);
+        assert!(
+            result.is_err(),
+            "Should fail for invalid syntax: {}",
+            sample
+        );
     }
 }
 
@@ -313,7 +359,10 @@ timeout = "not_a_number"
 
     let result = load_config_file(&config_path);
     // Should fail during parsing
-    assert!(result.is_err(), "Should return error for invalid data types");
+    assert!(
+        result.is_err(),
+        "Should return error for invalid data types"
+    );
 }
 
 // ============================================================================
@@ -329,9 +378,13 @@ fn acceptance_5_1_auto_discovery_finds_global_config() {
     fs::create_dir_all(&home_ltmatrix).unwrap();
 
     let global_config = home_ltmatrix.join("config.toml");
-    fs::write(&global_config, r#"
+    fs::write(
+        &global_config,
+        r#"
 default = "auto-global"
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     // Load and verify
     let result = load_config_file(&global_config);
@@ -349,9 +402,13 @@ fn acceptance_5_2_auto_discovery_finds_project_config() {
     fs::create_dir_all(&project_ltmatrix).unwrap();
 
     let project_config = project_ltmatrix.join("config.toml");
-    fs::write(&project_config, r#"
+    fs::write(
+        &project_config,
+        r#"
 default = "auto-project"
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     let result = load_config_file(&project_config);
     assert!(result.is_ok());
@@ -385,16 +442,22 @@ fn acceptance_5_4_merge_combines_all_sources() {
         default: Some("global".to_string()),
         agents: {
             let mut map = std::collections::HashMap::new();
-            map.insert("agent1".to_string(), ltmatrix::config::settings::AgentConfig {
-                command: Some("cmd1".to_string()),
-                model: Some("model1".to_string()),
-                timeout: Some(100),
-            });
-            map.insert("agent2".to_string(), ltmatrix::config::settings::AgentConfig {
-                command: Some("cmd2".to_string()),
-                model: Some("model2".to_string()),
-                timeout: Some(200),
-            });
+            map.insert(
+                "agent1".to_string(),
+                ltmatrix::config::settings::AgentConfig {
+                    command: Some("cmd1".to_string()),
+                    model: Some("model1".to_string()),
+                    timeout: Some(100),
+                },
+            );
+            map.insert(
+                "agent2".to_string(),
+                ltmatrix::config::settings::AgentConfig {
+                    command: Some("cmd2".to_string()),
+                    model: Some("model2".to_string()),
+                    timeout: Some(200),
+                },
+            );
             map
         },
         modes: ltmatrix::config::settings::ModeConfigs {
@@ -419,16 +482,22 @@ fn acceptance_5_4_merge_combines_all_sources() {
         default: Some("project".to_string()),
         agents: {
             let mut map = std::collections::HashMap::new();
-            map.insert("agent1".to_string(), ltmatrix::config::settings::AgentConfig {
-                command: Some("cmd1-updated".to_string()),
-                model: None,
-                timeout: Some(150),
-            });
-            map.insert("agent3".to_string(), ltmatrix::config::settings::AgentConfig {
-                command: Some("cmd3".to_string()),
-                model: Some("model3".to_string()),
-                timeout: Some(300),
-            });
+            map.insert(
+                "agent1".to_string(),
+                ltmatrix::config::settings::AgentConfig {
+                    command: Some("cmd1-updated".to_string()),
+                    model: None,
+                    timeout: Some(150),
+                },
+            );
+            map.insert(
+                "agent3".to_string(),
+                ltmatrix::config::settings::AgentConfig {
+                    command: Some("cmd3".to_string()),
+                    model: Some("model3".to_string()),
+                    timeout: Some(300),
+                },
+            );
             map
         },
         modes: ltmatrix::config::settings::ModeConfigs {
@@ -483,7 +552,9 @@ fn acceptance_e2e_typical_usage() {
     let global_dir = temp_dir.path().join("home").join(".ltmatrix");
     fs::create_dir_all(&global_dir).unwrap();
     let global_config = global_dir.join("config.toml");
-    fs::write(&global_config, r#"
+    fs::write(
+        &global_config,
+        r#"
 default = "claude"
 
 [agents.claude]
@@ -494,19 +565,25 @@ timeout = 3600
 [output]
 format = "text"
 colored = true
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     // Setup project config
     let project_dir = temp_dir.path().join("project").join(".ltmatrix");
     fs::create_dir_all(&project_dir).unwrap();
     let project_config = project_dir.join("config.toml");
-    fs::write(&project_config, r#"
+    fs::write(
+        &project_config,
+        r#"
 [agents.claude]
 model = "claude-opus-4-6"
 
 [output]
 colored = false
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     // Load and merge
     let global = load_config_file(&global_config).unwrap();
@@ -529,13 +606,17 @@ fn acceptance_e2e_minimal_working_config() {
     let config_path = temp_dir.path().join("config.toml");
 
     // Minimal viable config
-    fs::write(&config_path, r#"
+    fs::write(
+        &config_path,
+        r#"
 default = "claude"
 
 [agents.claude]
 command = "claude"
 model = "claude-sonnet-4-6"
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     let result = load_config_file(&config_path);
     assert!(result.is_ok());
@@ -565,13 +646,17 @@ fn acceptance_e2e_comments_only_config() {
     let temp_dir = TempDir::new().unwrap();
     let config_path = temp_dir.path().join("config.toml");
 
-    fs::write(&config_path, r#"
+    fs::write(
+        &config_path,
+        r#"
 # This is a comment
 # default = "test"
 
 [agents]
 # Another comment
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     let result = load_config_file(&config_path);
     assert!(result.is_ok());

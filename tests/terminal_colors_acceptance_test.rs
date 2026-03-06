@@ -65,8 +65,11 @@ mod acceptance_tests {
         for color in colors {
             let styled = terminal::style_text("test", color, config);
             // Should execute without panic and return a string
-            assert!(!styled.is_empty(),
-                    "Color {:?} should produce output", color);
+            assert!(
+                !styled.is_empty(),
+                "Color {:?} should produce output",
+                color
+            );
         }
     }
 
@@ -88,8 +91,11 @@ mod acceptance_tests {
         for color in bright_colors {
             let styled = terminal::style_text("test", color, config);
             // Should execute without panic and return a string
-            assert!(!styled.is_empty(),
-                    "Bright color {:?} should produce output", color);
+            assert!(
+                !styled.is_empty(),
+                "Bright color {:?} should produce output",
+                color
+            );
         }
     }
 
@@ -115,19 +121,19 @@ mod acceptance_tests {
         let config = ColorConfig::with_config(true, false);
 
         // Test all defined task statuses
-        let statuses = vec![
-            "pending",
-            "in_progress",
-            "completed",
-            "failed",
-            "blocked",
-        ];
+        let statuses = vec!["pending", "in_progress", "completed", "failed", "blocked"];
 
         for status in statuses {
             let colorized = terminal::colorize_status(status, config);
-            assert!(!colorized.is_empty(), "Status '{}' should produce output", status);
-            assert!(colorized.len() >= status.len(),
-                    "Colorized status should be at least as long as input");
+            assert!(
+                !colorized.is_empty(),
+                "Status '{}' should produce output",
+                status
+            );
+            assert!(
+                colorized.len() >= status.len(),
+                "Colorized status should be at least as long as input"
+            );
         }
     }
 
@@ -138,8 +144,14 @@ mod acceptance_tests {
         // When colors are disabled, status is returned as-is (no normalization)
         assert_eq!(terminal::colorize_status("pending", config), "pending");
         assert_eq!(terminal::colorize_status("PENDING", config), "PENDING");
-        assert_eq!(terminal::colorize_status("in-progress", config), "in-progress");
-        assert_eq!(terminal::colorize_status("inprogress", config), "inprogress");
+        assert_eq!(
+            terminal::colorize_status("in-progress", config),
+            "in-progress"
+        );
+        assert_eq!(
+            terminal::colorize_status("inprogress", config),
+            "inprogress"
+        );
     }
 
     #[test]
@@ -147,21 +159,22 @@ mod acceptance_tests {
         let config = ColorConfig::with_config(true, false);
 
         // Test all defined log levels
-        let levels = vec![
-            "trace",
-            "debug",
-            "info",
-            "warn",
-            "warning",
-            "error",
-        ];
+        let levels = vec!["trace", "debug", "info", "warn", "warning", "error"];
 
         for level in levels {
             let colorized = terminal::colorize_log_level(level, config);
             // Just verify that output is produced
-            assert!(!colorized.is_empty(), "Log level '{}' should produce output", level);
+            assert!(
+                !colorized.is_empty(),
+                "Log level '{}' should produce output",
+                level
+            );
             // The output should be reasonable (either plain or styled)
-            assert!(colorized.len() > 0, "Log level '{}' should have content", level);
+            assert!(
+                colorized.len() > 0,
+                "Log level '{}' should have content",
+                level
+            );
         }
     }
 
@@ -192,9 +205,15 @@ mod acceptance_tests {
 
         for progress in progress_formats {
             let colorized = terminal::colorize_progress(progress, config);
-            assert!(!colorized.is_empty(), "Progress '{}' should produce output", progress);
-            assert!(colorized.len() >= progress.len(),
-                    "Colorized progress should be at least as long as input");
+            assert!(
+                !colorized.is_empty(),
+                "Progress '{}' should produce output",
+                progress
+            );
+            assert!(
+                colorized.len() >= progress.len(),
+                "Colorized progress should be at least as long as input"
+            );
         }
     }
 
@@ -230,8 +249,10 @@ mod acceptance_tests {
         env::set_var("NO_COLOR", "1");
 
         let config = ColorConfig::auto();
-        assert!(!config.is_enabled(),
-                "NO_COLOR environment variable should disable colors");
+        assert!(
+            !config.is_enabled(),
+            "NO_COLOR environment variable should disable colors"
+        );
 
         env::remove_var("NO_COLOR");
     }
@@ -248,8 +269,11 @@ mod acceptance_tests {
 
             let config = ColorConfig::with_config(true, true);
             // NO_COLOR should be respected and disable colors when check_no_color=true
-            assert!(!config.is_enabled(),
-                    "NO_COLOR={} should disable colors when check_no_color=true", value);
+            assert!(
+                !config.is_enabled(),
+                "NO_COLOR={} should disable colors when check_no_color=true",
+                value
+            );
 
             env::remove_var("NO_COLOR");
         }
@@ -269,7 +293,7 @@ mod acceptance_tests {
         assert_eq!(terminal::warning("Test", config), "Test");
         assert_eq!(terminal::info("Test", config), "Test");
         assert_eq!(terminal::colorize_status("pending", config), "pending");
-        assert_eq!(terminal::colorize_log_level("INFO", config), "INFO");  // Returns as-is when colors disabled
+        assert_eq!(terminal::colorize_log_level("INFO", config), "INFO"); // Returns as-is when colors disabled
         assert_eq!(terminal::colorize_progress("50%", config), "50%");
 
         env::remove_var("NO_COLOR");
@@ -288,8 +312,11 @@ mod acceptance_tests {
             env::set_var("NO_COLOR", value);
 
             let config = ColorConfig::auto();
-            assert!(!config.is_enabled(),
-                    "NO_COLOR with value '{}' should prevent color output per spec", value);
+            assert!(
+                !config.is_enabled(),
+                "NO_COLOR with value '{}' should prevent color output per spec",
+                value
+            );
 
             env::remove_var("NO_COLOR");
         }
@@ -316,8 +343,11 @@ mod acceptance_tests {
         let config2 = ColorConfig::auto();
 
         // Multiple calls should be consistent
-        assert_eq!(config1.is_enabled(), config2.is_enabled(),
-                   "Terminal detection should be consistent");
+        assert_eq!(
+            config1.is_enabled(),
+            config2.is_enabled(),
+            "Terminal detection should be consistent"
+        );
 
         // Auto detection checks stdout (we just verify it doesn't panic)
         let _ = std::io::stdout().is_terminal();
@@ -329,17 +359,23 @@ mod acceptance_tests {
         let force_enabled = ColorConfig::with_config(true, false);
         let force_disabled = ColorConfig::with_config(false, false);
 
-        assert!(force_enabled.is_enabled(),
-                "Manual override should force colors on");
-        assert!(!force_disabled.is_enabled(),
-                "Manual override should force colors off");
+        assert!(
+            force_enabled.is_enabled(),
+            "Manual override should force colors on"
+        );
+        assert!(
+            !force_disabled.is_enabled(),
+            "Manual override should force colors off"
+        );
     }
 
     #[test]
     fn acceptance_04_detection_can_be_disabled() {
         let config = ColorConfig::plain();
-        assert!(!config.is_enabled(),
-                "Plain config should bypass detection and disable colors");
+        assert!(
+            !config.is_enabled(),
+            "Plain config should bypass detection and disable colors"
+        );
     }
 
     // =========================================================================
@@ -373,8 +409,10 @@ mod acceptance_tests {
             ColorConfig::auto()
         };
 
-        assert!(!config.is_enabled(),
-                "--no-color flag should result in plain output");
+        assert!(
+            !config.is_enabled(),
+            "--no-color flag should result in plain output"
+        );
     }
 
     #[test]
@@ -390,7 +428,7 @@ mod acceptance_tests {
         assert_eq!(terminal::success("Test", config), "Test");
         assert_eq!(terminal::error("Test", config), "Test");
         assert_eq!(terminal::colorize_status("pending", config), "pending");
-        assert_eq!(terminal::colorize_log_level("INFO", config), "INFO");  // Returns as-is when colors disabled
+        assert_eq!(terminal::colorize_log_level("INFO", config), "INFO"); // Returns as-is when colors disabled
         assert_eq!(terminal::colorize_progress("50%", config), "50%");
     }
 
@@ -405,8 +443,11 @@ mod acceptance_tests {
 
         for args_vec in &test_cases {
             let args = Args::try_parse_from(args_vec.as_slice()).unwrap();
-            assert!(args.no_color,
-                    "--no-color should work with subcommand: {:?}", args_vec);
+            assert!(
+                args.no_color,
+                "--no-color should work with subcommand: {:?}",
+                args_vec
+            );
         }
     }
 
@@ -416,8 +457,10 @@ mod acceptance_tests {
         let mut cmd = Args::command();
         let help = cmd.render_help().to_string();
 
-        assert!(help.contains("--no-color"),
-                "--no-color should be documented in help text");
+        assert!(
+            help.contains("--no-color"),
+            "--no-color should be documented in help text"
+        );
     }
 
     // =========================================================================
@@ -437,8 +480,10 @@ mod acceptance_tests {
             ColorConfig::auto()
         };
 
-        assert!(!config.is_enabled(),
-                "CLI --no-color flag should override NO_COLOR environment variable");
+        assert!(
+            !config.is_enabled(),
+            "CLI --no-color flag should override NO_COLOR environment variable"
+        );
 
         env::remove_var("NO_COLOR");
     }
@@ -449,8 +494,10 @@ mod acceptance_tests {
         env::set_var("NO_COLOR", "1");
 
         let config = ColorConfig::auto();
-        assert!(!config.is_enabled(),
-                "NO_COLOR should disable colors even when terminal supports them");
+        assert!(
+            !config.is_enabled(),
+            "NO_COLOR should disable colors even when terminal supports them"
+        );
 
         env::remove_var("NO_COLOR");
     }
@@ -463,8 +510,9 @@ mod acceptance_tests {
             "--no-color",
             "--log-level",
             "debug",
-            "implement feature X"
-        ]).unwrap();
+            "implement feature X",
+        ])
+        .unwrap();
 
         let config = if args.no_color {
             ColorConfig::plain()
@@ -482,7 +530,7 @@ mod acceptance_tests {
         assert_eq!(start, "Starting");
         assert_eq!(status, "pending");
         assert_eq!(progress, "0%");
-        assert_eq!(level, "DEBUG");  // Returns as-is when colors disabled
+        assert_eq!(level, "DEBUG"); // Returns as-is when colors disabled
         assert_eq!(complete, "Complete");
     }
 
@@ -499,7 +547,7 @@ mod acceptance_tests {
         assert_eq!(terminal::success("test", config), "test");
         assert_eq!(terminal::error("test", config), "test");
         assert_eq!(terminal::colorize_status("pending", config), "pending");
-        assert_eq!(terminal::colorize_log_level("INFO", config), "INFO");  // Returns as-is when colors disabled
+        assert_eq!(terminal::colorize_log_level("INFO", config), "INFO"); // Returns as-is when colors disabled
         assert_eq!(terminal::colorize_progress("50%", config), "50%");
     }
 

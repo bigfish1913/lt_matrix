@@ -88,7 +88,11 @@ pub fn create_progress_bar(len: u64, config: Option<BarColorConfig>) -> Progress
 /// # Returns
 ///
 /// A configured ProgressBar
-pub fn create_custom_progress_bar(len: u64, template: &str, config: Option<BarColorConfig>) -> ProgressBar {
+pub fn create_custom_progress_bar(
+    len: u64,
+    template: &str,
+    config: Option<BarColorConfig>,
+) -> ProgressBar {
     let bar = ProgressBar::new(len);
 
     let color_config = config.unwrap_or_default();
@@ -96,14 +100,22 @@ pub fn create_custom_progress_bar(len: u64, template: &str, config: Option<BarCo
     if color_config.is_enabled() {
         let style = ProgressStyle::default_bar()
             .template(template)
-            .unwrap_or_else(|_| ProgressStyle::default_bar().template("[{elapsed_precise}] [{bar:40}] {pos}/{len} {msg}").unwrap())
+            .unwrap_or_else(|_| {
+                ProgressStyle::default_bar()
+                    .template("[{elapsed_precise}] [{bar:40}] {pos}/{len} {msg}")
+                    .unwrap()
+            })
             .progress_chars("=> ");
 
         bar.set_style(style);
     } else {
         let style = ProgressStyle::default_bar()
             .template(template)
-            .unwrap_or_else(|_| ProgressStyle::default_bar().template("[{elapsed_precise}] [{bar:40}] {pos}/{len} {msg}").unwrap())
+            .unwrap_or_else(|_| {
+                ProgressStyle::default_bar()
+                    .template("[{elapsed_precise}] [{bar:40}] {pos}/{len} {msg}")
+                    .unwrap()
+            })
             .progress_chars("=> ");
 
         bar.set_style(style);

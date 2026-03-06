@@ -3,10 +3,10 @@
 //! This module provides formatters for console and file output with
 //! support for colors, timestamps, and structured formatting.
 
-use chrono::{DateTime, Local};
-use tracing::Event;
-use tracing::field::{Field, Visit};
 use crate::terminal::{self, ColorConfig};
+use chrono::{DateTime, Local};
+use tracing::field::{Field, Visit};
+use tracing::Event;
 
 /// Timestamp format used in logs
 pub const TIMESTAMP_FORMAT: &str = "%Y-%m-%d %H:%M:%S%.3f";
@@ -32,9 +32,7 @@ pub fn init_color_config(config: ColorConfig) {
 ///
 /// Returns ColorConfig::auto() if not initialized
 fn get_color_config() -> ColorConfig {
-    unsafe {
-        COLOR_CONFIG.unwrap_or_else(|| ColorConfig::auto())
-    }
+    unsafe { COLOR_CONFIG.unwrap_or_else(|| ColorConfig::auto()) }
 }
 
 /// Formats a log level with ANSI color codes
@@ -82,10 +80,7 @@ pub fn format_console_line(event: &Event<'_>) -> String {
 
     format!(
         "{} {} [{}] {}",
-        timestamp_colored,
-        level,
-        module_colored,
-        message
+        timestamp_colored, level, module_colored, message
     )
 }
 
@@ -135,7 +130,11 @@ mod tests {
         let formatted = format_timestamp(dt);
         assert!(formatted.len() > 0);
         // Should match pattern: YYYY-MM-DD HH:MM:SS.mmm
-        assert!(formatted.chars().all(|c| c.is_ascii_digit() || c == ' ' || c == '-' || c == ':' || c == '.'));
+        assert!(formatted.chars().all(|c| c.is_ascii_digit()
+            || c == ' '
+            || c == '-'
+            || c == ':'
+            || c == '.'));
     }
 
     #[test]

@@ -3,8 +3,8 @@
 //! This module provides merge functionality including squash merging,
 //! conflict detection, and user-friendly error messages.
 
-use anyhow::{Context, Result, bail};
-use git2::{Repository, Oid};
+use anyhow::{bail, Context, Result};
+use git2::{Oid, Repository};
 
 /// Performs a squash merge of a branch into the current branch.
 ///
@@ -40,7 +40,11 @@ use git2::{Repository, Oid};
 /// let commit_id = merge_with_squash(&repo, "feature-branch", "Merge feature")?;
 /// # Ok::<(), anyhow::Error>(())
 /// ```
-pub fn merge_with_squash(repo: &Repository, source_branch: &str, commit_message: &str) -> Result<Oid> {
+pub fn merge_with_squash(
+    repo: &Repository,
+    source_branch: &str,
+    commit_message: &str,
+) -> Result<Oid> {
     // Validate commit message
     let commit_message = crate::git::commit::validate_commit_message(commit_message)?;
 
@@ -65,7 +69,8 @@ pub fn merge_with_squash(repo: &Repository, source_branch: &str, commit_message:
             format!(
                 "Source branch '{}' not found. Available branches: {}",
                 source_branch,
-                list_available_branches(repo).unwrap_or_else(|_| "(error listing branches)".to_string())
+                list_available_branches(repo)
+                    .unwrap_or_else(|_| "(error listing branches)".to_string())
             )
         })?;
 
@@ -96,9 +101,11 @@ pub fn merge_with_squash(repo: &Repository, source_branch: &str, commit_message:
     // Perform analysis to detect conflicts
     let source_tree = source_commit.tree().context("Failed to get source tree")?;
     let head_tree = head_commit.tree().context("Failed to get HEAD tree")?;
-    let merge_base_commit = repo.find_commit(merge_base_oid)
+    let merge_base_commit = repo
+        .find_commit(merge_base_oid)
         .context("Failed to find merge base commit")?;
-    let merge_base_tree = merge_base_commit.tree()
+    let merge_base_tree = merge_base_commit
+        .tree()
         .context("Failed to get merge base tree")?;
 
     // Get the index from the merge
@@ -126,7 +133,9 @@ pub fn merge_with_squash(repo: &Repository, source_branch: &str, commit_message:
         .write_tree_to(repo)
         .context("Failed to write merge tree")?;
 
-    let tree = repo.find_tree(tree_oid).context("Failed to find merge tree")?;
+    let tree = repo
+        .find_tree(tree_oid)
+        .context("Failed to find merge tree")?;
 
     // Create the squashed commit
     let sig = crate::git::repository::create_signature("Ltmatrix Agent", "ltmatrix@agent")?;
@@ -142,11 +151,7 @@ pub fn merge_with_squash(repo: &Repository, source_branch: &str, commit_message:
         )
         .context("Failed to create squashed commit")?;
 
-    tracing::info!(
-        "Squashed merge from '{}' completed: {}",
-        source_branch,
-        oid
-    );
+    tracing::info!("Squashed merge from '{}' completed: {}", source_branch, oid);
 
     Ok(oid)
 }
@@ -229,14 +234,7 @@ mod tests {
         let tree_oid = repo.treebuilder(None)?.write()?;
         let tree = repo.find_tree(tree_oid)?;
 
-        let oid = repo.commit(
-            Some("HEAD"),
-            &sig,
-            &sig,
-            "Initial commit",
-            &tree,
-            &[],
-        )?;
+        let oid = repo.commit(Some("HEAD"), &sig, &sig, "Initial commit", &tree, &[])?;
 
         Ok(oid)
     }
@@ -437,12 +435,18 @@ mod tests {
         // Test 2: Staged changes suggests actions
         create_and_checkout_branch(&repo, "feature").unwrap();
         let file_path = repo_path.join("test.txt");
-        File::create(&file_path).unwrap().write_all(b"test").unwrap();
+        File::create(&file_path)
+            .unwrap()
+            .write_all(b"test")
+            .unwrap();
         stage_files(&repo, &["test.txt"]).unwrap();
         commit_changes(&repo, "Test").unwrap();
 
         crate::git::checkout(&repo, "master").unwrap();
-        File::create(&file_path).unwrap().write_all(b"staged").unwrap();
+        File::create(&file_path)
+            .unwrap()
+            .write_all(b"staged")
+            .unwrap();
         stage_files(&repo, &["test.txt"]).unwrap();
 
         let result = merge_with_squash(&repo, "feature", "Merge");

@@ -33,28 +33,31 @@
 //! - **WARN**: Warning messages for potentially harmful situations, retries, skipped tasks
 //! - **ERROR**: Error messages for error events, failures, errors
 
-pub mod logger;
+pub mod file_manager;
 pub mod formatter;
 pub mod level;
-pub mod file_manager;
+pub mod logger;
 
 // Test modules (only compiled when testing)
 #[cfg(test)]
-mod level_tests;
+mod acceptance_tests;
 #[cfg(test)]
 mod formatter_tests;
 #[cfg(test)]
-mod logger_tests;
-#[cfg(test)]
 mod integration_tests;
 #[cfg(test)]
-mod acceptance_tests;
+mod level_tests;
+#[cfg(test)]
+mod logger_tests;
 
 // Re-export commonly used types and functions
+pub use file_manager::{
+    LogFileInfo, LogManager, DEFAULT_MAX_LOG_AGE_DAYS, DEFAULT_MAX_LOG_FILES,
+    DEFAULT_MAX_LOG_SIZE_BYTES, LOGS_DIR,
+};
+pub use formatter::{current_timestamp, format_timestamp, TIMESTAMP_FORMAT};
 pub use level::LogLevel;
-pub use logger::{init_logging, init_api_trace_logging, init_logging_with_management};
-pub use formatter::{format_timestamp, current_timestamp, TIMESTAMP_FORMAT};
-pub use file_manager::{LogManager, LogFileInfo, LOGS_DIR, DEFAULT_MAX_LOG_FILES, DEFAULT_MAX_LOG_AGE_DAYS, DEFAULT_MAX_LOG_SIZE_BYTES};
+pub use logger::{init_api_trace_logging, init_logging, init_logging_with_management};
 
 /// Initializes the logging system with default settings
 ///

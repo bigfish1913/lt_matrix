@@ -12,7 +12,7 @@ use anyhow::{Context, Result};
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use tokio::fs;
-use tracing::{debug, info, warn, error};
+use tracing::{debug, error, info, warn};
 
 use crate::agent::backend::{AgentBackend, ExecutionConfig};
 use crate::agent::claude::ClaudeAgent;
@@ -136,13 +136,14 @@ pub async fn execute_tasks(
     let start_time = std::time::Instant::now();
 
     // Create agent and session manager
-    let agent = ClaudeAgent::new()
-        .context("Failed to create Claude agent")?;
-    let session_manager = SessionManager::new(&config.work_dir)
-        .context("Failed to create session manager")?;
+    let agent = ClaudeAgent::new().context("Failed to create Claude agent")?;
+    let session_manager =
+        SessionManager::new(&config.work_dir).context("Failed to create session manager")?;
 
     // Clean up stale sessions
-    session_manager.cleanup_stale_sessions().await
+    session_manager
+        .cleanup_stale_sessions()
+        .await
         .context("Failed to cleanup stale sessions")?;
 
     // Load project memory for context
@@ -172,7 +173,8 @@ pub async fn execute_tasks(
 
     // Execute tasks in dependency order
     for task_id in get_execution_order(&task_map)? {
-        let mut task = task_map.get(&task_id)
+        let mut task = task_map
+            .get(&task_id)
             .cloned()
             .context(format!("Task {} not found in task map", task_id))?;
 
@@ -195,19 +197,15 @@ pub async fn execute_tasks(
         let model = config.mode_config.model_for_complexity(&task.complexity);
 
         // Propagate session from dependencies
-        let session_id = task.depends_on
+        let session_id = task
+            .depends_on
             .iter()
             .filter_map(|dep_id| task_sessions.get(dep_id))
             .next()
             .cloned();
 
         // Build task context
-        let context = build_task_context(
-            &task,
-            &task_map,
-            &completed_tasks,
-            &project_memory,
-        )?;
+        let context = build_task_context(&task, &task_map, &completed_tasks, &project_memory)?;
 
         // Execute task with retry logic
         let execution_result = execute_task_with_retry(
@@ -218,7 +216,8 @@ pub async fn execute_tasks(
             &agent,
             &session_manager,
             config,
-        ).await?;
+        )
+        .await?;
 
         stats.total_retries += execution_result.retries;
         stats.total_time += execution_result.execution_time;
@@ -255,7 +254,8 @@ pub async fn execute_tasks(
 /// Load project memory from memory.md file
 async fn load_project_memory(memory_path: &Path) -> Result<String> {
     if memory_path.exists() {
-        let content = fs::read_to_string(memory_path).await
+        let content = fs::read_to_string(memory_path)
+            .await
             .context("Failed to read project memory file")?;
 
         debug!("Loaded project memory from {:?}", memory_path);
@@ -299,7 +299,8 @@ fn visit_task(
         anyhow::bail!("Circular dependency detected involving task '{}'", task_id);
     }
 
-    let task = task_map.get(task_id)
+    let task = task_map
+        .get(task_id)
         .context(format!("Task {} not found", task_id))?;
 
     // Mark as currently being visited
@@ -374,7 +375,10 @@ async fn execute_task_with_retry(
 
     for attempt in 0..=config.max_retries {
         if attempt > 0 {
-            info!("Retrying task {} (attempt {}/{})", task.id, attempt, config.max_retries);
+            info!(
+                "Retrying task {} (attempt {}/{})",
+                task.id, attempt, config.max_retries
+            );
             retries += 1;
         }
 
@@ -399,7 +403,8 @@ async fn execute_task_with_retry(
                 current_session.clone(),
                 agent,
                 session_manager,
-            ).await?
+            )
+            .await?
         } else {
             let response = agent.execute(&prompt, &exec_config).await?;
             TaskExecutionResult {
@@ -457,13 +462,14 @@ async fn execute_with_session(
 
     // Load or create session
     let session = if let Some(sid) = session_id {
-        session_manager.load_session(&sid).await?
+        session_manager
+            .load_session(&sid)
+            .await?
             .context(format!("Session {} not found", sid))?
     } else {
-        session_manager.create_session(
-            agent.backend_name(),
-            &config.model,
-        ).await?
+        session_manager
+            .create_session(agent.backend_name(), &config.model)
+            .await?
     };
 
     // Execute with session context
@@ -579,10 +585,10 @@ mod tests {
         task1.complexity = TaskComplexity::Simple;
         task2.complexity = TaskComplexity::Moderate;
 
-        let task_map: HashMap<String, Task> = [
-            (task1.id.clone(), task1),
-            (task2.id.clone(), task2),
-        ].into_iter().collect();
+        let task_map: HashMap<String, Task> =
+            [(task1.id.clone(), task1), (task2.id.clone(), task2)]
+                .into_iter()
+                .collect();
 
         let order = get_execution_order(&task_map).unwrap();
 
@@ -597,10 +603,10 @@ mod tests {
         let mut task2 = Task::new("task-2", "Second", "Second task");
         task2.depends_on = vec!["task-1".to_string()];
 
-        let task_map: HashMap<String, Task> = [
-            (task1.id.clone(), task1),
-            (task2.id.clone(), task2),
-        ].into_iter().collect();
+        let task_map: HashMap<String, Task> =
+            [(task1.id.clone(), task1), (task2.id.clone(), task2)]
+                .into_iter()
+                .collect();
 
         let order = get_execution_order(&task_map).unwrap();
 
@@ -622,13 +628,13 @@ mod tests {
     #[test]
     fn test_build_task_context() {
         let task = Task::new("task-1", "Test Task", "Implement something");
-        let task_map: HashMap<String, Task> = [(task.id.clone(), task.clone())]
-            .into_iter()
-            .collect();
+        let task_map: HashMap<String, Task> =
+            [(task.id.clone(), task.clone())].into_iter().collect();
         let completed_tasks: HashSet<String> = HashSet::new();
         let project_memory = "Previous decisions";
 
-        let context = build_task_context(&task, &task_map, &completed_tasks, project_memory).unwrap();
+        let context =
+            build_task_context(&task, &task_map, &completed_tasks, project_memory).unwrap();
 
         assert!(context.contains("Project Memory"));
         assert!(context.contains("Previous decisions"));

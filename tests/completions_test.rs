@@ -8,9 +8,9 @@
 //! - Installation instructions availability
 //! - Dynamic completion support for project-specific values
 
+use clap::Parser;
 use ltmatrix::cli::args::{Args, Command, Shell};
 use ltmatrix::cli::command::execute_command;
-use clap::Parser;
 
 // =============================================================================
 // Basic Completion Generation Tests
@@ -20,35 +20,50 @@ use clap::Parser;
 fn test_generate_bash_completion() {
     let args = Args::try_parse_from(["ltmatrix", "completions", "bash"]).unwrap();
     let result = execute_command(args);
-    assert!(result.is_ok(), "Should generate bash completion successfully");
+    assert!(
+        result.is_ok(),
+        "Should generate bash completion successfully"
+    );
 }
 
 #[test]
 fn test_generate_zsh_completion() {
     let args = Args::try_parse_from(["ltmatrix", "completions", "zsh"]).unwrap();
     let result = execute_command(args);
-    assert!(result.is_ok(), "Should generate zsh completion successfully");
+    assert!(
+        result.is_ok(),
+        "Should generate zsh completion successfully"
+    );
 }
 
 #[test]
 fn test_generate_fish_completion() {
     let args = Args::try_parse_from(["ltmatrix", "completions", "fish"]).unwrap();
     let result = execute_command(args);
-    assert!(result.is_ok(), "Should generate fish completion successfully");
+    assert!(
+        result.is_ok(),
+        "Should generate fish completion successfully"
+    );
 }
 
 #[test]
 fn test_generate_powershell_completion() {
     let args = Args::try_parse_from(["ltmatrix", "completions", "powershell"]).unwrap();
     let result = execute_command(args);
-    assert!(result.is_ok(), "Should generate powershell completion successfully");
+    assert!(
+        result.is_ok(),
+        "Should generate powershell completion successfully"
+    );
 }
 
 #[test]
 fn test_generate_elvish_completion() {
     let args = Args::try_parse_from(["ltmatrix", "completions", "elvish"]).unwrap();
     let result = execute_command(args);
-    assert!(result.is_ok(), "Should generate elvish completion successfully");
+    assert!(
+        result.is_ok(),
+        "Should generate elvish completion successfully"
+    );
 }
 
 // =============================================================================
@@ -69,10 +84,19 @@ fn test_bash_completion_content() {
 
     // Verify bash completion contains expected patterns
     assert!(!output.is_empty(), "Completion output should not be empty");
-    assert!(output.contains("_ltmatrix"), "Should define _ltmatrix function");
-    assert!(output.contains("compgen"), "Should use compgen for completion");
+    assert!(
+        output.contains("_ltmatrix"),
+        "Should define _ltmatrix function"
+    );
+    assert!(
+        output.contains("compgen"),
+        "Should use compgen for completion"
+    );
     assert!(output.contains("complete"), "Should define completion");
-    assert!(output.contains("ltmatrix"), "Should reference ltmatrix command");
+    assert!(
+        output.contains("ltmatrix"),
+        "Should reference ltmatrix command"
+    );
 }
 
 #[test]
@@ -89,10 +113,22 @@ fn test_zsh_completion_content() {
 
     // Verify zsh completion contains expected patterns
     assert!(!output.is_empty(), "Completion output should not be empty");
-    assert!(output.contains("#compdef ltmatrix"), "Should define compdef");
-    assert!(output.contains("_ltmatrix"), "Should define _ltmatrix function");
-    assert!(output.contains("_describe"), "Should use _describe for completion");
-    assert!(output.contains("_arguments"), "Should use _arguments for parsing");
+    assert!(
+        output.contains("#compdef ltmatrix"),
+        "Should define compdef"
+    );
+    assert!(
+        output.contains("_ltmatrix"),
+        "Should define _ltmatrix function"
+    );
+    assert!(
+        output.contains("_describe"),
+        "Should use _describe for completion"
+    );
+    assert!(
+        output.contains("_arguments"),
+        "Should use _arguments for parsing"
+    );
 }
 
 #[test]
@@ -130,8 +166,14 @@ fn test_powershell_completion_content() {
     // Verify powershell completion contains expected patterns
     assert!(!output.is_empty(), "Completion output should not be empty");
     assert!(output.contains("ltmatrix"), "Should reference ltmatrix");
-    assert!(output.contains("Param") || output.contains("param"), "Should define parameters");
-    assert!(output.contains("CompletionResult"), "Should define completion results");
+    assert!(
+        output.contains("Param") || output.contains("param"),
+        "Should define parameters"
+    );
+    assert!(
+        output.contains("CompletionResult"),
+        "Should define completion results"
+    );
 }
 
 #[test]
@@ -149,7 +191,10 @@ fn test_elvish_completion_content() {
     // Verify elvish completion contains expected patterns
     assert!(!output.is_empty(), "Completion output should not be empty");
     assert!(output.contains("ltmatrix"), "Should reference ltmatrix");
-    assert!(output.contains("edit:completion"), "Should define completion");
+    assert!(
+        output.contains("edit:completion"),
+        "Should define completion"
+    );
 }
 
 // =============================================================================
@@ -167,7 +212,10 @@ fn test_completion_includes_release_subcommand() {
     clap_complete::generate(Shell::Bash, &mut cmd, "ltmatrix", &mut buf);
 
     let output = String::from_utf8(buf).expect("Invalid UTF-8 in completion output");
-    assert!(output.contains("release"), "Should include release subcommand");
+    assert!(
+        output.contains("release"),
+        "Should include release subcommand"
+    );
 }
 
 #[test]
@@ -181,7 +229,10 @@ fn test_completion_includes_completions_subcommand() {
     clap_complete::generate(Shell::Bash, &mut cmd, "ltmatrix", &mut buf);
 
     let output = String::from_utf8(buf).expect("Invalid UTF-8 in completion output");
-    assert!(output.contains("completions"), "Should include completions subcommand");
+    assert!(
+        output.contains("completions"),
+        "Should include completions subcommand"
+    );
 }
 
 #[test]
@@ -195,7 +246,10 @@ fn test_completion_includes_help_flag() {
     clap_complete::generate(Shell::Bash, &mut cmd, "ltmatrix", &mut buf);
 
     let output = String::from_utf8(buf).expect("Invalid UTF-8 in completion output");
-    assert!(output.contains("-h") || output.contains("--help"), "Should include help flag");
+    assert!(
+        output.contains("-h") || output.contains("--help"),
+        "Should include help flag"
+    );
 }
 
 #[test]
@@ -209,7 +263,10 @@ fn test_completion_includes_version_flag() {
     clap_complete::generate(Shell::Bash, &mut cmd, "ltmatrix", &mut buf);
 
     let output = String::from_utf8(buf).expect("Invalid UTF-8 in completion output");
-    assert!(output.contains("-V") || output.contains("--version"), "Should include version flag");
+    assert!(
+        output.contains("-V") || output.contains("--version"),
+        "Should include version flag"
+    );
 }
 
 #[test]
@@ -251,7 +308,10 @@ fn test_completion_includes_dry_run_flag() {
     clap_complete::generate(Shell::Bash, &mut cmd, "ltmatrix", &mut buf);
 
     let output = String::from_utf8(buf).expect("Invalid UTF-8 in completion output");
-    assert!(output.contains("--dry-run"), "Should include --dry-run flag");
+    assert!(
+        output.contains("--dry-run"),
+        "Should include --dry-run flag"
+    );
 }
 
 // =============================================================================
@@ -271,7 +331,11 @@ fn test_all_shell_types_generate_completions() {
     for (shell_name, _shell_variant) in shells {
         let args = Args::try_parse_from(["ltmatrix", "completions", shell_name]).unwrap();
         let result = execute_command(args);
-        assert!(result.is_ok(), "Should generate completion for {}", shell_name);
+        assert!(
+            result.is_ok(),
+            "Should generate completion for {}",
+            shell_name
+        );
     }
 }
 
@@ -329,7 +393,10 @@ fn test_case_sensitive_shell_type() {
 #[test]
 fn test_completions_requires_shell_argument() {
     let result = Args::try_parse_from(["ltmatrix", "completions"]);
-    assert!(result.is_err(), "Should require shell argument for completions");
+    assert!(
+        result.is_err(),
+        "Should require shell argument for completions"
+    );
 }
 
 // =============================================================================
@@ -404,7 +471,10 @@ fn test_bash_completion_to_file() {
     assert!(!buf.is_empty(), "Completion should generate output");
 
     let output = String::from_utf8(buf).expect("Invalid UTF-8");
-    assert!(output.len() > 100, "Completion script should have substantial content");
+    assert!(
+        output.len() > 100,
+        "Completion script should have substantial content"
+    );
 }
 
 #[test]
@@ -420,7 +490,10 @@ fn test_zsh_completion_to_file() {
     assert!(!buf.is_empty(), "Completion should generate output");
 
     let output = String::from_utf8(buf).expect("Invalid UTF-8");
-    assert!(output.len() > 100, "Completion script should have substantial content");
+    assert!(
+        output.len() > 100,
+        "Completion script should have substantial content"
+    );
 }
 
 #[test]
@@ -436,7 +509,10 @@ fn test_fish_completion_to_file() {
     assert!(!buf.is_empty(), "Completion should generate output");
 
     let output = String::from_utf8(buf).expect("Invalid UTF-8");
-    assert!(output.len() > 100, "Completion script should have substantial content");
+    assert!(
+        output.len() > 100,
+        "Completion script should have substantial content"
+    );
 }
 
 // =============================================================================
@@ -445,14 +521,13 @@ fn test_fish_completion_to_file() {
 
 #[test]
 fn test_completions_with_all_flags_still_works() {
-    let args = Args::try_parse_from([
-        "ltmatrix",
-        "completions",
-        "bash"
-    ]).unwrap();
+    let args = Args::try_parse_from(["ltmatrix", "completions", "bash"]).unwrap();
 
     let result = execute_command(args);
-    assert!(result.is_ok(), "Completions should work even with other flags defined");
+    assert!(
+        result.is_ok(),
+        "Completions should work even with other flags defined"
+    );
 }
 
 #[test]
@@ -483,8 +558,10 @@ fn test_completion_includes_description() {
     if let Some(description) = cmd.get_about() {
         let desc_str = description.to_string();
         if !desc_str.is_empty() {
-            assert!(output.contains(&desc_str) || output.len() > 0,
-                    "Completion should be generated with description context");
+            assert!(
+                output.contains(&desc_str) || output.len() > 0,
+                "Completion should be generated with description context"
+            );
         }
     }
 }
@@ -508,7 +585,10 @@ fn test_completion_supports_dynamic_values() {
     // Verify that the completion script has structure to support dynamic values
     // This is a basic check - actual dynamic completion would be implemented
     // through custom completion functions
-    assert!(output.contains("ltmatrix"), "Should support command completion");
+    assert!(
+        output.contains("ltmatrix"),
+        "Should support command completion"
+    );
 }
 
 #[test]
@@ -524,8 +604,10 @@ fn test_completion_includes_output_format_values() {
     let output = String::from_utf8(buf).expect("Invalid UTF-8 in completion output");
 
     // Verify completion includes output format options
-    assert!(output.contains("text") || output.contains("json") || output.contains("output"),
-            "Should include output format values or general output reference");
+    assert!(
+        output.contains("text") || output.contains("json") || output.contains("output"),
+        "Should include output format values or general output reference"
+    );
 }
 
 #[test]
@@ -541,9 +623,14 @@ fn test_completion_includes_log_level_values() {
     let output = String::from_utf8(buf).expect("Invalid UTF-8 in completion output");
 
     // Verify completion includes log level options
-    assert!(output.contains("trace") || output.contains("debug") || output.contains("info") ||
-            output.contains("log") || output.contains("level"),
-            "Should include log level values or general log level reference");
+    assert!(
+        output.contains("trace")
+            || output.contains("debug")
+            || output.contains("info")
+            || output.contains("log")
+            || output.contains("level"),
+        "Should include log level values or general log level reference"
+    );
 }
 
 #[test]
@@ -559,9 +646,13 @@ fn test_completion_includes_execution_mode_values() {
     let output = String::from_utf8(buf).expect("Invalid UTF-8 in completion output");
 
     // Verify completion includes execution mode options
-    assert!(output.contains("fast") || output.contains("standard") || output.contains("expert") ||
-            output.contains("mode"),
-            "Should include execution mode values or general mode reference");
+    assert!(
+        output.contains("fast")
+            || output.contains("standard")
+            || output.contains("expert")
+            || output.contains("mode"),
+        "Should include execution mode values or general mode reference"
+    );
 }
 
 // =============================================================================
@@ -575,8 +666,10 @@ fn test_help_mentions_completions() {
     let mut cmd = Args::command();
     let help = cmd.render_help().to_string();
 
-    assert!(help.contains("completions") || help.contains("completion"),
-            "Help should mention completions subcommand");
+    assert!(
+        help.contains("completions") || help.contains("completion"),
+        "Help should mention completions subcommand"
+    );
 }
 
 // =============================================================================
@@ -618,7 +711,11 @@ fn test_completion_script_is_valid_utf8() {
         clap_complete::generate(shell, &mut cmd, "ltmatrix", &mut buf);
 
         let result = String::from_utf8(buf);
-        assert!(result.is_ok(), "Completion for {:?} should be valid UTF-8", shell);
+        assert!(
+            result.is_ok(),
+            "Completion for {:?} should be valid UTF-8",
+            shell
+        );
     }
 }
 
@@ -641,7 +738,16 @@ fn test_completion_scripts_differ_by_shell() {
     let fish_output = String::from_utf8(fish_buf).unwrap();
 
     // Different shells should generate different completion scripts
-    assert_ne!(bash_output, zsh_output, "Bash and Zsh completions should differ");
-    assert_ne!(bash_output, fish_output, "Bash and Fish completions should differ");
-    assert_ne!(zsh_output, fish_output, "Zsh and Fish completions should differ");
+    assert_ne!(
+        bash_output, zsh_output,
+        "Bash and Zsh completions should differ"
+    );
+    assert_ne!(
+        bash_output, fish_output,
+        "Bash and Fish completions should differ"
+    );
+    assert_ne!(
+        zsh_output, fish_output,
+        "Zsh and Fish completions should differ"
+    );
 }

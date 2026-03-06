@@ -10,10 +10,10 @@
 // Usage:
 //   cargo test --test macos_scripts_test
 
-use std::path::{Path, PathBuf};
-use std::fs;
-use std::process::Command;
 use std::env;
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::process::Command;
 
 /// Test configuration
 struct ScriptTestConfig {
@@ -62,16 +62,14 @@ impl ScriptTestConfig {
 /// Helper to check if a command is available
 fn command_exists(command: &str) -> bool {
     let result = if cfg!(target_os = "windows") {
-        Command::new("where")
-            .arg(command)
-            .output()
+        Command::new("where").arg(command).output()
     } else {
-        Command::new("which")
-            .arg(command)
-            .output()
+        Command::new("which").arg(command).output()
     };
 
-    result.map(|output| output.status.success()).unwrap_or(false)
+    result
+        .map(|output| output.status.success())
+        .unwrap_or(false)
 }
 
 /// Helper to validate shell script syntax
@@ -89,9 +87,9 @@ fn validate_shell_syntax(script_path: &Path) -> Result<bool, String> {
     };
 
     // Convert path to string and handle Windows path format for bash
-    let path_str = script_path.to_str().ok_or_else(|| {
-        format!("Invalid path: {:?}", script_path)
-    })?;
+    let path_str = script_path
+        .to_str()
+        .ok_or_else(|| format!("Invalid path: {:?}", script_path))?;
 
     // On Windows, convert backslashes to forward slashes for bash compatibility
     let bash_path = if cfg!(target_os = "windows") {
@@ -100,10 +98,7 @@ fn validate_shell_syntax(script_path: &Path) -> Result<bool, String> {
         path_str.to_string()
     };
 
-    let output = Command::new(shell)
-        .arg("-n")
-        .arg(&bash_path)
-        .output();
+    let output = Command::new(shell).arg("-n").arg(&bash_path).output();
 
     match output {
         Ok(output) => {
@@ -114,7 +109,7 @@ fn validate_shell_syntax(script_path: &Path) -> Result<bool, String> {
                 Err(format!("Syntax error: {}", stderr))
             }
         }
-        Err(e) => Err(format!("Failed to validate syntax: {}", e))
+        Err(e) => Err(format!("Failed to validate syntax: {}", e)),
     }
 }
 
@@ -235,8 +230,7 @@ mod script_content_tests {
             return;
         }
 
-        let contents = fs::read_to_string(&script)
-            .expect("Failed to read script");
+        let contents = fs::read_to_string(&script).expect("Failed to read script");
 
         assert!(
             contents.starts_with("#!/bin/bash") || contents.starts_with("#!/usr/bin/env bash"),
@@ -256,8 +250,7 @@ mod script_content_tests {
             return;
         }
 
-        let contents = fs::read_to_string(&script)
-            .expect("Failed to read script");
+        let contents = fs::read_to_string(&script).expect("Failed to read script");
 
         assert!(
             contents.starts_with("#!/bin/bash") || contents.starts_with("#!/usr/bin/env bash"),
@@ -277,8 +270,7 @@ mod script_content_tests {
             return;
         }
 
-        let contents = fs::read_to_string(&script)
-            .expect("Failed to read script");
+        let contents = fs::read_to_string(&script).expect("Failed to read script");
 
         assert!(
             contents.contains("set -e") || contents.contains("set -o errexit"),
@@ -298,8 +290,7 @@ mod script_content_tests {
             return;
         }
 
-        let contents = fs::read_to_string(&script)
-            .expect("Failed to read script");
+        let contents = fs::read_to_string(&script).expect("Failed to read script");
 
         assert!(
             contents.contains("set -e") || contents.contains("set -o errexit"),
@@ -319,8 +310,7 @@ mod script_content_tests {
             return;
         }
 
-        let contents = fs::read_to_string(&script)
-            .expect("Failed to read script");
+        let contents = fs::read_to_string(&script).expect("Failed to read script");
 
         // Check for required macOS commands
         let required_commands = vec![
@@ -351,8 +341,7 @@ mod script_content_tests {
             return;
         }
 
-        let contents = fs::read_to_string(&script)
-            .expect("Failed to read script");
+        let contents = fs::read_to_string(&script).expect("Failed to read script");
 
         // Check for required packaging commands
         let required_commands = vec![
@@ -382,14 +371,16 @@ mod script_content_tests {
             return;
         }
 
-        let contents = fs::read_to_string(&script)
-            .expect("Failed to read script");
+        let contents = fs::read_to_string(&script).expect("Failed to read script");
 
         // Check for binary path references
         let required_paths = vec![
             ("x86_64-apple-darwin", "Intel architecture"),
             ("aarch64-apple-darwin", "ARM architecture"),
-            ("target/release/ltmatrix-universal", "Universal binary output"),
+            (
+                "target/release/ltmatrix-universal",
+                "Universal binary output",
+            ),
         ];
 
         for (path, description) in &required_paths {
@@ -414,8 +405,7 @@ mod script_content_tests {
             return;
         }
 
-        let contents = fs::read_to_string(&script)
-            .expect("Failed to read script");
+        let contents = fs::read_to_string(&script).expect("Failed to read script");
 
         // Check for package structure
         let required_files = vec![
@@ -455,8 +445,7 @@ mod script_safety_tests {
             return;
         }
 
-        let contents = fs::read_to_string(&script)
-            .expect("Failed to read script");
+        let contents = fs::read_to_string(&script).expect("Failed to read script");
 
         // Check for safety checks
         let safety_checks = vec![
@@ -490,8 +479,7 @@ mod script_safety_tests {
             return;
         }
 
-        let contents = fs::read_to_string(&script)
-            .expect("Failed to read script");
+        let contents = fs::read_to_string(&script).expect("Failed to read script");
 
         // Check for safety checks
         let safety_checks = vec![
@@ -523,27 +511,22 @@ mod script_safety_tests {
             config.package_macos_script(),
         ];
 
-        let suspicious_patterns = vec![
-            "password",
-            "secret",
-            "api_key",
-            "token",
-            "private_key",
-        ];
+        let suspicious_patterns = vec!["password", "secret", "api_key", "token", "private_key"];
 
         for script in scripts {
             if !script.exists() {
                 continue;
             }
 
-            let contents = fs::read_to_string(&script)
-                .expect("Failed to read script");
+            let contents = fs::read_to_string(&script).expect("Failed to read script");
 
             for pattern in &suspicious_patterns {
                 // Allow in comments
                 for line in contents.lines() {
-                    if !line.trim_start().starts_with('#') && line.to_lowercase().contains(pattern) {
-                        eprintln!("⚠ Warning: Script {} may contain '{}': {}",
+                    if !line.trim_start().starts_with('#') && line.to_lowercase().contains(pattern)
+                    {
+                        eprintln!(
+                            "⚠ Warning: Script {} may contain '{}': {}",
                             script.display(),
                             pattern,
                             line.trim()
@@ -575,12 +558,12 @@ mod script_documentation_tests {
             return;
         }
 
-        let contents = fs::read_to_string(&script)
-            .expect("Failed to read script");
+        let contents = fs::read_to_string(&script).expect("Failed to read script");
 
         // Check for documentation header
         assert!(
-            contents.contains("# Create Universal macOS Binary") || contents.contains("# Universal"),
+            contents.contains("# Create Universal macOS Binary")
+                || contents.contains("# Universal"),
             "Script should have descriptive header comment"
         );
 
@@ -602,8 +585,7 @@ mod script_documentation_tests {
             return;
         }
 
-        let contents = fs::read_to_string(&script)
-            .expect("Failed to read script");
+        let contents = fs::read_to_string(&script).expect("Failed to read script");
 
         // Check for documentation header
         assert!(
@@ -629,11 +611,11 @@ mod script_documentation_tests {
             return;
         }
 
-        let contents = fs::read_to_string(&script)
-            .expect("Failed to read script");
+        let contents = fs::read_to_string(&script).expect("Failed to read script");
 
         assert!(
-            contents.contains("./scripts/create-universal-binary.sh") || contents.contains("./create-universal-binary.sh"),
+            contents.contains("./scripts/create-universal-binary.sh")
+                || contents.contains("./create-universal-binary.sh"),
             "Script should show usage example"
         );
 
@@ -650,11 +632,11 @@ mod script_documentation_tests {
             return;
         }
 
-        let contents = fs::read_to_string(&script)
-            .expect("Failed to read script");
+        let contents = fs::read_to_string(&script).expect("Failed to read script");
 
         assert!(
-            contents.contains("./scripts/package-macos.sh") || contents.contains("./package-macos.sh"),
+            contents.contains("./scripts/package-macos.sh")
+                || contents.contains("./package-macos.sh"),
             "Script should show usage example"
         );
 
@@ -680,12 +662,13 @@ mod script_structure_tests {
             return;
         }
 
-        let contents = fs::read_to_string(&script)
-            .expect("Failed to read script");
+        let contents = fs::read_to_string(&script).expect("Failed to read script");
 
         // Check for function definitions
         assert!(
-            contents.contains("print_success") || contents.contains("print_error") || contents.contains("print_warning"),
+            contents.contains("print_success")
+                || contents.contains("print_error")
+                || contents.contains("print_warning"),
             "Script should have helper functions for output"
         );
 
@@ -702,12 +685,13 @@ mod script_structure_tests {
             return;
         }
 
-        let contents = fs::read_to_string(&script)
-            .expect("Failed to read script");
+        let contents = fs::read_to_string(&script).expect("Failed to read script");
 
         // Check for function definitions
         assert!(
-            contents.contains("print_success") || contents.contains("print_error") || contents.contains("print_info"),
+            contents.contains("print_success")
+                || contents.contains("print_error")
+                || contents.contains("print_info"),
             "Script should have helper functions for output"
         );
 
@@ -724,8 +708,7 @@ mod script_structure_tests {
             return;
         }
 
-        let contents = fs::read_to_string(&script)
-            .expect("Failed to read script");
+        let contents = fs::read_to_string(&script).expect("Failed to read script");
 
         // Check for step comments
         assert!(
@@ -746,8 +729,7 @@ mod script_structure_tests {
             return;
         }
 
-        let contents = fs::read_to_string(&script)
-            .expect("Failed to read script");
+        let contents = fs::read_to_string(&script).expect("Failed to read script");
 
         // Check for step comments
         assert!(
@@ -791,7 +773,10 @@ mod documentation_tests {
             return;
         }
 
-        assert!(status.exists(), "MACOS_UNIVERSAL_BINARY_STATUS.md not found");
+        assert!(
+            status.exists(),
+            "MACOS_UNIVERSAL_BINARY_STATUS.md not found"
+        );
         println!("✓ MACOS_UNIVERSAL_BINARY_STATUS.md exists");
     }
 
@@ -805,8 +790,7 @@ mod documentation_tests {
             return;
         }
 
-        let contents = fs::read_to_string(&guide)
-            .expect("Failed to read guide");
+        let contents = fs::read_to_string(&guide).expect("Failed to read guide");
 
         let required_sections = vec![
             "## Overview",
@@ -839,8 +823,7 @@ mod documentation_tests {
             return;
         }
 
-        let contents = fs::read_to_string(&status)
-            .expect("Failed to read status");
+        let contents = fs::read_to_string(&status).expect("Failed to read status");
 
         assert!(
             contents.contains("**Status**") || contents.contains("## Status"),

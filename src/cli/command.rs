@@ -3,21 +3,15 @@
 //! This module handles the execution of different CLI commands and subcommands.
 
 use super::args::{Args, Command};
-use anyhow::{Context, Result};
 use crate::config::settings::{self, CliOverrides};
+use anyhow::{Context, Result};
 
 /// Execute the command specified in the arguments
 pub fn execute_command(args: Args) -> Result<()> {
     match args.command {
-        Some(Command::Release(ref release_args)) => {
-            execute_release(&args, release_args)
-        }
-        Some(Command::Completions(ref completions_args)) => {
-            execute_completions(completions_args)
-        }
-        Some(Command::Man(ref man_args)) => {
-            execute_man(man_args)
-        }
+        Some(Command::Release(ref release_args)) => execute_release(&args, release_args),
+        Some(Command::Completions(ref completions_args)) => execute_completions(completions_args),
+        Some(Command::Man(ref man_args)) => execute_man(man_args),
         None => {
             // Default to run command
             execute_run(&args)
@@ -113,7 +107,8 @@ fn execute_completions(completions_args: &super::args::CompletionsArgs) -> Resul
 
     let stdout = std::io::stdout();
     let mut handle = stdout.lock();
-    handle.write_all(&buf)
+    handle
+        .write_all(&buf)
         .context("Failed to write completions to stdout")?;
 
     Ok(())
@@ -128,8 +123,7 @@ fn execute_man(man_args: &super::args::ManArgs) -> Result<()> {
     println!();
 
     // Generate man pages
-    crate::man::generate_man_pages(&man_args.output)
-        .context("Failed to generate man pages")?;
+    crate::man::generate_man_pages(&man_args.output).context("Failed to generate man pages")?;
 
     // List generated files
     let man_entries: Vec<_> = fs::read_dir(&man_args.output)
@@ -153,7 +147,10 @@ fn execute_man(man_args: &super::args::ManArgs) -> Result<()> {
     println!("  man {}", man_args.output.join("ltmatrix.1").display());
     println!();
     println!("To install man pages system-wide:");
-    println!("  cp {}/*.1 /usr/local/share/man/man1/", man_args.output.display());
+    println!(
+        "  cp {}/*.1 /usr/local/share/man/man1/",
+        man_args.output.display()
+    );
 
     Ok(())
 }
@@ -223,7 +220,10 @@ mod tests {
         // Verify completion script was generated
         let output = String::from_utf8(buf).expect("Invalid UTF-8 in completion output");
         assert!(!output.is_empty(), "Completion output should not be empty");
-        assert!(output.contains("_ltmatrix"), "Completion should define _ltmatrix function");
+        assert!(
+            output.contains("_ltmatrix"),
+            "Completion should define _ltmatrix function"
+        );
         assert!(output.contains("compgen"), "Completion should use compgen");
     }
 

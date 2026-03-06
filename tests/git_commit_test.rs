@@ -8,19 +8,17 @@
 //! - Multi-line commit messages
 //! - Commit message normalization
 
-use ltmatrix::git::{
-    init_repo,
-    commit::{
-        commit_changes, stage_files, stage_all, create_commit, get_head_commit,
-        has_unstaged_changes, validate_commit_message,
-        amend_commit, short_commit_id
-    },
-    create_signature
-};
-use tempfile::TempDir;
 use git2::Repository;
+use ltmatrix::git::{
+    commit::{
+        amend_commit, commit_changes, create_commit, get_head_commit, has_unstaged_changes,
+        short_commit_id, stage_all, stage_files, validate_commit_message,
+    },
+    create_signature, init_repo,
+};
 use std::fs::{self, File};
 use std::io::Write;
+use tempfile::TempDir;
 
 /// Helper function to create an initial commit for testing
 fn create_initial_commit(repo: &Repository) -> anyhow::Result<git2::Oid> {
@@ -31,14 +29,7 @@ fn create_initial_commit(repo: &Repository) -> anyhow::Result<git2::Oid> {
 
     // Create commit
     let tree = repo.find_tree(tree_oid)?;
-    let oid = repo.commit(
-        Some("HEAD"),
-        &sig,
-        &sig,
-        "Initial commit",
-        &tree,
-        &[],
-    )?;
+    let oid = repo.commit(Some("HEAD"), &sig, &sig, "Initial commit", &tree, &[])?;
 
     Ok(oid)
 }
@@ -68,27 +59,29 @@ fn test_basic_commit_workflow() {
     let count_before = index_before.iter().count();
 
     // Stage the file
-    stage_files(&repo, &["test.txt"])
-        .expect("Failed to stage test file");
+    stage_files(&repo, &["test.txt"]).expect("Failed to stage test file");
 
     // Verify there are more staged changes now
     let index_after = repo.index().unwrap();
     let count_after = index_after.iter().count();
-    assert!(count_after > count_before, "Should have more staged files after staging");
+    assert!(
+        count_after > count_before,
+        "Should have more staged files after staging"
+    );
 
     // Commit the changes
-    let commit_id = commit_changes(&repo, "Add test file")
-        .expect("Failed to commit changes");
+    let commit_id = commit_changes(&repo, "Add test file").expect("Failed to commit changes");
 
     // Verify commit was created
-    let commit = repo.find_commit(commit_id)
-        .expect("Failed to find commit");
+    let commit = repo.find_commit(commit_id).expect("Failed to find commit");
     assert_eq!(commit.message().unwrap(), "Add test file");
 
     // Verify the commit contains our file
     let tree = commit.tree().unwrap();
-    assert!(tree.get_path(std::path::Path::new("test.txt")).is_ok(),
-            "Committed tree should contain test.txt");
+    assert!(
+        tree.get_path(std::path::Path::new("test.txt")).is_ok(),
+        "Committed tree should contain test.txt"
+    );
 }
 
 /// Test staging multiple files at once
@@ -101,15 +94,20 @@ fn test_stage_multiple_files() {
 
     // Create multiple test files
     File::create(repo_path.join("file1.txt"))
-        .unwrap().write_all(b"content1").unwrap();
+        .unwrap()
+        .write_all(b"content1")
+        .unwrap();
     File::create(repo_path.join("file2.txt"))
-        .unwrap().write_all(b"content2").unwrap();
+        .unwrap()
+        .write_all(b"content2")
+        .unwrap();
     File::create(repo_path.join("file3.txt"))
-        .unwrap().write_all(b"content3").unwrap();
+        .unwrap()
+        .write_all(b"content3")
+        .unwrap();
 
     // Stage all files at once
-    stage_files(&repo, &["file1.txt", "file2.txt", "file3.txt"])
-        .expect("Failed to stage files");
+    stage_files(&repo, &["file1.txt", "file2.txt", "file3.txt"]).expect("Failed to stage files");
 
     // Verify all files are staged
     let index = repo.index().unwrap();
@@ -126,9 +124,13 @@ fn test_stage_all_changes() {
 
     // Create multiple test files (in addition to the .gitignore that init_repo creates)
     File::create(repo_path.join("a.txt"))
-        .unwrap().write_all(b"a").unwrap();
+        .unwrap()
+        .write_all(b"a")
+        .unwrap();
     File::create(repo_path.join("b.txt"))
-        .unwrap().write_all(b"b").unwrap();
+        .unwrap()
+        .write_all(b"b")
+        .unwrap();
 
     // Stage all changes
     stage_all(&repo).expect("Failed to stage all");
@@ -148,7 +150,9 @@ fn test_commit_empty_message_fails() {
 
     // Create and stage a file
     File::create(repo_path.join("test.txt"))
-        .unwrap().write_all(b"content").unwrap();
+        .unwrap()
+        .write_all(b"content")
+        .unwrap();
     stage_files(&repo, &["test.txt"]).unwrap();
 
     // Try to commit with empty message
@@ -156,7 +160,10 @@ fn test_commit_empty_message_fails() {
     assert!(result.is_err(), "Should fail with empty message");
 
     let err = result.unwrap_err().to_string();
-    assert!(err.contains("cannot be empty"), "Error should mention empty message");
+    assert!(
+        err.contains("cannot be empty"),
+        "Error should mention empty message"
+    );
 }
 
 /// Test commit fails when nothing is staged
@@ -173,7 +180,10 @@ fn test_commit_nothing_staged_fails() {
     assert!(result.is_err(), "Should fail with nothing staged");
 
     let err = result.unwrap_err().to_string();
-    assert!(err.contains("No changes staged"), "Error should mention no staged changes");
+    assert!(
+        err.contains("No changes staged"),
+        "Error should mention no staged changes"
+    );
 }
 
 /// Test multi-line commit message
@@ -187,13 +197,15 @@ fn test_multiline_commit_message() {
 
     // Create and stage a file
     File::create(repo_path.join("test.txt"))
-        .unwrap().write_all(b"content").unwrap();
+        .unwrap()
+        .write_all(b"content")
+        .unwrap();
     stage_files(&repo, &["test.txt"]).unwrap();
 
     // Commit with multi-line message
     let message = "Add new feature\n\nThis adds a new feature that does X.\n\nCloses #123";
-    let commit_id = commit_changes(&repo, message)
-        .expect("Failed to commit with multi-line message");
+    let commit_id =
+        commit_changes(&repo, message).expect("Failed to commit with multi-line message");
 
     // Verify message is preserved
     let commit = repo.find_commit(commit_id).unwrap();
@@ -211,12 +223,13 @@ fn test_commit_message_trimmed() {
 
     // Create and stage a file
     File::create(repo_path.join("test.txt"))
-        .unwrap().write_all(b"content").unwrap();
+        .unwrap()
+        .write_all(b"content")
+        .unwrap();
     stage_files(&repo, &["test.txt"]).unwrap();
 
     // Commit with whitespace-padded message
-    let commit_id = commit_changes(&repo, "  Add feature  ")
-        .expect("Failed to commit");
+    let commit_id = commit_changes(&repo, "  Add feature  ").expect("Failed to commit");
 
     // Verify message is trimmed
     let commit = repo.find_commit(commit_id).unwrap();
@@ -245,18 +258,21 @@ fn test_amend_commit_workflow() {
 
     // Create and commit initial file
     File::create(repo_path.join("test.txt"))
-        .unwrap().write_all(b"original").unwrap();
+        .unwrap()
+        .write_all(b"original")
+        .unwrap();
     stage_files(&repo, &["test.txt"]).unwrap();
-    let original_id = commit_changes(&repo, "Original commit")
-        .expect("Failed to create original commit");
+    let original_id =
+        commit_changes(&repo, "Original commit").expect("Failed to create original commit");
 
     // Modify the file
     File::create(repo_path.join("test.txt"))
-        .unwrap().write_all(b"modified").unwrap();
+        .unwrap()
+        .write_all(b"modified")
+        .unwrap();
 
     // Amend the commit
-    let amended_id = amend_commit(&repo, Some("Amended message"))
-        .expect("Failed to amend commit");
+    let amended_id = amend_commit(&repo, Some("Amended message")).expect("Failed to amend commit");
 
     // Verify commit was amended
     assert_ne!(original_id, amended_id, "Commit ID should be different");
@@ -267,7 +283,11 @@ fn test_amend_commit_workflow() {
     // Verify HEAD points to new commit
     let head = repo.head().unwrap();
     let head_commit = head.peel_to_commit().unwrap();
-    assert_eq!(head_commit.id(), amended_id, "HEAD should point to amended commit");
+    assert_eq!(
+        head_commit.id(),
+        amended_id,
+        "HEAD should point to amended commit"
+    );
 }
 
 /// Test amend commit without new message
@@ -280,18 +300,21 @@ fn test_amend_commit_keep_message() {
 
     // Create and commit initial file
     File::create(repo_path.join("test.txt"))
-        .unwrap().write_all(b"original").unwrap();
+        .unwrap()
+        .write_all(b"original")
+        .unwrap();
     stage_files(&repo, &["test.txt"]).unwrap();
-    let _original_id = commit_changes(&repo, "Original message")
-        .expect("Failed to create original commit");
+    let _original_id =
+        commit_changes(&repo, "Original message").expect("Failed to create original commit");
 
     // Modify the file
     File::create(repo_path.join("test.txt"))
-        .unwrap().write_all(b"modified").unwrap();
+        .unwrap()
+        .write_all(b"modified")
+        .unwrap();
 
     // Amend without new message
-    let amended_id = amend_commit(&repo, None)
-        .expect("Failed to amend commit");
+    let amended_id = amend_commit(&repo, None).expect("Failed to amend commit");
 
     // Verify message is preserved
     let commit = repo.find_commit(amended_id).unwrap();
@@ -311,7 +334,10 @@ fn test_amend_fails_no_commits() {
     assert!(result.is_err(), "Should fail with no commits");
 
     let err = result.unwrap_err().to_string();
-    assert!(err.contains("no commits"), "Error should mention no commits");
+    assert!(
+        err.contains("no commits"),
+        "Error should mention no commits"
+    );
 }
 
 /// Test short commit ID generation
@@ -324,20 +350,23 @@ fn test_short_commit_id() {
 
     // Create and commit a file
     File::create(repo_path.join("test.txt"))
-        .unwrap().write_all(b"content").unwrap();
+        .unwrap()
+        .write_all(b"content")
+        .unwrap();
     stage_files(&repo, &["test.txt"]).unwrap();
-    let commit_id = commit_changes(&repo, "Test commit")
-        .expect("Failed to commit");
+    let commit_id = commit_changes(&repo, "Test commit").expect("Failed to commit");
 
     // Get short ID
-    let short_id = short_commit_id(&repo, &commit_id, 7)
-        .expect("Failed to get short ID");
+    let short_id = short_commit_id(&repo, &commit_id, 7).expect("Failed to get short ID");
 
     assert_eq!(short_id.len(), 7, "Short ID should be 7 characters");
 
     // Verify it's a prefix of full ID
     let full_id = commit_id.to_string();
-    assert!(full_id.starts_with(&short_id), "Short ID should be prefix of full ID");
+    assert!(
+        full_id.starts_with(&short_id),
+        "Short ID should be prefix of full ID"
+    );
 }
 
 /// Test get_head_commit returns None for empty repo
@@ -363,7 +392,9 @@ fn test_get_head_commit_after_commit() {
 
     // Create and commit
     File::create(repo_path.join("test.txt"))
-        .unwrap().write_all(b"content").unwrap();
+        .unwrap()
+        .write_all(b"content")
+        .unwrap();
     stage_files(&repo, &["test.txt"]).unwrap();
     commit_changes(&repo, "Test commit").unwrap();
 
@@ -385,20 +416,31 @@ fn test_has_unstaged_changes() {
     commit_changes(&repo, "Initial commit").unwrap();
 
     // Initially no changes
-    assert!(!has_unstaged_changes(&repo).unwrap(), "Should have no unstaged changes initially");
+    assert!(
+        !has_unstaged_changes(&repo).unwrap(),
+        "Should have no unstaged changes initially"
+    );
 
     // Create a file (unstaged)
     File::create(repo_path.join("test.txt"))
-        .unwrap().write_all(b"content").unwrap();
+        .unwrap()
+        .write_all(b"content")
+        .unwrap();
 
     // Should have unstaged changes
-    assert!(has_unstaged_changes(&repo).unwrap(), "Should have unstaged changes after creating file");
+    assert!(
+        has_unstaged_changes(&repo).unwrap(),
+        "Should have unstaged changes after creating file"
+    );
 
     // Stage the file
     stage_files(&repo, &["test.txt"]).unwrap();
 
     // Should have no unstaged changes (all staged)
-    assert!(!has_unstaged_changes(&repo).unwrap(), "Should have no unstaged changes after staging");
+    assert!(
+        !has_unstaged_changes(&repo).unwrap(),
+        "Should have no unstaged changes after staging"
+    );
 }
 
 /// Test staging files in subdirectories
@@ -413,11 +455,12 @@ fn test_stage_subdirectory_files() {
     let subdir = repo_path.join("src");
     fs::create_dir(&subdir).unwrap();
     File::create(subdir.join("main.rs"))
-        .unwrap().write_all(b"fn main() {}").unwrap();
+        .unwrap()
+        .write_all(b"fn main() {}")
+        .unwrap();
 
     // Stage file in subdirectory
-    stage_files(&repo, &["src/main.rs"])
-        .expect("Failed to stage subdirectory file");
+    stage_files(&repo, &["src/main.rs"]).expect("Failed to stage subdirectory file");
 
     // Verify file is staged
     let index = repo.index().unwrap();
@@ -434,17 +477,19 @@ fn test_sequential_commits() {
 
     // First commit
     File::create(repo_path.join("file1.txt"))
-        .unwrap().write_all(b"content1").unwrap();
+        .unwrap()
+        .write_all(b"content1")
+        .unwrap();
     stage_files(&repo, &["file1.txt"]).unwrap();
-    let commit1 = commit_changes(&repo, "First commit")
-        .expect("Failed to create first commit");
+    let commit1 = commit_changes(&repo, "First commit").expect("Failed to create first commit");
 
     // Second commit
     File::create(repo_path.join("file2.txt"))
-        .unwrap().write_all(b"content2").unwrap();
+        .unwrap()
+        .write_all(b"content2")
+        .unwrap();
     stage_files(&repo, &["file2.txt"]).unwrap();
-    let commit2 = commit_changes(&repo, "Second commit")
-        .expect("Failed to create second commit");
+    let commit2 = commit_changes(&repo, "Second commit").expect("Failed to create second commit");
 
     // Verify both commits exist and are different
     assert_ne!(commit1, commit2, "Commits should have different IDs");
@@ -482,7 +527,10 @@ fn test_stage_nonexistent_file() {
     let result = stage_files(&repo, &["nonexistent.txt"]);
     // The function currently doesn't fail for non-existent files
     // It just skips them
-    assert!(result.is_ok(), "Should handle non-existent files gracefully");
+    assert!(
+        result.is_ok(),
+        "Should handle non-existent files gracefully"
+    );
 }
 
 /// Test create_commit with custom parents
@@ -500,13 +548,8 @@ fn test_create_commit_custom_parents() {
     let tree_oid = repo.treebuilder(None).unwrap().write().unwrap();
     let tree = repo.find_tree(tree_oid).unwrap();
 
-    let commit_id = create_commit(
-        &repo,
-        "Custom commit",
-        &tree,
-        &[parent_id],
-        "HEAD"
-    ).expect("Failed to create custom commit");
+    let commit_id = create_commit(&repo, "Custom commit", &tree, &[parent_id], "HEAD")
+        .expect("Failed to create custom commit");
 
     // Verify commit was created
     let commit = repo.find_commit(commit_id).unwrap();
@@ -547,8 +590,7 @@ fn test_commit_various_file_types() {
     stage_files(&repo, &file_names).expect("Failed to stage files");
 
     // Commit
-    let commit_id = commit_changes(&repo, "Add various file types")
-        .expect("Failed to commit");
+    let commit_id = commit_changes(&repo, "Add various file types").expect("Failed to commit");
 
     // Verify all files are in the commit
     let commit = repo.find_commit(commit_id).unwrap();
@@ -564,12 +606,30 @@ fn test_commit_various_file_types() {
 #[test]
 fn test_validate_commit_message_edge_cases() {
     // Valid cases
-    assert!(validate_commit_message("a").is_ok(), "Single character should be valid");
-    assert!(validate_commit_message("  a  ").is_ok(), "Whitespace padding should be trimmed");
+    assert!(
+        validate_commit_message("a").is_ok(),
+        "Single character should be valid"
+    );
+    assert!(
+        validate_commit_message("  a  ").is_ok(),
+        "Whitespace padding should be trimmed"
+    );
 
     // Invalid cases
-    assert!(validate_commit_message("").is_err(), "Empty string should be invalid");
-    assert!(validate_commit_message("   ").is_err(), "Whitespace only should be invalid");
-    assert!(validate_commit_message("\n\n").is_err(), "Newlines only should be invalid");
-    assert!(validate_commit_message("  \n  ").is_err(), "Mixed whitespace should be invalid");
+    assert!(
+        validate_commit_message("").is_err(),
+        "Empty string should be invalid"
+    );
+    assert!(
+        validate_commit_message("   ").is_err(),
+        "Whitespace only should be invalid"
+    );
+    assert!(
+        validate_commit_message("\n\n").is_err(),
+        "Newlines only should be invalid"
+    );
+    assert!(
+        validate_commit_message("  \n  ").is_err(),
+        "Mixed whitespace should be invalid"
+    );
 }

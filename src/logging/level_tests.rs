@@ -126,7 +126,10 @@ mod tests {
             );
 
             if let Err(e) = result {
-                assert!(e.contains("Invalid log level"), "Error message should mention invalid log level");
+                assert!(
+                    e.contains("Invalid log level"),
+                    "Error message should mention invalid log level"
+                );
                 assert!(e.contains(input), "Error should contain the invalid input");
             }
         }
@@ -307,7 +310,11 @@ mod tests {
         for (i, level1) in levels.iter().enumerate() {
             for (j, level2) in levels.iter().enumerate() {
                 if i != j {
-                    assert_ne!(level1, level2, "Levels at indices {} and {} are equal", i, j);
+                    assert_ne!(
+                        level1, level2,
+                        "Levels at indices {} and {} are equal",
+                        i, j
+                    );
                 }
             }
         }

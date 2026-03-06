@@ -4,12 +4,11 @@
 //! beyond the basic integration tests.
 
 use ltmatrix::config::settings::{
-    Config, load_config_file, merge_configs,
-    get_global_config_path, get_project_config_path,
+    get_global_config_path, get_project_config_path, load_config_file, merge_configs, Config,
 };
-use tempfile::TempDir;
 use std::fs;
 use std::path::PathBuf;
+use tempfile::TempDir;
 
 // ============================================================================
 // File System Edge Cases
@@ -22,13 +21,17 @@ fn test_config_path_with_trailing_slash() {
     fs::create_dir_all(&config_dir).unwrap();
 
     let config_path = config_dir.join("config.toml");
-    fs::write(&config_path, r#"
+    fs::write(
+        &config_path,
+        r#"
 default = "test"
 
 [agents.test]
 command = "test"
 model = "test-model"
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     // Load with trailing separator in path
     let path_with_trailing = format!("{}/", config_path.display());
@@ -42,7 +45,8 @@ fn test_config_file_with_bom() {
     let config_path = temp_dir.path().join("config.toml");
 
     // UTF-8 BOM followed by valid TOML
-    let content = "\u{FEFF}default = \"test\"\n\n[agents.test]\ncommand = \"test\"\nmodel = \"test-model\"\n";
+    let content =
+        "\u{FEFF}default = \"test\"\n\n[agents.test]\ncommand = \"test\"\nmodel = \"test-model\"\n";
     fs::write(&config_path, content.as_bytes()).unwrap();
 
     let result = load_config_file(&config_path);
@@ -72,7 +76,8 @@ fn test_config_file_with_mixed_line_endings() {
     let config_path = temp_dir.path().join("config.toml");
 
     // Mixed line endings (should still parse)
-    let content = "default = \"test\"\n[agents.test]\r\ncommand = \"test\"\nmodel = \"test-model\"\r\n";
+    let content =
+        "default = \"test\"\n[agents.test]\r\ncommand = \"test\"\nmodel = \"test-model\"\r\n";
     fs::write(&config_path, content).unwrap();
 
     let result = load_config_file(&config_path);
@@ -330,10 +335,13 @@ fn test_config_with_all_log_levels() {
 
     // Test each log level
     for level in &["trace", "debug", "info", "warn", "error"] {
-        let content = format!(r#"
+        let content = format!(
+            r#"
 [logging]
 level = "{}"
-"#, level);
+"#,
+            level
+        );
 
         fs::write(&config_path, content).unwrap();
 
@@ -352,11 +360,14 @@ fn test_merge_with_overlapping_fields() {
         default: Some("base".to_string()),
         agents: {
             let mut map = std::collections::HashMap::new();
-            map.insert("agent1".to_string(), ltmatrix::config::settings::AgentConfig {
-                command: Some("base-command".to_string()),
-                model: Some("base-model".to_string()),
-                timeout: Some(100),
-            });
+            map.insert(
+                "agent1".to_string(),
+                ltmatrix::config::settings::AgentConfig {
+                    command: Some("base-command".to_string()),
+                    model: Some("base-model".to_string()),
+                    timeout: Some(100),
+                },
+            );
             map
         },
         modes: ltmatrix::config::settings::ModeConfigs::default(),
@@ -369,11 +380,14 @@ fn test_merge_with_overlapping_fields() {
         default: Some("override".to_string()),
         agents: {
             let mut map = std::collections::HashMap::new();
-            map.insert("agent1".to_string(), ltmatrix::config::settings::AgentConfig {
-                command: Some("override-command".to_string()),
-                model: None, // Keep base
-                timeout: Some(200), // Override
-            });
+            map.insert(
+                "agent1".to_string(),
+                ltmatrix::config::settings::AgentConfig {
+                    command: Some("override-command".to_string()),
+                    model: None,        // Keep base
+                    timeout: Some(200), // Override
+                },
+            );
             map
         },
         modes: ltmatrix::config::settings::ModeConfigs::default(),
@@ -407,11 +421,14 @@ fn test_merge_multiple_levels() {
         default: Some("level1".to_string()),
         agents: {
             let mut map = std::collections::HashMap::new();
-            map.insert("agent".to_string(), ltmatrix::config::settings::AgentConfig {
-                command: Some("cmd1".to_string()),
-                model: Some("model1".to_string()),
-                timeout: Some(100),
-            });
+            map.insert(
+                "agent".to_string(),
+                ltmatrix::config::settings::AgentConfig {
+                    command: Some("cmd1".to_string()),
+                    model: Some("model1".to_string()),
+                    timeout: Some(100),
+                },
+            );
             map
         },
         modes: ltmatrix::config::settings::ModeConfigs::default(),
@@ -424,11 +441,14 @@ fn test_merge_multiple_levels() {
         default: Some("level2".to_string()),
         agents: {
             let mut map = std::collections::HashMap::new();
-            map.insert("agent".to_string(), ltmatrix::config::settings::AgentConfig {
-                command: Some("cmd2".to_string()),
-                model: None,
-                timeout: Some(200),
-            });
+            map.insert(
+                "agent".to_string(),
+                ltmatrix::config::settings::AgentConfig {
+                    command: Some("cmd2".to_string()),
+                    model: None,
+                    timeout: Some(200),
+                },
+            );
             map
         },
         modes: ltmatrix::config::settings::ModeConfigs::default(),
@@ -505,10 +525,14 @@ fn test_error_message_for_invalid_toml_includes_context() {
     let temp_dir = TempDir::new().unwrap();
     let config_path = temp_dir.path().join("config.toml");
 
-    fs::write(&config_path, r#"
+    fs::write(
+        &config_path,
+        r#"
 [agents
 command = "test"
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     let result = load_config_file(&config_path);
     assert!(result.is_err());
@@ -529,12 +553,18 @@ fn test_config_with_many_agents() {
     let mut content = String::from("default = \"agent0\"\n\n");
 
     for i in 0..100 {
-        content.push_str(&format!(r#"
+        content.push_str(&format!(
+            r#"
 [agents.agent{}]
 command = "command{}"
 model = "model{}"
 timeout = {}
-"#, i, i, i, i * 100));
+"#,
+            i,
+            i,
+            i,
+            i * 100
+        ));
     }
 
     fs::write(&config_path, content).unwrap();

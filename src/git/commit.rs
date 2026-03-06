@@ -3,10 +3,10 @@
 //! This module provides commit functionality including staging changes,
 //! creating commits with messages, and handling common commit failures.
 
-use std::path::Path;
-use anyhow::{Context, Result, bail};
-use git2::{Repository, Oid, Tree};
 use crate::git::repository::create_signature;
+use anyhow::{bail, Context, Result};
+use git2::{Oid, Repository, Tree};
+use std::path::Path;
 
 /// Commits staged changes with the specified message.
 ///
@@ -43,8 +43,7 @@ pub fn commit_changes(repo: &Repository, message: &str) -> Result<Oid> {
     let message = validate_commit_message(message)?;
 
     // Get the index to check if there are staged changes
-    let mut index = repo.index()
-        .context("Failed to get repository index")?;
+    let mut index = repo.index().context("Failed to get repository index")?;
 
     // Check if there are any staged changes
     if index.is_empty() {
@@ -52,10 +51,10 @@ pub fn commit_changes(repo: &Repository, message: &str) -> Result<Oid> {
     }
 
     // Write the index to a tree
-    let tree_oid = index.write_tree()
+    let tree_oid = index
+        .write_tree()
         .context("Failed to write tree from index")?;
-    let tree = repo.find_tree(tree_oid)
-        .context("Failed to find tree")?;
+    let tree = repo.find_tree(tree_oid).context("Failed to find tree")?;
 
     // Get HEAD commit for parent
     let head_commit = get_head_commit(repo)?;
@@ -71,15 +70,16 @@ pub fn commit_changes(repo: &Repository, message: &str) -> Result<Oid> {
     };
 
     // Create the commit
-    let oid = repo.commit(
-        Some("HEAD"),
-        &sig,
-        &sig,
-        &message,
-        &tree,
-        parents.as_slice(),
-    )
-    .context("Failed to create commit")?;
+    let oid = repo
+        .commit(
+            Some("HEAD"),
+            &sig,
+            &sig,
+            &message,
+            &tree,
+            parents.as_slice(),
+        )
+        .context("Failed to create commit")?;
 
     tracing::info!("Created commit: {}", oid);
 
@@ -113,10 +113,8 @@ pub fn commit_changes(repo: &Repository, message: &str) -> Result<Oid> {
 /// # Ok::<(), anyhow::Error>(())
 /// ```
 pub fn stage_files(repo: &Repository, files: &[&str]) -> Result<()> {
-    let workdir = repo.workdir()
-        .context("Failed to get repository workdir")?;
-    let mut index = repo.index()
-        .context("Failed to get repository index")?;
+    let workdir = repo.workdir().context("Failed to get repository workdir")?;
+    let mut index = repo.index().context("Failed to get repository index")?;
 
     for file in files {
         let path = Path::new(file);
@@ -138,14 +136,12 @@ pub fn stage_files(repo: &Repository, files: &[&str]) -> Result<()> {
 
         if full_path.exists() {
             // Add file using add_all with the specific file path as a pattern
-            let path_str = relative_path.to_str()
+            let path_str = relative_path
+                .to_str()
                 .ok_or_else(|| anyhow::anyhow!("Invalid UTF-8 in path: {}", file))?;
 
-            index.add_all(
-                vec![path_str],
-                git2::IndexAddOption::DEFAULT,
-                None
-            )
+            index
+                .add_all(vec![path_str], git2::IndexAddOption::DEFAULT, None)
                 .with_context(|| format!("Failed to stage file: {}", file))?;
         } else {
             // Remove file from index if it doesn't exist in working directory
@@ -154,8 +150,7 @@ pub fn stage_files(repo: &Repository, files: &[&str]) -> Result<()> {
     }
 
     // Write to persist all changes
-    index.write()
-        .context("Failed to write index")?;
+    index.write().context("Failed to write index")?;
 
     tracing::debug!("Staged {} file(s)", files.len());
 
@@ -185,15 +180,14 @@ pub fn stage_files(repo: &Repository, files: &[&str]) -> Result<()> {
 /// # Ok::<(), anyhow::Error>(())
 /// ```
 pub fn stage_all(repo: &Repository) -> Result<()> {
-    let mut index = repo.index()
-        .context("Failed to get repository index")?;
+    let mut index = repo.index().context("Failed to get repository index")?;
 
     // Stage all changes
-    index.add_all(vec!["*"], git2::IndexAddOption::DEFAULT, None)
+    index
+        .add_all(vec!["*"], git2::IndexAddOption::DEFAULT, None)
         .context("Failed to stage all changes")?;
 
-    index.write()
-        .context("Failed to write index")?;
+    index.write().context("Failed to write index")?;
 
     tracing::debug!("Staged all changes");
 
@@ -251,17 +245,22 @@ pub fn create_commit(
     let parent_refs: Vec<&git2::Commit> = parent_commits.iter().collect();
 
     // Create the commit
-    let oid = repo.commit(
-        Some(update_ref),
-        &sig,
-        &sig,
-        &message,
-        tree,
-        parent_refs.as_slice(),
-    )
-    .context("Failed to create commit")?;
+    let oid = repo
+        .commit(
+            Some(update_ref),
+            &sig,
+            &sig,
+            &message,
+            tree,
+            parent_refs.as_slice(),
+        )
+        .context("Failed to create commit")?;
 
-    tracing::info!("Created commit {}: {}", oid, message.lines().next().unwrap_or(""));
+    tracing::info!(
+        "Created commit {}: {}",
+        oid,
+        message.lines().next().unwrap_or("")
+    );
 
     Ok(oid)
 }
@@ -292,7 +291,8 @@ pub fn create_commit(
 pub fn get_head_commit(repo: &Repository) -> Result<Option<git2::Commit<'_>>> {
     match repo.head() {
         Ok(head) => {
-            let commit = head.peel_to_commit()
+            let commit = head
+                .peel_to_commit()
                 .context("Failed to peel HEAD to commit")?;
             Ok(Some(commit))
         }
@@ -300,9 +300,7 @@ pub fn get_head_commit(repo: &Repository) -> Result<Option<git2::Commit<'_>>> {
             // Repository has no commits yet
             Ok(None)
         }
-        Err(e) => {
-            Err(e).context("Failed to get HEAD")
-        }
+        Err(e) => Err(e).context("Failed to get HEAD"),
     }
 }
 
@@ -335,22 +333,21 @@ pub fn has_staged_changes(repo: &Repository) -> Result<bool> {
         Err(_) => {
             // No HEAD means no commits yet
             // Check if index has any entries
-            let index = repo.index()
-                .context("Failed to get repository index")?;
+            let index = repo.index().context("Failed to get repository index")?;
             return Ok(!index.is_empty());
         }
     };
 
-    let head_commit = head.peel_to_commit()
+    let head_commit = head
+        .peel_to_commit()
         .context("Failed to peel HEAD to commit")?;
-    let head_tree = head_commit.tree()
-        .context("Failed to get HEAD tree")?;
+    let head_tree = head_commit.tree().context("Failed to get HEAD tree")?;
 
-    let index = repo.index()
-        .context("Failed to get repository index")?;
+    let index = repo.index().context("Failed to get repository index")?;
 
     // Create diff from HEAD tree to index (shows staged changes)
-    let diff = repo.diff_tree_to_index(Some(&head_tree), Some(&index), None)
+    let diff = repo
+        .diff_tree_to_index(Some(&head_tree), Some(&index), None)
         .context("Failed to create diff")?;
 
     // Check if there are any differences
@@ -380,15 +377,15 @@ pub fn has_staged_changes(repo: &Repository) -> Result<bool> {
 /// # Ok::<(), anyhow::Error>(())
 /// ```
 pub fn has_unstaged_changes(repo: &Repository) -> Result<bool> {
-    let index = repo.index()
-        .context("Failed to get repository index")?;
+    let index = repo.index().context("Failed to get repository index")?;
 
     // Create diff options to include untracked files
     let mut diffs = git2::DiffOptions::new();
     diffs.include_untracked(true);
 
     // Create diff from index to working directory
-    let diff = repo.diff_index_to_workdir(Some(&index), Some(&mut diffs))
+    let diff = repo
+        .diff_index_to_workdir(Some(&index), Some(&mut diffs))
         .context("Failed to create diff")?;
 
     // Check if there are any differences
@@ -470,9 +467,9 @@ pub fn amend_commit(repo: &Repository, message: Option<&str>) -> Result<Oid> {
     let head_commit = get_head_commit(repo)?
         .ok_or_else(|| anyhow::anyhow!("Cannot amend: no commits in repository"))?;
 
-    let head = repo.head()
-        .context("Failed to get HEAD reference")?;
-    let head_name = head.shorthand()
+    let head = repo.head().context("Failed to get HEAD reference")?;
+    let head_name = head
+        .shorthand()
         .context("Failed to get HEAD name")?
         .to_string();
 
@@ -480,7 +477,8 @@ pub fn amend_commit(repo: &Repository, message: Option<&str>) -> Result<Oid> {
     let commit_message = if let Some(msg) = message {
         validate_commit_message(msg)?
     } else {
-        head_commit.message()
+        head_commit
+            .message()
             .context("Failed to get current commit message")?
             .to_string()
     };
@@ -491,12 +489,12 @@ pub fn amend_commit(repo: &Repository, message: Option<&str>) -> Result<Oid> {
     }
 
     // Write the index to a tree
-    let tree_oid = repo.index()
+    let tree_oid = repo
+        .index()
         .context("Failed to get repository index")?
         .write_tree()
         .context("Failed to write tree from index")?;
-    let tree = repo.find_tree(tree_oid)
-        .context("Failed to find tree")?;
+    let tree = repo.find_tree(tree_oid).context("Failed to find tree")?;
 
     // Create signature
     let sig = create_signature("Ltmatrix Agent", "ltmatrix@agent")?;
@@ -505,22 +503,24 @@ pub fn amend_commit(repo: &Repository, message: Option<&str>) -> Result<Oid> {
     let parent_ids: Vec<Oid> = head_commit.parent_ids().collect();
     let mut parent_commits = Vec::new();
     for oid in &parent_ids {
-        let commit = repo.find_commit(*oid)
+        let commit = repo
+            .find_commit(*oid)
             .context("Failed to find parent commit")?;
         parent_commits.push(commit);
     }
     let parent_refs: Vec<&git2::Commit> = parent_commits.iter().collect();
 
     // Create the amended commit without updating HEAD
-    let oid = repo.commit(
-        None, // Don't update HEAD yet
-        &sig,
-        &sig,
-        &commit_message,
-        &tree,
-        parent_refs.as_slice(),
-    )
-    .context("Failed to create amended commit")?;
+    let oid = repo
+        .commit(
+            None, // Don't update HEAD yet
+            &sig,
+            &sig,
+            &commit_message,
+            &tree,
+            parent_refs.as_slice(),
+        )
+        .context("Failed to create amended commit")?;
 
     // Update HEAD to point to the new commit
     repo.reference(
@@ -536,9 +536,11 @@ pub fn amend_commit(repo: &Repository, message: Option<&str>) -> Result<Oid> {
         .context("Failed to set HEAD")?;
 
     // Checkout the tree to update the working directory
-    let new_commit = repo.find_commit(oid)
+    let new_commit = repo
+        .find_commit(oid)
         .context("Failed to find amended commit")?;
-    let new_tree = new_commit.tree()
+    let new_tree = new_commit
+        .tree()
         .context("Failed to get amended commit tree")?;
     repo.checkout_tree(new_tree.as_object(), None)
         .context("Failed to checkout amended commit tree")?;
@@ -573,8 +575,7 @@ pub fn amend_commit(repo: &Repository, message: Option<&str>) -> Result<Oid> {
 /// # Ok::<(), anyhow::Error>(())
 /// ```
 pub fn short_commit_id(repo: &Repository, oid: &Oid, length: usize) -> Result<String> {
-    let commit = repo.find_commit(*oid)
-        .context("Failed to find commit")?;
+    let commit = repo.find_commit(*oid).context("Failed to find commit")?;
 
     let short_id = commit
         .as_object()
@@ -589,9 +590,9 @@ pub fn short_commit_id(repo: &Repository, oid: &Oid, length: usize) -> Result<St
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::TempDir;
     use std::fs::{self, File};
     use std::io::Write;
+    use tempfile::TempDir;
 
     /// Helper function to create an initial commit
     fn create_initial_commit(repo: &Repository) -> Result<Oid> {
@@ -600,14 +601,7 @@ mod tests {
         let tree_oid = repo.treebuilder(None)?.write()?;
         let tree = repo.find_tree(tree_oid)?;
 
-        let oid = repo.commit(
-            Some("HEAD"),
-            &sig,
-            &sig,
-            "Initial commit",
-            &tree,
-            &[],
-        )?;
+        let oid = repo.commit(Some("HEAD"), &sig, &sig, "Initial commit", &tree, &[])?;
 
         Ok(oid)
     }
@@ -663,7 +657,10 @@ mod tests {
 
         // Create and stage a file
         let file_path = repo_path.join("test.txt");
-        File::create(&file_path).unwrap().write_all(b"content").unwrap();
+        File::create(&file_path)
+            .unwrap()
+            .write_all(b"content")
+            .unwrap();
 
         stage_files(&repo, &["test.txt"]).unwrap();
 
@@ -679,8 +676,14 @@ mod tests {
         let repo = Repository::init(repo_path).unwrap();
 
         // Create test files
-        File::create(repo_path.join("file1.txt")).unwrap().write_all(b"content1").unwrap();
-        File::create(repo_path.join("file2.txt")).unwrap().write_all(b"content2").unwrap();
+        File::create(repo_path.join("file1.txt"))
+            .unwrap()
+            .write_all(b"content1")
+            .unwrap();
+        File::create(repo_path.join("file2.txt"))
+            .unwrap()
+            .write_all(b"content2")
+            .unwrap();
 
         // Stage files
         stage_files(&repo, &["file1.txt", "file2.txt"]).unwrap();
@@ -699,7 +702,10 @@ mod tests {
 
         // Create and stage a file
         let file_path = repo_path.join("file.txt");
-        File::create(&file_path).unwrap().write_all(b"content").unwrap();
+        File::create(&file_path)
+            .unwrap()
+            .write_all(b"content")
+            .unwrap();
         stage_files(&repo, &["file.txt"]).unwrap();
 
         // Remove the file and stage removal
@@ -719,8 +725,14 @@ mod tests {
         let repo = Repository::init(repo_path).unwrap();
 
         // Create test files
-        File::create(repo_path.join("file1.txt")).unwrap().write_all(b"content1").unwrap();
-        File::create(repo_path.join("file2.txt")).unwrap().write_all(b"content2").unwrap();
+        File::create(repo_path.join("file1.txt"))
+            .unwrap()
+            .write_all(b"content1")
+            .unwrap();
+        File::create(repo_path.join("file2.txt"))
+            .unwrap()
+            .write_all(b"content2")
+            .unwrap();
 
         // Stage all
         stage_all(&repo).unwrap();
@@ -738,7 +750,10 @@ mod tests {
         let repo = Repository::init(repo_path).unwrap();
 
         // Create and stage a file
-        File::create(repo_path.join("test.txt")).unwrap().write_all(b"content").unwrap();
+        File::create(repo_path.join("test.txt"))
+            .unwrap()
+            .write_all(b"content")
+            .unwrap();
         stage_files(&repo, &["test.txt"]).unwrap();
 
         // Commit the changes
@@ -759,7 +774,10 @@ mod tests {
         // Try to commit without staging anything
         let result = commit_changes(&repo, "No changes");
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("No changes staged"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("No changes staged"));
     }
 
     #[test]
@@ -770,12 +788,18 @@ mod tests {
         let repo = Repository::init(repo_path).unwrap();
 
         // Create and commit a file
-        File::create(repo_path.join("test.txt")).unwrap().write_all(b"content").unwrap();
+        File::create(repo_path.join("test.txt"))
+            .unwrap()
+            .write_all(b"content")
+            .unwrap();
         stage_files(&repo, &["test.txt"]).unwrap();
         let original_id = commit_changes(&repo, "Original message").unwrap();
 
         // Modify and stage the file
-        File::create(repo_path.join("test.txt")).unwrap().write_all(b"updated").unwrap();
+        File::create(repo_path.join("test.txt"))
+            .unwrap()
+            .write_all(b"updated")
+            .unwrap();
         stage_files(&repo, &["test.txt"]).unwrap();
 
         // Amend the commit
@@ -830,7 +854,10 @@ mod tests {
         assert!(!has_unstaged_changes(&repo).unwrap());
 
         // Create a file (unstaged)
-        File::create(repo_path.join("test.txt")).unwrap().write_all(b"content").unwrap();
+        File::create(repo_path.join("test.txt"))
+            .unwrap()
+            .write_all(b"content")
+            .unwrap();
 
         // Should have unstaged changes
         assert!(has_unstaged_changes(&repo).unwrap());

@@ -7,16 +7,14 @@
 //! - Dependency resolution
 //! - Memory integration
 
-use ltmatrix::models::{ModeConfig, Task, TaskComplexity, TaskStatus};
-use ltmatrix::pipeline::execute::{
-    ExecuteConfig, ExecutionStatistics, TaskExecutionResult,
-};
+use async_trait::async_trait;
 use ltmatrix::agent::backend::{AgentBackend, AgentResponse, ExecutionConfig};
 use ltmatrix::agent::session::{SessionData, SessionManager};
+use ltmatrix::models::{ModeConfig, Task, TaskComplexity, TaskStatus};
+use ltmatrix::pipeline::execute::{ExecuteConfig, ExecutionStatistics, TaskExecutionResult};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::Arc;
-use async_trait::async_trait;
 use tokio::fs;
 
 /// Mock agent backend for testing
@@ -27,8 +25,14 @@ struct _MockAgent {
 
 #[async_trait]
 impl AgentBackend for _MockAgent {
-    async fn execute(&self, _prompt: &str, _config: &ExecutionConfig) -> anyhow::Result<AgentResponse> {
-        let count = self.call_count.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+    async fn execute(
+        &self,
+        _prompt: &str,
+        _config: &ExecutionConfig,
+    ) -> anyhow::Result<AgentResponse> {
+        let count = self
+            .call_count
+            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         Ok(self.responses[count % self.responses.len()].clone())
     }
 
@@ -48,12 +52,7 @@ impl AgentBackend for _MockAgent {
     fn agent(&self) -> &ltmatrix::models::Agent {
         // Return a dummy agent
         static AGENT: std::sync::OnceLock<ltmatrix::models::Agent> = std::sync::OnceLock::new();
-        AGENT.get_or_init(|| ltmatrix::models::Agent::new(
-            "mock",
-            "mock",
-            "mock-model",
-            3600,
-        ))
+        AGENT.get_or_init(|| ltmatrix::models::Agent::new("mock", "mock", "mock-model", 3600))
     }
 }
 
@@ -117,7 +116,10 @@ async fn test_execution_statistics_calculations() {
 
     assert_eq!(stats.total_tasks, 10);
     assert_eq!(stats.completed_tasks + stats.failed_tasks, 9); // 1 pending
-    assert_eq!(stats.simple_tasks + stats.moderate_tasks + stats.complex_tasks, 10);
+    assert_eq!(
+        stats.simple_tasks + stats.moderate_tasks + stats.complex_tasks,
+        10
+    );
     assert_eq!(stats.sessions_reused, 4);
 }
 
@@ -130,12 +132,9 @@ async fn test_execution_order_circular_dependencies() {
     task1.depends_on = vec!["task-2".to_string()];
     task2.depends_on = vec!["task-1".to_string()];
 
-    let task_map: HashMap<String, Task> = [
-        (task1.id.clone(), task1),
-        (task2.id.clone(), task2),
-    ]
-    .into_iter()
-    .collect();
+    let task_map: HashMap<String, Task> = [(task1.id.clone(), task1), (task2.id.clone(), task2)]
+        .into_iter()
+        .collect();
 
     // This should detect the circular dependency during topological sort
     // by either failing or by having a constraint issue
@@ -266,10 +265,7 @@ async fn test_session_cleanup_stale_sessions() {
     fs::write(&stale_path, content).await.unwrap();
 
     // Run cleanup
-    let cleaned = session_manager
-        .cleanup_stale_sessions()
-        .await
-        .unwrap();
+    let cleaned = session_manager.cleanup_stale_sessions().await.unwrap();
 
     assert_eq!(cleaned, 1);
 
@@ -281,7 +277,10 @@ async fn test_session_cleanup_stale_sessions() {
     assert!(loaded.is_some());
 
     // Verify stale session was removed
-    let loaded_stale = session_manager.load_session(&stale_session_id).await.unwrap();
+    let loaded_stale = session_manager
+        .load_session(&stale_session_id)
+        .await
+        .unwrap();
     assert!(loaded_stale.is_none());
 }
 

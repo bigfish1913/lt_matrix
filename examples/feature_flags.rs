@@ -12,17 +12,37 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("1. Basic feature flag checking:");
     let flags = FeatureFlags::stable_enabled();
 
-    println!("   Parallel execution: {}",
-        if flags.is_enabled(FeatureFlag::EnableParallelExecution) { "✓ Enabled" } else { "✗ Disabled" }
+    println!(
+        "   Parallel execution: {}",
+        if flags.is_enabled(FeatureFlag::EnableParallelExecution) {
+            "✓ Enabled"
+        } else {
+            "✗ Disabled"
+        }
     );
-    println!("   Smart cache: {}",
-        if flags.is_enabled(FeatureFlag::EnableSmartCache) { "✓ Enabled" } else { "✗ Disabled" }
+    println!(
+        "   Smart cache: {}",
+        if flags.is_enabled(FeatureFlag::EnableSmartCache) {
+            "✓ Enabled"
+        } else {
+            "✗ Disabled"
+        }
     );
-    println!("   Claude Opus backend: {}",
-        if flags.is_enabled(FeatureFlag::EnableClaudeOpusBackend) { "✓ Enabled" } else { "✗ Disabled" }
+    println!(
+        "   Claude Opus backend: {}",
+        if flags.is_enabled(FeatureFlag::EnableClaudeOpusBackend) {
+            "✓ Enabled"
+        } else {
+            "✗ Disabled"
+        }
     );
-    println!("   Incremental builds: {}",
-        if flags.is_enabled(FeatureFlag::EnableIncrementalBuilds) { "✓ Enabled" } else { "✗ Disabled" }
+    println!(
+        "   Incremental builds: {}",
+        if flags.is_enabled(FeatureFlag::EnableIncrementalBuilds) {
+            "✓ Enabled"
+        } else {
+            "✗ Disabled"
+        }
     );
 
     // Example 2: Get feature descriptions
@@ -83,8 +103,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     for user in test_users {
         let enabled = rollout_config.is_enabled_for(user);
-        println!("   - {}: {}", user,
-            if enabled { "✓ Enabled" } else { "✗ Disabled" }
+        println!(
+            "   - {}: {}",
+            user,
+            if enabled {
+                "✓ Enabled"
+            } else {
+                "✗ Disabled"
+            }
         );
     }
 
@@ -98,22 +124,33 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("   Rollout at 0% with whitelist:");
     for user in &["alice", "beta_tester1", "bob", "beta_tester2", "charlie"] {
         let enabled = rollout_whitelist.is_enabled_for(user);
-        println!("   - {}: {}", user,
-            if enabled { "✓ Enabled (whitelisted)" } else { "✗ Disabled" }
+        println!(
+            "   - {}: {}",
+            user,
+            if enabled {
+                "✓ Enabled (whitelisted)"
+            } else {
+                "✗ Disabled"
+            }
         );
     }
 
     // Example 8: Gradual rollout with blacklist
     println!("\n8. Gradual rollout (blacklist):");
 
-    let rollout_blacklist = RolloutConfig::new(100)
-        .with_excluded_user("problematic_user");
+    let rollout_blacklist = RolloutConfig::new(100).with_excluded_user("problematic_user");
 
     println!("   Rollout at 100% with blacklist:");
     for user in &["alice", "bob", "problematic_user", "charlie"] {
         let enabled = rollout_blacklist.is_enabled_for(user);
-        println!("   - {}: {}", user,
-            if enabled { "✓ Enabled" } else { "✗ Disabled (blacklisted)" }
+        println!(
+            "   - {}: {}",
+            user,
+            if enabled {
+                "✓ Enabled"
+            } else {
+                "✗ Disabled (blacklisted)"
+            }
         );
     }
 
@@ -130,7 +167,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut rollout_map = HashMap::new();
     rollout_map.insert(
         "enable_parallel_execution".to_string(),
-        RolloutConfig::new(25)
+        RolloutConfig::new(25),
     );
 
     feature_config.rollout = rollout_map;
@@ -139,12 +176,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Check for different users
     for user in &["user1", "user2", "user3", "user4", "user5"] {
-        let enabled = custom_flags.is_enabled_for_user(
-            FeatureFlag::EnableParallelExecution,
-            user
-        );
-        println!("   - {}: {}", user,
-            if enabled { "✓ Enabled" } else { "✗ Disabled" }
+        let enabled = custom_flags.is_enabled_for_user(FeatureFlag::EnableParallelExecution, user);
+        println!(
+            "   - {}: {}",
+            user,
+            if enabled {
+                "✓ Enabled"
+            } else {
+                "✗ Disabled"
+            }
         );
     }
 

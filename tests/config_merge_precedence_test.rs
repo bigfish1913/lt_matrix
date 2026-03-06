@@ -11,15 +11,13 @@
 //! 4. Built-in defaults
 
 use ltmatrix::config::settings::{
-    Config, AgentConfig, ModeConfig, ModeConfigs, OutputConfig, LoggingConfig,
-    CliOverrides, OutputFormat, LogLevel,
-    merge_configs, validate_config,
-    load_config_file,
+    load_config_file, merge_configs, validate_config, AgentConfig, CliOverrides, Config, LogLevel,
+    LoggingConfig, ModeConfig, ModeConfigs, OutputConfig, OutputFormat,
 };
-use tempfile::TempDir;
+use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
-use std::collections::HashMap;
+use tempfile::TempDir;
 
 // ============================================================================
 // Precedence Order Tests
@@ -56,12 +54,21 @@ fn test_precedence_cli_overrides_project() {
     }
 
     // Verify CLI overrides took precedence
-    assert_eq!(merged.default, Some("cli-agent".to_string()),
-               "CLI agent override should override project config");
-    assert_eq!(merged.output.format, OutputFormat::Text,
-               "CLI output format should override project config");
-    assert_eq!(merged.logging.level, LogLevel::Warn,
-               "CLI log level should override project config");
+    assert_eq!(
+        merged.default,
+        Some("cli-agent".to_string()),
+        "CLI agent override should override project config"
+    );
+    assert_eq!(
+        merged.output.format,
+        OutputFormat::Text,
+        "CLI output format should override project config"
+    );
+    assert_eq!(
+        merged.logging.level,
+        LogLevel::Warn,
+        "CLI log level should override project config"
+    );
 }
 
 #[test]
@@ -82,16 +89,25 @@ fn test_precedence_project_overrides_global() {
     let merged = merge_configs(Some(global_config), Some(project_config));
 
     // Project should override for default agent
-    assert_eq!(merged.default, Some("project-agent".to_string()),
-               "Project config should override global config for default agent");
+    assert_eq!(
+        merged.default,
+        Some("project-agent".to_string()),
+        "Project config should override global config for default agent"
+    );
 
     // Output config is completely replaced by project (even if just defaults)
-    assert_eq!(merged.output.format, OutputFormat::Text,
-               "Project's output config completely replaces global's");
+    assert_eq!(
+        merged.output.format,
+        OutputFormat::Text,
+        "Project's output config completely replaces global's"
+    );
 
     // Logging config is completely replaced by project
-    assert_eq!(merged.logging.level, LogLevel::Debug,
-               "Project's logging config completely replaces global's");
+    assert_eq!(
+        merged.logging.level,
+        LogLevel::Debug,
+        "Project's logging config completely replaces global's"
+    );
 }
 
 #[test]
@@ -109,10 +125,16 @@ fn test_precedence_global_overrides_default() {
     let merged = merge_configs(Some(global_config), None);
 
     // Global should override default
-    assert_eq!(merged.default, Some("global-agent".to_string()),
-               "Global config should override built-in defaults");
-    assert_eq!(merged.output.format, OutputFormat::Json,
-               "Global config settings should be used");
+    assert_eq!(
+        merged.default,
+        Some("global-agent".to_string()),
+        "Global config should override built-in defaults"
+    );
+    assert_eq!(
+        merged.output.format,
+        OutputFormat::Json,
+        "Global config settings should be used"
+    );
 }
 
 #[test]
@@ -141,14 +163,23 @@ fn test_precedence_full_chain() {
     let merged = merge_configs(Some(global), Some(project));
 
     // Verify project overrides global for default agent
-    assert_eq!(merged.default, Some("project-agent".to_string()),
-               "Project should override global");
+    assert_eq!(
+        merged.default,
+        Some("project-agent".to_string()),
+        "Project should override global"
+    );
 
     // Output and logging are completely replaced by project's values
-    assert_eq!(merged.output.format, OutputFormat::Text,
-               "Project's output config replaces global's completely");
-    assert_eq!(merged.logging.level, LogLevel::Debug,
-               "Project's logging config replaces global's completely");
+    assert_eq!(
+        merged.output.format,
+        OutputFormat::Text,
+        "Project's output config replaces global's completely"
+    );
+    assert_eq!(
+        merged.logging.level,
+        LogLevel::Debug,
+        "Project's logging config replaces global's completely"
+    );
 }
 
 #[test]
@@ -186,12 +217,21 @@ fn test_precedence_cli_highest_priority() {
     }
 
     // Verify CLI overrides win
-    assert_eq!(merged.default, Some("cli".to_string()),
-               "CLI should override both project and global");
-    assert_eq!(merged.output.format, OutputFormat::Text,
-               "CLI output format should override all config files");
-    assert_eq!(merged.logging.level, LogLevel::Error,
-               "CLI log level should override all config files");
+    assert_eq!(
+        merged.default,
+        Some("cli".to_string()),
+        "CLI should override both project and global"
+    );
+    assert_eq!(
+        merged.output.format,
+        OutputFormat::Text,
+        "CLI output format should override all config files"
+    );
+    assert_eq!(
+        merged.logging.level,
+        LogLevel::Error,
+        "CLI log level should override all config files"
+    );
 }
 
 // ============================================================================
@@ -207,54 +247,79 @@ fn test_deep_merge_agent_configs() {
     global_config.default = Some("claude".to_string());
 
     let mut global_agents = HashMap::new();
-    global_agents.insert("claude".to_string(), AgentConfig {
-        command: Some("claude".to_string()),
-        model: Some("claude-sonnet-4-6".to_string()),
-        timeout: Some(3600),
-    });
-    global_agents.insert("other".to_string(), AgentConfig {
-        command: Some("other-cmd".to_string()),
-        model: Some("other-model".to_string()),
-        timeout: Some(1800),
-    });
+    global_agents.insert(
+        "claude".to_string(),
+        AgentConfig {
+            command: Some("claude".to_string()),
+            model: Some("claude-sonnet-4-6".to_string()),
+            timeout: Some(3600),
+        },
+    );
+    global_agents.insert(
+        "other".to_string(),
+        AgentConfig {
+            command: Some("other-cmd".to_string()),
+            model: Some("other-model".to_string()),
+            timeout: Some(1800),
+        },
+    );
     global_config.agents = global_agents;
 
     let mut project_config = Config::default();
     let mut project_agents = HashMap::new();
     // Project overrides only model for claude agent
-    project_agents.insert("claude".to_string(), AgentConfig {
-        command: None, // Not specified, should inherit from global
-        model: Some("claude-opus-4-6".to_string()), // Override global
-        timeout: None, // Not specified, should inherit from global
-    });
+    project_agents.insert(
+        "claude".to_string(),
+        AgentConfig {
+            command: None,                              // Not specified, should inherit from global
+            model: Some("claude-opus-4-6".to_string()), // Override global
+            timeout: None,                              // Not specified, should inherit from global
+        },
+    );
     // Project adds a new agent
-    project_agents.insert("project-only".to_string(), AgentConfig {
-        command: Some("project-cmd".to_string()),
-        model: Some("project-model".to_string()),
-        timeout: Some(7200),
-    });
+    project_agents.insert(
+        "project-only".to_string(),
+        AgentConfig {
+            command: Some("project-cmd".to_string()),
+            model: Some("project-model".to_string()),
+            timeout: Some(7200),
+        },
+    );
     project_config.agents = project_agents;
 
     let merged = merge_configs(Some(global_config), Some(project_config));
 
     // Check claude agent was properly merged
     let claude = &merged.agents["claude"];
-    assert_eq!(claude.command, Some("claude".to_string()),
-               "Command should come from global when not specified in project");
-    assert_eq!(claude.model, Some("claude-opus-4-6".to_string()),
-               "Model from project should override global");
-    assert_eq!(claude.timeout, Some(3600),
-               "Timeout should come from global when not specified in project");
+    assert_eq!(
+        claude.command,
+        Some("claude".to_string()),
+        "Command should come from global when not specified in project"
+    );
+    assert_eq!(
+        claude.model,
+        Some("claude-opus-4-6".to_string()),
+        "Model from project should override global"
+    );
+    assert_eq!(
+        claude.timeout,
+        Some(3600),
+        "Timeout should come from global when not specified in project"
+    );
 
     // Check other agent from global is preserved
-    assert!(merged.agents.contains_key("other"),
-               "Agents only in global should be preserved");
+    assert!(
+        merged.agents.contains_key("other"),
+        "Agents only in global should be preserved"
+    );
     let other = &merged.agents["other"];
     assert_eq!(other.command, Some("other-cmd".to_string()));
 
     // Check project-only agent exists
-    assert!(merged.agents.contains_key("project-only"),
-               "Agents only in project should be present");
+    assert!(
+        merged.agents.contains_key("project-only"),
+        "Agents only in project should be present"
+    );
 }
 
 #[test]
@@ -313,16 +378,24 @@ fn test_deep_merge_mode_configs() {
     // Fast mode: project should completely replace global
     assert!(merged.modes.fast.is_some());
     let fast = merged.modes.fast.as_ref().unwrap();
-    assert_eq!(fast.model, Some("project-fast".to_string()),
-               "Project fast mode should override global fast mode");
-    assert_eq!(fast.max_retries, 2,
-               "All fields from project mode should be used");
+    assert_eq!(
+        fast.model,
+        Some("project-fast".to_string()),
+        "Project fast mode should override global fast mode"
+    );
+    assert_eq!(
+        fast.max_retries, 2,
+        "All fields from project mode should be used"
+    );
 
     // Standard mode: global should be used (not specified in project)
     assert!(merged.modes.standard.is_some());
     let standard = merged.modes.standard.as_ref().unwrap();
-    assert_eq!(standard.model, Some("global-standard".to_string()),
-               "Global standard mode should be used when project doesn't specify");
+    assert_eq!(
+        standard.model,
+        Some("global-standard".to_string()),
+        "Global standard mode should be used when project doesn't specify"
+    );
 
     // Expert mode: only in project
     assert!(merged.modes.expert.is_some());
@@ -558,12 +631,21 @@ fn test_cli_override_partial() {
         config.logging.level = level;
     }
 
-    assert_eq!(config.default, Some("cli-agent".to_string()),
-               "Agent should be overridden");
-    assert_eq!(config.logging.level, LogLevel::Warn,
-               "Log level should be overridden");
-    assert_eq!(config.output.format, OutputFormat::Json,
-               "Output format should remain unchanged");
+    assert_eq!(
+        config.default,
+        Some("cli-agent".to_string()),
+        "Agent should be overridden"
+    );
+    assert_eq!(
+        config.logging.level,
+        LogLevel::Warn,
+        "Log level should be overridden"
+    );
+    assert_eq!(
+        config.output.format,
+        OutputFormat::Json,
+        "Output format should remain unchanged"
+    );
 }
 
 // ============================================================================
@@ -576,11 +658,14 @@ fn test_validation_valid_config() {
         default: Some("claude".to_string()),
         agents: {
             let mut map = HashMap::new();
-            map.insert("claude".to_string(), AgentConfig {
-                command: Some("claude".to_string()),
-                model: Some("claude-sonnet-4-6".to_string()),
-                timeout: Some(3600),
-            });
+            map.insert(
+                "claude".to_string(),
+                AgentConfig {
+                    command: Some("claude".to_string()),
+                    model: Some("claude-sonnet-4-6".to_string()),
+                    timeout: Some(3600),
+                },
+            );
             map
         },
         modes: ModeConfigs::default(),
@@ -599,11 +684,14 @@ fn test_validation_missing_default_agent() {
         default: Some("nonexistent".to_string()),
         agents: {
             let mut map = HashMap::new();
-            map.insert("claude".to_string(), AgentConfig {
-                command: Some("claude".to_string()),
-                model: Some("claude-sonnet-4-6".to_string()),
-                timeout: Some(3600),
-            });
+            map.insert(
+                "claude".to_string(),
+                AgentConfig {
+                    command: Some("claude".to_string()),
+                    model: Some("claude-sonnet-4-6".to_string()),
+                    timeout: Some(3600),
+                },
+            );
             map
         },
         modes: ModeConfigs::default(),
@@ -613,11 +701,16 @@ fn test_validation_missing_default_agent() {
     };
 
     let result = validate_config(&config);
-    assert!(result.is_err(), "Config with missing default agent should fail validation");
+    assert!(
+        result.is_err(),
+        "Config with missing default agent should fail validation"
+    );
 
     let error_msg = result.unwrap_err().to_string();
-    assert!(error_msg.contains("not defined"),
-               "Error should mention agent is not defined");
+    assert!(
+        error_msg.contains("not defined"),
+        "Error should mention agent is not defined"
+    );
 }
 
 #[test]
@@ -626,11 +719,14 @@ fn test_validation_zero_timeout() {
         default: Some("test".to_string()),
         agents: {
             let mut map = HashMap::new();
-            map.insert("test".to_string(), AgentConfig {
-                command: Some("test".to_string()),
-                model: Some("test-model".to_string()),
-                timeout: Some(0), // Invalid: must be positive
-            });
+            map.insert(
+                "test".to_string(),
+                AgentConfig {
+                    command: Some("test".to_string()),
+                    model: Some("test-model".to_string()),
+                    timeout: Some(0), // Invalid: must be positive
+                },
+            );
             map
         },
         modes: ModeConfigs::default(),
@@ -640,11 +736,16 @@ fn test_validation_zero_timeout() {
     };
 
     let result = validate_config(&config);
-    assert!(result.is_err(), "Config with zero timeout should fail validation");
+    assert!(
+        result.is_err(),
+        "Config with zero timeout should fail validation"
+    );
 
     let error_msg = result.unwrap_err().to_string();
-    assert!(error_msg.contains("timeout") && error_msg.contains("positive"),
-               "Error should mention timeout must be positive");
+    assert!(
+        error_msg.contains("timeout") && error_msg.contains("positive"),
+        "Error should mention timeout must be positive"
+    );
 }
 
 #[test]
@@ -653,11 +754,14 @@ fn test_validation_excessive_timeout() {
         default: Some("test".to_string()),
         agents: {
             let mut map = HashMap::new();
-            map.insert("test".to_string(), AgentConfig {
-                command: Some("test".to_string()),
-                model: Some("test-model".to_string()),
-                timeout: Some(100000), // > 24 hours
-            });
+            map.insert(
+                "test".to_string(),
+                AgentConfig {
+                    command: Some("test".to_string()),
+                    model: Some("test-model".to_string()),
+                    timeout: Some(100000), // > 24 hours
+                },
+            );
             map
         },
         modes: ModeConfigs::default(),
@@ -667,11 +771,16 @@ fn test_validation_excessive_timeout() {
     };
 
     let result = validate_config(&config);
-    assert!(result.is_err(), "Config with excessive timeout should fail validation");
+    assert!(
+        result.is_err(),
+        "Config with excessive timeout should fail validation"
+    );
 
     let error_msg = result.unwrap_err().to_string();
-    assert!(error_msg.contains("timeout") && error_msg.contains("24 hours"),
-               "Error should mention timeout exceeds 24 hours");
+    assert!(
+        error_msg.contains("timeout") && error_msg.contains("24 hours"),
+        "Error should mention timeout exceeds 24 hours"
+    );
 }
 
 #[test]
@@ -680,11 +789,14 @@ fn test_validation_empty_command() {
         default: Some("test".to_string()),
         agents: {
             let mut map = HashMap::new();
-            map.insert("test".to_string(), AgentConfig {
-                command: Some("".to_string()), // Invalid: empty command
-                model: Some("test-model".to_string()),
-                timeout: Some(3600),
-            });
+            map.insert(
+                "test".to_string(),
+                AgentConfig {
+                    command: Some("".to_string()), // Invalid: empty command
+                    model: Some("test-model".to_string()),
+                    timeout: Some(3600),
+                },
+            );
             map
         },
         modes: ModeConfigs::default(),
@@ -694,11 +806,16 @@ fn test_validation_empty_command() {
     };
 
     let result = validate_config(&config);
-    assert!(result.is_err(), "Config with empty command should fail validation");
+    assert!(
+        result.is_err(),
+        "Config with empty command should fail validation"
+    );
 
     let error_msg = result.unwrap_err().to_string();
-    assert!(error_msg.contains("empty command"),
-               "Error should mention empty command");
+    assert!(
+        error_msg.contains("empty command"),
+        "Error should mention empty command"
+    );
 }
 
 #[test]
@@ -707,11 +824,14 @@ fn test_validation_mode_max_depth_exceeded() {
         default: Some("test".to_string()),
         agents: {
             let mut map = HashMap::new();
-            map.insert("test".to_string(), AgentConfig {
-                command: Some("test".to_string()),
-                model: Some("test-model".to_string()),
-                timeout: Some(3600),
-            });
+            map.insert(
+                "test".to_string(),
+                AgentConfig {
+                    command: Some("test".to_string()),
+                    model: Some("test-model".to_string()),
+                    timeout: Some(3600),
+                },
+            );
             map
         },
         modes: ModeConfigs {
@@ -733,11 +853,16 @@ fn test_validation_mode_max_depth_exceeded() {
     };
 
     let result = validate_config(&config);
-    assert!(result.is_err(), "Config with excessive max_depth should fail validation");
+    assert!(
+        result.is_err(),
+        "Config with excessive max_depth should fail validation"
+    );
 
     let error_msg = result.unwrap_err().to_string();
-    assert!(error_msg.contains("max_depth") && error_msg.contains("5"),
-               "Error should mention max_depth exceeds recommended maximum");
+    assert!(
+        error_msg.contains("max_depth") && error_msg.contains("5"),
+        "Error should mention max_depth exceeds recommended maximum"
+    );
 }
 
 #[test]
@@ -746,11 +871,14 @@ fn test_validation_mode_max_retries_exceeded() {
         default: Some("test".to_string()),
         agents: {
             let mut map = HashMap::new();
-            map.insert("test".to_string(), AgentConfig {
-                command: Some("test".to_string()),
-                model: Some("test-model".to_string()),
-                timeout: Some(3600),
-            });
+            map.insert(
+                "test".to_string(),
+                AgentConfig {
+                    command: Some("test".to_string()),
+                    model: Some("test-model".to_string()),
+                    timeout: Some(3600),
+                },
+            );
             map
         },
         modes: ModeConfigs {
@@ -772,11 +900,16 @@ fn test_validation_mode_max_retries_exceeded() {
     };
 
     let result = validate_config(&config);
-    assert!(result.is_err(), "Config with excessive max_retries should fail validation");
+    assert!(
+        result.is_err(),
+        "Config with excessive max_retries should fail validation"
+    );
 
     let error_msg = result.unwrap_err().to_string();
-    assert!(error_msg.contains("max_retries") && error_msg.contains("10"),
-               "Error should mention max_retries exceeds recommended maximum");
+    assert!(
+        error_msg.contains("max_retries") && error_msg.contains("10"),
+        "Error should mention max_retries exceeds recommended maximum"
+    );
 }
 
 #[test]
@@ -785,11 +918,14 @@ fn test_validation_mode_zero_timeout_plan() {
         default: Some("test".to_string()),
         agents: {
             let mut map = HashMap::new();
-            map.insert("test".to_string(), AgentConfig {
-                command: Some("test".to_string()),
-                model: Some("test-model".to_string()),
-                timeout: Some(3600),
-            });
+            map.insert(
+                "test".to_string(),
+                AgentConfig {
+                    command: Some("test".to_string()),
+                    model: Some("test-model".to_string()),
+                    timeout: Some(3600),
+                },
+            );
             map
         },
         modes: ModeConfigs {
@@ -811,11 +947,16 @@ fn test_validation_mode_zero_timeout_plan() {
     };
 
     let result = validate_config(&config);
-    assert!(result.is_err(), "Config with zero timeout_plan should fail validation");
+    assert!(
+        result.is_err(),
+        "Config with zero timeout_plan should fail validation"
+    );
 
     let error_msg = result.unwrap_err().to_string();
-    assert!(error_msg.contains("timeout_plan") && error_msg.contains("positive"),
-               "Error should mention timeout_plan must be positive");
+    assert!(
+        error_msg.contains("timeout_plan") && error_msg.contains("positive"),
+        "Error should mention timeout_plan must be positive"
+    );
 }
 
 #[test]
@@ -824,11 +965,14 @@ fn test_validation_mode_zero_timeout_exec() {
         default: Some("test".to_string()),
         agents: {
             let mut map = HashMap::new();
-            map.insert("test".to_string(), AgentConfig {
-                command: Some("test".to_string()),
-                model: Some("test-model".to_string()),
-                timeout: Some(3600),
-            });
+            map.insert(
+                "test".to_string(),
+                AgentConfig {
+                    command: Some("test".to_string()),
+                    model: Some("test-model".to_string()),
+                    timeout: Some(3600),
+                },
+            );
             map
         },
         modes: ModeConfigs {
@@ -850,11 +994,16 @@ fn test_validation_mode_zero_timeout_exec() {
     };
 
     let result = validate_config(&config);
-    assert!(result.is_err(), "Config with zero timeout_exec should fail validation");
+    assert!(
+        result.is_err(),
+        "Config with zero timeout_exec should fail validation"
+    );
 
     let error_msg = result.unwrap_err().to_string();
-    assert!(error_msg.contains("timeout_exec") && error_msg.contains("positive"),
-               "Error should mention timeout_exec must be positive");
+    assert!(
+        error_msg.contains("timeout_exec") && error_msg.contains("positive"),
+        "Error should mention timeout_exec must be positive"
+    );
 }
 
 #[test]
@@ -863,11 +1012,14 @@ fn test_validation_mode_too_short_timeout_exec() {
         default: Some("test".to_string()),
         agents: {
             let mut map = HashMap::new();
-            map.insert("test".to_string(), AgentConfig {
-                command: Some("test".to_string()),
-                model: Some("test-model".to_string()),
-                timeout: Some(3600),
-            });
+            map.insert(
+                "test".to_string(),
+                AgentConfig {
+                    command: Some("test".to_string()),
+                    model: Some("test-model".to_string()),
+                    timeout: Some(3600),
+                },
+            );
             map
         },
         modes: ModeConfigs {
@@ -889,11 +1041,16 @@ fn test_validation_mode_too_short_timeout_exec() {
     };
 
     let result = validate_config(&config);
-    assert!(result.is_err(), "Config with too short timeout_exec should fail validation");
+    assert!(
+        result.is_err(),
+        "Config with too short timeout_exec should fail validation"
+    );
 
     let error_msg = result.unwrap_err().to_string();
-    assert!(error_msg.contains("timeout_exec") && error_msg.contains("60"),
-               "Error should mention timeout_exec is less than recommended minimum");
+    assert!(
+        error_msg.contains("timeout_exec") && error_msg.contains("60"),
+        "Error should mention timeout_exec is less than recommended minimum"
+    );
 }
 
 #[test]
@@ -903,11 +1060,14 @@ fn test_validation_fast_mode_allows_short_timeout() {
         default: Some("test".to_string()),
         agents: {
             let mut map = HashMap::new();
-            map.insert("test".to_string(), AgentConfig {
-                command: Some("test".to_string()),
-                model: Some("test-model".to_string()),
-                timeout: Some(3600),
-            });
+            map.insert(
+                "test".to_string(),
+                AgentConfig {
+                    command: Some("test".to_string()),
+                    model: Some("test-model".to_string()),
+                    timeout: Some(3600),
+                },
+            );
             map
         },
         modes: ModeConfigs {
@@ -945,7 +1105,10 @@ fn test_validation_no_default_agent() {
     };
 
     let result = validate_config(&config);
-    assert!(result.is_ok(), "Config with no default agent should be valid");
+    assert!(
+        result.is_ok(),
+        "Config with no default agent should be valid"
+    );
 }
 
 // ============================================================================
@@ -1006,18 +1169,24 @@ fn test_merge_with_both_none() {
 fn test_agent_config_partial_override() {
     // Test that agent config fields are individually overridden
     let mut base_agents = HashMap::new();
-    base_agents.insert("test".to_string(), AgentConfig {
-        command: Some("base-command".to_string()),
-        model: Some("base-model".to_string()),
-        timeout: Some(1000),
-    });
+    base_agents.insert(
+        "test".to_string(),
+        AgentConfig {
+            command: Some("base-command".to_string()),
+            model: Some("base-model".to_string()),
+            timeout: Some(1000),
+        },
+    );
 
     let mut override_agents = HashMap::new();
-    override_agents.insert("test".to_string(), AgentConfig {
-        command: None, // Keep base
-        model: Some("override-model".to_string()), // Override base
-        timeout: None, // Keep base
-    });
+    override_agents.insert(
+        "test".to_string(),
+        AgentConfig {
+            command: None,                             // Keep base
+            model: Some("override-model".to_string()), // Override base
+            timeout: None,                             // Keep base
+        },
+    );
 
     let mut merged = HashMap::new();
     for (key, override_agent) in override_agents {
@@ -1049,7 +1218,9 @@ fn test_full_config_load_with_overrides_integration() {
     let global_dir = temp_dir.path().join("home").join(".ltmatrix");
     fs::create_dir_all(&global_dir).unwrap();
     let global_config = global_dir.join("config.toml");
-    fs::write(&global_config, r#"
+    fs::write(
+        &global_config,
+        r#"
 default = "global-agent"
 
 [agents.global-agent]
@@ -1063,13 +1234,17 @@ colored = true
 
 [logging]
 level = "warn"
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     // Create project config (output config will be default: Text, colored=false, progress=false)
     let project_dir = temp_dir.path().join("project").join(".ltmatrix");
     fs::create_dir_all(&project_dir).unwrap();
     let project_config = project_dir.join("config.toml");
-    fs::write(&project_config, r#"
+    fs::write(
+        &project_config,
+        r#"
 default = "project-agent"
 
 [agents.project-agent]
@@ -1079,7 +1254,9 @@ timeout = 1800
 
 [logging]
 level = "debug"
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     // Load configs
     let global = load_config_file(&global_config).unwrap();
@@ -1099,10 +1276,15 @@ level = "debug"
     assert_eq!(merged.logging.level, LogLevel::Debug);
 
     // Output config is completely replaced by project's defaults
-    assert_eq!(merged.output.format, OutputFormat::Text,
-               "Project's output config (defaults) replaces global's");
-    assert_eq!(merged.output.colored, true,
-               "Project's output colored (default=true) replaces global's");
+    assert_eq!(
+        merged.output.format,
+        OutputFormat::Text,
+        "Project's output config (defaults) replaces global's"
+    );
+    assert_eq!(
+        merged.output.colored, true,
+        "Project's output colored (default=true) replaces global's"
+    );
 }
 
 #[test]
@@ -1113,7 +1295,9 @@ fn test_config_validation_after_merge() {
     let global_dir = temp_dir.path().join(".ltmatrix");
     fs::create_dir_all(&global_dir).unwrap();
     let global_config = global_dir.join("config.toml");
-    fs::write(&global_config, r#"
+    fs::write(
+        &global_config,
+        r#"
 default = "claude"
 
 [agents.claude]
@@ -1125,7 +1309,9 @@ timeout = 3600
 command = "other"
 model = "other-model"
 timeout = 1800
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     let global = load_config_file(&global_config).unwrap();
 
@@ -1135,9 +1321,13 @@ timeout = 1800
 
     // Create project config that references non-existent agent
     let project_config = global_dir.join("project.toml");
-    fs::write(&project_config, r#"
+    fs::write(
+        &project_config,
+        r#"
 default = "nonexistent-agent"
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     let project = load_config_file(&project_config).unwrap();
 
@@ -1146,5 +1336,8 @@ default = "nonexistent-agent"
 
     // Validate merged config - should fail because default agent doesn't exist
     let result = validate_config(&merged);
-    assert!(result.is_err(), "Merged config with invalid default agent should fail");
+    assert!(
+        result.is_err(),
+        "Merged config with invalid default agent should fail"
+    );
 }

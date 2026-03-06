@@ -294,7 +294,10 @@ mod tests {
         assert_eq!(config.get_command(&AgentBackend::Claude), "claude");
 
         let config_with_cmd = AgentConfig::new("test").with_command("my-agent");
-        assert_eq!(config_with_cmd.get_command(&AgentBackend::Claude), "my-agent");
+        assert_eq!(
+            config_with_cmd.get_command(&AgentBackend::Claude),
+            "my-agent"
+        );
     }
 
     #[test]

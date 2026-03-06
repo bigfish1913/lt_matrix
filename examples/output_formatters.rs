@@ -5,7 +5,10 @@
 
 use ltmatrix::cli::args::OutputFormat;
 use ltmatrix::models::{Task, TaskComplexity, TaskStatus};
-use ltmatrix::output::{ExecutionResult, Formatter, JsonFormatter, MarkdownFormatter, ReportGenerator, TerminalFormatter, TaskUpdateType};
+use ltmatrix::output::{
+    ExecutionResult, Formatter, JsonFormatter, MarkdownFormatter, ReportGenerator, TaskUpdateType,
+    TerminalFormatter,
+};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== Output Formatter Examples ===\n");
@@ -57,8 +60,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n--- Task Updates ---");
     let formatter = TerminalFormatter::new();
     let sample_task = &result.tasks[0];
-    println!("{}", formatter.format_task_update(sample_task, TaskUpdateType::Started)?);
-    println!("{}", formatter.format_task_update(sample_task, TaskUpdateType::Completed)?);
+    println!(
+        "{}",
+        formatter.format_task_update(sample_task, TaskUpdateType::Started)?
+    );
+    println!(
+        "{}",
+        formatter.format_task_update(sample_task, TaskUpdateType::Completed)?
+    );
 
     // Progress updates
     println!("\n--- Progress Updates ---");

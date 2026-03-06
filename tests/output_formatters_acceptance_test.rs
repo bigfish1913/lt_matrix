@@ -8,27 +8,35 @@
 //! 5. Implement --output flag to select format
 //! 6. Create final report generation with task summary, timing, and outcome
 
+use chrono::{Duration, Utc};
+use clap::Parser;
 use ltmatrix::cli::args::{Args, OutputFormat};
 use ltmatrix::models::{Task, TaskComplexity, TaskStatus};
 use ltmatrix::output::{
     create_formatter, ExecutionResult, Formatter, JsonFormatter, MarkdownFormatter,
     ReportGenerator, TaskUpdateType, TerminalFormatter,
 };
-use chrono::{Duration, Utc};
-use clap::Parser;
 use tempfile::TempDir;
 
 /// Helper to create a realistic execution result
 fn create_realistic_result() -> ExecutionResult {
     let now = Utc::now();
 
-    let mut task1 = Task::new("task-1", "Design database schema", "Create user and post tables");
+    let mut task1 = Task::new(
+        "task-1",
+        "Design database schema",
+        "Create user and post tables",
+    );
     task1.status = TaskStatus::Completed;
     task1.complexity = TaskComplexity::Moderate;
     task1.started_at = Some(now - Duration::seconds(120));
     task1.completed_at = Some(now - Duration::seconds(90));
 
-    let mut task2 = Task::new("task-2", "Implement API endpoints", "Create REST API routes");
+    let mut task2 = Task::new(
+        "task-2",
+        "Implement API endpoints",
+        "Create REST API routes",
+    );
     task2.status = TaskStatus::Completed;
     task2.complexity = TaskComplexity::Complex;
     task2.started_at = Some(now - Duration::seconds(90));
@@ -135,8 +143,8 @@ fn acceptance_3_json_formatter_produces_structured_json() {
     let output = formatter.format_result(&result).unwrap();
 
     // Must be valid JSON
-    let parsed: serde_json::Value = serde_json::from_str(&output)
-        .expect("Output must be valid JSON");
+    let parsed: serde_json::Value =
+        serde_json::from_str(&output).expect("Output must be valid JSON");
 
     // Verify structure has expected fields
     assert!(parsed.get("goal").is_some());
@@ -152,8 +160,7 @@ fn acceptance_3_json_formatter_is_parseable() {
     let output = formatter.format_result(&result).unwrap();
 
     // Should be parseable without errors
-    let parsed: serde_json::Value = serde_json::from_str(&output)
-        .expect("JSON must be parseable");
+    let parsed: serde_json::Value = serde_json::from_str(&output).expect("JSON must be parseable");
 
     // Verify we can access nested data
     assert_eq!(parsed["goal"], "Build REST API for blog platform");
@@ -172,8 +179,7 @@ fn acceptance_3_json_compact_mode_exists() {
     assert!(!output.contains("\n") || output.lines().count() <= 2);
 
     // Still must be valid JSON
-    let _: serde_json::Value = serde_json::from_str(&output)
-        .expect("Compact JSON must be valid");
+    let _: serde_json::Value = serde_json::from_str(&output).expect("Compact JSON must be valid");
 }
 
 // ============================================================================
@@ -230,44 +236,31 @@ fn acceptance_4_markdown_summary_only_mode() {
 
 #[test]
 fn acceptance_5_output_flag_accepts_text() {
-    let args = Args::try_parse_from(&[
-        "ltmatrix",
-        "--output", "text",
-        "test goal"
-    ]).expect("Should parse --output text");
+    let args = Args::try_parse_from(&["ltmatrix", "--output", "text", "test goal"])
+        .expect("Should parse --output text");
 
     assert_eq!(args.output, Some(OutputFormat::Text));
 }
 
 #[test]
 fn acceptance_5_output_flag_accepts_json() {
-    let args = Args::try_parse_from(&[
-        "ltmatrix",
-        "--output", "json",
-        "test goal"
-    ]).expect("Should parse --output json");
+    let args = Args::try_parse_from(&["ltmatrix", "--output", "json", "test goal"])
+        .expect("Should parse --output json");
 
     assert_eq!(args.output, Some(OutputFormat::Json));
 }
 
 #[test]
 fn acceptance_5_output_flag_accepts_json_compact() {
-    let args = Args::try_parse_from(&[
-        "ltmatrix",
-        "--output", "json-compact",
-        "test goal"
-    ]).expect("Should parse --output json-compact");
+    let args = Args::try_parse_from(&["ltmatrix", "--output", "json-compact", "test goal"])
+        .expect("Should parse --output json-compact");
 
     assert_eq!(args.output, Some(OutputFormat::JsonCompact));
 }
 
 #[test]
 fn acceptance_5_output_flag_rejects_invalid_format() {
-    let result = Args::try_parse_from(&[
-        "ltmatrix",
-        "--output", "invalid-format",
-        "test goal"
-    ]);
+    let result = Args::try_parse_from(&["ltmatrix", "--output", "invalid-format", "test goal"]);
 
     assert!(result.is_err(), "Should reject invalid output format");
 }
@@ -276,11 +269,13 @@ fn acceptance_5_output_flag_rejects_invalid_format() {
 fn acceptance_5_output_flag_works_with_other_flags() {
     let args = Args::try_parse_from(&[
         "ltmatrix",
-        "--output", "json",
+        "--output",
+        "json",
         "--dry-run",
         "--fast",
-        "test goal"
-    ]).expect("Should work with other flags");
+        "test goal",
+    ])
+    .expect("Should work with other flags");
 
     assert_eq!(args.output, Some(OutputFormat::Json));
     assert!(args.dry_run);
@@ -358,7 +353,9 @@ fn acceptance_6_report_generator_creates_final_report() {
 
     let rt = tokio::runtime::Runtime::new().unwrap();
     let result_file = rt.block_on(async {
-        generator.generate_report_to_file(&result, &report_path).await
+        generator
+            .generate_report_to_file(&result, &report_path)
+            .await
     });
 
     assert!(result_file.is_ok());
@@ -377,8 +374,8 @@ fn acceptance_6_report_generator_creates_final_report() {
 #[test]
 fn integration_full_workflow_with_terminal_output() {
     // Simulate: ltmatrix "build feature"
-    let args = Args::try_parse_from(&["ltmatrix", "build feature"])
-        .expect("Should parse basic command");
+    let args =
+        Args::try_parse_from(&["ltmatrix", "build feature"]).expect("Should parse basic command");
 
     // Should default to terminal output
     let format = args.output.unwrap_or(OutputFormat::Text);
@@ -394,11 +391,8 @@ fn integration_full_workflow_with_terminal_output() {
 #[test]
 fn integration_full_workflow_with_json_output() {
     // Simulate: ltmatrix --output json "build feature"
-    let args = Args::try_parse_from(&[
-        "ltmatrix",
-        "--output", "json",
-        "build feature"
-    ]).expect("Should parse with --output flag");
+    let args = Args::try_parse_from(&["ltmatrix", "--output", "json", "build feature"])
+        .expect("Should parse with --output flag");
 
     assert_eq!(args.output, Some(OutputFormat::Json));
 
@@ -411,8 +405,8 @@ fn integration_full_workflow_with_json_output() {
     let output = formatter.format_result(&result).unwrap();
 
     // Verify JSON output is structured and parseable
-    let parsed: serde_json::Value = serde_json::from_str(&output)
-        .expect("Should produce valid JSON");
+    let parsed: serde_json::Value =
+        serde_json::from_str(&output).expect("Should produce valid JSON");
 
     assert_eq!(parsed["goal"], "build feature");
 }
@@ -440,12 +434,16 @@ async fn integration_save_report_to_file_all_formats() {
         assert!(path.exists(), "Report file should exist: {}", filename);
 
         let content = tokio::fs::read_to_string(&path).await.unwrap();
-        assert!(!content.is_empty(), "Report should have content: {}", filename);
+        assert!(
+            !content.is_empty(),
+            "Report should have content: {}",
+            filename
+        );
 
         // JSON formats should be valid
         if matches!(format, OutputFormat::Json | OutputFormat::JsonCompact) {
-            let _: serde_json::Value = serde_json::from_str(&content)
-                .expect("JSON report should be valid");
+            let _: serde_json::Value =
+                serde_json::from_str(&content).expect("JSON report should be valid");
         }
     }
 }
@@ -467,7 +465,8 @@ fn integration_task_updates_during_execution() {
         let update_result = generator.print_task_update(task, update_type);
         assert!(update_result.is_ok(), "Should print task update {}", i + 1);
 
-        let progress_result = generator.print_progress(i + 1, execution_result.tasks.len(), "Working on task");
+        let progress_result =
+            generator.print_progress(i + 1, execution_result.tasks.len(), "Working on task");
         assert!(progress_result.is_ok(), "Should print progress");
     }
 

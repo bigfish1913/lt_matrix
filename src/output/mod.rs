@@ -135,9 +135,21 @@ impl Formatter for TerminalFormatter {
 
         // Header
         if self.use_colors {
-            output.push_str(&format!("{}\n", console::style("╔═══════════════════════════════════════════════════════════════╗").bold()));
-            output.push_str(&format!("{}\n", console::style("║              LTMATRIX EXECUTION REPORT                        ║").bold()));
-            output.push_str(&format!("{}\n", console::style("╚═══════════════════════════════════════════════════════════════╝").bold()));
+            output.push_str(&format!(
+                "{}\n",
+                console::style("╔═══════════════════════════════════════════════════════════════╗")
+                    .bold()
+            ));
+            output.push_str(&format!(
+                "{}\n",
+                console::style("║              LTMATRIX EXECUTION REPORT                        ║")
+                    .bold()
+            ));
+            output.push_str(&format!(
+                "{}\n",
+                console::style("╚═══════════════════════════════════════════════════════════════╝")
+                    .bold()
+            ));
         } else {
             output.push_str("LTMATRIX EXECUTION REPORT\n");
             output.push_str(&str::repeat("=", 70));
@@ -148,7 +160,11 @@ impl Formatter for TerminalFormatter {
         // Goal
         output.push_str(&format!("Goal: {}\n", result.goal));
         if result.dry_run {
-            output.push_str(&console::style("Mode: DRY RUN (no changes made)").yellow().to_string());
+            output.push_str(
+                &console::style("Mode: DRY RUN (no changes made)")
+                    .yellow()
+                    .to_string(),
+            );
         } else {
             output.push_str(&console::style("Mode: EXECUTION").green().to_string());
         }
@@ -176,23 +192,36 @@ impl Formatter for TerminalFormatter {
         output.push('\n');
 
         // Task breakdown by complexity
-        let (simple, moderate, complex) = result.tasks.iter().fold(
-            (0, 0, 0),
-            |(s, m, c), task| match task.complexity {
-                TaskComplexity::Simple => (s + 1, m, c),
-                TaskComplexity::Moderate => (s, m + 1, c),
-                TaskComplexity::Complex => (s, m, c + 1),
-            },
-        );
+        let (simple, moderate, complex) =
+            result
+                .tasks
+                .iter()
+                .fold((0, 0, 0), |(s, m, c), task| match task.complexity {
+                    TaskComplexity::Simple => (s + 1, m, c),
+                    TaskComplexity::Moderate => (s, m + 1, c),
+                    TaskComplexity::Complex => (s, m, c + 1),
+                });
 
         if self.use_colors {
             output.push_str(&console::style("COMPLEXITY BREAKDOWN\n").bold().to_string());
         } else {
             output.push_str("COMPLEXITY BREAKDOWN\n");
         }
-        output.push_str(&format!("  Simple: {} {}\n", simple, self.format_complexity(&TaskComplexity::Simple)));
-        output.push_str(&format!("  Moderate: {} {}\n", moderate, self.format_complexity(&TaskComplexity::Moderate)));
-        output.push_str(&format!("  Complex: {} {}\n", complex, self.format_complexity(&TaskComplexity::Complex)));
+        output.push_str(&format!(
+            "  Simple: {} {}\n",
+            simple,
+            self.format_complexity(&TaskComplexity::Simple)
+        ));
+        output.push_str(&format!(
+            "  Moderate: {} {}\n",
+            moderate,
+            self.format_complexity(&TaskComplexity::Moderate)
+        ));
+        output.push_str(&format!(
+            "  Complex: {} {}\n",
+            complex,
+            self.format_complexity(&TaskComplexity::Complex)
+        ));
         output.push('\n');
 
         // Task details
@@ -204,11 +233,20 @@ impl Formatter for TerminalFormatter {
 
         for (i, task) in result.tasks.iter().enumerate() {
             output.push_str(&format!("  {}. {} ({})\n", i + 1, task.id, task.title));
-            output.push_str(&format!("     Status: {}\n", self.format_status(&task.status)));
-            output.push_str(&format!("     Complexity: {}\n", self.format_complexity(&task.complexity)));
+            output.push_str(&format!(
+                "     Status: {}\n",
+                self.format_status(&task.status)
+            ));
+            output.push_str(&format!(
+                "     Complexity: {}\n",
+                self.format_complexity(&task.complexity)
+            ));
 
             if !task.depends_on.is_empty() {
-                output.push_str(&format!("     Dependencies: {}\n", task.depends_on.join(", ")));
+                output.push_str(&format!(
+                    "     Dependencies: {}\n",
+                    task.depends_on.join(", ")
+                ));
             }
 
             if !task.subtasks.is_empty() {
@@ -240,15 +278,25 @@ impl Formatter for TerminalFormatter {
     fn format_task_update(&self, task: &Task, update_type: TaskUpdateType) -> Result<String> {
         let status_str = match update_type {
             TaskUpdateType::Started => format!("▶ {} started", console::style(&task.id).cyan()),
-            TaskUpdateType::InProgress => format!("↻ {} in progress", console::style(&task.id).yellow()),
+            TaskUpdateType::InProgress => {
+                format!("↻ {} in progress", console::style(&task.id).yellow())
+            }
             TaskUpdateType::Completed => {
                 format!("✓ {} completed", console::style(&task.id).green())
             }
             TaskUpdateType::Failed => format!("✗ {} failed", console::style(&task.id).red()),
-            TaskUpdateType::Retrying => format!("⟳ {} retrying (attempt {})", console::style(&task.id).yellow(), task.retry_count + 1),
+            TaskUpdateType::Retrying => format!(
+                "⟳ {} retrying (attempt {})",
+                console::style(&task.id).yellow(),
+                task.retry_count + 1
+            ),
         };
 
-        Ok(format!("{} {}", status_str, console::style(format!("- {}", task.title)).dim()))
+        Ok(format!(
+            "{} {}",
+            status_str,
+            console::style(format!("- {}", task.title)).dim()
+        ))
     }
 
     fn format_progress(&self, current: usize, total: usize, message: &str) -> Result<String> {
@@ -432,7 +480,14 @@ impl Formatter for MarkdownFormatter {
         // Title and metadata
         output.push_str("# LTMATRIX Execution Report\n\n");
         output.push_str(&format!("**Goal:** {}\n\n", result.goal));
-        output.push_str(&format!("**Mode:** {}\n\n", if result.dry_run { "Dry Run" } else { "Execution" }));
+        output.push_str(&format!(
+            "**Mode:** {}\n\n",
+            if result.dry_run {
+                "Dry Run"
+            } else {
+                "Execution"
+            }
+        ));
 
         // Summary section
         output.push_str("## Summary\n\n");
@@ -450,14 +505,15 @@ impl Formatter for MarkdownFormatter {
         output.push_str(&format!("- **Success Rate:** {:.1}%\n\n", success_rate));
 
         // Complexity breakdown
-        let (simple, moderate, complex) = result.tasks.iter().fold(
-            (0, 0, 0),
-            |(s, m, c), task| match task.complexity {
-                TaskComplexity::Simple => (s + 1, m, c),
-                TaskComplexity::Moderate => (s, m + 1, c),
-                TaskComplexity::Complex => (s, m, c + 1),
-            },
-        );
+        let (simple, moderate, complex) =
+            result
+                .tasks
+                .iter()
+                .fold((0, 0, 0), |(s, m, c), task| match task.complexity {
+                    TaskComplexity::Simple => (s + 1, m, c),
+                    TaskComplexity::Moderate => (s, m + 1, c),
+                    TaskComplexity::Complex => (s, m, c + 1),
+                });
 
         output.push_str("## Complexity Breakdown\n\n");
         output.push_str(&format!("- **Simple:** {} tasks\n", simple));
@@ -476,13 +532,21 @@ impl Formatter for MarkdownFormatter {
                 output.push_str(&format!("**Complexity:** {:?}\n\n", task.complexity));
 
                 if !task.depends_on.is_empty() {
-                    output.push_str(&format!("**Dependencies:** {}\n\n", task.depends_on.join(", ")));
+                    output.push_str(&format!(
+                        "**Dependencies:** {}\n\n",
+                        task.depends_on.join(", ")
+                    ));
                 }
 
                 if !task.subtasks.is_empty() {
                     output.push_str(&format!("**Subtasks:** {} items\n\n", task.subtasks.len()));
                     for (j, subtask) in task.subtasks.iter().enumerate() {
-                        output.push_str(&format!("  {}. {} - {:?}\n", j + 1, subtask.id, subtask.status));
+                        output.push_str(&format!(
+                            "  {}. {} - {:?}\n",
+                            j + 1,
+                            subtask.id,
+                            subtask.status
+                        ));
                     }
                     output.push('\n');
                 }
@@ -525,7 +589,10 @@ impl Formatter for MarkdownFormatter {
             TaskUpdateType::Retrying => "⟳",
         };
 
-        Ok(format!("{} **{}** - {} ({:?})", icon, task.id, task.title, task.status))
+        Ok(format!(
+            "{} **{}** - {} ({:?})",
+            icon, task.id, task.title, task.status
+        ))
     }
 
     fn format_progress(&self, current: usize, total: usize, message: &str) -> Result<String> {
@@ -537,10 +604,7 @@ impl Formatter for MarkdownFormatter {
 
         Ok(format!(
             "**Progress:** [{}/{}] {:.0}% - {}",
-            current,
-            total,
-            percentage,
-            message
+            current, total, percentage, message
         ))
     }
 }
@@ -689,10 +753,14 @@ mod tests {
         let formatter = TerminalFormatter::new();
         let task = Task::new("task-1", "Test Task", "A test task");
 
-        let started = formatter.format_task_update(&task, TaskUpdateType::Started).unwrap();
+        let started = formatter
+            .format_task_update(&task, TaskUpdateType::Started)
+            .unwrap();
         assert!(started.contains("started"));
 
-        let completed = formatter.format_task_update(&task, TaskUpdateType::Completed).unwrap();
+        let completed = formatter
+            .format_task_update(&task, TaskUpdateType::Completed)
+            .unwrap();
         assert!(completed.contains("completed"));
     }
 

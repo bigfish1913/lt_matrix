@@ -48,9 +48,7 @@ fn test_claude_agent_with_custom_config() {
 
 #[tokio::test]
 async fn test_claude_agent_without_verification() {
-    let agent = ClaudeAgent::new()
-        .unwrap()
-        .without_verification();
+    let agent = ClaudeAgent::new().unwrap().without_verification();
 
     // Health check should succeed when verification is disabled
     let health_result = agent.health_check().await;
@@ -257,10 +255,7 @@ async fn test_session_deletion() {
 
     assert!(session.file_path.exists());
 
-    let deleted = manager
-        .delete_session(&session.session_id)
-        .await
-        .unwrap();
+    let deleted = manager.delete_session(&session.session_id).await.unwrap();
 
     assert!(deleted, "Should return true when session is deleted");
     assert!(!session.file_path.exists(), "File should be removed");
@@ -289,8 +284,14 @@ async fn test_session_cleanup_stale_sessions() {
     let cleaned = manager.cleanup_stale_sessions().await.unwrap();
 
     assert_eq!(cleaned, 1, "Should clean up 1 stale session");
-    assert!(!stale_session.file_path.exists(), "Stale session should be removed");
-    assert!(fresh_session.file_path.exists(), "Fresh session should remain");
+    assert!(
+        !stale_session.file_path.exists(),
+        "Stale session should be removed"
+    );
+    assert!(
+        fresh_session.file_path.exists(),
+        "Fresh session should remain"
+    );
 }
 
 #[tokio::test]
@@ -324,7 +325,10 @@ async fn test_session_manager_nonexistent_session_load() {
 
     let result = manager.load_session("nonexistent-id").await.unwrap();
 
-    assert!(result.is_none(), "Should return None for nonexistent session");
+    assert!(
+        result.is_none(),
+        "Should return None for nonexistent session"
+    );
 }
 
 #[tokio::test]
@@ -360,7 +364,10 @@ async fn test_session_creation_in_nonexistent_directory() {
 
     assert!(nested_dir.exists(), "Should create nested directories");
 
-    let session = manager.create_session("claude", "claude-sonnet-4-6").await.unwrap();
+    let session = manager
+        .create_session("claude", "claude-sonnet-4-6")
+        .await
+        .unwrap();
     assert!(session.file_path.exists());
 }
 
@@ -371,7 +378,10 @@ async fn test_session_manager_list_empty_directory() {
 
     let sessions = manager.list_sessions().await.unwrap();
 
-    assert!(sessions.is_empty(), "Empty directory should return empty list");
+    assert!(
+        sessions.is_empty(),
+        "Empty directory should return empty list"
+    );
 }
 
 #[tokio::test]
@@ -402,11 +412,7 @@ async fn test_session_concurrent_access() {
 
 #[tokio::test]
 async fn test_session_with_different_models() {
-    let models = vec![
-        "claude-haiku-4-5",
-        "claude-sonnet-4-6",
-        "claude-opus-4-6",
-    ];
+    let models = vec!["claude-haiku-4-5", "claude-sonnet-4-6", "claude-opus-4-6"];
 
     for model in models {
         let session = SessionData::new("claude", model);
@@ -439,9 +445,7 @@ async fn test_claude_agent_agent_accessor() {
 
 #[tokio::test]
 async fn test_claude_agent_health_check_with_verification_disabled() {
-    let agent = ClaudeAgent::new()
-        .unwrap()
-        .without_verification();
+    let agent = ClaudeAgent::new().unwrap().without_verification();
 
     // Should return Ok(true) when verification is disabled
     let result = agent.health_check().await;
@@ -451,9 +455,7 @@ async fn test_claude_agent_health_check_with_verification_disabled() {
 
 #[tokio::test]
 async fn test_claude_agent_task_prompt_formatting() {
-    let agent = ClaudeAgent::new()
-        .unwrap()
-        .without_verification();
+    let agent = ClaudeAgent::new().unwrap().without_verification();
 
     let task = Task::new("task-1", "Test Task", "A test description");
     let context = "Some context information";
@@ -470,9 +472,7 @@ async fn test_claude_agent_task_prompt_formatting() {
 
 #[tokio::test]
 async fn test_claude_agent_execute_with_disabled_verification() {
-    let agent = ClaudeAgent::new()
-        .unwrap()
-        .without_verification();
+    let agent = ClaudeAgent::new().unwrap().without_verification();
 
     let prompt = "Test prompt";
     let config = ExecutionConfig::default();
@@ -496,8 +496,11 @@ async fn test_claude_agent_execute_with_disabled_verification() {
         Err(e) => {
             // Verify the error is NOT a verification error
             let error_msg = e.to_string().to_lowercase();
-            assert!(!error_msg.contains("verification"),
-                    "Should not get a verification error when verification is disabled: {}", e);
+            assert!(
+                !error_msg.contains("verification"),
+                "Should not get a verification error when verification is disabled: {}",
+                e
+            );
             // Command not found or other execution errors are acceptable
         }
     }
@@ -527,11 +530,7 @@ fn test_claude_default_agent_configuration() {
 
 #[test]
 fn test_all_claude_models_are_valid() {
-    let models = vec![
-        "claude-haiku-4-5",
-        "claude-sonnet-4-6",
-        "claude-opus-4-6",
-    ];
+    let models = vec!["claude-haiku-4-5", "claude-sonnet-4-6", "claude-opus-4-6"];
 
     for model in models {
         // Verify these models are non-empty strings
@@ -601,11 +600,7 @@ fn test_retry_timing_calculation() {
 
 #[test]
 fn test_max_retries_configuration() {
-    let configs = vec![
-        ("fast", 1),
-        ("standard", 3),
-        ("expert", 3),
-    ];
+    let configs = vec![("fast", 1), ("standard", 3), ("expert", 3)];
 
     for (_name, max_retries) in configs {
         let config = ExecutionConfig {
@@ -644,9 +639,7 @@ fn test_timeout_configuration() {
 
 #[tokio::test]
 async fn test_agent_backend_trait_methods_exist() {
-    let agent = ClaudeAgent::new()
-        .unwrap()
-        .without_verification();
+    let agent = ClaudeAgent::new().unwrap().without_verification();
 
     // Test that all trait methods are accessible
     let _ = agent.agent();

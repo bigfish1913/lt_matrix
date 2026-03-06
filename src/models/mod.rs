@@ -53,7 +53,11 @@ pub struct Task {
 
 impl Task {
     /// Creates a new task with the given ID, title, and description
-    pub fn new(id: impl Into<String>, title: impl Into<String>, description: impl Into<String>) -> Self {
+    pub fn new(
+        id: impl Into<String>,
+        title: impl Into<String>,
+        description: impl Into<String>,
+    ) -> Self {
         let now = chrono::Utc::now();
         Task {
             id: id.into(),
@@ -73,7 +77,9 @@ impl Task {
 
     /// Returns true if the task has no unresolved dependencies
     pub fn can_execute(&self, completed_tasks: &std::collections::HashSet<String>) -> bool {
-        self.depends_on.iter().all(|dep_id| completed_tasks.contains(dep_id))
+        self.depends_on
+            .iter()
+            .all(|dep_id| completed_tasks.contains(dep_id))
     }
 
     /// Returns true if the task has failed
@@ -172,8 +178,7 @@ impl Agent {
 
     /// Creates the default Claude agent configuration
     pub fn claude_default() -> Self {
-        Agent::new("claude", "claude", "claude-sonnet-4-6", 3600)
-            .with_default()
+        Agent::new("claude", "claude", "claude-sonnet-4-6", 3600).with_default()
     }
 
     /// Marks this agent as the default

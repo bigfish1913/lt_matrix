@@ -2,6 +2,6 @@
 //!
 //! This module handles persistent memory storage and retrieval for architectural decisions
 
-pub mod store;
-pub mod memory;
 pub mod extractor;
+pub mod memory;
+pub mod store;

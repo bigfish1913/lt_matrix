@@ -20,10 +20,10 @@
 
 #![cfg(target_os = "macos")]
 
-use std::path::{Path, PathBuf};
-use std::process::Command;
 use std::env;
 use std::fs;
+use std::path::{Path, PathBuf};
+use std::process::Command;
 
 /// Test configuration
 struct TestConfig {
@@ -127,10 +127,7 @@ fn get_dependencies(binary: &Path) -> Result<String, String> {
 
 /// Helper function to check code signing status
 fn check_code_signing(binary: &Path) -> Result<CodeSigningInfo, String> {
-    let output = Command::new("codesign")
-        .arg("-dvv")
-        .arg(binary)
-        .output();
+    let output = Command::new("codesign").arg("-dvv").arg(binary).output();
 
     match output {
         Ok(output) => {
@@ -253,7 +250,9 @@ mod both_architectures_tests {
             match run_command(binary, &["--help"]) {
                 Ok(output) => {
                     assert!(
-                        output.contains("Usage:") || output.contains("USAGE:") || output.contains("usage:"),
+                        output.contains("Usage:")
+                            || output.contains("USAGE:")
+                            || output.contains("usage:"),
                         "{}: --help output doesn't contain usage information",
                         arch_name
                     );
@@ -297,11 +296,7 @@ mod both_architectures_tests {
                     }
 
                     // Check for suspicious dependencies
-                    let suspicious = vec![
-                        "/usr/local/lib",
-                        "/opt/homebrew",
-                        "/homebrew/lib",
-                    ];
+                    let suspicious = vec!["/usr/local/lib", "/opt/homebrew", "/homebrew/lib"];
 
                     for pattern in suspicious {
                         if deps.contains(pattern) {
@@ -336,7 +331,10 @@ mod both_architectures_tests {
                     if info.is_signed {
                         println!("✓ {} code signing: {}", arch_name, info.signature_type);
                     } else {
-                        eprintln!("⚠ {}: Not code signed (acceptable for development)", arch_name);
+                        eprintln!(
+                            "⚠ {}: Not code signed (acceptable for development)",
+                            arch_name
+                        );
                     }
                 }
                 Err(e) => {
@@ -350,10 +348,7 @@ mod both_architectures_tests {
     #[test]
     fn test_no_crash_both_architectures() {
         let config = get_config();
-        let test_args = vec![
-            vec!["--version"],
-            vec!["--help"],
-        ];
+        let test_args = vec![vec!["--version"], vec!["--help"]];
 
         let binaries = vec![
             (&config.intel_binary, "Intel"),
@@ -366,9 +361,7 @@ mod both_architectures_tests {
             }
 
             for args in &test_args {
-                let output = Command::new(binary)
-                    .args(args)
-                    .output();
+                let output = Command::new(binary).args(args).output();
 
                 match output {
                     Ok(output) => {
@@ -478,8 +471,8 @@ mod arm_specific_tests {
         let file_output = String::from_utf8_lossy(&output.stdout);
 
         assert!(
-            file_output.contains("Mach-O 64-bit executable") &&
-            (file_output.contains("arm64") || file_output.contains("aarch64")),
+            file_output.contains("Mach-O 64-bit executable")
+                && (file_output.contains("arm64") || file_output.contains("aarch64")),
             "ARM binary format unexpected: {}",
             file_output
         );
@@ -509,11 +502,11 @@ mod cross_arch_compatibility {
             return;
         }
 
-        let intel_version = run_command(&config.intel_binary, &["--version"])
-            .expect("Intel --version failed");
+        let intel_version =
+            run_command(&config.intel_binary, &["--version"]).expect("Intel --version failed");
 
-        let arm_version = run_command(&config.arm_binary, &["--version"])
-            .expect("ARM --version failed");
+        let arm_version =
+            run_command(&config.arm_binary, &["--version"]).expect("ARM --version failed");
 
         // Version output should be identical
         assert_eq!(
@@ -538,10 +531,10 @@ mod cross_arch_compatibility {
             return;
         }
 
-        let intel_deps = get_dependencies(&config.intel_binary)
-            .expect("Failed to get Intel dependencies");
-        let arm_deps = get_dependencies(&config.arm_binary)
-            .expect("Failed to get ARM dependencies");
+        let intel_deps =
+            get_dependencies(&config.intel_binary).expect("Failed to get Intel dependencies");
+        let arm_deps =
+            get_dependencies(&config.arm_binary).expect("Failed to get ARM dependencies");
 
         // Both should link to CoreFoundation
         let intel_has_cf = intel_deps.contains("CoreFoundation");
@@ -550,7 +543,8 @@ mod cross_arch_compatibility {
         assert!(
             intel_has_cf && arm_has_cf,
             "Both architectures should link to CoreFoundation\nIntel: {}\nARM: {}",
-            intel_has_cf, arm_has_cf
+            intel_has_cf,
+            arm_has_cf
         );
 
         println!("✓ Both architectures link to CoreFoundation");
@@ -584,13 +578,15 @@ mod current_architecture_execution {
         let binary = get_current_binary();
 
         if !binary.exists() {
-            eprintln!("⚠ Skipping: Current architecture binary not found at {:?}", binary);
+            eprintln!(
+                "⚠ Skipping: Current architecture binary not found at {:?}",
+                binary
+            );
             return;
         }
 
         // Test execution
-        let output = run_command(&binary, &["--version"])
-            .expect("Failed to execute binary");
+        let output = run_command(&binary, &["--version"]).expect("Failed to execute binary");
 
         assert!(
             output.contains("ltmatrix"),
@@ -623,10 +619,7 @@ mod current_architecture_execution {
                     println!("✓ Ad-hoc signing applied");
 
                     // Verify the signature
-                    let verify_output = Command::new("codesign")
-                        .arg("-v")
-                        .arg(&binary)
-                        .output();
+                    let verify_output = Command::new("codesign").arg("-v").arg(&binary).output();
 
                     if let Ok(verify) = verify_output {
                         if verify.status.success() {
@@ -687,7 +680,8 @@ mod universal_binary_tests {
                 println!("✓ Universal binary info: {}", lipo_output);
 
                 assert!(
-                    lipo_output.contains("x86_64") && (lipo_output.contains("arm64") || lipo_output.contains("aarch64")),
+                    lipo_output.contains("x86_64")
+                        && (lipo_output.contains("arm64") || lipo_output.contains("aarch64")),
                     "Universal binary should contain both architectures"
                 );
             }

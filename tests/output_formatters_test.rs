@@ -8,23 +8,18 @@
 //! - CLI --output flag integration
 //! - Edge cases and error handling
 
+use chrono::{Duration, Utc};
 use ltmatrix::cli::args::OutputFormat;
 use ltmatrix::models::{Task, TaskComplexity, TaskStatus};
 use ltmatrix::output::{
     create_formatter, ExecutionResult, Formatter, JsonFormatter, MarkdownFormatter,
     ReportGenerator, TaskUpdateType, TerminalFormatter,
 };
-use chrono::{Duration, Utc};
 use std::path::PathBuf;
 use tempfile::TempDir;
 
 /// Helper to create a test task with various states
-fn create_test_task(
-    id: &str,
-    title: &str,
-    status: TaskStatus,
-    complexity: TaskComplexity,
-) -> Task {
+fn create_test_task(id: &str, title: &str, status: TaskStatus, complexity: TaskComplexity) -> Task {
     let mut task = Task::new(id, title, "Test description");
     task.status = status;
     task.complexity = complexity;
@@ -32,12 +27,7 @@ fn create_test_task(
 }
 
 /// Helper to create a task with timing information
-fn create_task_with_timing(
-    id: &str,
-    title: &str,
-    status: TaskStatus,
-    duration_secs: i64,
-) -> Task {
+fn create_task_with_timing(id: &str, title: &str, status: TaskStatus, duration_secs: i64) -> Task {
     let mut task = Task::new(id, title, "Test description");
     task.status = status;
 
@@ -63,7 +53,11 @@ fn create_task_with_subtasks(id: &str, subtask_count: usize) -> Task {
     task.complexity = TaskComplexity::Complex;
 
     for i in 0..subtask_count {
-        let mut subtask = Task::new(&format!("{}-sub{}", id, i + 1), "Subtask", "Subtask description");
+        let mut subtask = Task::new(
+            &format!("{}-sub{}", id, i + 1),
+            "Subtask",
+            "Subtask description",
+        );
         subtask.status = TaskStatus::Completed;
         task.subtasks.push(subtask);
     }
@@ -113,10 +107,7 @@ fn create_execution_result(
         ));
     }
 
-    let total_retries = tasks
-        .iter()
-        .map(|t| t.retry_count)
-        .sum::<u32>();
+    let total_retries = tasks.iter().map(|t| t.retry_count).sum::<u32>();
 
     ExecutionResult {
         goal: goal.to_string(),
@@ -167,23 +158,38 @@ fn test_terminal_formatter_dry_run_mode() {
 #[test]
 fn test_terminal_formatter_task_update_types() {
     let formatter = TerminalFormatter::new();
-    let task = create_test_task("task-1", "Test Task", TaskStatus::InProgress, TaskComplexity::Moderate);
+    let task = create_test_task(
+        "task-1",
+        "Test Task",
+        TaskStatus::InProgress,
+        TaskComplexity::Moderate,
+    );
 
     // Test all update types
-    let started = formatter.format_task_update(&task, TaskUpdateType::Started).unwrap();
+    let started = formatter
+        .format_task_update(&task, TaskUpdateType::Started)
+        .unwrap();
     assert!(started.contains("started"));
     assert!(started.contains("task-1"));
 
-    let in_progress = formatter.format_task_update(&task, TaskUpdateType::InProgress).unwrap();
+    let in_progress = formatter
+        .format_task_update(&task, TaskUpdateType::InProgress)
+        .unwrap();
     assert!(in_progress.contains("in progress"));
 
-    let completed = formatter.format_task_update(&task, TaskUpdateType::Completed).unwrap();
+    let completed = formatter
+        .format_task_update(&task, TaskUpdateType::Completed)
+        .unwrap();
     assert!(completed.contains("completed"));
 
-    let failed = formatter.format_task_update(&task, TaskUpdateType::Failed).unwrap();
+    let failed = formatter
+        .format_task_update(&task, TaskUpdateType::Failed)
+        .unwrap();
     assert!(failed.contains("failed"));
 
-    let retrying = formatter.format_task_update(&task, TaskUpdateType::Retrying).unwrap();
+    let retrying = formatter
+        .format_task_update(&task, TaskUpdateType::Retrying)
+        .unwrap();
     assert!(retrying.contains("retrying"));
     assert!(retrying.contains("attempt")); // Should show attempt number
 }
@@ -376,9 +382,16 @@ fn test_json_formatter_error_handling() {
 #[test]
 fn test_json_formatter_task_update() {
     let formatter = JsonFormatter::new();
-    let task = create_test_task("task-1", "Test", TaskStatus::InProgress, TaskComplexity::Moderate);
+    let task = create_test_task(
+        "task-1",
+        "Test",
+        TaskStatus::InProgress,
+        TaskComplexity::Moderate,
+    );
 
-    let update = formatter.format_task_update(&task, TaskUpdateType::Started).unwrap();
+    let update = formatter
+        .format_task_update(&task, TaskUpdateType::Started)
+        .unwrap();
     let parsed: serde_json::Value = serde_json::from_str(&update).unwrap();
 
     assert_eq!(parsed["type"], "Started");
@@ -515,9 +528,16 @@ fn test_markdown_formatter_with_error() {
 #[test]
 fn test_markdown_formatter_task_update() {
     let formatter = MarkdownFormatter::new();
-    let task = create_test_task("task-1", "Test Task", TaskStatus::Completed, TaskComplexity::Simple);
+    let task = create_test_task(
+        "task-1",
+        "Test Task",
+        TaskStatus::Completed,
+        TaskComplexity::Simple,
+    );
 
-    let update = formatter.format_task_update(&task, TaskUpdateType::Completed).unwrap();
+    let update = formatter
+        .format_task_update(&task, TaskUpdateType::Completed)
+        .unwrap();
     assert!(update.contains("✓"));
     assert!(update.contains("**task-1**"));
     assert!(update.contains("Test Task"));
@@ -640,7 +660,11 @@ async fn test_report_generator_to_file_json() {
 #[tokio::test]
 async fn test_report_generator_creates_directories() {
     let temp_dir = TempDir::new().unwrap();
-    let nested_path = temp_dir.path().join("nested").join("dir").join("report.txt");
+    let nested_path = temp_dir
+        .path()
+        .join("nested")
+        .join("dir")
+        .join("report.txt");
 
     let generator = ReportGenerator::new(OutputFormat::Text);
     let result = create_execution_result("Nested test", 1, 0, 30, false);
@@ -658,7 +682,12 @@ async fn test_report_generator_creates_directories() {
 #[test]
 fn test_report_generator_print_task_update() {
     let generator = ReportGenerator::new(OutputFormat::Text);
-    let task = create_test_task("task-1", "Update test", TaskStatus::InProgress, TaskComplexity::Moderate);
+    let task = create_test_task(
+        "task-1",
+        "Update test",
+        TaskStatus::InProgress,
+        TaskComplexity::Moderate,
+    );
 
     // Should not panic
     generator
@@ -677,7 +706,11 @@ fn test_report_generator_print_progress() {
 
 #[test]
 fn test_report_generator_all_formats() {
-    for format in [OutputFormat::Text, OutputFormat::Json, OutputFormat::JsonCompact] {
+    for format in [
+        OutputFormat::Text,
+        OutputFormat::Json,
+        OutputFormat::JsonCompact,
+    ] {
         let generator = ReportGenerator::new(format);
         let result = create_execution_result("Format test", 1, 0, 30, false);
 
@@ -707,7 +740,9 @@ fn test_full_workflow_terminal() {
         };
 
         generator.print_task_update(task, update_type).unwrap();
-        generator.print_progress(i + 1, result.tasks.len(), "Processing").unwrap();
+        generator
+            .print_progress(i + 1, result.tasks.len(), "Processing")
+            .unwrap();
     }
 
     generator.finish_progress();
@@ -742,7 +777,10 @@ async fn test_full_workflow_file_output() {
     let formats = [
         (OutputFormat::Text, PathBuf::from("report.txt")),
         (OutputFormat::Json, PathBuf::from("report.json")),
-        (OutputFormat::JsonCompact, PathBuf::from("report-compact.json")),
+        (
+            OutputFormat::JsonCompact,
+            PathBuf::from("report-compact.json"),
+        ),
     ];
 
     for (format, filename) in formats {
@@ -796,7 +834,9 @@ fn test_all_tasks_failed() {
 
     // Create 3 failed tasks
     for i in 0..3 {
-        result.tasks.push(create_failed_task(&format!("fail-{}", i), "Task failed"));
+        result
+            .tasks
+            .push(create_failed_task(&format!("fail-{}", i), "Task failed"));
     }
     result.failed_count = 3;
 
@@ -847,7 +887,12 @@ fn test_long_task_titles() {
     let long_title = "This is a very long task title that might cause formatting issues \
                       but should still be handled gracefully by the formatter";
 
-    let task = create_test_task("long-1", long_title, TaskStatus::Pending, TaskComplexity::Moderate);
+    let task = create_test_task(
+        "long-1",
+        long_title,
+        TaskStatus::Pending,
+        TaskComplexity::Moderate,
+    );
     let mut result = create_execution_result("Long title", 1, 0, 30, false);
     result.tasks[0] = task;
 
@@ -859,7 +904,12 @@ fn test_long_task_titles() {
 #[test]
 fn test_special_characters_in_output() {
     let formatter = JsonFormatter::new();
-    let mut task = create_test_task("special-1", "Task with quotes", TaskStatus::Completed, TaskComplexity::Simple);
+    let mut task = create_test_task(
+        "special-1",
+        "Task with quotes",
+        TaskStatus::Completed,
+        TaskComplexity::Simple,
+    );
     task.description = "Description with \"quotes\"".to_string();
     task.error = Some("Error: 'test' with \"mixed\" quotes".to_string());
 

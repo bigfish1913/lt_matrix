@@ -61,10 +61,10 @@
 //! }
 //! ```
 
+use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
-use anyhow::{Context, Result};
 
 /// All feature flags supported by ltmatrix
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -204,23 +204,15 @@ impl FeatureFlag {
             FeatureFlag::EnableOpenCodeBackend => {
                 "Enable OpenCode backend as an alternative to Claude"
             }
-            FeatureFlag::EnableKimiCodeBackend => {
-                "Enable KimiCode backend for specialized tasks"
-            }
-            FeatureFlag::EnableCodexBackend => {
-                "Enable Codex backend for code generation"
-            }
-            FeatureFlag::EnableCustomBackend => {
-                "Enable support for custom agent backends"
-            }
+            FeatureFlag::EnableKimiCodeBackend => "Enable KimiCode backend for specialized tasks",
+            FeatureFlag::EnableCodexBackend => "Enable Codex backend for code generation",
+            FeatureFlag::EnableCustomBackend => "Enable support for custom agent backends",
 
             // Pipeline Stage Features
             FeatureFlag::EnableParallelExecution => {
                 "Enable parallel execution of independent tasks"
             }
-            FeatureFlag::EnableSmartCache => {
-                "Enable intelligent caching of intermediate results"
-            }
+            FeatureFlag::EnableSmartCache => "Enable intelligent caching of intermediate results",
             FeatureFlag::EnableIncrementalBuilds => {
                 "Enable incremental builds (only rebuild changed components)"
             }
@@ -230,17 +222,13 @@ impl FeatureFlag {
             FeatureFlag::EnableTaskDependencyGraph => {
                 "Enable experimental task dependency resolution"
             }
-            FeatureFlag::EnableTaskBatching => {
-                "Enable task batching for improved efficiency"
-            }
+            FeatureFlag::EnableTaskBatching => "Enable task batching for improved efficiency",
             FeatureFlag::EnablePipelineOptimization => {
                 "Enable automated pipeline optimization passes"
             }
 
             // Scheduler Features
-            FeatureFlag::EnablePriorityScheduler => {
-                "Enable priority-based task scheduling"
-            }
+            FeatureFlag::EnablePriorityScheduler => "Enable priority-based task scheduling",
             FeatureFlag::EnableAdaptiveScheduler => {
                 "Enable adaptive scheduler that adjusts based on performance"
             }
@@ -258,23 +246,13 @@ impl FeatureFlag {
             FeatureFlag::EnableDetailedMetrics => {
                 "Enable detailed metrics collection for performance analysis"
             }
-            FeatureFlag::EnableProfiling => {
-                "Enable performance profiling capabilities"
-            }
-            FeatureFlag::EnableMonitoringDashboard => {
-                "Enable real-time monitoring dashboard"
-            }
-            FeatureFlag::EnableAlerting => {
-                "Enable automated alerting for critical events"
-            }
+            FeatureFlag::EnableProfiling => "Enable performance profiling capabilities",
+            FeatureFlag::EnableMonitoringDashboard => "Enable real-time monitoring dashboard",
+            FeatureFlag::EnableAlerting => "Enable automated alerting for critical events",
 
             // Development & Debugging Features
-            FeatureFlag::EnableVerboseDebug => {
-                "Enable verbose debug output for troubleshooting"
-            }
-            FeatureFlag::EnableTracing => {
-                "Enable detailed tracing of all operations"
-            }
+            FeatureFlag::EnableVerboseDebug => "Enable verbose debug output for troubleshooting",
+            FeatureFlag::EnableTracing => "Enable detailed tracing of all operations",
             FeatureFlag::EnableExperimentalCommands => {
                 "Enable experimental CLI commands (may be unstable)"
             }
@@ -464,11 +442,11 @@ pub struct AgentBackendFeatures {
 impl Default for AgentBackendFeatures {
     fn default() -> Self {
         AgentBackendFeatures {
-            enable_claude_opus_backend: false,     // Experimental
-            enable_opencode_backend: false,         // Opt-in
-            enable_kimicode_backend: false,         // Opt-in
-            enable_codex_backend: false,            // Opt-in
-            enable_custom_backend: false,           // Experimental
+            enable_claude_opus_backend: false, // Experimental
+            enable_opencode_backend: false,    // Opt-in
+            enable_kimicode_backend: false,    // Opt-in
+            enable_codex_backend: false,       // Opt-in
+            enable_custom_backend: false,      // Experimental
         }
     }
 }
@@ -508,13 +486,13 @@ pub struct PipelineFeatures {
 impl Default for PipelineFeatures {
     fn default() -> Self {
         PipelineFeatures {
-            enable_parallel_execution: true,        // Stable
-            enable_smart_cache: true,               // Stable
-            enable_incremental_builds: false,       // Beta
-            enable_distributed_tasks: false,        // Experimental
-            enable_task_dependency_graph: false,    // Experimental
-            enable_task_batching: false,            // Beta
-            enable_pipeline_optimization: false,    // Beta
+            enable_parallel_execution: true,     // Stable
+            enable_smart_cache: true,            // Stable
+            enable_incremental_builds: false,    // Beta
+            enable_distributed_tasks: false,     // Experimental
+            enable_task_dependency_graph: false, // Experimental
+            enable_task_batching: false,         // Beta
+            enable_pipeline_optimization: false, // Beta
         }
     }
 }
@@ -546,11 +524,11 @@ pub struct SchedulerFeatures {
 impl Default for SchedulerFeatures {
     fn default() -> Self {
         SchedulerFeatures {
-            enable_priority_scheduler: false,       // Beta
-            enable_adaptive_scheduler: false,       // Beta
-            enable_ml_scheduler: false,             // Experimental
-            enable_fair_share_scheduler: false,     // Beta
-            enable_deadline_scheduler: false,       // Beta
+            enable_priority_scheduler: false,   // Beta
+            enable_adaptive_scheduler: false,   // Beta
+            enable_ml_scheduler: false,         // Experimental
+            enable_fair_share_scheduler: false, // Beta
+            enable_deadline_scheduler: false,   // Beta
         }
     }
 }
@@ -578,10 +556,10 @@ pub struct MonitoringFeatures {
 impl Default for MonitoringFeatures {
     fn default() -> Self {
         MonitoringFeatures {
-            enable_detailed_metrics: false,         // Opt-in
-            enable_profiling: false,                // Opt-in
-            enable_monitoring_dashboard: false,     // Experimental
-            enable_alerting: false,                 // Beta
+            enable_detailed_metrics: false,     // Opt-in
+            enable_profiling: false,            // Opt-in
+            enable_monitoring_dashboard: false, // Experimental
+            enable_alerting: false,             // Beta
         }
     }
 }
@@ -609,10 +587,10 @@ pub struct DevelopmentFeatures {
 impl Default for DevelopmentFeatures {
     fn default() -> Self {
         DevelopmentFeatures {
-            enable_verbose_debug: false,            // Opt-in
-            enable_tracing: false,                  // Opt-in
-            enable_experimental_commands: false,    // Experimental
-            enable_testing_utilities: false,        // Experimental
+            enable_verbose_debug: false,         // Opt-in
+            enable_tracing: false,               // Opt-in
+            enable_experimental_commands: false, // Experimental
+            enable_testing_utilities: false,     // Experimental
         }
     }
 }
@@ -672,7 +650,9 @@ impl FeatureFlags {
     pub fn is_enabled(&self, flag: FeatureFlag) -> bool {
         match flag {
             // Agent Backend Features
-            FeatureFlag::EnableClaudeOpusBackend => self.config.agent_backend.enable_claude_opus_backend,
+            FeatureFlag::EnableClaudeOpusBackend => {
+                self.config.agent_backend.enable_claude_opus_backend
+            }
             FeatureFlag::EnableOpenCodeBackend => self.config.agent_backend.enable_opencode_backend,
             FeatureFlag::EnableKimiCodeBackend => self.config.agent_backend.enable_kimicode_backend,
             FeatureFlag::EnableCodexBackend => self.config.agent_backend.enable_codex_backend,
@@ -683,27 +663,37 @@ impl FeatureFlags {
             FeatureFlag::EnableSmartCache => self.config.pipeline.enable_smart_cache,
             FeatureFlag::EnableIncrementalBuilds => self.config.pipeline.enable_incremental_builds,
             FeatureFlag::EnableDistributedTasks => self.config.pipeline.enable_distributed_tasks,
-            FeatureFlag::EnableTaskDependencyGraph => self.config.pipeline.enable_task_dependency_graph,
+            FeatureFlag::EnableTaskDependencyGraph => {
+                self.config.pipeline.enable_task_dependency_graph
+            }
             FeatureFlag::EnableTaskBatching => self.config.pipeline.enable_task_batching,
-            FeatureFlag::EnablePipelineOptimization => self.config.pipeline.enable_pipeline_optimization,
+            FeatureFlag::EnablePipelineOptimization => {
+                self.config.pipeline.enable_pipeline_optimization
+            }
 
             // Scheduler Features
             FeatureFlag::EnablePriorityScheduler => self.config.scheduler.enable_priority_scheduler,
             FeatureFlag::EnableAdaptiveScheduler => self.config.scheduler.enable_adaptive_scheduler,
             FeatureFlag::EnableMlScheduler => self.config.scheduler.enable_ml_scheduler,
-            FeatureFlag::EnableFairShareScheduler => self.config.scheduler.enable_fair_share_scheduler,
+            FeatureFlag::EnableFairShareScheduler => {
+                self.config.scheduler.enable_fair_share_scheduler
+            }
             FeatureFlag::EnableDeadlineScheduler => self.config.scheduler.enable_deadline_scheduler,
 
             // Monitoring & Observability Features
             FeatureFlag::EnableDetailedMetrics => self.config.monitoring.enable_detailed_metrics,
             FeatureFlag::EnableProfiling => self.config.monitoring.enable_profiling,
-            FeatureFlag::EnableMonitoringDashboard => self.config.monitoring.enable_monitoring_dashboard,
+            FeatureFlag::EnableMonitoringDashboard => {
+                self.config.monitoring.enable_monitoring_dashboard
+            }
             FeatureFlag::EnableAlerting => self.config.monitoring.enable_alerting,
 
             // Development & Debugging Features
             FeatureFlag::EnableVerboseDebug => self.config.development.enable_verbose_debug,
             FeatureFlag::EnableTracing => self.config.development.enable_tracing,
-            FeatureFlag::EnableExperimentalCommands => self.config.development.enable_experimental_commands,
+            FeatureFlag::EnableExperimentalCommands => {
+                self.config.development.enable_experimental_commands
+            }
             FeatureFlag::EnableTestingUtilities => self.config.development.enable_testing_utilities,
         }
     }
@@ -740,39 +730,89 @@ impl FeatureFlags {
         let mut flags = Vec::new();
 
         // Agent Backend Features
-        if self.is_enabled(EnableClaudeOpusBackend) { flags.push(EnableClaudeOpusBackend); }
-        if self.is_enabled(EnableOpenCodeBackend) { flags.push(EnableOpenCodeBackend); }
-        if self.is_enabled(EnableKimiCodeBackend) { flags.push(EnableKimiCodeBackend); }
-        if self.is_enabled(EnableCodexBackend) { flags.push(EnableCodexBackend); }
-        if self.is_enabled(EnableCustomBackend) { flags.push(EnableCustomBackend); }
+        if self.is_enabled(EnableClaudeOpusBackend) {
+            flags.push(EnableClaudeOpusBackend);
+        }
+        if self.is_enabled(EnableOpenCodeBackend) {
+            flags.push(EnableOpenCodeBackend);
+        }
+        if self.is_enabled(EnableKimiCodeBackend) {
+            flags.push(EnableKimiCodeBackend);
+        }
+        if self.is_enabled(EnableCodexBackend) {
+            flags.push(EnableCodexBackend);
+        }
+        if self.is_enabled(EnableCustomBackend) {
+            flags.push(EnableCustomBackend);
+        }
 
         // Pipeline Stage Features
-        if self.is_enabled(EnableParallelExecution) { flags.push(EnableParallelExecution); }
-        if self.is_enabled(EnableSmartCache) { flags.push(EnableSmartCache); }
-        if self.is_enabled(EnableIncrementalBuilds) { flags.push(EnableIncrementalBuilds); }
-        if self.is_enabled(EnableDistributedTasks) { flags.push(EnableDistributedTasks); }
-        if self.is_enabled(EnableTaskDependencyGraph) { flags.push(EnableTaskDependencyGraph); }
-        if self.is_enabled(EnableTaskBatching) { flags.push(EnableTaskBatching); }
-        if self.is_enabled(EnablePipelineOptimization) { flags.push(EnablePipelineOptimization); }
+        if self.is_enabled(EnableParallelExecution) {
+            flags.push(EnableParallelExecution);
+        }
+        if self.is_enabled(EnableSmartCache) {
+            flags.push(EnableSmartCache);
+        }
+        if self.is_enabled(EnableIncrementalBuilds) {
+            flags.push(EnableIncrementalBuilds);
+        }
+        if self.is_enabled(EnableDistributedTasks) {
+            flags.push(EnableDistributedTasks);
+        }
+        if self.is_enabled(EnableTaskDependencyGraph) {
+            flags.push(EnableTaskDependencyGraph);
+        }
+        if self.is_enabled(EnableTaskBatching) {
+            flags.push(EnableTaskBatching);
+        }
+        if self.is_enabled(EnablePipelineOptimization) {
+            flags.push(EnablePipelineOptimization);
+        }
 
         // Scheduler Features
-        if self.is_enabled(EnablePriorityScheduler) { flags.push(EnablePriorityScheduler); }
-        if self.is_enabled(EnableAdaptiveScheduler) { flags.push(EnableAdaptiveScheduler); }
-        if self.is_enabled(EnableMlScheduler) { flags.push(EnableMlScheduler); }
-        if self.is_enabled(EnableFairShareScheduler) { flags.push(EnableFairShareScheduler); }
-        if self.is_enabled(EnableDeadlineScheduler) { flags.push(EnableDeadlineScheduler); }
+        if self.is_enabled(EnablePriorityScheduler) {
+            flags.push(EnablePriorityScheduler);
+        }
+        if self.is_enabled(EnableAdaptiveScheduler) {
+            flags.push(EnableAdaptiveScheduler);
+        }
+        if self.is_enabled(EnableMlScheduler) {
+            flags.push(EnableMlScheduler);
+        }
+        if self.is_enabled(EnableFairShareScheduler) {
+            flags.push(EnableFairShareScheduler);
+        }
+        if self.is_enabled(EnableDeadlineScheduler) {
+            flags.push(EnableDeadlineScheduler);
+        }
 
         // Monitoring & Observability Features
-        if self.is_enabled(EnableDetailedMetrics) { flags.push(EnableDetailedMetrics); }
-        if self.is_enabled(EnableProfiling) { flags.push(EnableProfiling); }
-        if self.is_enabled(EnableMonitoringDashboard) { flags.push(EnableMonitoringDashboard); }
-        if self.is_enabled(EnableAlerting) { flags.push(EnableAlerting); }
+        if self.is_enabled(EnableDetailedMetrics) {
+            flags.push(EnableDetailedMetrics);
+        }
+        if self.is_enabled(EnableProfiling) {
+            flags.push(EnableProfiling);
+        }
+        if self.is_enabled(EnableMonitoringDashboard) {
+            flags.push(EnableMonitoringDashboard);
+        }
+        if self.is_enabled(EnableAlerting) {
+            flags.push(EnableAlerting);
+        }
 
         // Development & Debugging Features
-        if self.is_enabled(EnableVerboseDebug) { flags.push(EnableVerboseDebug); }
-        if self.is_enabled(EnableTracing) { flags.push(EnableTracing); }
-        if self.is_enabled(EnableExperimentalCommands) { flags.push(EnableExperimentalCommands); }
-        if self.is_enabled(EnableTestingUtilities) { flags.push(EnableTestingUtilities); }
+        if self.is_enabled(EnableVerboseDebug) {
+            flags.push(EnableVerboseDebug);
+        }
+        if self.is_enabled(EnableTracing) {
+            flags.push(EnableTracing);
+        }
+        if self.is_enabled(EnableExperimentalCommands) {
+            flags.push(EnableExperimentalCommands);
+        }
+        if self.is_enabled(EnableTestingUtilities) {
+            flags.push(EnableTestingUtilities);
+        }
 
         flags
     }
@@ -892,8 +932,7 @@ mod tests {
 
     #[test]
     fn test_rollout_config_blacklist() {
-        let config = RolloutConfig::new(100)
-            .with_excluded_user("user1");
+        let config = RolloutConfig::new(100).with_excluded_user("user1");
 
         // user1 is blacklisted, should be disabled even at 100%
         assert!(!config.is_enabled_for("user1"));
@@ -984,7 +1023,9 @@ mod tests {
         // Add rollout config for priority scheduler
         let rollout = RolloutConfig::new(0).with_user("user1");
         config.rollout.insert(
-            FeatureFlag::EnablePriorityScheduler.config_key().to_string(),
+            FeatureFlag::EnablePriorityScheduler
+                .config_key()
+                .to_string(),
             rollout,
         );
 

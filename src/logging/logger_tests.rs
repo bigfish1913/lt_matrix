@@ -8,8 +8,8 @@
 //! - Log guard functionality
 //! - Multiple initialization scenarios
 
-use crate::logging::logger::{init_logging, init_api_trace_logging, LogGuard};
 use crate::logging::level::LogLevel;
+use crate::logging::logger::{init_api_trace_logging, init_logging, LogGuard};
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
 
@@ -34,8 +34,11 @@ mod tests {
 
         for level in levels {
             let result = init_logging(level, None::<&str>);
-            assert!(result.is_ok(),
-                "Failed to initialize logger with level: {:?}", level);
+            assert!(
+                result.is_ok(),
+                "Failed to initialize logger with level: {:?}",
+                level
+            );
 
             let guard = result.unwrap();
             // Guard should be None for console-only
@@ -58,8 +61,11 @@ mod tests {
             let log_path = temp_dir.path().join(format!("test_{}.log", i));
 
             let result = init_logging(*level, Some(log_path.as_path()));
-            assert!(result.is_ok(),
-                "Failed to initialize logger with level: {:?}", level);
+            assert!(
+                result.is_ok(),
+                "Failed to initialize logger with level: {:?}",
+                level
+            );
 
             let guard = result.unwrap();
             // Guard should be Some when file logging is enabled
@@ -104,8 +110,10 @@ mod tests {
 
             // We can't actually test this without resetting global state
             // This is a documentation of expected behavior
-            assert!(log_path.file_stem().unwrap_or_default() == expected_stem ||
-                    log_path.to_str().unwrap().contains(expected_stem));
+            assert!(
+                log_path.file_stem().unwrap_or_default() == expected_stem
+                    || log_path.to_str().unwrap().contains(expected_stem)
+            );
         }
     }
 
@@ -156,7 +164,12 @@ mod tests {
     fn test_init_logging_non_trace_levels_filters_dependencies() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
 
-        let levels = vec![LogLevel::Debug, LogLevel::Info, LogLevel::Warn, LogLevel::Error];
+        let levels = vec![
+            LogLevel::Debug,
+            LogLevel::Info,
+            LogLevel::Warn,
+            LogLevel::Error,
+        ];
 
         for level in levels {
             let log_path = temp_dir.path().join(format!("test_{:?}.log", level));
@@ -234,7 +247,10 @@ mod tests {
 
         let guard = result.unwrap();
         // WorkerGuard should be valid
-        assert_eq!(std::mem::size_of_val(&guard), std::mem::size_of::<tracing_appender::non_blocking::WorkerGuard>());
+        assert_eq!(
+            std::mem::size_of_val(&guard),
+            std::mem::size_of::<tracing_appender::non_blocking::WorkerGuard>()
+        );
     }
 
     #[test]
@@ -359,8 +375,12 @@ mod tests {
 
         for (level, file) in configs {
             let result = init_logging(level, file);
-            assert!(result.is_ok(),
-                "Failed to initialize with level={:?}, file={:?}", level, file.is_some());
+            assert!(
+                result.is_ok(),
+                "Failed to initialize with level={:?}, file={:?}",
+                level,
+                file.is_some()
+            );
             break; // Only test first to avoid global logger conflicts
         }
     }

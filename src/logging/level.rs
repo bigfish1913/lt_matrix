@@ -2,8 +2,8 @@
 //!
 //! This module provides log level type definitions and conversions for the logging system.
 
-use tracing::Level;
 use std::str::FromStr;
+use tracing::Level;
 
 /// Represents the verbosity level for logging
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -78,7 +78,9 @@ impl FromStr for LogLevel {
             "info" => Ok(Self::Info),
             "warn" | "warning" => Ok(Self::Warn),
             "error" => Ok(Self::Error),
-            _ => Err(format!("Invalid log level: {s}. Valid values: trace, debug, info, warn, error")),
+            _ => Err(format!(
+                "Invalid log level: {s}. Valid values: trace, debug, info, warn, error"
+            )),
         }
     }
 }
