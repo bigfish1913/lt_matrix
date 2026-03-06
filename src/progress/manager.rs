@@ -3,13 +3,14 @@
 //! This module provides the ProgressManager for coordinating multiple progress bars,
 //! tracking task progress, and displaying real-time updates.
 
-use crate::models::TaskStatus;
+use crate::models::{Task, TaskStatus};
 use crate::terminal::ColorConfig;
 use crate::progress::tracker::{ProgressTracker, TrackerColorConfig};
+use crate::progress::eta::{EtaCalculator, HistoricalData, MetricsCollector, format_eta};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 // Internal color config wrapper for progress bars
 #[derive(Debug, Clone, Copy)]
@@ -121,6 +122,18 @@ pub struct ProgressManager {
 
     /// Current task names (for multi mode)
     task_names: Arc<Mutex<HashMap<String, String>>>,
+
+    /// ETA calculator based on historical data
+    eta_calculator: Option<EtaCalculator>,
+
+    /// Metrics collector for tracking task performance
+    metrics_collector: MetricsCollector,
+
+    /// Task start times for elapsed time calculation
+    task_start_times: Arc<Mutex<HashMap<String, Instant>>>,
+
+    /// Overall start time for the entire task set
+    overall_start_time: Option<Instant>,
 }
 
 impl ProgressManager {
@@ -152,6 +165,55 @@ impl ProgressManager {
             config,
             total_tasks: 0,
             task_names: Arc::new(Mutex::new(HashMap::new())),
+            eta_calculator: None,
+            metrics_collector: MetricsCollector::new(),
+            task_start_times: Arc::new(Mutex::new(HashMap::new())),
+            overall_start_time: None,
+        }
+    }
+
+    /// Creates a new ProgressManager with historical data for ETA estimation
+    ///
+    /// # Arguments
+    ///
+    /// * `config` - Optional configuration
+    /// * `historical_data` - Historical task completion data
+    ///
+    /// # Returns
+    ///
+    /// A new ProgressManager instance with ETA calculation
+    #[must_use]
+    pub fn with_historical_data(
+        config: Option<ProgressManagerConfig>,
+        historical_data: HistoricalData,
+    ) -> Self {
+        let config = config.unwrap_or_default();
+        let multi = if config.enable_multi {
+            Some(MultiProgress::new())
+        } else {
+            None
+        };
+
+        let eta_calculator = if config.enable_eta {
+            Some(EtaCalculator::new(historical_data))
+        } else {
+            None
+        };
+
+        ProgressManager {
+            multi,
+            main_bar: None,
+            task_bars: HashMap::new(),
+            tracker: ProgressTracker::new(Some(TrackerColorConfig {
+                inner: config.color_config,
+            })),
+            config,
+            total_tasks: 0,
+            task_names: Arc::new(Mutex::new(HashMap::new())),
+            eta_calculator,
+            metrics_collector: MetricsCollector::new(),
+            task_start_times: Arc::new(Mutex::new(HashMap::new())),
+            overall_start_time: None,
         }
     }
 
@@ -163,6 +225,7 @@ impl ProgressManager {
     /// * `bar_type` - Type of progress bar to use
     pub fn initialize(&mut self, total_tasks: usize, bar_type: ProgressBarType) {
         self.total_tasks = total_tasks;
+        self.overall_start_time = Some(Instant::now());
 
         match bar_type {
             ProgressBarType::Single => {
@@ -188,15 +251,15 @@ impl ProgressManager {
 
         let template = if self.config.enable_eta {
             if color_config.is_enabled() {
-                "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({percent}%) {msg}"
+                "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({percent}%) ETA: {eta} {msg}"
             } else {
-                "[{elapsed_precise}] [{bar:40}] {pos}/{len} ({percent}%) {msg}"
+                "[{elapsed_precise}] [{bar:40}] {pos}/{len} ({percent}%) ETA: {eta} {msg}"
             }
         } else {
             if color_config.is_enabled() {
-                "{spinner:.green} [{bar:40.cyan/blue}] {pos}/{len} ({percent}%) {msg}"
+                "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({percent}%) {msg}"
             } else {
-                "[{bar:40}] {pos}/{len} ({percent}%) {msg}"
+                "[{elapsed_precise}] [{bar:40}] {pos}/{len} ({percent}%) {msg}"
             }
         };
 
@@ -225,8 +288,14 @@ impl ProgressManager {
     /// * `task_name` - Human-readable task name
     /// * `status` - Initial task status
     pub fn add_task(&mut self, task_id: String, task_name: String, status: TaskStatus) {
+        // Store task start time if the task is in progress or about to start
+        if status == TaskStatus::InProgress || status == TaskStatus::Pending {
+            let mut start_times = self.task_start_times.lock().unwrap();
+            start_times.entry(task_id.clone()).or_insert_with(Instant::now);
+        }
+
         // Add to tracker
-        self.tracker.add_task(task_id.clone(), status);
+        self.tracker.add_task(task_id.clone(), status.clone());
 
         // Store task name
         let mut names = self.task_names.lock().unwrap();
@@ -245,10 +314,18 @@ impl ProgressManager {
                 inner: self.config.color_config,
             };
 
-            let template = if color_config.is_enabled() {
-                "{spinner:.cyan} {msg}: [{bar:20.blue/yellow}] {percent}%"
+            let template = if self.config.enable_eta {
+                if color_config.is_enabled() {
+                    "{spinner:.cyan} {msg}: [{bar:20.blue/yellow}] {percent}% (ETA: {eta})"
+                } else {
+                    "{msg}: [{bar:20}] {percent}% (ETA: {eta})"
+                }
             } else {
-                "{msg}: [{bar:20}] {percent}%"
+                if color_config.is_enabled() {
+                    "{spinner:.cyan} {msg}: [{bar:20.blue/yellow}] {percent}%"
+                } else {
+                    "{msg}: [{bar:20}] {percent}%"
+                }
             };
 
             let style = ProgressStyle::default_bar()
@@ -257,7 +334,7 @@ impl ProgressManager {
                 .progress_chars("=> ");
 
             bar.set_style(style);
-            bar.set_message(task_name);
+            bar.set_message(task_name.clone());
             bar.set_position(0);
 
             self.task_bars.insert(task_id, bar);
@@ -279,6 +356,22 @@ impl ProgressManager {
     pub fn update_task(&mut self, task_id: &str, status: TaskStatus, percent: Option<u64>) {
         // Update tracker
         self.tracker.update_task(task_id, status.clone());
+
+        // Track completion in metrics collector
+        if status == TaskStatus::Completed {
+            if let Some(start_time) = self.task_start_times.lock().unwrap().get(task_id) {
+                let _elapsed = start_time.elapsed();
+                // Create a temporary Task for metrics tracking
+                let task = Task {
+                    id: task_id.to_string(),
+                    title: self.task_names.lock().unwrap().get(task_id).cloned().unwrap_or_default(),
+                    description: String::new(),
+                    status: status.clone(),
+                    ..Default::default()
+                };
+                self.metrics_collector.track_task_completion(&task);
+            }
+        }
 
         // Update individual task bar if in multi mode
         if let Some(bar) = self.task_bars.get(task_id) {
@@ -313,6 +406,13 @@ impl ProgressManager {
             let stats = self.tracker.get_stats();
             main_bar.set_position(stats.completed as u64);
 
+            // Calculate ETA if enabled
+            let eta_str = if self.config.enable_eta {
+                self.calculate_remaining_eta().map(|eta| format_eta(eta))
+            } else {
+                None
+            };
+
             // Update main bar message with current tasks
             let names = self.task_names.lock().unwrap();
             let current_tasks: String = names
@@ -335,7 +435,7 @@ impl ProgressManager {
                 };
                 main_bar.set_message(msg);
             } else {
-                main_bar.set_message(format!(
+                let completion_msg = format!(
                     "Completed: {}/{} ({}%)",
                     stats.completed,
                     self.total_tasks,
@@ -344,7 +444,15 @@ impl ProgressManager {
                     } else {
                         0
                     }
-                ));
+                );
+
+                let msg = if let Some(eta) = eta_str {
+                    format!("{} ETA: {}", completion_msg, eta)
+                } else {
+                    completion_msg
+                };
+
+                main_bar.set_message(msg);
             }
         }
     }
@@ -394,6 +502,61 @@ impl ProgressManager {
     /// Prints the current progress summary
     pub fn print_summary(&self) {
         self.tracker.print_summary();
+    }
+
+    /// Calculates the remaining ETA based on progress and historical data
+    ///
+    /// # Returns
+    ///
+    /// Optional duration estimate for remaining work
+    #[must_use]
+    pub fn calculate_remaining_eta(&self) -> Option<Duration> {
+        let stats = self.tracker.get_stats();
+        let remaining_tasks = self.total_tasks.saturating_sub(stats.completed);
+
+        if remaining_tasks == 0 {
+            return Some(Duration::ZERO);
+        }
+
+        // Calculate based on elapsed time if available
+        if let Some(start_time) = self.overall_start_time {
+            let elapsed = start_time.elapsed();
+            if stats.completed > 0 {
+                // Calculate average time per completed task
+                let avg_per_task = elapsed / stats.completed as u32;
+                let estimated_remaining = avg_per_task * remaining_tasks as u32;
+                return Some(estimated_remaining);
+            }
+        }
+
+        // Fall back to historical data if available
+        if self.eta_calculator.is_some() {
+            // This would require task complexity information
+            // For now, return None if we can't estimate
+            None
+        } else {
+            None
+        }
+    }
+
+    /// Returns the elapsed time since the start of the task set
+    ///
+    /// # Returns
+    ///
+    /// Optional duration since start
+    #[must_use]
+    pub fn elapsed_time(&self) -> Option<Duration> {
+        self.overall_start_time.map(|start| start.elapsed())
+    }
+
+    /// Returns the collected metrics
+    ///
+    /// # Returns
+    ///
+    /// Metrics collected during task execution
+    #[must_use]
+    pub fn get_metrics(&self) -> crate::progress::eta::Metrics {
+        self.metrics_collector.get_metrics()
     }
 
     /// Finishes all progress bars

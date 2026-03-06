@@ -149,6 +149,60 @@ impl Task {
         self.started_at = None;
         // Note: session_id is preserved for reuse on retry
     }
+
+    /// Returns the elapsed time for this task
+    ///
+    /// For completed tasks, returns the time from start to completion.
+    /// For in-progress tasks, returns the time from start to now.
+    /// For pending tasks, returns Duration::ZERO.
+    #[must_use]
+    pub fn elapsed_time(&self) -> std::time::Duration {
+        if let Some(completed_at) = self.completed_at {
+            if let Some(started_at) = self.started_at {
+                let duration = completed_at.signed_duration_since(started_at);
+                // Convert chrono::Duration to std::time::Duration
+                if duration.num_milliseconds() >= 0 {
+                    std::time::Duration::from_millis(duration.num_milliseconds() as u64)
+                } else {
+                    std::time::Duration::ZERO
+                }
+            } else {
+                std::time::Duration::ZERO
+            }
+        } else if let Some(started_at) = self.started_at {
+            let now = chrono::Utc::now();
+            let duration = now.signed_duration_since(started_at);
+            if duration.num_milliseconds() >= 0 {
+                std::time::Duration::from_millis(duration.num_milliseconds() as u64)
+            } else {
+                std::time::Duration::ZERO
+            }
+        } else {
+            std::time::Duration::ZERO
+        }
+    }
+}
+
+impl Default for Task {
+    fn default() -> Self {
+        let now = chrono::Utc::now();
+        Task {
+            id: String::new(),
+            title: String::new(),
+            description: String::new(),
+            status: TaskStatus::Pending,
+            complexity: TaskComplexity::Moderate,
+            depends_on: Vec::new(),
+            subtasks: Vec::new(),
+            retry_count: 0,
+            session_id: None,
+            parent_session_id: None,
+            error: None,
+            created_at: now,
+            started_at: None,
+            completed_at: None,
+        }
+    }
 }
 
 /// Current status of a task
@@ -179,7 +233,7 @@ impl TaskStatus {
 }
 
 /// Complexity level of a task, determining which agent model to use
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "lowercase")]
 pub enum TaskComplexity {
     /// Simple task that can be handled by fast models
