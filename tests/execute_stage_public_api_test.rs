@@ -65,6 +65,8 @@ fn test_execute_config_custom() {
         enable_sessions: false,
         work_dir: PathBuf::from("/custom/path"),
         memory_file: PathBuf::from("/custom/memory.md"),
+        enable_workspace_persistence: false,
+        project_root: None,
     };
 
     assert_eq!(config.max_retries, 5);

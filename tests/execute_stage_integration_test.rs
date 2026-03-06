@@ -91,6 +91,8 @@ async fn test_execute_config_with_mode_config() {
         enable_sessions: true,
         work_dir: PathBuf::from("/tmp"),
         memory_file: PathBuf::from(".claude/memory.md"),
+        enable_workspace_persistence: false,
+        project_root: None,
     };
 
     assert_eq!(config.mode_config.model_fast, "claude-haiku-4-5");

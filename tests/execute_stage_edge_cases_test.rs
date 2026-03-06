@@ -25,6 +25,8 @@ async fn test_execution_with_empty_task_list() {
         enable_sessions: false, // Disable sessions for this test
         work_dir: temp_dir.path().to_path_buf(),
         memory_file: PathBuf::from("nonexistent.md"),
+        enable_workspace_persistence: false,
+        project_root: None,
     };
 
     // This should handle empty task list gracefully
@@ -353,6 +355,8 @@ async fn test_execution_config_with_invalid_work_dir() {
         enable_sessions: true,
         work_dir: PathBuf::from("/nonexistent/path/that/does/not/exist"),
         memory_file: PathBuf::from("memory.md"),
+        enable_workspace_persistence: false,
+        project_root: None,
     };
 
     // Config should still be constructable

@@ -18,6 +18,7 @@ use crate::agent::backend::{AgentBackend, ExecutionConfig};
 use crate::agent::claude::ClaudeAgent;
 use crate::agent::session::SessionManager;
 use crate::models::{ModeConfig, Task, TaskComplexity, TaskStatus};
+use crate::workspace::WorkspaceState;
 
 /// Configuration for the execution stage
 #[derive(Debug, Clone)]
@@ -39,6 +40,12 @@ pub struct ExecuteConfig {
 
     /// Project memory file path
     pub memory_file: PathBuf,
+
+    /// Whether to enable workspace state persistence
+    pub enable_workspace_persistence: bool,
+
+    /// Project root directory for workspace state
+    pub project_root: Option<PathBuf>,
 }
 
 impl Default for ExecuteConfig {
@@ -50,6 +57,8 @@ impl Default for ExecuteConfig {
             enable_sessions: true,
             work_dir: std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
             memory_file: PathBuf::from(".claude/memory.md"),
+            enable_workspace_persistence: false,
+            project_root: None,
         }
     }
 }
@@ -64,6 +73,8 @@ impl ExecuteConfig {
             enable_sessions: true,
             work_dir: std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
             memory_file: PathBuf::from(".claude/memory.md"),
+            enable_workspace_persistence: false,
+            project_root: None,
         }
     }
 
@@ -76,6 +87,8 @@ impl ExecuteConfig {
             enable_sessions: true,
             work_dir: std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
             memory_file: PathBuf::from(".claude/memory.md"),
+            enable_workspace_persistence: false,
+            project_root: None,
         }
     }
 }
@@ -240,6 +253,15 @@ pub async fn execute_tasks(
             task.status = TaskStatus::Failed;
             stats.failed_tasks += 1;
             error!("Task {} failed: {:?}", task.id, task.error);
+        }
+
+        // Save workspace state after each task completion if enabled
+        if config.enable_workspace_persistence {
+            if let Some(project_root) = &config.project_root {
+                if let Err(e) = save_workspace_state(project_root, &task_map) {
+                    warn!("Failed to save workspace state after task {}: {}", task.id, e);
+                }
+            }
         }
 
         results.push(task);
@@ -536,6 +558,43 @@ pub fn display_execution_statistics(stats: &ExecutionStatistics) {
     println!("  Moderate: {}", stats.moderate_tasks);
     println!("  Complex: {}", stats.complex_tasks);
     println!("Sessions reused: {}", stats.sessions_reused);
+}
+
+/// Save workspace state for all tasks in the task map
+///
+/// This function loads the current workspace state, updates all tasks
+/// from the task map, and saves it back to disk.
+///
+/// # Arguments
+///
+/// * `project_root` - Path to the project root directory
+/// * `task_map` - HashMap containing the current state of all tasks
+///
+/// # Returns
+///
+/// Returns `Ok(())` if the state was saved successfully, or an error otherwise.
+fn save_workspace_state(
+    project_root: &Path,
+    task_map: &HashMap<String, Task>,
+) -> Result<()> {
+    // Load or create workspace state
+    let state = if let Ok(loaded) = WorkspaceState::load(project_root.to_path_buf()) {
+        loaded
+    } else {
+        // If load fails, create new state
+        let tasks: Vec<Task> = task_map.values().cloned().collect();
+        WorkspaceState::new(project_root.to_path_buf(), tasks)
+    };
+
+    // Update tasks from task map
+    let mut updated_state = state;
+    updated_state.tasks = task_map.values().cloned().collect();
+
+    // Save the updated state
+    updated_state.save()?;
+
+    debug!("Workspace state saved to {:?}", project_root);
+    Ok(())
 }
 
 #[cfg(test)]
