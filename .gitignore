@@ -189,7 +189,7 @@ lcov.info
 /docs/tasks/
 logs/
 workspace/
-.ltmatrix/
+.ltmatrix/*
 
 
 # Added by cargo
