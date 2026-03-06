@@ -9,6 +9,9 @@
 //! - Type conversions work correctly (LogLevel, OutputFormat)
 //! - CLI overrides properly merge with loaded configs
 //! - Precedence is correct: CLI > Project > Global > Defaults
+//!
+//! NOTE: Tests in this file modify the current working directory and must be run
+//! serially to avoid interference. The test harness enforces single-threaded execution.
 
 use clap::Parser;
 use ltmatrix::cli::Args;
@@ -17,17 +20,25 @@ use ltmatrix::config::settings::{
 };
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
 use tempfile::TempDir;
+
+/// Global mutex to serialize directory changes across tests
+/// This prevents test interference when tests would otherwise run in parallel
+static DIR_LOCK: Mutex<()> = Mutex::new(());
 
 /// Helper to restore current directory when dropped
 struct DirGuard {
     original: PathBuf,
+    _guard: std::sync::MutexGuard<'static, ()>,
 }
 
 impl DirGuard {
     fn new() -> Self {
+        let guard = DIR_LOCK.lock().unwrap();
         DirGuard {
             original: std::env::current_dir().unwrap(),
+            _guard: guard,
         }
     }
 
@@ -693,7 +704,6 @@ level = "info"
 fn test_no_custom_config_uses_standard_paths() {
     // Test that without --config, standard paths are used
     let temp_dir = TempDir::new().unwrap();
-    let current_dir = std::env::current_dir().unwrap();
 
     // Create project config
     let project_config_dir = temp_dir.path().join(".ltmatrix");
@@ -717,19 +727,15 @@ level = "debug"
     )
     .unwrap();
 
-    // Change to temp directory within a scope to ensure proper cleanup
-    let result = {
-        std::env::set_current_dir(temp_dir.path()).unwrap();
+    // Use DirGuard to properly manage directory changes with serialization
+    let _guard = DirGuard::new();
+    _guard.change_to(temp_dir.path());
 
-        // No --config flag, should use standard paths
-        let args = Args::try_parse_from(["ltmatrix", "goal"]).expect("Failed to parse args");
+    // No --config flag, should use standard paths
+    let args = Args::try_parse_from(["ltmatrix", "goal"]).expect("Failed to parse args");
 
-        let overrides: CliOverrides = args.into();
-        load_config_with_overrides(Some(overrides))
-    };
-
-    // Restore directory immediately after scope
-    std::env::set_current_dir(&current_dir).unwrap();
+    let overrides: CliOverrides = args.into();
+    let result = load_config_with_overrides(Some(overrides));
 
     assert!(
         result.is_ok(),
