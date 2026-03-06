@@ -1,0 +1,122 @@
+# Cargo configuration for ltmatrix cross-platform builds
+#
+# This file configures build settings for 7 target platforms:
+# - Linux (x86_64, aarch64) with musl for static linking
+# - Windows (x86_64, aarch64) with MSVC
+# - macOS (Intel x86_64, Apple Silicon aarch64)
+
+[build]
+# Default target is the host platform
+# Override with: cargo build --release --target <triple>
+
+[term]
+# Enable colored output for better readability
+verbose = false
+color = "auto"
+
+[net]
+# Git checkout fetch timeout in seconds
+git-fetch-with-cli = true
+
+# =============================================================================
+# Linux Target Configurations
+# =============================================================================
+
+# Linux x86_64 with musl (static binary)
+[target.x86_64-unknown-linux-musl]
+linker = "x86_64-linux-musl-gcc"
+
+# Linux ARM64 with musl (static binary)
+[target.aarch64-unknown-linux-musl]
+linker = "aarch64-linux-musl-gcc"
+
+# Linux x86_64 with GNU libc (dynamic binary)
+[target.x86_64-unknown-linux-gnu]
+linker = "x86_64-linux-gnu-gcc"
+
+# Linux ARM64 with GNU libc (dynamic binary)
+[target.aarch64-unknown-linux-gnu]
+linker = "aarch64-linux-gnu-gcc"
+
+# =============================================================================
+# Windows Target Configurations
+# =============================================================================
+
+# Windows x86_64 (MSVC)
+[target.x86_64-pc-windows-msvc]
+linker = "rust-lld.exe"
+ar = "rust-lld.exe"
+
+# Windows ARM64 (MSVC)
+[target.aarch64-pc-windows-msvc]
+linker = "rust-lld.exe"
+ar = "rust-lld.exe"
+
+# =============================================================================
+# macOS Target Configurations
+# =============================================================================
+
+# macOS Intel (x86_64)
+[target.x86_64-apple-darwin]
+# Set minimum macOS version for broader compatibility
+rustflags = ["-C", "link-arg=-mmacosx-version-min=10.13"]
+
+# macOS Apple Silicon (aarch64/ARM64)
+[target.aarch64-apple-darwin]
+# Set minimum macOS version for Apple Silicon (11.0 is first release)
+rustflags = ["-C", "link-arg=-mmacosx-version-min=11.0"]
+
+# =============================================================================
+# General Compilation Optimizations
+# =============================================================================
+
+# Profile for release builds (optimized for size and performance)
+[profile.release]
+# Optimize for binary size while maintaining good performance
+opt-level = "z"     # Optimize for size
+lto = true          # Link-time optimization
+codegen-units = 1   # Better optimization at cost of compilation time
+strip = true        # Remove debug symbols
+panic = "abort"     # Reduce binary size by aborting on panic
+
+# Profile for development builds (fast compilation)
+[profile.dev]
+# Split debug information for faster compilation
+split-debuginfo = "unpacked"
+
+# Profile for testing (balance speed and accuracy)
+[profile.test]
+# Optimize tests but keep debug info for better error messages
+opt-level = 0
+
+# =============================================================================
+# Alias Definitions for Common Commands
+# =============================================================================
+
+# Build for specific targets
+# Usage: cargo build --alias linux-release
+[alias]
+linux-release = ["build", "--release", "--target", "x86_64-unknown-linux-musl"]
+linux-arm-release = ["build", "--release", "--target", "aarch64-unknown-linux-musl"]
+windows-release = ["build", "--release", "--target", "x86_64-pc-windows-msvc"]
+windows-arm-release = ["build", "--release", "--target", "aarch64-pc-windows-msvc"]
+macos-release = ["build", "--release", "--target", "x86_64-apple-darwin"]
+macos-arm-release = ["build", "--release", "--target", "aarch64-apple-darwin"]
+
+# =============================================================================
+# Source Configuration
+# =============================================================================
+
+# Note: Rust 1.68+ uses sparse registry by default, no configuration needed
+# For older versions, use: cargo +stable build
+
+# =============================================================================
+# HTTP Configuration
+# =============================================================================
+
+[http]
+# Check for new crate versions
+check-revoke = true
+
+# Multiplexing for HTTP/2
+multiplexing = true
