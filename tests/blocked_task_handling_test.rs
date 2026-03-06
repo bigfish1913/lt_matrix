@@ -362,7 +362,7 @@ mod blocked_strategy_tests {
         let task_map: HashMap<String, Task> =
             [(task.id.clone(), task.clone())].into_iter().collect();
 
-        let completed: std::collections::HashSet<String> = std::collections::HashSet::new();
+        let mut completed: std::collections::HashSet<String> = std::collections::HashSet::new();
 
         // Task should not be executable because it depends on itself
         // which is not completed

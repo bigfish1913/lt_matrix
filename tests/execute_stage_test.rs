@@ -1,6 +1,6 @@
 //! Tests for the execute stage
 
-use ltmatrix::models::{Task, TaskComplexity, TaskStatus};
+use ltmatrix::models::{Task, TaskComplexity};
 use ltmatrix::pipeline::execute::{
     ExecuteConfig, build_task_context, build_execution_prompt, get_execution_order,
 };
@@ -39,7 +39,7 @@ fn test_build_task_context_with_memory() {
 
 #[test]
 fn test_build_task_context_with_dependencies() {
-    let mut task1 = Task::new("task-1", "Setup", "Initial setup");
+    let task1 = Task::new("task-1", "Setup", "Initial setup");
     let mut task2 = Task::new("task-2", "Feature", "Main feature");
     task2.depends_on = vec!["task-1".to_string()];
 
@@ -61,7 +61,7 @@ fn test_build_task_context_with_dependencies() {
 
 #[test]
 fn test_execution_order_preserves_dependencies() {
-    let mut task1 = Task::new("task-1", "First", "First task");
+    let task1 = Task::new("task-1", "First", "First task");
     let mut task2 = Task::new("task-2", "Second", "Second task");
     let mut task3 = Task::new("task-3", "Third", "Third task");
 
@@ -83,7 +83,7 @@ fn test_execution_order_preserves_dependencies() {
 
 #[test]
 fn test_execution_order_with_parallel_tasks() {
-    let mut task1 = Task::new("task-1", "Setup", "Setup project");
+    let task1 = Task::new("task-1", "Setup", "Setup project");
     let mut task2 = Task::new("task-2", "Feature A", "First feature");
     let mut task3 = Task::new("task-3", "Feature B", "Second feature");
 

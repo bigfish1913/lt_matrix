@@ -8,7 +8,7 @@
 //! - Concurrent execution scenarios
 //! - Timeout handling
 
-use ltmatrix::models::{ModeConfig, Task, TaskComplexity, TaskStatus};
+use ltmatrix::models::{ModeConfig, Task, TaskComplexity};
 use ltmatrix::pipeline::execute::{ExecuteConfig, ExecutionStatistics};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;

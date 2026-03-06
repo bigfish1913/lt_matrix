@@ -61,6 +61,9 @@ uuid = { version = "1.11", features = ["v4"] }
 # Command detection
 which = "6.0"
 
+# Directory resolution
+dirs = "5.0"
+
 [features]
 # Default features - balanced for development and production
 default = []

@@ -938,3 +938,224 @@ fn test_microservices_topology() {
     // Verify reasonable parallelism
     assert!(plan.parallelizable_tasks.len() >= 2);
 }
+
+// ============================================================================
+// Additional Edge Cases (Task Requirements)
+// ============================================================================
+
+#[test]
+fn test_fully_connected_graph() {
+    // Create a fully connected DAG (each task depends on all previous tasks)
+    // This creates a triangular dependency pattern
+    let tasks = vec![
+        create_task("task-1", vec![]),
+        create_task("task-2", vec!["task-1"]),
+        create_task("task-3", vec!["task-1", "task-2"]),
+        create_task("task-4", vec!["task-1", "task-2", "task-3"]),
+        create_task("task-5", vec!["task-1", "task-2", "task-3", "task-4"]),
+    ];
+
+    let plan = schedule_tasks(tasks).expect("Should schedule fully connected graph");
+
+    // In a fully connected graph, each task must be in its own level
+    assert_eq!(plan.max_depth, 5);
+    assert_eq!(plan.execution_levels.len(), 5);
+
+    // Verify each level has exactly one task
+    for (i, level) in plan.execution_levels.iter().enumerate() {
+        assert_eq!(
+            level.len(),
+            1,
+            "Level {} should have exactly 1 task in fully connected graph",
+            i + 1
+        );
+    }
+
+    // Verify no parallelizable tasks (linear execution)
+    assert_eq!(plan.parallelizable_tasks.len(), 0);
+
+    // All tasks should be on critical path
+    assert_eq!(plan.critical_path.len(), 5);
+
+    // Execution order must be sequential
+    assert_eq!(plan.execution_order, vec!["task-1", "task-2", "task-3", "task-4", "task-5"]);
+}
+
+#[test]
+fn test_deterministic_valid_topological_ordering() {
+    // Verify that scheduling the same task graph multiple times
+    // produces valid topological orders (dependencies before dependents)
+    let tasks = vec![
+        create_task("task-1", vec![]),
+        create_task("task-2", vec![]),
+        create_task("task-3", vec!["task-1", "task-2"]),
+        create_task("task-4", vec!["task-1"]),
+        create_task("task-5", vec!["task-2"]),
+    ];
+
+    // Schedule the tasks multiple times
+    let plan1 = schedule_tasks(tasks.clone()).unwrap();
+    let plan2 = schedule_tasks(tasks.clone()).unwrap();
+    let plan3 = schedule_tasks(tasks.clone()).unwrap();
+
+    // Helper to verify topological ordering is valid
+    let is_valid_order = |plan: &ExecutionPlan| -> bool {
+        let pos = |id: &str| plan.execution_order.iter().position(|x| x == id).unwrap();
+        for task in &tasks {
+            for dep in &task.depends_on {
+                if pos(dep) >= pos(&task.id) {
+                    return false;
+                }
+            }
+        }
+        true
+    };
+
+    // Verify all orders are valid topological sorts
+    assert!(is_valid_order(&plan1), "Plan 1 should have valid topological order");
+    assert!(is_valid_order(&plan2), "Plan 2 should have valid topological order");
+    assert!(is_valid_order(&plan3), "Plan 3 should have valid topological order");
+
+    // Verify structure is consistent (same depth, same number of levels)
+    assert_eq!(plan1.max_depth, plan2.max_depth);
+    assert_eq!(plan2.max_depth, plan3.max_depth);
+    assert_eq!(plan1.execution_levels.len(), plan2.execution_levels.len());
+    assert_eq!(plan2.execution_levels.len(), plan3.execution_levels.len());
+
+    // All plans should have the same critical path length
+    assert_eq!(plan1.critical_path.len(), plan2.critical_path.len());
+    assert_eq!(plan2.critical_path.len(), plan3.critical_path.len());
+}
+
+#[test]
+fn test_deterministic_valid_topological_ordering_complex() {
+    // Test valid topological ordering with a more complex graph
+    let tasks = vec![
+        create_task("a", vec![]),
+        create_task("b", vec![]),
+        create_task("c", vec!["a"]),
+        create_task("d", vec!["a", "b"]),
+        create_task("e", vec!["b"]),
+        create_task("f", vec!["c", "d", "e"]),
+    ];
+
+    let results: Vec<_> = (0..10)
+        .map(|_| schedule_tasks(tasks.clone()).unwrap())
+        .collect();
+
+    // Helper to check topological validity
+    let is_valid_order = |plan: &ExecutionPlan| -> bool {
+        let pos = |id: &str| plan.execution_order.iter().position(|x| x == id).unwrap();
+        for task in &tasks {
+            for dep in &task.depends_on {
+                if pos(dep) >= pos(&task.id) {
+                    return false;
+                }
+            }
+        }
+        true
+    };
+
+    // All results should be valid topological orders
+    for (i, result) in results.iter().enumerate() {
+        assert!(
+            is_valid_order(result),
+            "Plan {} should have valid topological order",
+            i
+        );
+    }
+
+    // All plans should have consistent structure
+    let max_depth = results[0].max_depth;
+    let num_levels = results[0].execution_levels.len();
+
+    for (i, result) in results.iter().enumerate() {
+        assert_eq!(result.max_depth, max_depth, "Plan {} should have same depth", i);
+        assert_eq!(result.execution_levels.len(), num_levels, "Plan {} should have same number of levels", i);
+    }
+}
+
+#[test]
+fn test_single_task_edge_case() {
+    // Verify single task handling
+    let tasks = vec![create_task("only-task", vec![])];
+
+    let plan = schedule_tasks(tasks).expect("Should handle single task");
+
+    assert_eq!(plan.total_tasks, 1);
+    assert_eq!(plan.execution_order, vec!["only-task"]);
+    assert_eq!(plan.max_depth, 1);
+    assert_eq!(plan.execution_levels.len(), 1);
+    assert_eq!(plan.execution_levels[0].len(), 1);
+    assert_eq!(plan.critical_path, vec!["only-task"]);
+    assert_eq!(plan.parallelizable_tasks.len(), 0);
+}
+
+#[test]
+fn test_two_independent_tasks() {
+    // Minimal test for parallelism with two tasks
+    let tasks = vec![
+        create_task("task-a", vec![]),
+        create_task("task-b", vec![]),
+    ];
+
+    let plan = schedule_tasks(tasks).expect("Should schedule two independent tasks");
+
+    assert_eq!(plan.total_tasks, 2);
+    assert_eq!(plan.max_depth, 1);
+    assert_eq!(plan.execution_levels.len(), 1);
+    assert_eq!(plan.execution_levels[0].len(), 2);
+
+    // One task should be on critical path, one parallelizable
+    assert_eq!(plan.parallelizable_tasks.len(), 1);
+}
+
+#[test]
+fn test_task_with_multiple_dependencies_same_level() {
+    // Task that depends on multiple tasks at the same level
+    let tasks = vec![
+        create_task("task-1", vec![]),
+        create_task("task-2", vec![]),
+        create_task("task-3", vec!["task-1", "task-2"]),
+    ];
+
+    let plan = schedule_tasks(tasks).expect("Should schedule task with multiple dependencies");
+
+    // Level 1: task-1 and task-2 (parallel)
+    assert_eq!(plan.execution_levels[0].len(), 2);
+
+    // Level 2: task-3 (depends on both)
+    assert_eq!(plan.execution_levels[1].len(), 1);
+    assert_eq!(plan.execution_levels[1][0].id, "task-3");
+
+    assert_eq!(plan.max_depth, 2);
+}
+
+#[test]
+fn test_transitive_dependencies() {
+    // Test chain of transitive dependencies
+    // A -> B -> C -> D means C transitively depends on A
+    let tasks = vec![
+        create_task("a", vec![]),
+        create_task("b", vec!["a"]),
+        create_task("c", vec!["b"]),
+        create_task("d", vec!["c"]),
+        create_task("e", vec!["c"]),
+        create_task("f", vec!["d", "e"]),
+    ];
+
+    let plan = schedule_tasks(tasks).expect("Should handle transitive dependencies");
+
+    // Verify order respects transitive dependencies
+    let pos = |id: &str| plan.execution_order.iter().position(|x| x == id).unwrap();
+
+    assert!(pos("a") < pos("b"));
+    assert!(pos("b") < pos("c"));
+    assert!(pos("c") < pos("d"));
+    assert!(pos("c") < pos("e"));
+    assert!(pos("d") < pos("f"));
+    assert!(pos("e") < pos("f"));
+
+    // e transitively depends on a (via c)
+    assert!(pos("a") < pos("e"));
+}

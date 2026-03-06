@@ -253,9 +253,6 @@ pub async fn commit_tasks(
 
     info!("Using base branch: {}", base_branch);
 
-    // Get total count before moving tasks
-    let total_tasks = tasks.len();
-
     // Filter for completed tasks
     let completed_tasks: Vec<Task> = tasks
         .into_iter()
@@ -266,7 +263,7 @@ pub async fn commit_tasks(
 
     let mut results = Vec::new();
     let mut summary = CommitSummary {
-        total_tasks: total_tasks,
+        total_tasks: completed_tasks.len(),
         committed_tasks: 0,
         failed_tasks: 0,
         skipped_tasks: 0,
