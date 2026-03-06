@@ -43,3 +43,17 @@ pub use branch::{
     get_current_branch_name,
     is_head_detached,
 };
+
+// Re-export commit functions
+pub use commit::{
+    commit_changes,
+    stage_files,
+    stage_all,
+    create_commit,
+    get_head_commit,
+    has_staged_changes,
+    has_unstaged_changes,
+    validate_commit_message,
+    amend_commit,
+    short_commit_id,
+};
