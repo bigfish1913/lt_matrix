@@ -13,7 +13,7 @@ use clap::Parser;
 use ltmatrix::cli::Args;
 use ltmatrix::config::settings::{
     load_config, load_config_file, load_config_from_args, load_config_with_overrides,
-    merge_configs, CliOverrides, Config, LogLevel, OutputFormat,
+    merge_configs, CliOverrides, Config, LogLevel, OutputFormat, WarmupConfig,
 };
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -503,6 +503,7 @@ fn test_config_serialization_idempotence() {
             file: Some(PathBuf::from("/tmp/test.log")),
         },
         features: ltmatrix::feature::FeatureConfig::default(),
+        warmup: WarmupConfig::default(),
     };
 
     // First serialization

@@ -11,7 +11,7 @@
 
 use ltmatrix::config::settings::{
     load_config_file, merge_configs, AgentConfig, Config, LogLevel, LoggingConfig, ModeConfig,
-    OutputConfig, OutputFormat,
+    OutputConfig, OutputFormat, WarmupConfig,
 };
 use std::fs;
 use tempfile::TempDir;
@@ -542,6 +542,7 @@ fn test_merge_with_none_values_in_override() {
         output: OutputConfig::default(),
         logging: LoggingConfig::default(),
         features: ltmatrix::feature::FeatureConfig::default(),
+        warmup: WarmupConfig::default(),
     };
 
     let merged = merge_configs(Some(base), Some(override_config));
@@ -559,6 +560,7 @@ fn test_merge_with_none_values_in_base() {
         output: OutputConfig::default(),
         logging: LoggingConfig::default(),
         features: ltmatrix::feature::FeatureConfig::default(),
+        warmup: WarmupConfig::default(),
     };
 
     let mut override_config = Config::default();

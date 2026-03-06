@@ -12,7 +12,7 @@
 
 use ltmatrix::config::settings::{
     load_config_file, merge_configs, validate_config, AgentConfig, CliOverrides, Config, LogLevel,
-    LoggingConfig, ModeConfig, ModeConfigs, OutputConfig, OutputFormat,
+    LoggingConfig, ModeConfig, ModeConfigs, OutputConfig, OutputFormat, WarmupConfig,
 };
 use std::collections::HashMap;
 use std::fs;
@@ -672,6 +672,7 @@ fn test_validation_valid_config() {
         output: OutputConfig::default(),
         logging: LoggingConfig::default(),
         features: ltmatrix::feature::FeatureConfig::default(),
+        warmup: WarmupConfig::default(),
     };
 
     let result = validate_config(&config);
@@ -698,6 +699,7 @@ fn test_validation_missing_default_agent() {
         output: OutputConfig::default(),
         logging: LoggingConfig::default(),
         features: ltmatrix::feature::FeatureConfig::default(),
+        warmup: WarmupConfig::default(),
     };
 
     let result = validate_config(&config);
@@ -733,6 +735,7 @@ fn test_validation_zero_timeout() {
         output: OutputConfig::default(),
         logging: LoggingConfig::default(),
         features: ltmatrix::feature::FeatureConfig::default(),
+        warmup: WarmupConfig::default(),
     };
 
     let result = validate_config(&config);
@@ -768,6 +771,7 @@ fn test_validation_excessive_timeout() {
         output: OutputConfig::default(),
         logging: LoggingConfig::default(),
         features: ltmatrix::feature::FeatureConfig::default(),
+        warmup: WarmupConfig::default(),
     };
 
     let result = validate_config(&config);
@@ -803,6 +807,7 @@ fn test_validation_empty_command() {
         output: OutputConfig::default(),
         logging: LoggingConfig::default(),
         features: ltmatrix::feature::FeatureConfig::default(),
+        warmup: WarmupConfig::default(),
     };
 
     let result = validate_config(&config);
@@ -850,6 +855,7 @@ fn test_validation_mode_max_depth_exceeded() {
         output: OutputConfig::default(),
         logging: LoggingConfig::default(),
         features: ltmatrix::feature::FeatureConfig::default(),
+        warmup: WarmupConfig::default(),
     };
 
     let result = validate_config(&config);
@@ -897,6 +903,7 @@ fn test_validation_mode_max_retries_exceeded() {
         output: OutputConfig::default(),
         logging: LoggingConfig::default(),
         features: ltmatrix::feature::FeatureConfig::default(),
+        warmup: WarmupConfig::default(),
     };
 
     let result = validate_config(&config);
@@ -944,6 +951,7 @@ fn test_validation_mode_zero_timeout_plan() {
         output: OutputConfig::default(),
         logging: LoggingConfig::default(),
         features: ltmatrix::feature::FeatureConfig::default(),
+        warmup: WarmupConfig::default(),
     };
 
     let result = validate_config(&config);
@@ -991,6 +999,7 @@ fn test_validation_mode_zero_timeout_exec() {
         output: OutputConfig::default(),
         logging: LoggingConfig::default(),
         features: ltmatrix::feature::FeatureConfig::default(),
+        warmup: WarmupConfig::default(),
     };
 
     let result = validate_config(&config);
@@ -1038,6 +1047,7 @@ fn test_validation_mode_too_short_timeout_exec() {
         output: OutputConfig::default(),
         logging: LoggingConfig::default(),
         features: ltmatrix::feature::FeatureConfig::default(),
+        warmup: WarmupConfig::default(),
     };
 
     let result = validate_config(&config);
@@ -1086,6 +1096,7 @@ fn test_validation_fast_mode_allows_short_timeout() {
         output: OutputConfig::default(),
         logging: LoggingConfig::default(),
         features: ltmatrix::feature::FeatureConfig::default(),
+        warmup: WarmupConfig::default(),
     };
 
     let result = validate_config(&config);
@@ -1102,6 +1113,7 @@ fn test_validation_no_default_agent() {
         output: OutputConfig::default(),
         logging: LoggingConfig::default(),
         features: ltmatrix::feature::FeatureConfig::default(),
+        warmup: WarmupConfig::default(),
     };
 
     let result = validate_config(&config);
@@ -1135,6 +1147,7 @@ fn test_merge_with_none_global() {
         output: OutputConfig::default(),
         logging: LoggingConfig::default(),
         features: ltmatrix::feature::FeatureConfig::default(),
+        warmup: WarmupConfig::default(),
     };
 
     let merged = merge_configs(None, Some(project_config));
@@ -1151,6 +1164,7 @@ fn test_merge_with_none_project() {
         output: OutputConfig::default(),
         logging: LoggingConfig::default(),
         features: ltmatrix::feature::FeatureConfig::default(),
+        warmup: WarmupConfig::default(),
     };
 
     let merged = merge_configs(Some(global_config), None);

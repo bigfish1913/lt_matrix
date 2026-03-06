@@ -9,7 +9,7 @@
 use ltmatrix::config::settings::{
     agent_config_to_agent, get_default_agent, get_global_config_path, get_project_config_path,
     load_config_file, merge_configs, Config, LogLevel, LoggingConfig, ModeConfigs, OutputConfig,
-    OutputFormat,
+    OutputFormat, WarmupConfig,
 };
 use std::fs;
 use std::path::PathBuf;
@@ -382,6 +382,7 @@ fn test_merge_configs_preserves_global_when_not_in_project() {
         output: OutputConfig::default(),
         logging: LoggingConfig::default(),
         features: ltmatrix::feature::FeatureConfig::default(),
+        warmup: WarmupConfig::default(),
     };
 
     let merged = merge_configs(Some(global), Some(project));
@@ -601,6 +602,7 @@ fn test_config_serialization_roundtrip() {
             file: Some(PathBuf::from("/tmp/ltmatrix.log")),
         },
         features: ltmatrix::feature::FeatureConfig::default(),
+        warmup: WarmupConfig::default(),
     };
 
     // Serialize to TOML
@@ -874,6 +876,7 @@ fn test_partial_cli_overrides() {
             file: Some(PathBuf::from("/tmp/test.log")),
         },
         features: ltmatrix::feature::FeatureConfig::default(),
+        warmup: WarmupConfig::default(),
     };
 
     // Simulate CLI override for output format only

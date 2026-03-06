@@ -4,7 +4,7 @@
 //! beyond the basic integration tests.
 
 use ltmatrix::config::settings::{
-    get_global_config_path, get_project_config_path, load_config_file, merge_configs, Config,
+    get_global_config_path, get_project_config_path, load_config_file, merge_configs, Config, WarmupConfig,
 };
 use std::fs;
 use std::path::PathBuf;
@@ -374,6 +374,7 @@ fn test_merge_with_overlapping_fields() {
         output: ltmatrix::config::settings::OutputConfig::default(),
         logging: ltmatrix::config::settings::LoggingConfig::default(),
         features: ltmatrix::feature::FeatureConfig::default(),
+        warmup: WarmupConfig::default(),
     };
 
     let override_config = Config {
@@ -394,6 +395,7 @@ fn test_merge_with_overlapping_fields() {
         output: ltmatrix::config::settings::OutputConfig::default(),
         logging: ltmatrix::config::settings::LoggingConfig::default(),
         features: ltmatrix::feature::FeatureConfig::default(),
+        warmup: WarmupConfig::default(),
     };
 
     let merged = merge_configs(Some(base), Some(override_config));
@@ -435,6 +437,7 @@ fn test_merge_multiple_levels() {
         output: ltmatrix::config::settings::OutputConfig::default(),
         logging: ltmatrix::config::settings::LoggingConfig::default(),
         features: ltmatrix::feature::FeatureConfig::default(),
+        warmup: WarmupConfig::default(),
     };
 
     let level2 = Config {
@@ -455,6 +458,7 @@ fn test_merge_multiple_levels() {
         output: ltmatrix::config::settings::OutputConfig::default(),
         logging: ltmatrix::config::settings::LoggingConfig::default(),
         features: ltmatrix::feature::FeatureConfig::default(),
+        warmup: WarmupConfig::default(),
     };
 
     let merged = merge_configs(Some(level1), Some(level2));

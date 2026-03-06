@@ -13,7 +13,7 @@
 use clap::Parser;
 use ltmatrix::cli::Args;
 use ltmatrix::config::settings::{
-    load_config_from_args, AgentConfig, CliOverrides, Config, LogLevel, ModeConfig, OutputFormat,
+    load_config_from_args, AgentConfig, CliOverrides, Config, LogLevel, ModeConfig, OutputFormat, WarmupConfig,
 };
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -172,6 +172,7 @@ fn test_config_with_all_optional_fields_none() {
         output: ltmatrix::config::settings::OutputConfig::default(),
         logging: ltmatrix::config::settings::LoggingConfig::default(),
         features: ltmatrix::feature::FeatureConfig::default(),
+        warmup: WarmupConfig::default(),
     };
 
     // Should be able to serialize and deserialize
@@ -262,6 +263,7 @@ fn test_config_serialization_roundtrip_with_all_fields() {
             file: Some(PathBuf::from("/tmp/test.log")),
         },
         features: ltmatrix::feature::FeatureConfig::default(),
+        warmup: WarmupConfig::default(),
     };
 
     // Serialize and deserialize
@@ -350,6 +352,7 @@ fn test_merge_with_empty_override_config() {
         output: ltmatrix::config::settings::OutputConfig::default(),
         logging: ltmatrix::config::settings::LoggingConfig::default(),
         features: ltmatrix::feature::FeatureConfig::default(),
+        warmup: WarmupConfig::default(),
     };
     let merged = ltmatrix::config::settings::merge_configs(Some(base), Some(empty_config));
 

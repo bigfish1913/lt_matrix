@@ -38,6 +38,10 @@ pub struct Config {
     /// Feature flag configuration
     #[serde(default)]
     pub features: FeatureConfig,
+
+    /// Warmup configuration
+    #[serde(default)]
+    pub warmup: WarmupConfig,
 }
 
 impl Default for Config {
@@ -49,6 +53,7 @@ impl Default for Config {
             output: OutputConfig::default(),
             logging: LoggingConfig::default(),
             features: FeatureConfig::default(),
+            warmup: WarmupConfig::default(),
         }
     }
 }
@@ -198,6 +203,73 @@ impl Default for LoggingConfig {
     }
 }
 
+/// Warmup configuration for agent sessions
+///
+/// Warmup queries can be sent to agents before actual tasks to initialize
+/// sessions and reduce latency for the first real task.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WarmupConfig {
+    /// Whether warmup is enabled
+    #[serde(default)]
+    pub enabled: bool,
+
+    /// Maximum number of warmup queries to send
+    #[serde(default = "default_max_queries")]
+    pub max_queries: u32,
+
+    /// Timeout for warmup queries in seconds
+    #[serde(default = "default_warmup_timeout")]
+    pub timeout_seconds: u64,
+
+    /// Whether to retry warmup on failure
+    #[serde(default)]
+    pub retry_on_failure: bool,
+
+    /// Custom prompt template for warmup queries
+    pub prompt_template: Option<String>,
+}
+
+impl Default for WarmupConfig {
+    fn default() -> Self {
+        WarmupConfig {
+            enabled: false,
+            max_queries: 3,
+            timeout_seconds: 30,
+            retry_on_failure: false,
+            prompt_template: None,
+        }
+    }
+}
+
+impl WarmupConfig {
+    /// Validate the warmup configuration
+    pub fn validate(&self) -> Result<(), String> {
+        if self.max_queries == 0 {
+            return Err("max_queries must be greater than 0".to_string());
+        }
+
+        if self.timeout_seconds == 0 {
+            return Err("timeout_seconds must be greater than 0".to_string());
+        }
+
+        if let Some(ref template) = self.prompt_template {
+            if template.trim().is_empty() {
+                return Err("prompt_template cannot be empty".to_string());
+            }
+        }
+
+        Ok(())
+    }
+}
+
+fn default_max_queries() -> u32 {
+    3
+}
+
+fn default_warmup_timeout() -> u64 {
+    30
+}
+
 fn default_true() -> bool {
     true
 }
@@ -295,6 +367,7 @@ fn merge_config(base: Config, override_config: Config) -> Config {
         output: override_config.output,
         logging: override_config.logging,
         features: override_config.features,
+        warmup: override_config.warmup,
     }
 }
 
@@ -988,6 +1061,7 @@ agent = "claude"
                 file: None,
             },
             features: FeatureConfig::default(),
+        warmup: WarmupConfig::default(),
         };
 
         let project = Config {
@@ -1035,6 +1109,7 @@ agent = "claude"
                 file: None,
             },
             features: FeatureConfig::default(),
+        warmup: WarmupConfig::default(),
         };
 
         let merged = merge_configs(Some(global), Some(project));
@@ -1083,6 +1158,7 @@ agent = "claude"
             output: OutputConfig::default(),
             logging: LoggingConfig::default(),
             features: FeatureConfig::default(),
+        warmup: WarmupConfig::default(),
         };
 
         let merged = merge_configs(Some(config.clone()), None);
@@ -1245,6 +1321,7 @@ agent = "claude"
             output: OutputConfig::default(),
             logging: LoggingConfig::default(),
             features: FeatureConfig::default(),
+        warmup: WarmupConfig::default(),
         };
 
         let overrides = CliOverrides {
@@ -1285,6 +1362,7 @@ agent = "claude"
             },
             logging: LoggingConfig::default(),
             features: FeatureConfig::default(),
+        warmup: WarmupConfig::default(),
         };
 
         let overrides = CliOverrides {
@@ -1324,6 +1402,7 @@ agent = "claude"
                 file: None,
             },
             features: FeatureConfig::default(),
+        warmup: WarmupConfig::default(),
         };
 
         let overrides = CliOverrides {
@@ -1364,6 +1443,7 @@ agent = "claude"
             },
             logging: LoggingConfig::default(),
             features: FeatureConfig::default(),
+        warmup: WarmupConfig::default(),
         };
 
         let overrides = CliOverrides {
@@ -1424,6 +1504,7 @@ agent = "claude"
             output: OutputConfig::default(),
             logging: LoggingConfig::default(),
             features: FeatureConfig::default(),
+        warmup: WarmupConfig::default(),
         };
 
         let overrides = CliOverrides {
@@ -1480,6 +1561,7 @@ agent = "claude"
             output: OutputConfig::default(),
             logging: LoggingConfig::default(),
             features: FeatureConfig::default(),
+        warmup: WarmupConfig::default(),
         };
 
         let result = validate_config(&config);
