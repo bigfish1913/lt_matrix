@@ -15,6 +15,7 @@ pub mod git;
 pub mod memory;
 pub mod logging;
 pub mod progress;
+pub mod output;
 pub mod dryrun;
 
 // Re-export commonly used types

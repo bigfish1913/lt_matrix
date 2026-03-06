@@ -133,7 +133,7 @@ fn print_help() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cli::args::{ReleaseArgs, CompletionsArgs, Shell};
+    use crate::cli::args::ReleaseArgs;
     use clap::Parser;
     use std::path::PathBuf;
 
@@ -145,11 +145,20 @@ mod tests {
 
     #[test]
     fn test_execute_completions() {
-        let completions_args = CompletionsArgs {
-            shell: Shell::Bash,
-        };
-        // This should not error
-        assert!(execute_completions(&completions_args).is_ok());
+        use clap::CommandFactory;
+        use clap_complete::Shell;
+
+        let shell = Shell::Bash;
+        let mut cmd = Args::command();
+        let mut buf = Vec::new();
+
+        clap_complete::generate(shell, &mut cmd, "ltmatrix", &mut buf);
+
+        // Verify completion script was generated
+        let output = String::from_utf8(buf).expect("Invalid UTF-8 in completion output");
+        assert!(!output.is_empty(), "Completion output should not be empty");
+        assert!(output.contains("_ltmatrix"), "Completion should define _ltmatrix function");
+        assert!(output.contains("compgen"), "Completion should use compgen");
     }
 
     #[test]

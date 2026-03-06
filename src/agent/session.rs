@@ -70,7 +70,7 @@ impl SessionData {
 #[derive(Debug, Clone)]
 pub struct SessionManager {
     /// Base directory for session files
-    sessions_dir: PathBuf,
+    pub sessions_dir: PathBuf,
 }
 
 impl SessionManager {
