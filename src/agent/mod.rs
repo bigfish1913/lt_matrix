@@ -8,6 +8,9 @@ pub mod claude;
 pub mod pool;
 pub mod session;
 
-pub use backend::{AgentBackend, AgentResponse, ExecutionConfig};
+pub use backend::{
+    AgentBackend, AgentConfig, AgentConfigBuilder, AgentError, AgentResponse, AgentSession,
+    ExecutionConfig, MemorySession,
+};
 pub use claude::ClaudeAgent;
 pub use session::{SessionData, SessionManager};

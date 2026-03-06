@@ -9,7 +9,7 @@
 //! - Error handling and failure scenarios
 
 use async_trait::async_trait;
-use ltmatrix::agent::backend::{AgentBackend, AgentResponse, ExecutionConfig};
+use ltmatrix::agent::backend::{AgentBackend, AgentConfig, AgentError, AgentResponse, AgentSession, ExecutionConfig};
 use ltmatrix::agent::session::SessionManager;
 use ltmatrix::models::{ModeConfig, Task, TaskComplexity, TaskStatus};
 use ltmatrix::pipeline::execute::ExecuteConfig;
@@ -51,6 +51,19 @@ impl AgentBackend for _SuccessfulMockAgent {
 
     async fn health_check(&self) -> anyhow::Result<bool> {
         Ok(true)
+    }
+
+    async fn execute_with_session(
+        &self,
+        prompt: &str,
+        config: &ExecutionConfig,
+        _session: &dyn AgentSession,
+    ) -> anyhow::Result<AgentResponse> {
+        self.execute(prompt, config).await
+    }
+
+    async fn validate_config(&self, config: &AgentConfig) -> Result<(), AgentError> {
+        config.validate()
     }
 
     fn agent(&self) -> &ltmatrix::models::Agent {
@@ -110,6 +123,19 @@ impl AgentBackend for _FlakyMockAgent {
 
     async fn health_check(&self) -> anyhow::Result<bool> {
         Ok(true)
+    }
+
+    async fn execute_with_session(
+        &self,
+        prompt: &str,
+        config: &ExecutionConfig,
+        _session: &dyn AgentSession,
+    ) -> anyhow::Result<AgentResponse> {
+        self.execute(prompt, config).await
+    }
+
+    async fn validate_config(&self, config: &AgentConfig) -> Result<(), AgentError> {
+        config.validate()
     }
 
     fn agent(&self) -> &ltmatrix::models::Agent {

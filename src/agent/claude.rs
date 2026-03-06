@@ -12,7 +12,9 @@ use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::Command;
 use tracing::{debug, info, warn};
 
-use crate::agent::backend::{AgentBackend, AgentResponse, ExecutionConfig};
+use crate::agent::backend::{
+    AgentBackend, AgentConfig, AgentError, AgentResponse, AgentSession, ExecutionConfig,
+};
 use crate::agent::session::{SessionData, SessionManager};
 use crate::models::Agent;
 
@@ -295,6 +297,11 @@ impl AgentBackend for ClaudeAgent {
     async fn execute(&self, prompt: &str, config: &ExecutionConfig) -> Result<AgentResponse> {
         info!("Executing Claude prompt with model {}", config.model);
 
+        // Validate prompt
+        if prompt.trim().is_empty() {
+            return Err(anyhow::anyhow!("Prompt cannot be empty"));
+        }
+
         // Verify Claude command is available
         self.verify_claude_command().await?;
 
@@ -331,6 +338,57 @@ impl AgentBackend for ClaudeAgent {
                 warn!("Claude health check failed: {}", e);
                 Ok(false)
             }
+        }
+    }
+
+    async fn execute_with_session(
+        &self,
+        prompt: &str,
+        config: &ExecutionConfig,
+        session: &dyn AgentSession,
+    ) -> Result<AgentResponse> {
+        info!(
+            "Executing Claude prompt with session {} (model {})",
+            session.session_id(),
+            config.model
+        );
+
+        // Verify Claude command is available
+        self.verify_claude_command().await?;
+
+        // Execute with retry (session is already provided)
+        // Note: We're passing the session but not using it yet
+        // TODO: Implement proper session reuse logic
+        let response = self
+            .execute_with_retry(prompt, config, None) // Session passed but not used yet
+            .await?;
+
+        Ok(response)
+    }
+
+    async fn validate_config(&self, config: &AgentConfig) -> Result<(), AgentError> {
+        // Validate using the AgentConfig's validate method
+        config.validate()?;
+
+        // Additional Claude-specific validation
+        if config.name != "claude" {
+            return Err(AgentError::ConfigValidation {
+                field: "name".to_string(),
+                message: format!("Expected 'claude', got '{}'", config.name),
+            });
+        }
+
+        // Verify the command exists
+        let output = tokio::process::Command::new(&config.command)
+            .arg("--version")
+            .output()
+            .await;
+
+        match output {
+            Ok(_) => Ok(()),
+            Err(_) => Err(AgentError::CommandNotFound {
+                command: config.command.clone(),
+            }),
         }
     }
 
