@@ -1,0 +1,191 @@
+# ── Node / JS / TS ──────────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+.npm/
+.yarn/
+.pnp.*
+.next/
+.nuxt/
+.output/
+.svelte-kit/
+dist/
+out/
+build/
+.cache/
+.parcel-cache/
+.turbo/
+.vercel/
+.netlify/
+storybook-static/
+
+# ── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.pyd
+.Python
+venv/
+.venv/
+env/
+ENV/
+pip-log.txt
+pip-delete-this-directory.txt
+*.egg-info/
+*.egg
+.eggs/
+dist/
+build/
+.mypy_cache/
+.pytype/
+.pyre/
+.ruff_cache/
+.pytest_cache/
+.tox/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+coverage/
+
+# ── Java / Kotlin / Gradle / Maven ──────────────────────────────────────────
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+target/
+.gradle/
+gradle-app.setting
+!gradle-wrapper.jar
+.gradletasknamecache
+*.iml
+
+# ── Go ───────────────────────────────────────────────────────────────────────
+*.exe
+*.exe~
+*.dll
+*.test
+*.out
+vendor/
+
+# ── Rust ─────────────────────────────────────────────────────────────────────
+target/
+**/*.rs.bk
+
+# ── Ruby ─────────────────────────────────────────────────────────────────────
+*.gem
+*.rbc
+/.config
+/coverage/
+/InstalledFiles
+/pkg/
+/spec/reports/
+/test/tmp/
+/test/version_tmp/
+/tmp/
+.bundle/
+vendor/bundle/
+
+# ── PHP ──────────────────────────────────────────────────────────────────────
+vendor/
+composer.lock
+.phpunit.result.cache
+
+# ── C / C++ ──────────────────────────────────────────────────────────────────
+*.o
+*.a
+*.lib
+*.app
+*.dSYM/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+
+# ── Swift / Xcode ────────────────────────────────────────────────────────────
+*.xcodeproj/
+*.xcworkspace/
+DerivedData/
+*.moved-aside
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+xcuserdata/
+*.xccheckout
+*.xcscmblueprint
+.build/
+
+# ── Docker ───────────────────────────────────────────────────────────────────
+.dockerignore
+
+# ── Databases ────────────────────────────────────────────────────────────────
+*.sqlite
+*.sqlite3
+*.db
+*.db-shm
+*.db-wal
+dump.rdb
+
+# ── Secrets / Env ────────────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+!.env.sample
+*.pem
+*.key
+*.p12
+*.pfx
+secrets.json
+secrets.yaml
+secrets.yml
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+logs/
+*.log.*
+
+# ── OS ───────────────────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ── IDE ──────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.bak
+.project
+.classpath
+.settings/
+nbproject/
+
+# ── Test coverage ────────────────────────────────────────────────────────────
+.nyc_output/
+lcov.info
+*.lcov
+
+# ── Misc ─────────────────────────────────────────────────────────────────────
+*.tmp
+*.temp
+.sass-cache/
+.terraform/
+*.tfstate
+*.tfstate.*
+
+# ── Claude / longtime metadata ───────────────────────────────────────────────
+.claude/
+tasks/
+logs/
+workspace/
