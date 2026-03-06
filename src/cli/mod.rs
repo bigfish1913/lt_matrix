@@ -6,3 +6,4 @@ pub mod args;
 pub mod command;
 
 pub use args::Args;
+pub use command::execute_command;

@@ -22,7 +22,6 @@ pub use models::{
 };
 
 /// Main entry point for running ltmatrix
-pub fn run(_args: cli::Args) -> anyhow::Result<()> {
-    // TODO: Implement main run logic
-    Ok(())
+pub fn run(args: cli::Args) -> anyhow::Result<()> {
+    cli::command::execute_command(args)
 }
