@@ -289,7 +289,7 @@ pub fn create_commit(
 /// }
 /// # Ok::<(), anyhow::Error>(())
 /// ```
-pub fn get_head_commit(repo: &Repository) -> Result<Option<git2::Commit>> {
+pub fn get_head_commit(repo: &Repository) -> Result<Option<git2::Commit<'_>>> {
     match repo.head() {
         Ok(head) => {
             let commit = head.peel_to_commit()

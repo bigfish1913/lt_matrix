@@ -146,7 +146,7 @@ impl ClaudeAgent {
         &self,
         prompt: &str,
         config: &ExecutionConfig,
-        session: Option<&SessionData>,
+        _session: Option<&SessionData>,
     ) -> Result<AgentResponse> {
         let args = self.build_command(config);
 
