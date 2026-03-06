@@ -5,6 +5,7 @@
 
 pub mod backend;
 pub mod claude;
+pub mod codex;
 pub mod factory;
 pub mod kimicode;
 pub mod opencode;
@@ -16,6 +17,7 @@ pub use backend::{
     ExecutionConfig, MemorySession,
 };
 pub use claude::ClaudeAgent;
+pub use codex::CodexAgent;
 pub use factory::{AgentFactory, AgentFactoryConfig};
 pub use kimicode::KimiCodeAgent;
 pub use opencode::OpenCodeAgent;

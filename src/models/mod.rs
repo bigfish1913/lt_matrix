@@ -191,6 +191,11 @@ impl Agent {
         Agent::new("kimicode", "kimi-code", "moonshot-v1-128k", 3600)
     }
 
+    /// Creates the default Codex agent configuration
+    pub fn codex_default() -> Self {
+        Agent::new("codex", "codex", "o4-mini", 3600)
+    }
+
     /// Marks this agent as the default
     pub fn with_default(mut self) -> Self {
         self.is_default = true;

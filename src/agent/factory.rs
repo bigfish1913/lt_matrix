@@ -11,8 +11,7 @@
 //! | `"claude"`    | [`ClaudeAgent`]    |
 //! | `"opencode"`  | [`OpenCodeAgent`]  |
 //! | `"kimicode"`  | [`KimiCodeAgent`]  |
-//!
-//! Additional backends (Codex) will be registered as they are implemented.
+//! | `"codex"`     | [`CodexAgent`]     |
 //!
 //! # Usage
 //!
@@ -38,6 +37,7 @@ use anyhow::{anyhow, Result};
 
 use crate::agent::backend::{AgentBackend, AgentConfig, AgentError};
 use crate::agent::claude::ClaudeAgent;
+use crate::agent::codex::CodexAgent;
 use crate::agent::kimicode::KimiCodeAgent;
 use crate::agent::opencode::OpenCodeAgent;
 use crate::agent::session::SessionManager;
@@ -91,7 +91,7 @@ impl AgentFactory {
 
     /// Return the names of all backends this factory knows how to create.
     pub fn supported_backends(&self) -> Vec<&'static str> {
-        vec!["claude", "opencode", "kimicode"]
+        vec!["claude", "opencode", "kimicode", "codex"]
     }
 
     /// Return `true` if `name` is a recognised backend.
@@ -136,6 +136,7 @@ impl AgentFactory {
             "claude" => self.validate_claude_config(config),
             "opencode" => self.validate_opencode_config(config),
             "kimicode" => self.validate_kimicode_config(config),
+            "codex" => self.validate_codex_config(config),
             unknown => Err(AgentError::ConfigValidation {
                 field: "name".to_string(),
                 message: format!("unknown backend '{}'", unknown),
@@ -161,6 +162,14 @@ impl AgentFactory {
                 .name("kimicode")
                 .command("kimi-code")
                 .model("moonshot-v1-128k")
+                .timeout_secs(3600)
+                .max_retries(3)
+                .enable_session(true)
+                .build()),
+            "codex" => Ok(AgentConfig::builder()
+                .name("codex")
+                .command("codex")
+                .model("o4-mini")
                 .timeout_secs(3600)
                 .max_retries(3)
                 .enable_session(true)
@@ -234,6 +243,23 @@ impl AgentFactory {
                 let backend = KimiCodeAgent::with_agent(agent, session_manager);
                 Ok(Box::new(backend))
             }
+            "codex" => {
+                let agent = Agent {
+                    name: config.name.clone(),
+                    command: config.command.clone(),
+                    model: config.model.clone(),
+                    timeout: config.timeout_secs,
+                    is_default: false,
+                };
+
+                let session_manager = SessionManager::default_manager().unwrap_or_else(|_| {
+                    let tmp = std::env::temp_dir().join("ltmatrix-sessions");
+                    SessionManager::new(&tmp).expect("temp-dir session manager creation")
+                });
+
+                let backend = CodexAgent::with_agent(agent, session_manager);
+                Ok(Box::new(backend))
+            }
             unknown => Err(anyhow!("unsupported agent backend '{}'", unknown)),
         }
     }
@@ -275,6 +301,17 @@ impl AgentFactory {
                     "kimicode backend requires name='kimicode', got '{}'",
                     config.name
                 ),
+            });
+        }
+        Ok(())
+    }
+
+    /// Codex-specific validation rules.
+    fn validate_codex_config(&self, config: &AgentConfig) -> Result<(), AgentError> {
+        if config.name != "codex" {
+            return Err(AgentError::ConfigValidation {
+                field: "name".to_string(),
+                message: format!("codex backend requires name='codex', got '{}'", config.name),
             });
         }
         Ok(())
@@ -487,5 +524,63 @@ mod tests {
             .timeout_secs(3600)
             .build();
         assert!(factory.validate_config("kimicode", &config).is_ok());
+    }
+
+    #[test]
+    fn supported_backends_includes_codex() {
+        let factory = AgentFactory::new();
+        assert!(factory.supported_backends().contains(&"codex"));
+    }
+
+    #[test]
+    fn is_supported_codex() {
+        let factory = AgentFactory::new();
+        assert!(factory.is_supported("codex"));
+    }
+
+    #[test]
+    fn create_codex_backend() {
+        let factory = AgentFactory::new();
+        let result = factory.create("codex");
+        assert!(result.is_ok());
+        let agent = result.unwrap();
+        assert_eq!(agent.backend_name(), "codex");
+    }
+
+    #[test]
+    fn create_codex_with_custom_config() {
+        let factory = AgentFactory::new();
+        let config = AgentConfig::builder()
+            .name("codex")
+            .command("codex")
+            .model("o3")
+            .timeout_secs(7200)
+            .max_retries(3)
+            .build();
+        assert!(factory.create_with_config(config).is_ok());
+    }
+
+    #[test]
+    fn validate_config_bad_name_for_codex_backend() {
+        let factory = AgentFactory::new();
+        let config = AgentConfig::builder()
+            .name("claude")
+            .model("o4-mini")
+            .command("codex")
+            .timeout_secs(3600)
+            .build();
+        assert!(factory.validate_config("codex", &config).is_err());
+    }
+
+    #[test]
+    fn validate_config_good_codex() {
+        let factory = AgentFactory::new();
+        let config = AgentConfig::builder()
+            .name("codex")
+            .command("codex")
+            .model("o4-mini")
+            .timeout_secs(3600)
+            .build();
+        assert!(factory.validate_config("codex", &config).is_ok());
     }
 }
