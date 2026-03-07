@@ -1,3 +1,8 @@
+// Copyright (c) 2026 bigfish
+// SPDX-License-Identifier: MIT
+// This file is part of ltmatrix under the MIT License.
+
+
 //! Test stage of the pipeline
 //!
 //! This module handles automatic detection and execution of tests across

@@ -1,3 +1,8 @@
+// Copyright (c) 2026 bigfish
+// SPDX-License-Identifier: MIT
+// This file is part of ltmatrix under the MIT License.
+
+
 //! Task generation stage
 //!
 //! This module implements the Generate stage of the pipeline, which:

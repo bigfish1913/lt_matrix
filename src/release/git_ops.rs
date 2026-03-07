@@ -1,3 +1,8 @@
+// Copyright (c) 2026 bigfish
+// SPDX-License-Identifier: MIT
+// This file is part of ltmatrix under the MIT License.
+
+
 //! Git operations for release management
 //!
 //! This module provides git operations needed during the release process.

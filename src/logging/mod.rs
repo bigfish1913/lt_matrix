@@ -1,3 +1,8 @@
+// Copyright (c) 2026 bigfish
+// SPDX-License-Identifier: MIT
+// This file is part of ltmatrix under the MIT License.
+
+
 //! Logging system for ltmatrix
 //!
 //! This module provides structured logging with multiple output formats and levels.

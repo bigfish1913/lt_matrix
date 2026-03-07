@@ -1,3 +1,8 @@
+// Copyright (c) 2026 bigfish
+// SPDX-License-Identifier: MIT
+// This file is part of ltmatrix under the MIT License.
+
+
 //! Warmup executor for pre-initializing agent sessions
 //!
 //! This module provides functionality to warm up agent sessions before

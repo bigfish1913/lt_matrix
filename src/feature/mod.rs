@@ -1,3 +1,8 @@
+// Copyright (c) 2026 bigfish
+// SPDX-License-Identifier: MIT
+// This file is part of ltmatrix under the MIT License.
+
+
 //! Feature flag system for gradual rollout and experimental features
 //!
 //! This module provides a comprehensive feature flag system that allows:

@@ -1,3 +1,8 @@
+// Copyright (c) 2026 bigfish
+// SPDX-License-Identifier: MIT
+// This file is part of ltmatrix under the MIT License.
+
+
 //! Plugin manager for discovery, loading, and lifecycle management
 //!
 //! This module provides the central plugin management functionality.

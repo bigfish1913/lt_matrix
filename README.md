@@ -144,4 +144,22 @@ ltmatrix --dry-run "refactor database layer"
 
 ## License
 
-MIT
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+### Third-Party Licenses
+
+This project uses open-source dependencies. See [LICENSE-3RDPARTY](LICENSE-3RDPARTY) for the full list of third-party licenses.
+
+All dependencies use licenses compatible with MIT:
+- MIT
+- Apache-2.0
+- Apache-2.0 WITH LLVM-exception
+- BSD-3-Clause
+- ISC
+- Unicode-3.0
+- MPL-2.0
+- And other permissive licenses
+
+### Contributing
+
+By contributing to this project, you agree that your contributions will be licensed under the MIT License.

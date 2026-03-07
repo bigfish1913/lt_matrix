@@ -1,3 +1,8 @@
+// Copyright (c) 2026 bigfish
+// SPDX-License-Identifier: MIT
+// This file is part of ltmatrix under the MIT License.
+
+
 //! Progress management with multi-bar support
 //!
 //! This module provides the ProgressManager for coordinating multiple progress bars,

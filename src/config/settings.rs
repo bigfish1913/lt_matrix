@@ -1,3 +1,8 @@
+// Copyright (c) 2026 bigfish
+// SPDX-License-Identifier: MIT
+// This file is part of ltmatrix under the MIT License.
+
+
 //! Configuration settings for ltmatrix
 //!
 //! This module handles loading configuration from TOML files and merging

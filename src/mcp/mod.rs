@@ -1,3 +1,8 @@
+// Copyright (c) 2026 bigfish
+// SPDX-License-Identifier: MIT
+// This file is part of ltmatrix under the MIT License.
+
+
 //! MCP (Model Context Protocol) implementation
 //!
 //! This module provides a complete MCP client implementation for communicating

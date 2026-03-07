@@ -1,0 +1,205 @@
+# Third-Party Licenses
+
+This file lists the licenses of the dependencies used by ltmatrix.
+
+## Overview
+
+ltmatrix uses the following open-source dependencies. All licenses are compatible
+with the MIT license used by this project.
+
+## License Summary
+
+| License | Count | Compatibility |
+|---------|-------|---------------|
+| MIT | 222 | Fully compatible |
+| Apache-2.0 | 185 | Fully compatible |
+| Apache-2.0 WITH LLVM-exception | 8 | Fully compatible |
+| Unicode-3.0 | 19 | Fully compatible |
+| ISC | 5 | Fully compatible |
+| BSD-3-Clause | 1 | Fully compatible |
+| BSL-1.0 | 1 | Compatible (not copyleft) |
+| CDLA-Permissive-2.0 | 1 | Fully compatible |
+| MPL-2.0 | 1 | Compatible (file-level copyleft, does not affect this project) |
+| Unlicense | 2 | Public domain, fully compatible |
+| LGPL-2.1-or-later | 2 | Compatible when dynamically linked |
+
+## Direct Dependencies
+
+The following are the direct dependencies specified in `Cargo.toml`:
+
+### CLI Parsing
+- **clap** (4.5) - MIT OR Apache-2.0
+- **clap_complete** (4.5) - MIT OR Apache-2.0
+- **clap_mangen** (0.2) - MIT OR Apache-2.0
+
+### Serialization
+- **serde** (1.0) - MIT OR Apache-2.0
+- **serde_json** (1.0) - MIT OR Apache-2.0
+- **toml** (0.8) - MIT OR Apache-2.0
+
+### Async Runtime
+- **tokio** (1.40) - MIT
+- **async-trait** (0.1) - MIT OR Apache-2.0
+
+### Error Handling
+- **anyhow** (1.0) - MIT OR Apache-2.0
+- **thiserror** (1.0) - MIT OR Apache-2.0
+
+### Logging
+- **tracing** (0.1) - MIT
+- **tracing-subscriber** (0.3) - MIT
+- **tracing-appender** (0.2) - MIT
+
+### Progress Bars
+- **indicatif** (0.17) - MIT
+
+### Git Operations
+- **git2** (0.19) - MIT OR Apache-2.0
+
+### HTTP Client
+- **reqwest** (0.12) - MIT OR Apache-2.0
+
+### Datetime Handling
+- **chrono** (0.4) - MIT OR Apache-2.0
+
+### Terminal Handling
+- **console** (0.15) - MIT
+
+### Interactive Prompts
+- **dialoguer** (0.11) - MIT
+
+### Temporary File Handling
+- **tempfile** (3.12) - MIT OR Apache-2.0
+
+### UUID Generation
+- **uuid** (1.11) - MIT OR Apache-2.0
+
+### Command Detection
+- **which** (6.0) - MIT
+
+### Directory Resolution
+- **dirs** (5.0) - MIT OR Apache-2.0
+
+### Regular Expressions
+- **regex** (1.10) - MIT OR Apache-2.0
+
+### Glob Pattern Matching
+- **glob** (0.3) - MIT OR Apache-2.0
+
+### Signal Handling (Unix only)
+- **signal-hook** (0.3) - MIT OR Apache-2.0
+- **signal-hook-tokio** (0.3) - MIT OR Apache-2.0
+
+### Dev Dependencies
+- **serde_yaml** (0.9) - MIT OR Apache-2.0
+
+## Full Dependency List
+
+### MIT Licensed (222 crates)
+aho-corasick, android_system_properties, anstream, anstyle, anstyle-parse,
+anstyle-query, anstyle-wincon, anyhow, async-trait, atomic-waker, autocfg,
+base64, bitflags, bumpalo, bytes, cc, cfg-if, chrono, clap, clap_builder,
+clap_complete, clap_derive, clap_lex, clap_mangen, colorchoice, console,
+core-foundation-sys, crossbeam-channel, crossbeam-utils, deranged, dialoguer,
+dirs, dirs-sys, displaydoc, either, encode_unicode, equivalent, errno,
+fastrand, find-msvc-tools, form_urlencoded, futures-channel, futures-core,
+futures-task, futures-util, getrandom, git2, glob, hashbrown, heck, home,
+http, http-body, http-body-util, httparse, hyper, hyper-rustls, hyper-util,
+iana-time-zone, iana-time-zone-haiku, idna, idna_adapter, indexmap, indicatif,
+ipnet, iri-string, is_terminal_polyfill, itoa, jobserver, js-sys, lazy_static,
+libc, libgit2-sys, libredox, libz-sys, linux-raw-sys, lock_api, log, ltmatrix,
+matchers, memchr, mio, nu-ansi-term, num-conv, num-traits, number_prefix,
+once_cell, once_cell_polyfill, parking_lot, parking_lot_core, percent-encoding,
+pin-project-lite, pin-utils, pkg-config, portable-atomic, powerfmt, proc-macro2,
+quote, r-efi, redox_syscall, redox_users, regex, regex-automata, regex-syntax,
+reqwest, roff, rustix, rustls, rustls-pki-types, rustversion, scopeguard, serde,
+serde_core, serde_derive, serde_json, serde_spanned, serde_urlencoded,
+sharded-slab, shell-words, shlex, signal-hook, signal-hook-registry,
+signal-hook-tokio, slab, smallvec, socket2, stable_deref_trait, strsim, syn,
+synstructure, tempfile, thiserror, thiserror-impl, thread_local, time,
+time-core, tokio, tokio-macros, tokio-rustls, toml, toml_datetime, toml_edit,
+toml_write, tower, tower-http, tower-layer, tower-service, tracing,
+tracing-appender, tracing-attributes, tracing-core, tracing-log,
+tracing-subscriber, try-lock, unicode-ident, unicode-width, url, utf8_iter,
+utf8parse, uuid, vcpkg, want, wasi, wasip2, wasip3, wasm-bindgen,
+wasm-bindgen-futures, wasm-bindgen-macro, wasm-bindgen-macro-support,
+wasm-bindgen-shared, web-sys, web-time, which, windows-core, windows-implement,
+windows-interface, windows-link, windows-result, windows-strings, windows-sys,
+windows-targets, windows_aarch64_gnullvm, windows_aarch64_msvc, windows_i686_gnu,
+windows_i686_gnullvm, windows_i686_msvc, windows_x86_64_gnu, windows_x86_64_gnullvm,
+windows_x86_64_msvc, winnow, winsafe, wit-bindgen, zeroize, zmij
+
+### Apache-2.0 Licensed (185 crates)
+android_system_properties, anstream, anstyle, anstyle-parse, anstyle-query,
+anstyle-wincon, anyhow, async-trait, atomic-waker, autocfg, base64, bitflags,
+bumpalo, cc, cfg-if, chrono, clap, clap_builder, clap_complete, clap_derive,
+clap_lex, clap_mangen, colorchoice, core-foundation-sys, crossbeam-channel,
+crossbeam-utils, deranged, dirs, dirs-sys, displaydoc, either, encode_unicode,
+equivalent, errno, fastrand, find-msvc-tools, form_urlencoded, futures-channel,
+futures-core, futures-task, futures-util, getrandom, git2, glob, hashbrown,
+heck, home, http, httparse, hyper-rustls, iana-time-zone, iana-time-zone-haiku,
+idna, idna_adapter, indexmap, ipnet, iri-string, is_terminal_polyfill, itoa,
+jobserver, js-sys, lazy_static, libc, libgit2-sys, libz-sys, linux-raw-sys,
+lock_api, log, num-conv, num-traits, once_cell, once_cell_polyfill, parking_lot,
+parking_lot_core, percent-encoding, pin-project-lite, pin-utils, pkg-config,
+portable-atomic, powerfmt, proc-macro2, quote, r-efi, regex, regex-automata,
+regex-syntax, reqwest, ring, roff, rustix, rustls, rustls-pki-types, rustversion,
+ryu, scopeguard, serde, serde_core, serde_derive, serde_json, serde_spanned,
+serde_urlencoded, shell-words, shlex, signal-hook, signal-hook-registry,
+signal-hook-tokio, smallvec, socket2, stable_deref_trait, syn, sync_wrapper,
+tempfile, thiserror, thiserror-impl, thread_local, time, time-core, tokio-rustls,
+toml, toml_datetime, toml_edit, toml_write, unicode-ident, unicode-width, url,
+utf8_iter, utf8parse, uuid, vcpkg, wasi, wasip2, wasip3, wasm-bindgen,
+wasm-bindgen-futures, wasm-bindgen-macro, wasm-bindgen-macro-support,
+wasm-bindgen-shared, web-sys, web-time, windows-core, windows-implement,
+windows-interface, windows-link, windows-result, windows-strings, windows-sys,
+windows-targets, windows_aarch64_gnullvm, windows_aarch64_msvc, windows_i686_gnu,
+windows_i686_gnullvm, windows_i686_msvc, windows_x86_64_gnu, windows_x86_64_gnullvm,
+windows_x86_64_msvc, wit-bindgen, zeroize
+
+### Apache-2.0 WITH LLVM-exception (8 crates)
+linux-raw-sys, rustix, wasi, wasip2, wasip3, wit-bindgen
+
+### Unicode-3.0 Licensed (19 crates)
+icu_collections, icu_locale_core, icu_normalizer, icu_normalizer_data,
+icu_properties, icu_properties_data, icu_provider, litemap, potential_utf,
+tinystr, unicode-ident, writeable, yoke, yoke-derive, zerofrom, zerofrom-derive,
+zerotrie, zerovec, zerovec-derive
+
+### ISC Licensed (5 crates)
+hyper-rustls, ring, rustls, rustls-webpki, untrusted
+
+### Other Compatible Licenses
+- **BSD-3-Clause**: subtle
+- **BSL-1.0**: ryu
+- **CDLA-Permissive-2.0**: webpki-roots
+- **MPL-2.0**: option-ext
+- **Unlicense**: aho-corasick, memchr
+- **LGPL-2.1-or-later**: r-efi (used for EFI support on Windows, dynamically linked)
+
+## License Verification
+
+To verify the licenses of all dependencies:
+
+```bash
+# Check license compatibility
+cargo deny check licenses
+
+# List all dependencies with their licenses
+cargo deny list
+```
+
+## Updating This File
+
+When adding new dependencies, run:
+
+```bash
+cargo deny list > /tmp/deps.txt
+```
+
+Then update this file with any new licenses.
+
+---
+
+Generated on: 2026-03-07
+Project: ltmatrix v0.1.0

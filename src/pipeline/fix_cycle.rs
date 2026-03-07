@@ -1,3 +1,8 @@
+// Copyright (c) 2026 bigfish
+// SPDX-License-Identifier: MIT
+// This file is part of ltmatrix under the MIT License.
+
+
 //! Fix cycle triggering module
 //!
 //! This module implements automatic fix cycle triggering when critical issues

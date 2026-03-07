@@ -1,3 +1,8 @@
+// Copyright (c) 2026 bigfish
+// SPDX-License-Identifier: MIT
+// This file is part of ltmatrix under the MIT License.
+
+
 //! Topological visualization of task dependencies and execution order
 //!
 //! This module provides ASCII art visualization for:

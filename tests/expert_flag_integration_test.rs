@@ -459,7 +459,8 @@ level = "info"
 "#;
     fs::write(&config_path, config_content).unwrap();
 
-    let original_dir = std::env::current_dir().unwrap();
+    // Use CARGO_MANIFEST_DIR as a stable directory that won't be cleaned up by other tests
+    let original_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     std::env::set_current_dir(temp_dir.path()).unwrap();
 
     // Complete command with --expert and other overrides

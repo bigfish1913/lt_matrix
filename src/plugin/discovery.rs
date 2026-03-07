@@ -1,3 +1,8 @@
+// Copyright (c) 2026 bigfish
+// SPDX-License-Identifier: MIT
+// This file is part of ltmatrix under the MIT License.
+
+
 //! Plugin discovery utilities
 //!
 //! This module provides utilities for discovering plugins in the filesystem.

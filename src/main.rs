@@ -1,3 +1,7 @@
+// Copyright (c) 2026 bigfish
+// SPDX-License-Identifier: MIT
+// This file is part of ltmatrix under the MIT License.
+
 //! ltmatrix - Long-Time Agent Orchestrator
 //!
 //! This is the main entry point for the ltmatrix application.

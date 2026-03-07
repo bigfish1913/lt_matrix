@@ -1,3 +1,8 @@
+// Copyright (c) 2026 bigfish
+// SPDX-License-Identifier: MIT
+// This file is part of ltmatrix under the MIT License.
+
+
 //! JSON-RPC 2.0 error types for MCP protocol
 
 use serde::{Deserialize, Serialize};

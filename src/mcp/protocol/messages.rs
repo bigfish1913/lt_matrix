@@ -1,3 +1,8 @@
+// Copyright (c) 2026 bigfish
+// SPDX-License-Identifier: MIT
+// This file is part of ltmatrix under the MIT License.
+
+
 //! JSON-RPC 2.0 message types for MCP protocol
 //!
 //! This module implements the three core message types defined by JSON-RPC 2.0:

@@ -1,3 +1,8 @@
+// Copyright (c) 2026 bigfish
+// SPDX-License-Identifier: MIT
+// This file is part of ltmatrix under the MIT License.
+
+
 //! Test coverage analysis module
 //!
 //! This module handles test coverage checking, aggregation of test findings,

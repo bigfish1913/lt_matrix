@@ -1,3 +1,8 @@
+// Copyright (c) 2026 bigfish
+// SPDX-License-Identifier: MIT
+// This file is part of ltmatrix under the MIT License.
+
+
 //! Project memory management
 //!
 //! This module handles persistent memory storage and retrieval for architectural decisions,

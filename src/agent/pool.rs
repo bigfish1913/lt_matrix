@@ -1,3 +1,8 @@
+// Copyright (c) 2026 bigfish
+// SPDX-License-Identifier: MIT
+// This file is part of ltmatrix under the MIT License.
+
+
 //! Session pool for agent session reuse
 //!
 //! This module provides an in-memory registry of [`MemorySession`] objects that

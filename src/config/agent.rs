@@ -1,3 +1,8 @@
+// Copyright (c) 2026 bigfish
+// SPDX-License-Identifier: MIT
+// This file is part of ltmatrix under the MIT License.
+
+
 //! Agent backend configuration
 //!
 //! Defines configuration for different agent backends (Claude, OpenCode, KimiCode, Codex)

@@ -1,3 +1,8 @@
+// Copyright (c) 2026 bigfish
+// SPDX-License-Identifier: MIT
+// This file is part of ltmatrix under the MIT License.
+
+
 //! MCP protocol message types
 //!
 //! This module implements the JSON-RPC 2.0 based message types used by MCP.

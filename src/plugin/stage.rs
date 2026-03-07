@@ -1,3 +1,8 @@
+// Copyright (c) 2026 bigfish
+// SPDX-License-Identifier: MIT
+// This file is part of ltmatrix under the MIT License.
+
+
 //! Pipeline stage plugin trait
 //!
 //! This module defines the trait for custom pipeline stages.

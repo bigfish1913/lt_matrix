@@ -1,3 +1,8 @@
+// Copyright (c) 2026 bigfish
+// SPDX-License-Identifier: MIT
+// This file is part of ltmatrix under the MIT License.
+
+
 //! Telemetry sender
 //!
 //! This module handles sending telemetry events to the analytics endpoint.

@@ -6,8 +6,9 @@
 // - Cross-platform builds for Linux/macOS/Windows
 // - Security audit with cargo-audit
 // - Separate release workflow
+//
+// Optimized for fast execution with shared workflow loading.
 
-use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
@@ -24,101 +25,127 @@ fn workflow_path(filename: &str) -> std::path::PathBuf {
     Path::new(".github/workflows").join(filename)
 }
 
-mod ci_workflow {
-    use super::*;
+/// Load both workflows once and share across tests
+struct Workflows {
+    ci: serde_yaml::Value,
+    release: serde_yaml::Value,
+}
 
-    fn load_ci_workflow() -> serde_yaml::Value {
-        parse_workflow(&workflow_path("ci.yml"))
-    }
+impl Workflows {
+    fn load() -> Self {
+        let ci_path = workflow_path("ci.yml");
+        let release_path = workflow_path("release.yml");
 
-    #[test]
-    fn ci_workflow_file_exists() {
-        let path = workflow_path("ci.yml");
         assert!(
-            path.exists(),
+            ci_path.exists(),
             "CI workflow file should exist at .github/workflows/ci.yml"
         );
-    }
+        assert!(
+            release_path.exists(),
+            "Release workflow file should exist at .github/workflows/release.yml"
+        );
 
+        Self {
+            ci: parse_workflow(&ci_path),
+            release: parse_workflow(&release_path),
+        }
+    }
+}
+
+// ============================================================================
+// CI Workflow Tests
+// ============================================================================
+
+mod ci_workflow_tests {
+    use super::*;
+
+    /// Test all CI workflow requirements in a single test to reduce overhead
     #[test]
-    fn ci_workflow_is_valid_yaml() {
-        let workflow = load_ci_workflow();
+    fn ci_workflow_comprehensive() {
+        let workflows = Workflows::load();
+        let workflow = &workflows.ci;
+
+        // Basic structure
         assert!(workflow.is_mapping(), "CI workflow should be a valid YAML mapping");
-    }
+        assert_eq!(
+            workflow.get("name").and_then(|v| v.as_str()),
+            Some("CI"),
+            "CI workflow name should be 'CI'"
+        );
 
-    #[test]
-    fn ci_workflow_has_correct_name() {
-        let workflow = load_ci_workflow();
-        let name = workflow.get("name").and_then(|v| v.as_str());
-        assert_eq!(name, Some("CI"), "CI workflow name should be 'CI'");
-    }
-
-    #[test]
-    fn ci_triggers_on_push_to_main() {
-        let workflow = load_ci_workflow();
+        // Triggers
         let on = workflow.get("on").expect("Workflow should have 'on' trigger");
+
+        // Push trigger
         let push = on.get("push").expect("Workflow should have 'push' trigger");
-        let branches = push.get("branches").expect("Push trigger should have 'branches'");
-        let branches_list: Vec<&str> = branches
+        let push_branches = push.get("branches").expect("Push trigger should have 'branches'");
+        let push_branches_list: Vec<&str> = push_branches
             .as_sequence()
             .expect("Branches should be a sequence")
             .iter()
             .filter_map(|v| v.as_str())
             .collect();
-
         assert!(
-            branches_list.contains(&"main"),
-            "CI should trigger on push to main branch, found: {:?}",
-            branches_list
+            push_branches_list.contains(&"main"),
+            "CI should trigger on push to main branch"
         );
-    }
 
-    #[test]
-    fn ci_triggers_on_pull_requests_to_main() {
-        let workflow = load_ci_workflow();
-        let on = workflow.get("on").expect("Workflow should have 'on' trigger");
+        // Pull request trigger
         let pr = on.get("pull_request").expect("Workflow should have 'pull_request' trigger");
-        let branches = pr.get("branches").expect("PR trigger should have 'branches'");
-        let branches_list: Vec<&str> = branches
+        let pr_branches = pr.get("branches").expect("PR trigger should have 'branches'");
+        let pr_branches_list: Vec<&str> = pr_branches
             .as_sequence()
             .expect("Branches should be a sequence")
             .iter()
             .filter_map(|v| v.as_str())
             .collect();
-
         assert!(
-            branches_list.contains(&"main"),
-            "CI should trigger on PRs to main branch, found: {:?}",
-            branches_list
+            pr_branches_list.contains(&"main"),
+            "CI should trigger on PRs to main branch"
+        );
+
+        // Jobs
+        let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
+        let job_names: Vec<&str> = jobs
+            .as_mapping()
+            .unwrap()
+            .keys()
+            .filter_map(|k| k.as_str())
+            .collect();
+
+        // Required jobs
+        let required_jobs = ["fmt", "clippy", "test-unit", "test-integration", "audit"];
+        for required in required_jobs {
+            assert!(
+                job_names.iter().any(|j| j.contains(required)),
+                "CI workflow should have '{}' job",
+                required
+            );
+        }
+
+        // Cross-platform builds
+        assert!(
+            job_names.iter().any(|j| j.contains("linux")),
+            "CI workflow should have Linux build job"
+        );
+        assert!(
+            job_names.iter().any(|j| j.contains("macos")),
+            "CI workflow should have macOS build job"
+        );
+        assert!(
+            job_names.iter().any(|j| j.contains("windows")),
+            "CI workflow should have Windows build job"
         );
     }
 
     #[test]
-    fn ci_has_fmt_check_job() {
-        let workflow = load_ci_workflow();
-        let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
-        assert!(
-            jobs.get("fmt").is_some(),
-            "CI workflow should have 'fmt' job for format checking"
-        );
-    }
-
-    #[test]
-    fn ci_fmt_job_uses_rustfmt() {
-        let workflow = load_ci_workflow();
-        let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
+    fn ci_fmt_job_valid() {
+        let workflows = Workflows::load();
+        let jobs = workflows.ci.get("jobs").expect("Workflow should have 'jobs'");
         let fmt_job = jobs.get("fmt").expect("Should have 'fmt' job");
         let steps = fmt_job.get("steps").expect("fmt job should have steps");
 
-        let has_rustfmt_component = steps.as_sequence().unwrap().iter().any(|step| {
-            if let Some(with) = step.get("with") {
-                if let Some(components) = with.get("components") {
-                    return components.as_str().map(|c| c.contains("rustfmt")).unwrap_or(false);
-                }
-            }
-            false
-        });
-
+        // Check for fmt check command
         let has_fmt_check = steps.as_sequence().unwrap().iter().any(|step| {
             step.get("run")
                 .and_then(|r| r.as_str())
@@ -126,318 +153,113 @@ mod ci_workflow {
                 .unwrap_or(false)
         });
 
-        assert!(
-            has_fmt_check,
-            "fmt job should run 'cargo fmt --check'"
-        );
+        assert!(has_fmt_check, "fmt job should run 'cargo fmt --check'");
     }
 
     #[test]
-    fn ci_has_clippy_lint_job() {
-        let workflow = load_ci_workflow();
-        let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
-        assert!(
-            jobs.get("clippy").is_some(),
-            "CI workflow should have 'clippy' job for linting"
-        );
-    }
-
-    #[test]
-    fn ci_clippy_job_runs_clippy() {
-        let workflow = load_ci_workflow();
-        let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
+    fn ci_clippy_job_valid() {
+        let workflows = Workflows::load();
+        let jobs = workflows.ci.get("jobs").expect("Workflow should have 'jobs'");
         let clippy_job = jobs.get("clippy").expect("Should have 'clippy' job");
         let steps = clippy_job.get("steps").expect("clippy job should have steps");
 
-        let has_clippy_component = steps.as_sequence().unwrap().iter().any(|step| {
-            if let Some(with) = step.get("with") {
-                if let Some(components) = with.get("components") {
-                    return components.as_str().map(|c| c.contains("clippy")).unwrap_or(false);
-                }
-            }
-            false
+        // Check for clippy command with proper flags
+        let has_clippy = steps.as_sequence().unwrap().iter().any(|step| {
+            let run = step.get("run").and_then(|r| r.as_str()).unwrap_or("");
+            run.contains("cargo clippy") && run.contains("--all-targets") && run.contains("-D warnings")
         });
 
-        let has_clippy_run = steps.as_sequence().unwrap().iter().any(|step| {
+        assert!(has_clippy, "clippy job should run 'cargo clippy --all-targets -- -D warnings'");
+    }
+
+    #[test]
+    fn ci_tests_jobs_valid() {
+        let workflows = Workflows::load();
+        let jobs = workflows.ci.get("jobs").expect("Workflow should have 'jobs'");
+
+        // Unit tests
+        let unit_job = jobs.get("test-unit").expect("Should have 'test-unit' job");
+        let unit_steps = unit_job.get("steps").expect("test-unit job should have steps");
+        let has_unit_test = unit_steps.as_sequence().unwrap().iter().any(|step| {
             step.get("run")
                 .and_then(|r| r.as_str())
-                .map(|r| r.contains("cargo clippy"))
+                .map(|r| r.contains("cargo test") && r.contains("--lib"))
                 .unwrap_or(false)
         });
+        assert!(has_unit_test, "unit tests job should run 'cargo test --lib'");
 
-        assert!(
-            has_clippy_run,
-            "clippy job should run 'cargo clippy'"
-        );
-    }
-
-    #[test]
-    fn ci_has_unit_tests_job() {
-        let workflow = load_ci_workflow();
-        let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
-
-        let has_unit_tests = jobs.get("test-unit").is_some()
-            || jobs.as_mapping().unwrap().keys().any(|key| {
-                key.as_str().map(|k| k.contains("unit") && k.contains("test")).unwrap_or(false)
-            });
-
-        assert!(
-            has_unit_tests,
-            "CI workflow should have unit tests job"
-        );
-    }
-
-    #[test]
-    fn ci_unit_tests_runs_cargo_test() {
-        let workflow = load_ci_workflow();
-        let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
-        let test_job = jobs.get("test-unit").expect("Should have 'test-unit' job");
-        let steps = test_job.get("steps").expect("test-unit job should have steps");
-
-        let has_test_run = steps.as_sequence().unwrap().iter().any(|step| {
-            step.get("run")
-                .and_then(|r| r.as_str())
-                .map(|r| r.contains("cargo test"))
-                .unwrap_or(false)
+        // Integration tests
+        let int_job = jobs.get("test-integration").expect("Should have 'test-integration' job");
+        let int_steps = int_job.get("steps").expect("test-integration job should have steps");
+        let has_int_test = int_steps.as_sequence().unwrap().iter().any(|step| {
+            let run = step.get("run").and_then(|r| r.as_str()).unwrap_or("");
+            run.contains("cargo test") && run.contains("--test")
         });
-
-        assert!(
-            has_test_run,
-            "unit tests job should run 'cargo test'"
-        );
+        assert!(has_int_test, "integration tests job should run 'cargo test --test'");
     }
 
     #[test]
-    fn ci_has_integration_tests_job() {
-        let workflow = load_ci_workflow();
-        let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
-
-        let has_integration_tests = jobs.get("test-integration").is_some()
-            || jobs.as_mapping().unwrap().keys().any(|key| {
-                key.as_str().map(|k| k.contains("integration") && k.contains("test")).unwrap_or(false)
-            });
-
-        assert!(
-            has_integration_tests,
-            "CI workflow should have integration tests job"
-        );
-    }
-
-    #[test]
-    fn ci_integration_tests_runs_integration_tests() {
-        let workflow = load_ci_workflow();
-        let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
-        let test_job = jobs.get("test-integration").expect("Should have 'test-integration' job");
-        let steps = test_job.get("steps").expect("test-integration job should have steps");
-
-        let run_cmd = steps.as_sequence().unwrap().iter().find_map(|step| {
-            step.get("run").and_then(|r| r.as_str())
-        });
-
-        assert!(
-            run_cmd.map(|r| r.contains("cargo test") && r.contains("--test")).unwrap_or(false),
-            "integration tests job should run 'cargo test --test'"
-        );
-    }
-
-    #[test]
-    fn ci_has_security_audit_job() {
-        let workflow = load_ci_workflow();
-        let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
-
-        let has_audit = jobs.get("audit").is_some()
-            || jobs.as_mapping().unwrap().keys().any(|key| {
-                key.as_str().map(|k| k.contains("audit") || k.contains("security")).unwrap_or(false)
-            });
-
-        assert!(
-            has_audit,
-            "CI workflow should have security audit job"
-        );
-    }
-
-    #[test]
-    fn ci_security_audit_uses_cargo_audit() {
-        let workflow = load_ci_workflow();
-        let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
+    fn ci_security_audit_valid() {
+        let workflows = Workflows::load();
+        let jobs = workflows.ci.get("jobs").expect("Workflow should have 'jobs'");
         let audit_job = jobs.get("audit").expect("Should have 'audit' job");
         let steps = audit_job.get("steps").expect("audit job should have steps");
 
-        let has_cargo_audit = steps.as_sequence().unwrap().iter().any(|step| {
-            // Check for cargo-audit installation
+        // Check for cargo-audit
+        let has_audit = steps.as_sequence().unwrap().iter().any(|step| {
             let uses = step.get("uses").and_then(|u| u.as_str()).unwrap_or("");
             let run = step.get("run").and_then(|r| r.as_str()).unwrap_or("");
-
             uses.contains("cargo-audit") || run.contains("cargo audit")
         });
 
-        assert!(
-            has_cargo_audit,
-            "security audit job should use cargo-audit"
-        );
+        assert!(has_audit, "security audit job should use cargo-audit");
     }
 
     #[test]
-    fn ci_has_linux_build_job() {
-        let workflow = load_ci_workflow();
-        let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
+    fn ci_cross_platform_builds_valid() {
+        let workflows = Workflows::load();
+        let jobs = workflows.ci.get("jobs").expect("Workflow should have 'jobs'");
 
-        let has_linux = jobs.as_mapping().unwrap().keys().any(|key| {
-            key.as_str().map(|k| k.contains("linux")).unwrap_or(false)
-        });
-
+        // Linux build
+        let linux_job = jobs.as_mapping().unwrap().iter()
+            .find(|(k, _)| k.as_str().map(|s| s.contains("linux")).unwrap_or(false))
+            .map(|(_, v)| v);
+        let linux_runner = linux_job.and_then(|j| j.get("runs-on").and_then(|r| r.as_str()));
         assert!(
-            has_linux,
-            "CI workflow should have Linux build job"
-        );
-    }
-
-    #[test]
-    fn ci_has_macos_build_job() {
-        let workflow = load_ci_workflow();
-        let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
-
-        let has_macos = jobs.as_mapping().unwrap().keys().any(|key| {
-            key.as_str().map(|k| k.contains("macos")).unwrap_or(false)
-        });
-
-        assert!(
-            has_macos,
-            "CI workflow should have macOS build job"
-        );
-    }
-
-    #[test]
-    fn ci_has_windows_build_job() {
-        let workflow = load_ci_workflow();
-        let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
-
-        let has_windows = jobs.as_mapping().unwrap().keys().any(|key| {
-            key.as_str().map(|k| k.contains("windows")).unwrap_or(false)
-        });
-
-        assert!(
-            has_windows,
-            "CI workflow should have Windows build job"
-        );
-    }
-
-    #[test]
-    fn ci_linux_build_uses_ubuntu_runner() {
-        let workflow = load_ci_workflow();
-        let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
-
-        let linux_job = jobs.as_mapping().unwrap().iter().find(|(key, _)| {
-            key.as_str().map(|k| k.contains("linux")).unwrap_or(false)
-        }).map(|(_, v)| v);
-
-        let runner = linux_job
-            .and_then(|j| j.get("runs-on").and_then(|r| r.as_str()));
-
-        assert!(
-            runner.map(|r| r.contains("ubuntu")).unwrap_or(false),
+            linux_runner.map(|r| r.contains("ubuntu")).unwrap_or(false),
             "Linux build should run on ubuntu runner"
         );
-    }
 
-    #[test]
-    fn ci_macos_build_uses_macos_runner() {
-        let workflow = load_ci_workflow();
-        let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
-
-        let macos_job = jobs.as_mapping().unwrap().iter().find(|(key, _)| {
-            key.as_str().map(|k| k.contains("macos")).unwrap_or(false)
-        }).map(|(_, v)| v);
-
-        let runner = macos_job
-            .and_then(|j| j.get("runs-on").and_then(|r| r.as_str()));
-
+        // macOS build
+        let macos_job = jobs.as_mapping().unwrap().iter()
+            .find(|(k, _)| k.as_str().map(|s| s.contains("macos")).unwrap_or(false))
+            .map(|(_, v)| v);
+        let macos_runner = macos_job.and_then(|j| j.get("runs-on").and_then(|r| r.as_str()));
         assert!(
-            runner.map(|r| r.contains("macos")).unwrap_or(false),
+            macos_runner.map(|r| r.contains("macos")).unwrap_or(false),
             "macOS build should run on macos runner"
         );
-    }
 
-    #[test]
-    fn ci_windows_build_uses_windows_runner() {
-        let workflow = load_ci_workflow();
-        let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
-
-        let windows_job = jobs.as_mapping().unwrap().iter().find(|(key, _)| {
-            key.as_str().map(|k| k.contains("windows")).unwrap_or(false)
-        }).map(|(_, v)| v);
-
-        let runner = windows_job
-            .and_then(|j| j.get("runs-on").and_then(|r| r.as_str()));
-
+        // Windows build
+        let windows_job = jobs.as_mapping().unwrap().iter()
+            .find(|(k, _)| k.as_str().map(|s| s.contains("windows")).unwrap_or(false))
+            .map(|(_, v)| v);
+        let windows_runner = windows_job.and_then(|j| j.get("runs-on").and_then(|r| r.as_str()));
         assert!(
-            runner.map(|r| r.contains("windows")).unwrap_or(false),
+            windows_runner.map(|r| r.contains("windows")).unwrap_or(false),
             "Windows build should run on windows runner"
         );
     }
 
     #[test]
-    fn ci_has_status_aggregation_job() {
-        let workflow = load_ci_workflow();
-        let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
-
-        let has_status = jobs.as_mapping().unwrap().keys().any(|key| {
-            key.as_str().map(|k| k.contains("status") || k.contains("summary")).unwrap_or(false)
-        });
-
-        assert!(
-            has_status,
-            "CI workflow should have status aggregation job"
-        );
-    }
-
-    #[test]
-    fn ci_status_job_depends_on_all_jobs() {
-        let workflow = load_ci_workflow();
-        let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
-
-        let status_job = jobs.as_mapping().unwrap().iter().find(|(key, _)| {
-            key.as_str().map(|k| k.contains("status")).unwrap_or(false)
-        }).map(|(_, v)| v);
-
-        let needs = status_job.and_then(|j| j.get("needs"));
-
-        if let Some(needs) = needs {
-            let needs_list: Vec<&str> = if needs.is_sequence() {
-                needs.as_sequence().unwrap()
-                    .iter()
-                    .filter_map(|v| v.as_str())
-                    .collect()
-            } else {
-                vec![]
-            };
-
-            let required_jobs = ["fmt", "clippy", "test-unit", "test-integration"];
-            for required in required_jobs {
-                // Check if any job in needs_list contains the required job name
-                let found = needs_list.iter().any(|n| n.contains(required) || required.contains(n));
-                // Some jobs might have slightly different names, so we just check the status job exists
-                // and has dependencies
-            }
-
-            assert!(
-                !needs_list.is_empty(),
-                "Status job should depend on other jobs"
-            );
-        }
-    }
-
-    #[test]
     fn ci_uses_modern_actions() {
-        let workflow = load_ci_workflow();
-        let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
+        let workflows = Workflows::load();
+        let jobs = workflows.ci.get("jobs").expect("Workflow should have 'jobs'");
 
-        // Check that actions are using v4 or latest versions
         for (_, job) in jobs.as_mapping().unwrap() {
             if let Some(steps) = job.get("steps") {
                 for step in steps.as_sequence().unwrap() {
                     if let Some(uses) = step.get("uses").and_then(|u| u.as_str()) {
-                        // Check for outdated actions (v1, v2, v3 are outdated)
                         if uses.starts_with("actions/checkout@") {
                             assert!(
                                 uses.contains("@v4") || uses.contains("@main") || uses.contains("@master"),
@@ -450,127 +272,107 @@ mod ci_workflow {
             }
         }
     }
-}
-
-mod release_workflow {
-    use super::*;
-
-    fn load_release_workflow() -> serde_yaml::Value {
-        parse_workflow(&workflow_path("release.yml"))
-    }
 
     #[test]
-    fn release_workflow_file_exists() {
-        let path = workflow_path("release.yml");
+    fn ci_has_caching() {
+        let workflows = Workflows::load();
+        let jobs = workflows.ci.get("jobs").expect("Workflow should have 'jobs'");
+
+        let jobs_with_cache: usize = jobs.as_mapping().unwrap().values()
+            .filter(|job| {
+                job.get("steps")
+                    .and_then(|steps| steps.as_sequence())
+                    .map(|steps| steps.iter().any(|step| {
+                        step.get("uses")
+                            .and_then(|u| u.as_str())
+                            .map(|u| u.contains("cache"))
+                            .unwrap_or(false)
+                    }))
+                    .unwrap_or(false)
+            })
+            .count();
+
+        let total_jobs = jobs.as_mapping().unwrap().len();
+
         assert!(
-            path.exists(),
-            "Release workflow file should exist at .github/workflows/release.yml"
+            jobs_with_cache >= total_jobs / 2,
+            "At least half of CI jobs should have caching for efficiency"
         );
     }
+}
+
+// ============================================================================
+// Release Workflow Tests
+// ============================================================================
+
+mod release_workflow_tests {
+    use super::*;
 
     #[test]
-    fn release_workflow_is_valid_yaml() {
-        let workflow = load_release_workflow();
+    fn release_workflow_comprehensive() {
+        let workflows = Workflows::load();
+        let workflow = &workflows.release;
+
+        // Basic structure
         assert!(workflow.is_mapping(), "Release workflow should be a valid YAML mapping");
-    }
+        assert_eq!(
+            workflow.get("name").and_then(|v| v.as_str()),
+            Some("Release"),
+            "Release workflow name should be 'Release'"
+        );
 
-    #[test]
-    fn release_workflow_has_correct_name() {
-        let workflow = load_release_workflow();
-        let name = workflow.get("name").and_then(|v| v.as_str());
-        assert_eq!(name, Some("Release"), "Release workflow name should be 'Release'");
-    }
-
-    #[test]
-    fn release_triggers_on_version_tags() {
-        let workflow = load_release_workflow();
+        // Triggers on version tags
         let on = workflow.get("on").expect("Workflow should have 'on' trigger");
         let push = on.get("push").expect("Release should trigger on push");
         let tags = push.get("tags").expect("Release should trigger on tags");
-
         let tags_list: Vec<&str> = tags
             .as_sequence()
             .expect("Tags should be a sequence")
             .iter()
             .filter_map(|v| v.as_str())
             .collect();
-
         assert!(
-            tags_list.iter().any(|t| t.contains("v*") || t.contains("v")),
-            "Release workflow should trigger on version tags (v*.*.*), found: {:?}",
-            tags_list
+            tags_list.iter().any(|t| t.starts_with('v')),
+            "Release workflow should trigger on version tags (v*.*.*)"
         );
-    }
 
-    #[test]
-    fn release_has_create_release_job() {
-        let workflow = load_release_workflow();
+        // Jobs
         let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
+        let job_names: Vec<&str> = jobs
+            .as_mapping()
+            .unwrap()
+            .keys()
+            .filter_map(|k| k.as_str())
+            .collect();
 
-        let has_create_release = jobs.as_mapping().unwrap().keys().any(|key| {
-            key.as_str().map(|k| k.contains("release") && k.contains("create")).unwrap_or(false)
-        });
-
+        // Required jobs
         assert!(
-            has_create_release,
+            job_names.iter().any(|j| j.contains("release") && j.contains("create")),
             "Release workflow should have create-release job"
         );
-    }
-
-    #[test]
-    fn release_has_linux_build_job() {
-        let workflow = load_release_workflow();
-        let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
-
-        let has_linux = jobs.as_mapping().unwrap().keys().any(|key| {
-            key.as_str().map(|k| k.contains("linux")).unwrap_or(false)
-        });
-
         assert!(
-            has_linux,
+            job_names.iter().any(|j| j.contains("linux")),
             "Release workflow should have Linux build job"
         );
-    }
-
-    #[test]
-    fn release_has_macos_build_job() {
-        let workflow = load_release_workflow();
-        let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
-
-        let has_macos = jobs.as_mapping().unwrap().keys().any(|key| {
-            key.as_str().map(|k| k.contains("macos")).unwrap_or(false)
-        });
-
         assert!(
-            has_macos,
+            job_names.iter().any(|j| j.contains("macos")),
             "Release workflow should have macOS build job"
         );
-    }
-
-    #[test]
-    fn release_has_windows_build_job() {
-        let workflow = load_release_workflow();
-        let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
-
-        let has_windows = jobs.as_mapping().unwrap().keys().any(|key| {
-            key.as_str().map(|k| k.contains("windows")).unwrap_or(false)
-        });
-
         assert!(
-            has_windows,
+            job_names.iter().any(|j| j.contains("windows")),
             "Release workflow should have Windows build job"
         );
     }
 
     #[test]
     fn release_uses_gh_release_action() {
-        let workflow = load_release_workflow();
-        let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
+        let workflows = Workflows::load();
+        let jobs = workflows.release.get("jobs").expect("Workflow should have 'jobs'");
 
         let mut found_release_action = false;
         for (_, job) in jobs.as_mapping().unwrap() {
-            if let Some(steps) = job.get("steps") {
-                for step in steps.as_sequence().unwrap() {
+            if let Some(steps) = job.get("steps").and_then(|s| s.as_sequence()) {
+                for step in steps {
                     if let Some(uses) = step.get("uses").and_then(|u| u.as_str()) {
                         if uses.contains("release") {
                             found_release_action = true;
@@ -587,171 +389,121 @@ mod release_workflow {
     }
 
     #[test]
-    fn release_builds_have_artifact_upload() {
-        let workflow = load_release_workflow();
-        let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
+    fn release_builds_upload_artifacts() {
+        let workflows = Workflows::load();
+        let jobs = workflows.release.get("jobs").expect("Workflow should have 'jobs'");
 
-        let mut build_jobs_with_upload = 0;
-        let mut build_jobs = 0;
+        let build_jobs: Vec<_> = jobs.as_mapping().unwrap().iter()
+            .filter(|(k, _)| k.as_str().map(|s| s.contains("build")).unwrap_or(false))
+            .collect();
 
-        for (key, job) in jobs.as_mapping().unwrap() {
-            let key_str = key.as_str().unwrap_or("");
-            if key_str.contains("build-") {
-                build_jobs += 1;
-                if let Some(steps) = job.get("steps") {
-                    for step in steps.as_sequence().unwrap() {
-                        if let Some(uses) = step.get("uses").and_then(|u| u.as_str()) {
-                            if uses.contains("upload") || uses.contains("release") {
-                                build_jobs_with_upload += 1;
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
+        for (job_name, job) in build_jobs {
+            let has_upload = job.get("steps")
+                .and_then(|steps| steps.as_sequence())
+                .map(|steps| steps.iter().any(|step| {
+                    let uses = step.get("uses").and_then(|u| u.as_str()).unwrap_or("");
+                    uses.contains("upload") || uses.contains("release")
+                }))
+                .unwrap_or(false);
+
+            assert!(
+                has_upload,
+                "Build job '{}' should upload release artifacts",
+                job_name.as_str().unwrap_or("unknown")
+            );
         }
+    }
+
+    #[test]
+    fn release_has_caching() {
+        let workflows = Workflows::load();
+        let jobs = workflows.release.get("jobs").expect("Workflow should have 'jobs'");
+
+        let build_jobs_with_cache: usize = jobs.as_mapping().unwrap().iter()
+            .filter(|(k, _)| k.as_str().map(|s| s.contains("build")).unwrap_or(false))
+            .filter(|(_, job)| {
+                job.get("steps")
+                    .and_then(|steps| steps.as_sequence())
+                    .map(|steps| steps.iter().any(|step| {
+                        step.get("uses")
+                            .and_then(|u| u.as_str())
+                            .map(|u| u.contains("cache"))
+                            .unwrap_or(false)
+                    }))
+                    .unwrap_or(false)
+            })
+            .count();
+
+        let total_build_jobs = jobs.as_mapping().unwrap().keys()
+            .filter(|k| k.as_str().map(|s| s.contains("build")).unwrap_or(false))
+            .count();
 
         assert!(
-            build_jobs > 0 && build_jobs_with_upload == build_jobs,
-            "All build jobs should upload release artifacts"
+            build_jobs_with_cache >= total_build_jobs / 2 || total_build_jobs == 0,
+            "At least half of release build jobs should have caching"
         );
     }
 }
 
-mod workflow_best_practices {
+// ============================================================================
+// Best Practices Tests
+// ============================================================================
+
+mod best_practices_tests {
     use super::*;
 
     #[test]
-    fn ci_workflow_has_caching() {
-        let workflow = parse_workflow(&workflow_path("ci.yml"));
-        let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
-
-        let mut jobs_with_cache = 0;
-        let mut total_jobs = 0;
-
-        for (_, job) in jobs.as_mapping().unwrap() {
-            total_jobs += 1;
-            if let Some(steps) = job.get("steps") {
-                for step in steps.as_sequence().unwrap() {
-                    if let Some(uses) = step.get("uses").and_then(|u| u.as_str()) {
-                        if uses.contains("cache") {
-                            jobs_with_cache += 1;
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-
-        // Most jobs should have caching for efficiency
-        assert!(
-            jobs_with_cache >= total_jobs / 2,
-            "At least half of CI jobs should have caching for efficiency"
-        );
-    }
-
-    #[test]
-    fn release_workflow_has_caching() {
-        let workflow = parse_workflow(&workflow_path("release.yml"));
-        let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
-
-        let mut jobs_with_cache = 0;
-        let mut build_jobs = 0;
-
-        for (key, job) in jobs.as_mapping().unwrap() {
-            if key.as_str().unwrap_or("").contains("build") {
-                build_jobs += 1;
-                if let Some(steps) = job.get("steps") {
-                    for step in steps.as_sequence().unwrap() {
-                        if let Some(uses) = step.get("uses").and_then(|u| u.as_str()) {
-                            if uses.contains("cache") {
-                                jobs_with_cache += 1;
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // Build jobs should have caching
-        assert!(
-            jobs_with_cache >= build_jobs / 2 || build_jobs == 0,
-            "At least half of build jobs should have caching for efficiency"
-        );
-    }
-
-    #[test]
     fn workflows_use_dtolnay_rust_toolchain() {
-        // dtolnay/rust-toolchain is the recommended action for Rust
-        let ci = parse_workflow(&workflow_path("ci.yml"));
-        let release = parse_workflow(&workflow_path("release.yml"));
+        let workflows = Workflows::load();
 
         fn check_toolchain(workflow: &serde_yaml::Value) -> bool {
-            let jobs = match workflow.get("jobs") {
-                Some(j) => j,
-                None => return false,
-            };
-
-            for (_, job) in jobs.as_mapping().unwrap() {
-                if let Some(steps) = job.get("steps") {
-                    for step in steps.as_sequence().unwrap() {
-                        if let Some(uses) = step.get("uses").and_then(|u| u.as_str()) {
-                            if uses.contains("dtolnay/rust-toolchain") {
-                                return true;
-                            }
-                        }
-                    }
-                }
-            }
-            false
+            workflow.get("jobs")
+                .and_then(|jobs| jobs.as_mapping())
+                .map(|jobs| jobs.values().any(|job| {
+                    job.get("steps")
+                        .and_then(|steps| steps.as_sequence())
+                        .map(|steps| steps.iter().any(|step| {
+                            step.get("uses")
+                                .and_then(|u| u.as_str())
+                                .map(|u| u.contains("dtolnay/rust-toolchain"))
+                                .unwrap_or(false)
+                        }))
+                        .unwrap_or(false)
+                }))
+                .unwrap_or(false)
         }
 
         assert!(
-            check_toolchain(&ci) && check_toolchain(&release),
-            "Workflows should use dtolnay/rust-toolchain action"
+            check_toolchain(&workflows.ci) && check_toolchain(&workflows.release),
+            "Both workflows should use dtolnay/rust-toolchain action"
         );
     }
 
     #[test]
-    fn ci_workflow_checks_all_targets() {
-        let workflow = parse_workflow(&workflow_path("ci.yml"));
-        let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
+    fn ci_status_aggregation() {
+        let workflows = Workflows::load();
+        let jobs = workflows.ci.get("jobs").expect("Workflow should have 'jobs'");
 
-        let clippy_job = jobs.get("clippy").expect("Should have clippy job");
-        let steps = clippy_job.get("steps").expect("clippy job should have steps");
-
-        let has_all_targets = steps.as_sequence().unwrap().iter().any(|step| {
-            step.get("run")
-                .and_then(|r| r.as_str())
-                .map(|r| r.contains("--all-targets"))
-                .unwrap_or(false)
-        });
+        // Check for status aggregation job
+        let status_job = jobs.as_mapping().unwrap().iter()
+            .find(|(k, _)| {
+                k.as_str()
+                    .map(|s| s.contains("status") || s.contains("summary"))
+                    .unwrap_or(false)
+            });
 
         assert!(
-            has_all_targets,
-            "Clippy should check all targets (--all-targets)"
+            status_job.is_some(),
+            "CI workflow should have status aggregation job"
         );
-    }
 
-    #[test]
-    fn ci_clippy_treats_warnings_as_errors() {
-        let workflow = parse_workflow(&workflow_path("ci.yml"));
-        let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
-
-        let clippy_job = jobs.get("clippy").expect("Should have clippy job");
-        let steps = clippy_job.get("steps").expect("clippy job should have steps");
-
-        let treats_warnings_as_errors = steps.as_sequence().unwrap().iter().any(|step| {
-            step.get("run")
-                .and_then(|r| r.as_str())
-                .map(|r| r.contains("-D warnings"))
-                .unwrap_or(false)
-        });
-
-        assert!(
-            treats_warnings_as_errors,
-            "Clippy should treat warnings as errors (-D warnings)"
-        );
+        // Check it depends on other jobs
+        if let Some((_, job)) = status_job {
+            let needs = job.get("needs");
+            assert!(
+                needs.is_some(),
+                "Status job should have dependencies"
+            );
+        }
     }
 }

@@ -1,3 +1,8 @@
+// Copyright (c) 2026 bigfish
+// SPDX-License-Identifier: MIT
+// This file is part of ltmatrix under the MIT License.
+
+
 //! Input validation and sanitization utilities
 //!
 //! This module provides functions to validate and sanitize user inputs

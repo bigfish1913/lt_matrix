@@ -1,3 +1,7 @@
+// Copyright (c) 2026 bigfish
+// SPDX-License-Identifier: MIT
+// This file is part of ltmatrix under the MIT License.
+
 //! ltmatrix - A high-performance, cross-platform long-time agent orchestrator
 //!
 //! This library provides the core functionality for the ltmatrix tool, which

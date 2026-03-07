@@ -1,3 +1,8 @@
+// Copyright (c) 2026 bigfish
+// SPDX-License-Identifier: MIT
+// This file is part of ltmatrix under the MIT License.
+
+
 //! Shell completion generation for ltmatrix
 //!
 //! This module provides functionality to generate shell completion scripts for

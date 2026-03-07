@@ -1,3 +1,8 @@
+// Copyright (c) 2026 bigfish
+// SPDX-License-Identifier: MIT
+// This file is part of ltmatrix under the MIT License.
+
+
 //! Agent backend implementations
 //!
 //! This module provides interfaces and implementations for various AI agent backends

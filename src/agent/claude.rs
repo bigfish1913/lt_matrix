@@ -1,3 +1,8 @@
+// Copyright (c) 2026 bigfish
+// SPDX-License-Identifier: MIT
+// This file is part of ltmatrix under the MIT License.
+
+
 //! Claude agent backend implementation
 //!
 //! This module implements the AgentBackend trait for the Claude Code CLI,
