@@ -65,6 +65,8 @@ use crate::mcp::protocol::errors::{McpError, McpErrorCode, McpResult};
 use crate::mcp::protocol::messages::RequestId;
 use crate::mcp::protocol::methods::{
     ClientCapabilities, ImplementationInfo, InitializeParams, InitializeResult,
+    Prompt, PromptContent, PromptMessage, PromptsGetParams, PromptsGetResult,
+    PromptsListParams, PromptsListResult,
     Resource, ResourceReadParams, ResourceReadResult,
     ResourcesListParams, ResourcesListResult, ServerCapabilities, Tool, ToolCallParams,
     ToolCallResult, ToolContent, ToolsListParams, ToolsListResult,
@@ -72,7 +74,7 @@ use crate::mcp::protocol::methods::{
 };
 use crate::mcp::protocol::wrappers::{
     Initialize, McpMethod, McpNotification, NotificationsInitialized,
-    Ping, PingParams, ResourcesList, ResourcesRead, ToolsList, ToolsCall,
+    Ping, PingParams, PromptsGet, PromptsList, ResourcesList, ResourcesRead, ToolsList, ToolsCall,
 };
 use crate::mcp::transport::{create_transport, Transport, TransportConfig, TransportMessage};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -1466,6 +1468,330 @@ impl McpClient {
 
         // Execute the tool call
         self.call_tool(name, arguments).await
+    }
+
+    // ========================================================================
+    // Prompts Methods
+    // ========================================================================
+
+    /// List available prompts from the server
+    ///
+    /// This sends a `prompts/list` request to discover what prompt templates
+    /// the server provides.
+    ///
+    /// # Arguments
+    ///
+    /// - `cursor`: Optional pagination cursor for large result sets
+    ///
+    /// # Returns
+    ///
+    /// A list of available prompts and an optional next cursor for pagination.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The client is not connected
+    /// - The server doesn't support prompts
+    /// - The request fails
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use ltmatrix::mcp::client::McpClient;
+    ///
+    /// async fn example(client: &McpClient) -> Result<(), Box<dyn std::error::Error>> {
+    ///     let result = client.list_prompts(None).await?;
+    ///     for prompt in result.prompts {
+    ///         println!("Prompt: {} - {:?}", prompt.name, prompt.description);
+    ///     }
+    ///     Ok(())
+    /// }
+    /// ```
+    pub async fn list_prompts(&self, cursor: Option<&str>) -> McpResult<PromptsListResult> {
+        let params = match cursor {
+            Some(c) => PromptsListParams {
+                cursor: Some(c.to_string()),
+            },
+            None => PromptsListParams::default(),
+        };
+        self.call_method::<PromptsList>(params).await
+    }
+
+    /// List all prompts, handling pagination automatically
+    ///
+    /// This method fetches all pages of prompts until no more are available.
+    ///
+    /// # Returns
+    ///
+    /// A vector of all available prompts.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if any page request fails.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use ltmatrix::mcp::client::McpClient;
+    ///
+    /// async fn example(client: &McpClient) -> Result<(), Box<dyn std::error::Error>> {
+    ///     let prompts = client.list_all_prompts().await?;
+    ///     println!("Found {} prompts", prompts.len());
+    ///     Ok(())
+    /// }
+    /// ```
+    pub async fn list_all_prompts(&self) -> McpResult<Vec<Prompt>> {
+        let mut all_prompts = Vec::new();
+        let mut cursor: Option<String> = None;
+
+        loop {
+            let result = self.list_prompts(cursor.as_deref()).await?;
+            all_prompts.extend(result.prompts);
+
+            cursor = result.next_cursor;
+            if cursor.is_none() {
+                break;
+            }
+        }
+
+        Ok(all_prompts)
+    }
+
+    /// Get a specific prompt by name
+    ///
+    /// This sends a `prompts/get` request to retrieve a prompt template
+    /// with the given arguments filled in.
+    ///
+    /// # Arguments
+    ///
+    /// - `name`: The name of the prompt to retrieve
+    /// - `arguments`: Optional arguments to fill in the prompt template
+    ///
+    /// # Returns
+    ///
+    /// The prompt result containing the description and messages.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The client is not connected
+    /// - The prompt doesn't exist
+    /// - The arguments are invalid
+    /// - The request fails
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use ltmatrix::mcp::client::McpClient;
+    /// use serde_json::json;
+    ///
+    /// async fn example(client: &McpClient) -> Result<(), Box<dyn std::error::Error>> {
+    ///     let result = client.get_prompt("code_review", Some(json!({"language": "rust"}))).await?;
+    ///     for message in result.messages {
+    ///         println!("Role: {}", message.role);
+    ///     }
+    ///     Ok(())
+    /// }
+    /// ```
+    pub async fn get_prompt(
+        &self,
+        name: &str,
+        arguments: Option<serde_json::Value>,
+    ) -> McpResult<PromptsGetResult> {
+        let params = PromptsGetParams {
+            name: name.to_string(),
+            arguments,
+        };
+        self.call_method::<PromptsGet>(params).await
+    }
+
+    /// Find a prompt by name
+    ///
+    /// This searches the available prompts for one with the given name.
+    ///
+    /// # Arguments
+    ///
+    /// - `name`: The name of the prompt to find
+    ///
+    /// # Returns
+    ///
+    /// `Some(Prompt)` if found, `None` if not found.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the list request fails.
+    pub async fn find_prompt(&self, name: &str) -> McpResult<Option<Prompt>> {
+        let prompts = self.list_all_prompts().await?;
+        Ok(prompts.into_iter().find(|p| p.name == name))
+    }
+
+    /// Check if a prompt exists
+    ///
+    /// # Arguments
+    ///
+    /// - `name`: The name of the prompt to check
+    ///
+    /// # Returns
+    ///
+    /// `true` if the prompt exists, `false` otherwise.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the list request fails.
+    pub async fn prompt_exists(&self, name: &str) -> McpResult<bool> {
+        let prompt = self.find_prompt(name).await?;
+        Ok(prompt.is_some())
+    }
+
+    /// Validate prompt arguments against the prompt's argument schema
+    ///
+    /// # Arguments
+    ///
+    /// - `name`: The name of the prompt
+    /// - `arguments`: The arguments to validate
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())` if validation passes.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The prompt doesn't exist
+    /// - Required arguments are missing
+    pub async fn validate_prompt_arguments(
+        &self,
+        name: &str,
+        arguments: Option<&serde_json::Value>,
+    ) -> McpResult<()> {
+        let prompt = self.find_prompt(name).await?.ok_or_else(|| {
+            McpError::new(McpErrorCode::InvalidParams, format!("Prompt '{}' not found", name))
+        })?;
+
+        // Check required arguments
+        if let Some(prompt_args) = &prompt.arguments {
+            let empty_map = serde_json::Map::new();
+            let provided_args = arguments.and_then(|a| a.as_object()).unwrap_or(&empty_map);
+
+            for arg in prompt_args {
+                if arg.required && !provided_args.contains_key(&arg.name) {
+                    return Err(McpError::new(
+                        McpErrorCode::InvalidParams,
+                        format!("Missing required argument '{}' for prompt '{}'", arg.name, name),
+                    ));
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Get a prompt with validation
+    ///
+    /// This combines validation and retrieval in a single method.
+    ///
+    /// # Arguments
+    ///
+    /// - `name`: The name of the prompt to retrieve
+    /// - `arguments`: Optional arguments to fill in the prompt template
+    ///
+    /// # Returns
+    ///
+    /// The prompt result.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The prompt doesn't exist
+    /// - Required arguments are missing
+    /// - The request fails
+    pub async fn get_prompt_validated(
+        &self,
+        name: &str,
+        arguments: Option<serde_json::Value>,
+    ) -> McpResult<PromptsGetResult> {
+        // Validate arguments
+        self.validate_prompt_arguments(name, arguments.as_ref()).await?;
+
+        // Get the prompt
+        self.get_prompt(name, arguments).await
+    }
+
+    /// Extract text messages from a prompt result
+    ///
+    /// # Arguments
+    ///
+    /// - `result`: The prompt result to extract text from
+    ///
+    /// # Returns
+    ///
+    /// A vector of (role, text) tuples for each text message.
+    pub fn extract_text_messages(result: &PromptsGetResult) -> Vec<(String, String)> {
+        result.messages.iter()
+            .filter_map(|m| match &m.content {
+                PromptContent::Text { text } => Some((m.role.clone(), text.clone())),
+                _ => None,
+            })
+            .collect()
+    }
+
+    /// Extract all text content from a prompt result (concatenated)
+    ///
+    /// # Arguments
+    ///
+    /// - `result`: The prompt result to extract text from
+    ///
+    /// # Returns
+    ///
+    /// All text content concatenated with newlines.
+    pub fn extract_all_text(result: &PromptsGetResult) -> String {
+        result.messages.iter()
+            .filter_map(|m| match &m.content {
+                PromptContent::Text { text } => Some(text.as_str()),
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+
+    /// Check if a prompt result contains only text content
+    ///
+    /// # Arguments
+    ///
+    /// - `result`: The prompt result to check
+    ///
+    /// # Returns
+    ///
+    /// `true` if all messages contain only text content.
+    pub fn is_text_only(result: &PromptsGetResult) -> bool {
+        result.messages.iter().all(|m| {
+            matches!(m.content, PromptContent::Text { .. })
+        })
+    }
+
+    /// Get a summary of prompt result content types
+    ///
+    /// # Arguments
+    ///
+    /// - `result`: The prompt result to summarize
+    ///
+    /// # Returns
+    ///
+    /// A tuple of (text_count, image_count, resource_count).
+    pub fn prompt_content_summary(result: &PromptsGetResult) -> (usize, usize, usize) {
+        let mut text_count = 0;
+        let mut image_count = 0;
+        let mut resource_count = 0;
+
+        for message in &result.messages {
+            match &message.content {
+                PromptContent::Text { .. } => text_count += 1,
+                PromptContent::Image { .. } => image_count += 1,
+                PromptContent::Resource { .. } => resource_count += 1,
+            }
+        }
+
+        (text_count, image_count, resource_count)
     }
 }
 
