@@ -9,6 +9,9 @@
 //! - Related tasks and tags
 //! - MemoryCategory parsing
 //! - Memory entry summary generation
+//! - Memory extraction from task results
+//! - Timestamp and task reference handling
+//! - Memory entry format validation
 
 use ltmatrix::memory::{
     MemoryStore, MemoryEntry, MemoryCategory, MemoryPriority,
@@ -640,4 +643,457 @@ fn create_test_task(id: &str, title: &str, description: &str) -> Task {
     task.status = TaskStatus::Completed;
     task.complexity = TaskComplexity::Moderate;
     task
+}
+
+// ============================================================================
+// Memory Extraction Integration Tests
+// ============================================================================
+
+#[test]
+fn test_extract_memory_from_task_architecture_decision() {
+    let task = create_test_task("task-001", "Setup Project", "Initialize Rust project");
+    let result = "Architecture decision: Using Tokio runtime for async operations";
+
+    let entries = extract_memory_from_task(&task, result).unwrap();
+
+    assert_eq!(entries.len(), 1);
+    assert_eq!(entries[0].category, MemoryCategory::ArchitectureDecision);
+    assert!(entries[0].content.contains("Tokio"));
+    assert!(entries[0].tags.contains(&"architecture".to_string()));
+}
+
+#[test]
+fn test_extract_memory_from_task_multiple_types() {
+    let task = create_test_task("task-002", "Implement Feature", "Add user authentication");
+    let result = r#"
+    Architecture decision: Using JWT for authentication
+    Pattern: Repository pattern for user data
+    Important: Store refresh tokens securely
+    API design: RESTful endpoints for auth flow
+    Performance: Using bcrypt with cost factor 12
+    Security: Passwords hashed before storage
+    Error handling: Graceful fallback for auth failures
+    "#;
+
+    let entries = extract_memory_from_task(&task, result).unwrap();
+
+    // Should extract multiple entries of different types
+    assert!(entries.len() >= 5, "Expected at least 5 entries, got {}", entries.len());
+
+    let categories: Vec<_> = entries.iter().map(|e| e.category).collect();
+    assert!(categories.contains(&MemoryCategory::ArchitectureDecision));
+    assert!(categories.contains(&MemoryCategory::Pattern));
+    assert!(categories.contains(&MemoryCategory::ImportantNote));
+}
+
+#[test]
+fn test_extract_memory_from_task_pattern() {
+    let task = create_test_task("task-003", "Refactor Code", "Apply design patterns");
+    let result = "Pattern: Using the Builder pattern for configuration objects";
+
+    let entries = extract_memory_from_task(&task, result).unwrap();
+
+    assert!(!entries.is_empty());
+    assert_eq!(entries[0].category, MemoryCategory::Pattern);
+    assert!(entries[0].content.contains("Builder"));
+}
+
+#[test]
+fn test_extract_memory_from_task_important_note() {
+    let task = create_test_task("task-004", "Fix Bug", "Resolve memory leak");
+    let result = "Important: Always call .close() on connections to prevent leaks";
+
+    let entries = extract_memory_from_task(&task, result).unwrap();
+
+    assert!(!entries.is_empty());
+    assert_eq!(entries[0].category, MemoryCategory::ImportantNote);
+    assert!(entries[0].content.contains("close()"));
+}
+
+#[test]
+fn test_extract_memory_from_task_performance() {
+    let task = create_test_task("task-005", "Optimize", "Improve query performance");
+    let result = "Performance: Added database connection pooling for 10x throughput improvement";
+
+    let entries = extract_memory_from_task(&task, result).unwrap();
+
+    assert!(!entries.is_empty());
+    assert_eq!(entries[0].category, MemoryCategory::Performance);
+}
+
+#[test]
+fn test_extract_memory_from_task_security() {
+    let task = create_test_task("task-006", "Security Audit", "Fix vulnerabilities");
+    let result = "Security: Implemented input sanitization to prevent SQL injection attacks";
+
+    let entries = extract_memory_from_task(&task, result).unwrap();
+
+    assert!(!entries.is_empty());
+    assert_eq!(entries[0].category, MemoryCategory::Security);
+}
+
+#[test]
+fn test_extract_memory_from_task_api_design() {
+    let task = create_test_task("task-007", "API Design", "Create REST endpoints");
+    let result = "API design: RESTful endpoints with versioned routes /api/v1/";
+
+    let entries = extract_memory_from_task(&task, result).unwrap();
+
+    assert!(!entries.is_empty());
+    assert_eq!(entries[0].category, MemoryCategory::ApiDesign);
+}
+
+#[test]
+fn test_extract_memory_from_task_error_handling() {
+    let task = create_test_task("task-008", "Error Handling", "Improve error messages");
+    let result = "Error handling: Using anyhow for error propagation with context";
+
+    let entries = extract_memory_from_task(&task, result).unwrap();
+
+    assert!(!entries.is_empty());
+    assert_eq!(entries[0].category, MemoryCategory::ErrorHandling);
+}
+
+#[test]
+fn test_extract_memory_from_task_empty_result() {
+    let task = create_test_task("task-009", "Minor Fix", "Fixed typo");
+    let result = "Fixed a typo in the README";
+
+    let entries = extract_memory_from_task(&task, result).unwrap();
+
+    // Should return empty when no patterns match
+    assert!(entries.is_empty());
+}
+
+#[test]
+fn test_extract_memory_from_task_case_insensitive() {
+    let task = create_test_task("task-010", "Test Case", "Test case sensitivity");
+    let result = "ARCHITECTURE DECISION: Using PostgreSQL for persistence";
+
+    let entries = extract_memory_from_task(&task, result).unwrap();
+
+    assert!(!entries.is_empty());
+    assert_eq!(entries[0].category, MemoryCategory::ArchitectureDecision);
+}
+
+// ============================================================================
+// Task Summary Extraction Tests
+// ============================================================================
+
+#[test]
+fn test_extract_task_summary_basic() {
+    let task = create_test_task("task-001", "Implement Feature", "Add user authentication");
+    let files = vec!["src/auth.rs".to_string(), "src/user.rs".to_string()];
+
+    let entry = extract_task_summary(&task, &files).unwrap();
+
+    assert_eq!(entry.task_id, "task-001");
+    assert!(entry.title.contains("Implement Feature"));
+    assert!(entry.content.contains("Add user authentication"));
+    assert!(entry.content.contains("src/auth.rs"));
+    assert!(entry.content.contains("src/user.rs"));
+    assert_eq!(entry.category, MemoryCategory::TaskCompletion);
+    assert_eq!(entry.files, files);
+}
+
+#[test]
+fn test_extract_task_summary_no_files() {
+    let task = create_test_task("task-002", "Documentation", "Update README");
+
+    let entry = extract_task_summary(&task, &[]).unwrap();
+
+    assert_eq!(entry.task_id, "task-002");
+    assert!(entry.content.contains("Update README"));
+    assert!(entry.files.is_empty());
+}
+
+#[test]
+fn test_extract_task_summary_includes_task_metadata() {
+    let mut task = Task::new("task-042", "Complex Task", "Multi-step implementation");
+    task.status = TaskStatus::Completed;
+    task.complexity = TaskComplexity::Complex;
+
+    let entry = extract_task_summary(&task, &["src/main.rs".to_string()]).unwrap();
+
+    assert_eq!(entry.task_id, "task-042");
+    assert!(entry.title.contains("Completed"));
+}
+
+// ============================================================================
+// Memory Entry Append with Timestamp Tests
+// ============================================================================
+
+#[test]
+fn test_append_entry_includes_timestamp() {
+    let temp_dir = TempDir::new().unwrap();
+    let store = MemoryStore::new(temp_dir.path()).unwrap();
+
+    let entry = MemoryEntry::new("task-001", "Decision", "Use async Rust");
+
+    // Store timestamp before append
+    let before = chrono::Utc::now();
+
+    store.append_entry(&entry).unwrap();
+
+    // Verify entry has timestamp
+    let entries = store.get_entries();
+    assert_eq!(entries.len(), 1);
+
+    // Timestamp should be recent (within 1 second)
+    let diff = (entries[0].timestamp - before).num_seconds().abs();
+    assert!(diff < 2, "Timestamp should be within 2 seconds of append time");
+
+    // Verify timestamp is in file
+    let memory_file = temp_dir.path().join(".claude/memory.md");
+    let content = fs::read_to_string(memory_file).unwrap();
+    assert!(content.contains("**Date**:"));
+}
+
+#[test]
+fn test_append_entry_includes_task_reference() {
+    let temp_dir = TempDir::new().unwrap();
+    let store = MemoryStore::new(temp_dir.path()).unwrap();
+
+    let entry = MemoryEntry::new("task-042", "Architecture", "Use PostgreSQL");
+
+    store.append_entry(&entry).unwrap();
+
+    // Verify task reference in entry
+    let entries = store.get_entries();
+    assert_eq!(entries[0].task_id, "task-042");
+
+    // Verify task reference is in file
+    let memory_file = temp_dir.path().join(".claude/memory.md");
+    let content = fs::read_to_string(memory_file).unwrap();
+    assert!(content.contains("**Task**: task-042"));
+}
+
+#[test]
+fn test_append_entry_creates_memory_file() {
+    let temp_dir = TempDir::new().unwrap();
+    let store = MemoryStore::new(temp_dir.path()).unwrap();
+
+    let entry = MemoryEntry::new("task-001", "First Entry", "Initial decision");
+    store.append_entry(&entry).unwrap();
+
+    let memory_file = temp_dir.path().join(".claude/memory.md");
+    assert!(memory_file.exists());
+
+    let content = fs::read_to_string(memory_file).unwrap();
+    assert!(content.starts_with("# Project Memory"));
+    assert!(content.contains("First Entry"));
+}
+
+#[test]
+fn test_append_multiple_entries_with_timestamps() {
+    let temp_dir = TempDir::new().unwrap();
+    let store = MemoryStore::new(temp_dir.path()).unwrap();
+
+    // Append multiple entries
+    for i in 1..=5 {
+        let entry = MemoryEntry::new(
+            format!("task-{:03}", i),
+            format!("Decision {}", i),
+            format!("Content for decision {}", i)
+        );
+        store.append_entry(&entry).unwrap();
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+
+    let entries = store.get_entries();
+    assert_eq!(entries.len(), 5);
+
+    // Verify timestamps are in order
+    for i in 0..4 {
+        assert!(entries[i].timestamp <= entries[i + 1].timestamp);
+    }
+}
+
+// ============================================================================
+// Memory Entry Format Tests
+// ============================================================================
+
+#[test]
+fn test_memory_entry_format_markdown_structure() {
+    let entry = MemoryEntry::new("task-001", "Architecture Decision", "Use Tokio runtime")
+        .with_category_enum(MemoryCategory::ArchitectureDecision)
+        .with_priority(MemoryPriority::High)
+        .with_files(vec!["src/main.rs".to_string()])
+        .with_key_points(vec!["All I/O is async".to_string()])
+        .with_tags(vec!["async".to_string(), "tokio".to_string()]);
+
+    let markdown = entry.to_markdown();
+
+    // Check structure
+    assert!(markdown.starts_with("## [Architecture Decision] Architecture Decision"));
+    assert!(markdown.contains("**Task**: task-001"));
+    assert!(markdown.contains("**Date**:"));
+    assert!(markdown.contains("**Priority**: High"));
+    assert!(markdown.contains("**Files**: src/main.rs"));
+    assert!(markdown.contains("**Tags**: async, tokio"));
+    assert!(markdown.contains("Use Tokio runtime"));
+    assert!(markdown.contains("### Key Points"));
+    assert!(markdown.contains("- All I/O is async"));
+    assert!(markdown.ends_with("---\n"));
+}
+
+#[test]
+fn test_memory_entry_format_minimal() {
+    let entry = MemoryEntry::new("task-001", "Simple Note", "Just a note");
+
+    let markdown = entry.to_markdown();
+
+    // Should have required fields
+    assert!(markdown.contains("## [General] Simple Note"));
+    assert!(markdown.contains("**Task**: task-001"));
+    assert!(markdown.contains("**Date**:"));
+    assert!(markdown.contains("**Priority**: Normal"));
+    assert!(markdown.contains("Just a note"));
+
+    // Should not have optional fields
+    assert!(!markdown.contains("**Files**:"));
+    assert!(!markdown.contains("**Tags**:"));
+    assert!(!markdown.contains("### Key Points"));
+}
+
+#[test]
+fn test_memory_entry_format_deprecated() {
+    let mut entry = MemoryEntry::new("task-001", "Old Approach", "Use sync I/O");
+    entry.deprecated = true;
+    entry.deprecation_reason = Some("Superseded by async approach in task-005".to_string());
+
+    let markdown = entry.to_markdown();
+
+    assert!(markdown.contains("Deprecated"));
+    assert!(markdown.contains("Superseded by async approach"));
+}
+
+// ============================================================================
+// Memory Store Integration Tests
+// ============================================================================
+
+#[test]
+fn test_memory_store_persists_entries() {
+    let temp_dir = TempDir::new().unwrap();
+
+    // Create store and add entry
+    {
+        let store = MemoryStore::new(temp_dir.path()).unwrap();
+        let entry = MemoryEntry::new("task-001", "Decision", "Use async Rust");
+        store.append_entry(&entry).unwrap();
+    }
+
+    // Create new store and verify persistence
+    {
+        let store = MemoryStore::new(temp_dir.path()).unwrap();
+        assert_eq!(store.entry_count(), 1);
+
+        let entries = store.get_entries();
+        assert_eq!(entries[0].task_id, "task-001");
+        assert_eq!(entries[0].title, "Decision");
+    }
+}
+
+#[test]
+fn test_memory_store_get_memory_context() {
+    let temp_dir = TempDir::new().unwrap();
+    let store = MemoryStore::new(temp_dir.path()).unwrap();
+
+    // Empty context
+    let context = store.get_memory_context().unwrap();
+    assert!(context.contains("No project memory available"));
+
+    // Add entry
+    let entry = MemoryEntry::new("task-001", "Architecture", "Use Tokio")
+        .with_category_enum(MemoryCategory::ArchitectureDecision);
+    store.append_entry(&entry).unwrap();
+
+    // Get context
+    let context = store.get_memory_context().unwrap();
+    assert!(context.contains("Project Memory Context"));
+    assert!(context.contains("Architecture"));
+    assert!(context.contains("Use Tokio"));
+    assert!(context.contains("Total entries: 1"));
+}
+
+#[test]
+fn test_memory_store_append_extracted_entries() {
+    let temp_dir = TempDir::new().unwrap();
+    let store = MemoryStore::new(temp_dir.path()).unwrap();
+
+    // Create task and extract memories
+    let task = create_test_task("task-001", "Feature Implementation", "Add authentication");
+    let result = r#"
+    Architecture decision: Using JWT for authentication
+    Pattern: Repository pattern for data access
+    Important: Store tokens securely
+    "#;
+
+    let entries = extract_memory_from_task(&task, result).unwrap();
+
+    // Append all extracted entries
+    for entry in &entries {
+        store.append_entry(entry).unwrap();
+    }
+
+    assert_eq!(store.entry_count(), entries.len());
+
+    // Verify file contains all entries
+    let memory_file = temp_dir.path().join(".claude/memory.md");
+    let content = fs::read_to_string(memory_file).unwrap();
+
+    assert!(content.contains("JWT"));
+    assert!(content.contains("Repository pattern"));
+    assert!(content.contains("Store tokens securely"));
+}
+
+#[test]
+fn test_extraction_and_append_end_to_end() {
+    let temp_dir = TempDir::new().unwrap();
+    let store = MemoryStore::new(temp_dir.path()).unwrap();
+
+    // Simulate task completion
+    let task = create_test_task("task-042", "Database Setup", "Configure PostgreSQL");
+    let task_result = r#"
+    Architecture decision: Using PostgreSQL with connection pooling
+    Pattern: Repository pattern for data access
+    API design: Exposed /api/users endpoint
+    Performance: Added connection pool with max 10 connections
+    Security: Encrypted connection strings in config
+    Important: Connection strings must be in environment variables
+    "#;
+
+    // Extract memories from task result
+    let extracted = extract_memory_from_task(&task, task_result).unwrap();
+
+    // Also create task summary
+    let files = vec!["src/db.rs".to_string(), "src/config.rs".to_string()];
+    let summary = extract_task_summary(&task, &files).unwrap();
+
+    // Append all entries
+    for entry in &extracted {
+        store.append_entry(entry).unwrap();
+    }
+    store.append_entry(&summary).unwrap();
+
+    // Verify all entries were stored
+    let entries = store.get_entries();
+    assert!(entries.len() >= 6, "Expected at least 6 entries, got {}", entries.len());
+
+    // Verify memory file format
+    let memory_file = temp_dir.path().join(".claude/memory.md");
+    let content = fs::read_to_string(memory_file).unwrap();
+
+    // Check for timestamps and task references
+    assert!(content.contains("**Date**:"));
+    assert!(content.contains("**Task**: task-042"));
+
+    // Check for various categories
+    assert!(content.contains("[Architecture Decision]"));
+    assert!(content.contains("[Pattern]"));
+    assert!(content.contains("[API Design]"));
+    assert!(content.contains("[Performance]"));
+    assert!(content.contains("[Security]"));
+    assert!(content.contains("[Important Note]"));
+    assert!(content.contains("[Task Completion]"));
 }

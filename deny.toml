@@ -27,7 +27,12 @@ db-urls = ["https://github.com/rustsec/advisory-db"]
 # ignore = [
 #     # { id = "RUSTSEC-XXXX-XXXX", reason = "Not affected by this vulnerability" },
 # ]
-ignore = []
+ignore = [
+    # number_prefix is unmaintained but it's a transitive dependency from indicatif
+    # (progress bar library). No security vulnerability, just unmaintained status.
+    # We accept this risk since indicatif is widely used and actively maintained.
+    { id = "RUSTSEC-2025-0119", reason = "Transitive dependency from indicatif (progress bar library). No security vulnerability, only unmaintained status. indicatif itself is actively maintained." },
+]
 
 # If this is true, then cargo deny will use the git executable to fetch advisory database.
 # git-fetch-with-cli = true

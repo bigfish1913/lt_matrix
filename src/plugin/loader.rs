@@ -3,10 +3,8 @@
 //! This module provides functionality for loading plugins from
 //! shared libraries and WASM modules.
 
-use anyhow::{Context, Result, bail};
+use anyhow::{Result, bail};
 use std::path::Path;
-
-use super::traits::PluginType;
 
 /// Plugin loader interface
 pub struct PluginLoader;

@@ -6,9 +6,24 @@
 //! - Command injection prevention
 //! - Input validation patterns
 //! - Unsafe code documentation
+//! - Security module public API
 
 use std::fs;
 use std::path::Path;
+
+// Import the security module for direct API testing
+use ltmatrix::security::{
+    // Command security
+    validate_command_name, validate_command_argument, sanitize_command_argument_for_display,
+    validate_env_var_name, is_sensitive_env_var, mask_sensitive_value, CommandAllowlist,
+    // Path security
+    validate_path, validate_path_within_base, sanitize_path_component, contains_traversal,
+    resolve_safe_path, validate_file_extension, has_dangerous_extension,
+    // Input validation
+    validate_identifier, sanitize_identifier, is_safe_for_command_arg, validate_command_arg,
+    sanitize_command_arg, validate_task_title, validate_task_description, validate_branch_name,
+    validate_commit_message, validate_model_name, sanitize_model_name,
+};
 
 // =============================================================================
 // deny.toml Configuration Tests

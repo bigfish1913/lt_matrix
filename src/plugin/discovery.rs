@@ -6,7 +6,6 @@ use anyhow::Result;
 use std::path::{Path, PathBuf};
 
 use super::manager::PluginDiscovery;
-use super::traits::PluginType;
 
 /// Plugin discovery service
 pub struct PluginDiscoveryService {

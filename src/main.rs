@@ -633,10 +633,24 @@ fn print_help() {
 static GLOBAL_LOG_GUARD: std::sync::OnceLock<LogGuardWrapper> = std::sync::OnceLock::new();
 
 /// Wrapper for the log guard
+///
+/// # Safety
+///
+/// `LogGuard` contains a `WorkerGuard` from `tracing-appender` which is thread-safe
+/// internally but doesn't implement `Send + Sync`. This wrapper allows storing the
+/// guard in a global static (`GLOBAL_LOG_GUARD`).
+///
+/// **Safety Invariant**: The guard is stored exactly once during application startup
+/// via `set_global_log_guard()` and is never moved, mutated, or accessed from multiple
+/// threads after initialization. The guard exists solely to keep the log file handle
+/// alive for the application's lifetime.
 struct LogGuardWrapper {
     _guard: Option<ltmatrix::logging::logger::LogGuard>,
 }
 
+// SAFETY: LogGuardWrapper is only stored once in GLOBAL_LOG_GUARD during startup
+// and is never accessed concurrently. The inner LogGuard is not accessed after
+// being stored - it exists only to keep the file handle alive.
 unsafe impl Send for LogGuardWrapper {}
 unsafe impl Sync for LogGuardWrapper {}
 

@@ -12,6 +12,12 @@ use tracing::Event;
 pub const TIMESTAMP_FORMAT: &str = "%Y-%m-%d %H:%M:%S%.3f";
 
 /// Global color configuration for logging
+///
+/// # Safety
+///
+/// This static is only written to once during initialization via `init_color_config`
+/// and only read afterwards via `get_color_config`. The write-once, read-many pattern
+/// ensures no data races occur.
 static mut COLOR_CONFIG: Option<ColorConfig> = None;
 
 /// Initialize the color configuration for logging formatters

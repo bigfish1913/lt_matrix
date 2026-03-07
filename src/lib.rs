@@ -23,6 +23,7 @@ pub mod pipeline;
 pub mod plugin;
 pub mod progress;
 pub mod release;
+pub mod security;
 pub mod tasks;
 pub mod telemetry;
 pub mod terminal;
