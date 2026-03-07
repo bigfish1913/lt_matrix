@@ -187,7 +187,7 @@ verify = true
     fs::write(&config_path, config_content).unwrap();
 
     // Change to temp directory to pick up .ltmatrix/config.toml
-    let original_dir = std::env::current_dir().unwrap().canonicalize().unwrap();
+    let original_dir = std::env::current_dir().unwrap();
     std::env::set_current_dir(temp_dir.path()).unwrap();
 
     // Parse args with --expert flag
@@ -228,7 +228,7 @@ timeout_exec = 3600
 "#;
     fs::write(&config_path, config_content).unwrap();
 
-    let original_dir = std::env::current_dir().unwrap().canonicalize().unwrap();
+    let original_dir = std::env::current_dir().unwrap();
     std::env::set_current_dir(temp_dir.path()).unwrap();
 
     // Use --expert with CLI overrides for max_retries and timeout
@@ -289,7 +289,7 @@ max_retries = 1
 "#;
     fs::write(&config_path, config_content).unwrap();
 
-    let original_dir = std::env::current_dir().unwrap().canonicalize().unwrap();
+    let original_dir = std::env::current_dir().unwrap();
     std::env::set_current_dir(temp_dir.path()).unwrap();
 
     // CLI --expert should override any config file default mode preference
@@ -457,7 +457,7 @@ level = "info"
 "#;
     fs::write(&config_path, config_content).unwrap();
 
-    let original_dir = std::env::current_dir().unwrap().canonicalize().unwrap();
+    let original_dir = std::env::current_dir().unwrap();
     std::env::set_current_dir(temp_dir.path()).unwrap();
 
     // Complete command with --expert and other overrides

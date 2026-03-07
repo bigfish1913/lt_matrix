@@ -21,6 +21,7 @@ pub mod memory;
 pub mod output;
 pub mod pipeline;
 pub mod progress;
+pub mod release;
 pub mod tasks;
 pub mod telemetry;
 pub mod terminal;

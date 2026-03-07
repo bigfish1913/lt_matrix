@@ -27,6 +27,7 @@ async-trait = "0.1"
 
 # Error handling
 anyhow = "1.0"
+thiserror = "1.0"
 
 # Logging
 tracing = "0.1"
@@ -68,6 +69,11 @@ dirs = "5.0"
 
 # Regular expressions
 regex = "1.10"
+
+# Signal handling (Unix only)
+[target.'cfg(unix)'.dependencies]
+signal-hook = "0.3"
+signal-hook-tokio = { version = "0.3", features = ["futures-v0_3"] }
 
 [features]
 # Default features - balanced for development and production

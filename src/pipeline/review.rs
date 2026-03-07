@@ -9,15 +9,828 @@
 //!
 //! The review stage is only active in expert mode and uses a separate
 //! review agent to provide thorough code analysis.
+//!
+//! # Data Structures
+//!
+//! - [`ReviewSeverity`]: Severity levels for review findings (Info to Critical)
+//! - [`ReviewCategory`]: Categories for classifying review findings
+//! - [`ReviewFinding`]: A single finding from code review
+//! - [`ReviewReport`]: Comprehensive report of all findings for a task
+//! - [`ReviewSummary`]: Aggregated summary across multiple tasks
+//!
+//! # Expert Mode vs Standard Mode
+//!
+//! In **expert mode**:
+//! - All categories are checked (security, performance, quality, best practices, etc.)
+//! - Lower severity threshold (reports Info and above)
+//! - More issues per category allowed
+//! - Blocking issues prevent task completion
+//!
+//! In **standard mode**:
+//! - Review stage is skipped (runs only verify stage)
+//! - When manually enabled, uses higher severity threshold
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use thiserror::Error;
 use tracing::info;
 
 use crate::agent::backend::{AgentBackend, ExecutionConfig};
 use crate::agent::claude::ClaudeAgent;
 use crate::models::{ModeConfig, Task, TaskStatus};
+
+// =============================================================================
+// Error Types for Pipeline Integration
+// =============================================================================
+
+/// Errors that can occur during the review stage
+#[derive(Debug, Error)]
+pub enum ReviewError {
+    /// Failed to create or communicate with the review agent
+    #[error("Agent error during review: {0}")]
+    AgentError(String),
+
+    /// Failed to parse the review response
+    #[error("Failed to parse review response: {0}")]
+    ParseError(String),
+
+    /// Review timed out
+    #[error("Review timed out after {0} seconds")]
+    Timeout(u64),
+
+    /// Critical issues found that block completion
+    #[error("Critical issues found: {0}")]
+    CriticalIssues(String),
+
+    /// Configuration error
+    #[error("Invalid review configuration: {0}")]
+    ConfigError(String),
+
+    /// I/O error during review
+    #[error("I/O error during review: {0}")]
+    IoError(#[from] std::io::Error),
+}
+
+impl ReviewError {
+    /// Check if this error is recoverable (can trigger fix cycle)
+    pub fn is_recoverable(&self) -> bool {
+        matches!(self, ReviewError::CriticalIssues(_))
+    }
+
+    /// Check if this error should cause pipeline to stop
+    pub fn is_fatal(&self) -> bool {
+        matches!(
+            self,
+            ReviewError::AgentError(_)
+                | ReviewError::ParseError(_)
+                | ReviewError::Timeout(_)
+                | ReviewError::ConfigError(_)
+        )
+    }
+
+    /// Get error code for logging/telemetry
+    pub fn error_code(&self) -> &'static str {
+        match self {
+            ReviewError::AgentError(_) => "REVIEW_AGENT_ERROR",
+            ReviewError::ParseError(_) => "REVIEW_PARSE_ERROR",
+            ReviewError::Timeout(_) => "REVIEW_TIMEOUT",
+            ReviewError::CriticalIssues(_) => "REVIEW_CRITICAL_ISSUES",
+            ReviewError::ConfigError(_) => "REVIEW_CONFIG_ERROR",
+            ReviewError::IoError(_) => "REVIEW_IO_ERROR",
+        }
+    }
+}
+
+// =============================================================================
+// Review Severity - Primary Severity Type for Code Review
+// =============================================================================
+
+/// Severity levels for review findings
+///
+/// This enum defines the severity of issues found during code review.
+/// Severity affects both the filtering of findings and the overall
+/// assessment of the review.
+///
+/// # Ordering
+///
+/// Severity levels are ordered from least to most severe:
+/// `Info < Low < Medium < High < Critical`
+///
+/// # Usage in Pipeline
+///
+/// - `Critical`: Blocks task completion, must be fixed before commit
+/// - `High`: Should be fixed before merge, triggers fix cycle
+/// - `Medium`: Should be addressed, may trigger fix cycle in expert mode
+/// - `Low`: Minor issues, informational
+/// - `Info`: Suggestions and recommendations
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ReviewSeverity {
+    /// Informational - suggestions and recommendations
+    /// Not actionable but helpful feedback
+    Info,
+
+    /// Low - minor issues that could be improved
+    /// Non-blocking, cosmetic or minor style issues
+    Low,
+
+    /// Medium - moderate issues that should be addressed
+    /// May affect maintainability or code quality
+    Medium,
+
+    /// High - serious issues that should be fixed
+    /// Could lead to bugs or performance problems
+    /// Triggers fix cycle in expert mode
+    High,
+
+    /// Critical - blocking issues that must be fixed
+    /// Security vulnerabilities or blocking defects
+    /// Prevents task from being marked complete
+    Critical,
+}
+
+impl Default for ReviewSeverity {
+    fn default() -> Self {
+        ReviewSeverity::Medium
+    }
+}
+
+impl std::fmt::Display for ReviewSeverity {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ReviewSeverity::Info => write!(f, "info"),
+            ReviewSeverity::Low => write!(f, "low"),
+            ReviewSeverity::Medium => write!(f, "medium"),
+            ReviewSeverity::High => write!(f, "high"),
+            ReviewSeverity::Critical => write!(f, "critical"),
+        }
+    }
+}
+
+impl ReviewSeverity {
+    /// Get a human-readable description of the severity
+    pub fn description(&self) -> &'static str {
+        match self {
+            ReviewSeverity::Info => "Informational suggestion",
+            ReviewSeverity::Low => "Minor issue",
+            ReviewSeverity::Medium => "Moderate issue",
+            ReviewSeverity::High => "Serious issue",
+            ReviewSeverity::Critical => "Critical issue - blocks completion",
+        }
+    }
+
+    /// Check if this severity should block task completion
+    pub fn is_blocking(&self) -> bool {
+        matches!(self, ReviewSeverity::Critical)
+    }
+
+    /// Check if this severity should trigger a fix cycle
+    pub fn triggers_fix_cycle(&self, expert_mode: bool) -> bool {
+        match self {
+            ReviewSeverity::Critical | ReviewSeverity::High => true,
+            ReviewSeverity::Medium => expert_mode,
+            ReviewSeverity::Low | ReviewSeverity::Info => false,
+        }
+    }
+
+    /// Get the ANSI color code for terminal display
+    pub fn color_code(&self) -> &'static str {
+        match self {
+            ReviewSeverity::Info => "\x1b[34m",      // Blue
+            ReviewSeverity::Low => "\x1b[36m",       // Cyan
+            ReviewSeverity::Medium => "\x1b[33m",    // Yellow
+            ReviewSeverity::High => "\x1b[31m",      // Red
+            ReviewSeverity::Critical => "\x1b[35m",  // Magenta
+        }
+    }
+
+    /// Get the icon/emoji for visual display
+    pub fn icon(&self) -> &'static str {
+        match self {
+            ReviewSeverity::Info => "ℹ",
+            ReviewSeverity::Low => "○",
+            ReviewSeverity::Medium => "◐",
+            ReviewSeverity::High => "●",
+            ReviewSeverity::Critical => "⚠",
+        }
+    }
+}
+
+// =============================================================================
+// Review Category - Categories for Classifying Findings
+// =============================================================================
+
+/// Categories of review findings
+///
+/// Each finding is categorized to help organize the review report
+/// and enable filtering by category.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ReviewCategory {
+    /// Security vulnerabilities (injection, auth issues, data exposure)
+    Security,
+
+    /// Performance problems (inefficient algorithms, memory issues)
+    Performance,
+
+    /// Code quality issues (readability, maintainability, structure)
+    Quality,
+
+    /// Best practices violations (language idioms, design patterns)
+    BestPractices,
+
+    /// Documentation issues (missing or outdated docs)
+    Documentation,
+
+    /// Testing issues (missing tests, poor test coverage)
+    Testing,
+
+    /// Error handling issues (unhandled errors, poor error messages)
+    ErrorHandling,
+
+    /// Architectural issues (module structure, dependencies)
+    Architecture,
+
+    /// Style and formatting issues
+    Style,
+}
+
+impl std::fmt::Display for ReviewCategory {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ReviewCategory::Security => write!(f, "security"),
+            ReviewCategory::Performance => write!(f, "performance"),
+            ReviewCategory::Quality => write!(f, "quality"),
+            ReviewCategory::BestPractices => write!(f, "best_practices"),
+            ReviewCategory::Documentation => write!(f, "documentation"),
+            ReviewCategory::Testing => write!(f, "testing"),
+            ReviewCategory::ErrorHandling => write!(f, "error_handling"),
+            ReviewCategory::Architecture => write!(f, "architecture"),
+            ReviewCategory::Style => write!(f, "style"),
+        }
+    }
+}
+
+impl ReviewCategory {
+    /// Get a description of what this category covers
+    pub fn description(&self) -> &'static str {
+        match self {
+            ReviewCategory::Security => "Security vulnerabilities and risks",
+            ReviewCategory::Performance => "Performance and efficiency issues",
+            ReviewCategory::Quality => "Code quality and maintainability",
+            ReviewCategory::BestPractices => "Best practices and idioms",
+            ReviewCategory::Documentation => "Documentation completeness",
+            ReviewCategory::Testing => "Test coverage and quality",
+            ReviewCategory::ErrorHandling => "Error handling and recovery",
+            ReviewCategory::Architecture => "Architectural and design issues",
+            ReviewCategory::Style => "Code style and formatting",
+        }
+    }
+
+    /// Get the default severity for this category
+    pub fn default_severity(&self) -> ReviewSeverity {
+        match self {
+            ReviewCategory::Security => ReviewSeverity::High,
+            ReviewCategory::Performance => ReviewSeverity::Medium,
+            ReviewCategory::Quality => ReviewSeverity::Medium,
+            ReviewCategory::BestPractices => ReviewSeverity::Low,
+            ReviewCategory::Documentation => ReviewSeverity::Low,
+            ReviewCategory::Testing => ReviewSeverity::Medium,
+            ReviewCategory::ErrorHandling => ReviewSeverity::Medium,
+            ReviewCategory::Architecture => ReviewSeverity::High,
+            ReviewCategory::Style => ReviewSeverity::Info,
+        }
+    }
+
+    /// Check if this category should be checked in the given mode
+    pub fn is_enabled_for_mode(&self, expert_mode: bool) -> bool {
+        match self {
+            // Always check these categories
+            ReviewCategory::Security
+            | ReviewCategory::ErrorHandling
+            | ReviewCategory::Quality => true,
+
+            // Only check in expert mode
+            ReviewCategory::Architecture | ReviewCategory::Documentation | ReviewCategory::Style => {
+                expert_mode
+            }
+
+            // Check in both modes but with different thresholds
+            ReviewCategory::Performance
+            | ReviewCategory::BestPractices
+            | ReviewCategory::Testing => true,
+        }
+    }
+}
+
+// =============================================================================
+// Review Finding - A Single Finding from Code Review
+// =============================================================================
+
+/// A single finding from code review
+///
+/// Represents a specific issue, suggestion, or observation discovered
+/// during the code review process.
+///
+/// # Example
+///
+/// ```rust
+/// use ltmatrix::pipeline::review::{ReviewFinding, ReviewCategory, ReviewSeverity};
+///
+/// let finding = ReviewFinding::new(
+///     ReviewCategory::Security,
+///     ReviewSeverity::High,
+///     "Potential SQL injection",
+/// )
+/// .with_file("src/db.rs", 42)
+/// .with_description("User input is concatenated directly into SQL query")
+/// .with_suggestion("Use parameterized queries or prepared statements")
+/// .blocking(true);
+/// ```
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReviewFinding {
+    /// Unique identifier for this finding
+    pub id: String,
+
+    /// Category of the finding
+    pub category: ReviewCategory,
+
+    /// Severity level
+    pub severity: ReviewSeverity,
+
+    /// Brief title/summary of the finding
+    pub title: String,
+
+    /// Detailed description of the finding
+    pub description: String,
+
+    /// File path where the issue was found (if applicable)
+    pub file: Option<String>,
+
+    /// Line number in the file (if applicable)
+    pub line: Option<usize>,
+
+    /// End line number for multi-line findings
+    pub end_line: Option<usize>,
+
+    /// Column number for precise positioning
+    pub column: Option<usize>,
+
+    /// Suggested fix or improvement
+    pub suggestion: Option<String>,
+
+    /// Code snippet showing the issue
+    pub code_snippet: Option<String>,
+
+    /// Whether this finding blocks task completion
+    pub blocking: bool,
+
+    /// Confidence level (0.0 to 1.0)
+    pub confidence: f32,
+
+    /// Related findings (IDs of related issues)
+    pub related: Vec<String>,
+
+    /// Tags for filtering and categorization
+    pub tags: Vec<String>,
+
+    /// CWE (Common Weakness Enumeration) ID for security issues
+    pub cwe_id: Option<String>,
+
+    /// Reference URL for more information
+    pub reference: Option<String>,
+
+    /// When this finding was created
+    pub created_at: chrono::DateTime<chrono::Utc>,
+}
+
+impl ReviewFinding {
+    /// Create a new finding with required fields
+    pub fn new(
+        category: ReviewCategory,
+        severity: ReviewSeverity,
+        title: impl Into<String>,
+    ) -> Self {
+        let now = chrono::Utc::now();
+        let title_str = title.into();
+        let id = format!(
+            "{}-{}-{}",
+            category,
+            now.timestamp(),
+            title_str.chars().take(20).collect::<String>()
+        );
+
+        ReviewFinding {
+            id,
+            category,
+            severity,
+            title: title_str,
+            description: String::new(),
+            file: None,
+            line: None,
+            end_line: None,
+            column: None,
+            suggestion: None,
+            code_snippet: None,
+            blocking: severity.is_blocking(),
+            confidence: 0.8,
+            related: Vec::new(),
+            tags: Vec::new(),
+            cwe_id: None,
+            reference: None,
+            created_at: now,
+        }
+    }
+
+    /// Set the file location
+    pub fn with_file(mut self, file: impl Into<String>, line: usize) -> Self {
+        self.file = Some(file.into());
+        self.line = Some(line);
+        self
+    }
+
+    /// Set the file location with end line
+    pub fn with_file_range(
+        mut self,
+        file: impl Into<String>,
+        start_line: usize,
+        end_line: usize,
+    ) -> Self {
+        self.file = Some(file.into());
+        self.line = Some(start_line);
+        self.end_line = Some(end_line);
+        self
+    }
+
+    /// Set the description
+    pub fn with_description(mut self, description: impl Into<String>) -> Self {
+        self.description = description.into();
+        self
+    }
+
+    /// Set the suggestion
+    pub fn with_suggestion(mut self, suggestion: impl Into<String>) -> Self {
+        self.suggestion = Some(suggestion.into());
+        self
+    }
+
+    /// Set the code snippet
+    pub fn with_code_snippet(mut self, snippet: impl Into<String>) -> Self {
+        self.code_snippet = Some(snippet.into());
+        self
+    }
+
+    /// Set whether this finding is blocking
+    pub fn blocking(mut self, blocking: bool) -> Self {
+        self.blocking = blocking;
+        self
+    }
+
+    /// Set the confidence level
+    pub fn with_confidence(mut self, confidence: f32) -> Self {
+        self.confidence = confidence.clamp(0.0, 1.0);
+        self
+    }
+
+    /// Add a tag
+    pub fn with_tag(mut self, tag: impl Into<String>) -> Self {
+        self.tags.push(tag.into());
+        self
+    }
+
+    /// Set the CWE ID for security issues
+    pub fn with_cwe(mut self, cwe_id: impl Into<String>) -> Self {
+        self.cwe_id = Some(cwe_id.into());
+        self
+    }
+
+    /// Set a reference URL
+    pub fn with_reference(mut self, url: impl Into<String>) -> Self {
+        self.reference = Some(url.into());
+        self
+    }
+
+    /// Add a related finding ID
+    pub fn add_related(&mut self, finding_id: impl Into<String>) {
+        self.related.push(finding_id.into());
+    }
+
+    /// Check if this finding should be included based on severity threshold
+    pub fn meets_severity_threshold(&self, threshold: ReviewSeverity) -> bool {
+        self.severity >= threshold
+    }
+
+    /// Format the finding for display
+    pub fn format(&self) -> String {
+        let location = if let (Some(file), Some(line)) = (&self.file, self.line) {
+            if let Some(end_line) = self.end_line {
+                format!("{}:{}-{}", file, line, end_line)
+            } else {
+                format!("{}:{}", file, line)
+            }
+        } else {
+            "unknown location".to_string()
+        };
+
+        format!(
+            "{} [{}] {} ({}): {}",
+            self.severity.icon(),
+            self.severity.to_string().to_uppercase(),
+            self.title,
+            location,
+            self.description
+        )
+    }
+}
+
+// =============================================================================
+// Review Report - Comprehensive Report for a Task
+// =============================================================================
+
+/// Comprehensive review report for a single task
+///
+/// Contains all findings, overall assessment, and metadata from
+/// reviewing a single task.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReviewReport {
+    /// ID of the task that was reviewed
+    pub task_id: String,
+
+    /// Overall assessment of the review
+    pub assessment: ReviewAssessment,
+
+    /// All findings from the review
+    pub findings: Vec<ReviewFinding>,
+
+    /// Summary text of the review
+    pub summary: String,
+
+    /// Strengths identified in the code
+    pub strengths: Vec<String>,
+
+    /// Overall recommendations
+    pub recommendations: Vec<String>,
+
+    /// Metrics about the findings
+    pub metrics: ReviewMetrics,
+
+    /// Whether retry is recommended
+    pub retry_recommended: bool,
+
+    /// Time taken for review (seconds)
+    pub review_time_secs: u64,
+
+    /// Model used for review
+    pub review_model: String,
+
+    /// Configuration used for review
+    pub config_snapshot: ReviewConfigSnapshot,
+
+    /// When the review was performed
+    pub reviewed_at: chrono::DateTime<chrono::Utc>,
+}
+
+/// Metrics about review findings
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct ReviewMetrics {
+    /// Total number of findings
+    pub total_findings: usize,
+
+    /// Findings by severity
+    pub by_severity: std::collections::HashMap<String, usize>,
+
+    /// Findings by category
+    pub by_category: std::collections::HashMap<String, usize>,
+
+    /// Number of blocking findings
+    pub blocking_count: usize,
+
+    /// Number of files with findings
+    pub files_affected: usize,
+
+    /// Average confidence
+    pub avg_confidence: f32,
+
+    /// Lines of code reviewed
+    pub lines_reviewed: usize,
+}
+
+/// Snapshot of review configuration for reproducibility
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReviewConfigSnapshot {
+    /// Severity threshold used
+    pub severity_threshold: ReviewSeverity,
+
+    /// Categories checked
+    pub categories_checked: Vec<ReviewCategory>,
+
+    /// Maximum issues per category
+    pub max_issues_per_category: usize,
+
+    /// Expert mode was enabled
+    pub expert_mode: bool,
+}
+
+impl ReviewReport {
+    /// Create a new empty report for a task
+    pub fn new(task_id: impl Into<String>) -> Self {
+        ReviewReport {
+            task_id: task_id.into(),
+            assessment: ReviewAssessment::Pass,
+            findings: Vec::new(),
+            summary: String::new(),
+            strengths: Vec::new(),
+            recommendations: Vec::new(),
+            metrics: ReviewMetrics::default(),
+            retry_recommended: false,
+            review_time_secs: 0,
+            review_model: String::new(),
+            config_snapshot: ReviewConfigSnapshot {
+                severity_threshold: ReviewSeverity::Medium,
+                categories_checked: Vec::new(),
+                max_issues_per_category: 10,
+                expert_mode: false,
+            },
+            reviewed_at: chrono::Utc::now(),
+        }
+    }
+
+    /// Add a finding to the report
+    pub fn add_finding(&mut self, finding: ReviewFinding) {
+        self.findings.push(finding);
+        self.update_metrics();
+    }
+
+    /// Add multiple findings
+    pub fn add_findings(&mut self, findings: Vec<ReviewFinding>) {
+        self.findings.extend(findings);
+        self.update_metrics();
+    }
+
+    /// Update metrics based on current findings
+    pub fn update_metrics(&mut self) {
+        let mut by_severity = std::collections::HashMap::new();
+        let mut by_category = std::collections::HashMap::new();
+        let mut files = std::collections::HashSet::new();
+        let mut blocking_count = 0;
+        let mut total_confidence = 0.0f32;
+
+        for finding in &self.findings {
+            *by_severity.entry(finding.severity.to_string()).or_insert(0) += 1;
+            *by_category.entry(finding.category.to_string()).or_insert(0) += 1;
+
+            if finding.blocking {
+                blocking_count += 1;
+            }
+
+            if let Some(ref file) = finding.file {
+                files.insert(file.clone());
+            }
+
+            total_confidence += finding.confidence;
+        }
+
+        self.metrics = ReviewMetrics {
+            total_findings: self.findings.len(),
+            by_severity,
+            by_category,
+            blocking_count,
+            files_affected: files.len(),
+            avg_confidence: if self.findings.is_empty() {
+                0.0
+            } else {
+                total_confidence / self.findings.len() as f32
+            },
+            lines_reviewed: 0, // Would be set during actual review
+        };
+    }
+
+    /// Calculate the overall assessment based on findings
+    pub fn calculate_assessment(&mut self) {
+        let has_blocking = self.findings.iter().any(|f| f.blocking);
+        let critical_count = self
+            .metrics
+            .by_severity
+            .get("critical")
+            .copied()
+            .unwrap_or(0);
+        let high_count = self
+            .metrics
+            .by_severity
+            .get("high")
+            .copied()
+            .unwrap_or(0);
+        let medium_count = self
+            .metrics
+            .by_severity
+            .get("medium")
+            .copied()
+            .unwrap_or(0);
+
+        self.assessment = if has_blocking || critical_count > 0 {
+            ReviewAssessment::Fail
+        } else if high_count > 0 {
+            ReviewAssessment::NeedsImprovements
+        } else if medium_count > 0 {
+            ReviewAssessment::Warning
+        } else if !self.findings.is_empty() {
+            ReviewAssessment::Warning
+        } else {
+            ReviewAssessment::Pass
+        };
+
+        self.retry_recommended = matches!(
+            self.assessment,
+            ReviewAssessment::NeedsImprovements | ReviewAssessment::Fail
+        );
+    }
+
+    /// Check if the report passes (no blocking issues)
+    pub fn passes(&self) -> bool {
+        !matches!(self.assessment, ReviewAssessment::Fail)
+    }
+
+    /// Get findings by severity
+    pub fn findings_by_severity(&self, severity: ReviewSeverity) -> Vec<&ReviewFinding> {
+        self.findings
+            .iter()
+            .filter(|f| f.severity == severity)
+            .collect()
+    }
+
+    /// Get findings by category
+    pub fn findings_by_category(&self, category: ReviewCategory) -> Vec<&ReviewFinding> {
+        self.findings
+            .iter()
+            .filter(|f| f.category == category)
+            .collect()
+    }
+
+    /// Format the report as markdown
+    pub fn to_markdown(&self) -> String {
+        let mut md = String::new();
+
+        md.push_str(&format!("# Review Report: {}\n\n", self.task_id));
+        md.push_str(&format!("**Assessment**: {}\n\n", self.assessment));
+        md.push_str(&format!("**Summary**: {}\n\n", self.summary));
+
+        if !self.strengths.is_empty() {
+            md.push_str("## Strengths\n\n");
+            for strength in &self.strengths {
+                md.push_str(&format!("- {}\n", strength));
+            }
+            md.push('\n');
+        }
+
+        if !self.findings.is_empty() {
+            md.push_str("## Findings\n\n");
+
+            // Group by severity
+            for severity in [
+                ReviewSeverity::Critical,
+                ReviewSeverity::High,
+                ReviewSeverity::Medium,
+                ReviewSeverity::Low,
+                ReviewSeverity::Info,
+            ] {
+                let findings = self.findings_by_severity(severity);
+                if !findings.is_empty() {
+                    md.push_str(&format!(
+                        "### {} ({} findings)\n\n",
+                        severity.to_string().to_uppercase(),
+                        findings.len()
+                    ));
+
+                    for finding in findings {
+                        md.push_str(&format!(
+                            "- **{}** [{}]: {}\n",
+                            finding.title, finding.category, finding.description
+                        ));
+                        if let Some(ref file) = finding.file {
+                            if let Some(line) = finding.line {
+                                md.push_str(&format!("  - Location: `{}:{}`\n", file, line));
+                            }
+                        }
+                        if let Some(ref suggestion) = finding.suggestion {
+                            md.push_str(&format!("  - Suggestion: {}\n", suggestion));
+                        }
+                    }
+                    md.push('\n');
+                }
+            }
+        }
+
+        if !self.recommendations.is_empty() {
+            md.push_str("## Recommendations\n\n");
+            for rec in &self.recommendations {
+                md.push_str(&format!("- {}\n", rec));
+            }
+        }
+
+        md
+    }
+}
 
 /// Configuration for the review stage
 #[derive(Debug, Clone)]
@@ -118,81 +931,31 @@ impl ReviewConfig {
     pub fn is_expert_mode(&self) -> bool {
         self.enabled
     }
-}
 
-/// Severity levels for code review issues
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum IssueSeverity {
-    /// Informational - minor suggestions
-    Info,
-
-    /// Low - minor issues that should be addressed
-    Low,
-
-    /// Medium - moderate issues that should be fixed
-    Medium,
-
-    /// High - serious issues that must be fixed
-    High,
-
-    /// Critical - security vulnerabilities or blocking issues
-    Critical,
-}
-
-impl std::fmt::Display for IssueSeverity {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            IssueSeverity::Info => write!(f, "info"),
-            IssueSeverity::Low => write!(f, "low"),
-            IssueSeverity::Medium => write!(f, "medium"),
-            IssueSeverity::High => write!(f, "high"),
-            IssueSeverity::Critical => write!(f, "critical"),
-        }
+    /// Get the severity threshold as the new ReviewSeverity type
+    pub fn severity_threshold_as_review(&self) -> ReviewSeverity {
+        self.severity_threshold.into()
     }
 }
 
-/// Categories of code review issues
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum IssueCategory {
-    /// Security vulnerabilities
-    Security,
+// =============================================================================
+// Backward Compatibility - Type Aliases and Conversions
+// =============================================================================
 
-    /// Performance problems
-    Performance,
+/// Alias for backward compatibility with existing code
+pub type IssueSeverity = ReviewSeverity;
 
-    /// Code quality issues
-    Quality,
+/// Alias for backward compatibility with existing code
+pub type IssueCategory = ReviewCategory;
 
-    /// Best practices violations
-    BestPractices,
+// =============================================================================
+// Legacy Types for Backward Compatibility
+// =============================================================================
 
-    /// Documentation issues
-    Documentation,
-
-    /// Testing issues
-    Testing,
-
-    /// Error handling
-    ErrorHandling,
-}
-
-impl std::fmt::Display for IssueCategory {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            IssueCategory::Security => write!(f, "security"),
-            IssueCategory::Performance => write!(f, "performance"),
-            IssueCategory::Quality => write!(f, "quality"),
-            IssueCategory::BestPractices => write!(f, "best_practices"),
-            IssueCategory::Documentation => write!(f, "documentation"),
-            IssueCategory::Testing => write!(f, "testing"),
-            IssueCategory::ErrorHandling => write!(f, "error_handling"),
-        }
-    }
-}
-
-/// A single code review issue
+/// A single code review issue (legacy type, use ReviewFinding for new code)
+///
+/// This type is maintained for backward compatibility. New code should use
+/// [`ReviewFinding`] which provides additional fields and functionality.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CodeIssue {
     /// Category of the issue
@@ -221,6 +984,45 @@ pub struct CodeIssue {
 
     /// Whether this issue blocks the task from being considered complete
     pub blocking: bool,
+}
+
+impl CodeIssue {
+    /// Convert to the new ReviewFinding type
+    pub fn to_finding(&self) -> ReviewFinding {
+        let mut finding = ReviewFinding::new(self.category, self.severity, &self.title)
+            .with_description(&self.description);
+
+        if let Some(ref file) = self.file {
+            if let Some(line) = self.line {
+                finding = finding.with_file(file, line);
+            }
+        }
+
+        if let Some(ref suggestion) = self.suggestion {
+            finding = finding.with_suggestion(suggestion);
+        }
+
+        if let Some(ref snippet) = self.code_snippet {
+            finding = finding.with_code_snippet(snippet);
+        }
+
+        finding.blocking(self.blocking)
+    }
+
+    /// Create from a ReviewFinding
+    pub fn from_finding(finding: &ReviewFinding) -> Self {
+        CodeIssue {
+            category: finding.category,
+            severity: finding.severity,
+            file: finding.file.clone(),
+            line: finding.line,
+            title: finding.title.clone(),
+            description: finding.description.clone(),
+            suggestion: finding.suggestion.clone(),
+            code_snippet: finding.code_snippet.clone(),
+            blocking: finding.blocking,
+        }
+    }
 }
 
 /// Result of reviewing a single task
@@ -1269,5 +2071,526 @@ mod tests {
             ReviewAssessment::NeedsImprovements | ReviewAssessment::Fail
         );
         assert!(needs_retry);
+    }
+
+    // =========================================================================
+    // Tests for New Data Structures (ReviewSeverity, ReviewCategory, etc.)
+    // =========================================================================
+
+    #[test]
+    fn test_review_severity_ordering() {
+        // Test ordering from least to most severe
+        assert!(ReviewSeverity::Critical > ReviewSeverity::High);
+        assert!(ReviewSeverity::High > ReviewSeverity::Medium);
+        assert!(ReviewSeverity::Medium > ReviewSeverity::Low);
+        assert!(ReviewSeverity::Low > ReviewSeverity::Info);
+
+        // Test transitivity
+        assert!(ReviewSeverity::Critical > ReviewSeverity::Medium);
+        assert!(ReviewSeverity::High > ReviewSeverity::Info);
+    }
+
+    #[test]
+    fn test_review_severity_is_blocking() {
+        assert!(ReviewSeverity::Critical.is_blocking());
+        assert!(!ReviewSeverity::High.is_blocking());
+        assert!(!ReviewSeverity::Medium.is_blocking());
+        assert!(!ReviewSeverity::Low.is_blocking());
+        assert!(!ReviewSeverity::Info.is_blocking());
+    }
+
+    #[test]
+    fn test_review_severity_triggers_fix_cycle() {
+        // In expert mode
+        assert!(ReviewSeverity::Critical.triggers_fix_cycle(true));
+        assert!(ReviewSeverity::High.triggers_fix_cycle(true));
+        assert!(ReviewSeverity::Medium.triggers_fix_cycle(true));
+        assert!(!ReviewSeverity::Low.triggers_fix_cycle(true));
+        assert!(!ReviewSeverity::Info.triggers_fix_cycle(true));
+
+        // In standard mode
+        assert!(ReviewSeverity::Critical.triggers_fix_cycle(false));
+        assert!(ReviewSeverity::High.triggers_fix_cycle(false));
+        assert!(!ReviewSeverity::Medium.triggers_fix_cycle(false));
+        assert!(!ReviewSeverity::Low.triggers_fix_cycle(false));
+        assert!(!ReviewSeverity::Info.triggers_fix_cycle(false));
+    }
+
+    #[test]
+    fn test_review_severity_display() {
+        assert_eq!(ReviewSeverity::Critical.to_string(), "critical");
+        assert_eq!(ReviewSeverity::High.to_string(), "high");
+        assert_eq!(ReviewSeverity::Medium.to_string(), "medium");
+        assert_eq!(ReviewSeverity::Low.to_string(), "low");
+        assert_eq!(ReviewSeverity::Info.to_string(), "info");
+    }
+
+    #[test]
+    fn test_review_severity_description() {
+        assert!(ReviewSeverity::Critical.description().contains("blocks"));
+        assert!(ReviewSeverity::High.description().contains("Serious"));
+        assert!(ReviewSeverity::Medium.description().contains("Moderate"));
+        assert!(ReviewSeverity::Low.description().contains("Minor"));
+        assert!(ReviewSeverity::Info.description().contains("Informational"));
+    }
+
+    #[test]
+    fn test_review_category_default_severity() {
+        assert_eq!(ReviewCategory::Security.default_severity(), ReviewSeverity::High);
+        assert_eq!(ReviewCategory::Architecture.default_severity(), ReviewSeverity::High);
+        assert_eq!(ReviewCategory::Performance.default_severity(), ReviewSeverity::Medium);
+        assert_eq!(ReviewCategory::Quality.default_severity(), ReviewSeverity::Medium);
+        assert_eq!(ReviewCategory::BestPractices.default_severity(), ReviewSeverity::Low);
+        assert_eq!(ReviewCategory::Documentation.default_severity(), ReviewSeverity::Low);
+        assert_eq!(ReviewCategory::Style.default_severity(), ReviewSeverity::Info);
+    }
+
+    #[test]
+    fn test_review_category_mode_visibility() {
+        // Security, ErrorHandling, Quality should always be checked
+        assert!(ReviewCategory::Security.is_enabled_for_mode(false));
+        assert!(ReviewCategory::ErrorHandling.is_enabled_for_mode(false));
+        assert!(ReviewCategory::Quality.is_enabled_for_mode(false));
+
+        // Architecture, Documentation, Style only in expert mode
+        assert!(!ReviewCategory::Architecture.is_enabled_for_mode(false));
+        assert!(ReviewCategory::Architecture.is_enabled_for_mode(true));
+        assert!(!ReviewCategory::Documentation.is_enabled_for_mode(false));
+        assert!(ReviewCategory::Documentation.is_enabled_for_mode(true));
+        assert!(!ReviewCategory::Style.is_enabled_for_mode(false));
+        assert!(ReviewCategory::Style.is_enabled_for_mode(true));
+    }
+
+    #[test]
+    fn test_review_category_display() {
+        assert_eq!(ReviewCategory::Security.to_string(), "security");
+        assert_eq!(ReviewCategory::BestPractices.to_string(), "best_practices");
+        assert_eq!(ReviewCategory::ErrorHandling.to_string(), "error_handling");
+        assert_eq!(ReviewCategory::Architecture.to_string(), "architecture");
+    }
+
+    #[test]
+    fn test_review_finding_creation() {
+        let finding = ReviewFinding::new(
+            ReviewCategory::Security,
+            ReviewSeverity::High,
+            "SQL Injection",
+        );
+
+        assert_eq!(finding.category, ReviewCategory::Security);
+        assert_eq!(finding.severity, ReviewSeverity::High);
+        assert_eq!(finding.title, "SQL Injection");
+        assert!(!finding.blocking); // High is not blocking
+        assert_eq!(finding.confidence, 0.8); // Default confidence
+        assert!(finding.file.is_none());
+        assert!(finding.line.is_none());
+    }
+
+    #[test]
+    fn test_review_finding_builder_pattern() {
+        let finding = ReviewFinding::new(
+            ReviewCategory::Security,
+            ReviewSeverity::Critical,
+            "Buffer Overflow",
+        )
+        .with_file("src/buffer.rs", 42)
+        .with_description("Potential buffer overflow in unsafe block")
+        .with_suggestion("Use safe abstractions or bounds checking")
+        .with_code_snippet("let ptr = buffer.as_ptr();")
+        .blocking(true)
+        .with_confidence(0.95)
+        .with_tag("security-critical")
+        .with_cwe("CWE-120");
+
+        assert_eq!(finding.file, Some("src/buffer.rs".to_string()));
+        assert_eq!(finding.line, Some(42));
+        assert_eq!(finding.description, "Potential buffer overflow in unsafe block");
+        assert_eq!(
+            finding.suggestion,
+            Some("Use safe abstractions or bounds checking".to_string())
+        );
+        assert!(finding.blocking);
+        assert_eq!(finding.confidence, 0.95);
+        assert!(finding.tags.contains(&"security-critical".to_string()));
+        assert_eq!(finding.cwe_id, Some("CWE-120".to_string()));
+    }
+
+    #[test]
+    fn test_review_finding_file_range() {
+        let finding = ReviewFinding::new(
+            ReviewCategory::Quality,
+            ReviewSeverity::Medium,
+            "Long function",
+        )
+        .with_file_range("src/main.rs", 100, 250);
+
+        assert_eq!(finding.file, Some("src/main.rs".to_string()));
+        assert_eq!(finding.line, Some(100));
+        assert_eq!(finding.end_line, Some(250));
+    }
+
+    #[test]
+    fn test_review_finding_severity_threshold() {
+        let critical = ReviewFinding::new(
+            ReviewCategory::Security,
+            ReviewSeverity::Critical,
+            "Critical",
+        );
+        let high = ReviewFinding::new(
+            ReviewCategory::Security,
+            ReviewSeverity::High,
+            "High",
+        );
+        let low = ReviewFinding::new(
+            ReviewCategory::Security,
+            ReviewSeverity::Low,
+            "Low",
+        );
+
+        // Critical meets threshold of High
+        assert!(critical.meets_severity_threshold(ReviewSeverity::High));
+        // High meets threshold of High
+        assert!(high.meets_severity_threshold(ReviewSeverity::High));
+        // Low does not meet threshold of High
+        assert!(!low.meets_severity_threshold(ReviewSeverity::High));
+        // Low meets threshold of Low
+        assert!(low.meets_severity_threshold(ReviewSeverity::Low));
+        // Low meets threshold of Info
+        assert!(low.meets_severity_threshold(ReviewSeverity::Info));
+    }
+
+    #[test]
+    fn test_review_finding_format() {
+        let finding = ReviewFinding::new(
+            ReviewCategory::Security,
+            ReviewSeverity::Critical,
+            "SQL Injection",
+        )
+        .with_file("src/db.rs", 42)
+        .with_description("User input not sanitized");
+
+        let formatted = finding.format();
+        assert!(formatted.contains("SQL Injection"));
+        assert!(formatted.contains("src/db.rs:42"));
+        assert!(formatted.contains("User input not sanitized"));
+        // Severity is displayed in uppercase per format() implementation
+        assert!(formatted.contains("CRITICAL"));
+    }
+
+    #[test]
+    fn test_review_report_creation() {
+        let report = ReviewReport::new("task-123");
+
+        assert_eq!(report.task_id, "task-123");
+        assert_eq!(report.assessment, ReviewAssessment::Pass);
+        assert!(report.findings.is_empty());
+        assert!(report.strengths.is_empty());
+        assert!(!report.retry_recommended);
+    }
+
+    #[test]
+    fn test_review_report_add_findings() {
+        let mut report = ReviewReport::new("task-123");
+
+        let finding1 = ReviewFinding::new(
+            ReviewCategory::Security,
+            ReviewSeverity::High,
+            "Security Issue",
+        );
+        let finding2 = ReviewFinding::new(
+            ReviewCategory::Quality,
+            ReviewSeverity::Medium,
+            "Quality Issue",
+        );
+
+        report.add_finding(finding1);
+        report.add_finding(finding2);
+
+        assert_eq!(report.findings.len(), 2);
+        assert_eq!(report.metrics.total_findings, 2);
+        assert_eq!(report.metrics.by_severity.get("high"), Some(&1));
+        assert_eq!(report.metrics.by_severity.get("medium"), Some(&1));
+        assert_eq!(report.metrics.by_category.get("security"), Some(&1));
+        assert_eq!(report.metrics.by_category.get("quality"), Some(&1));
+    }
+
+    #[test]
+    fn test_review_report_calculate_assessment() {
+        let mut report = ReviewReport::new("task-123");
+
+        // No findings = Pass
+        report.calculate_assessment();
+        assert_eq!(report.assessment, ReviewAssessment::Pass);
+        assert!(!report.retry_recommended);
+
+        // Add critical finding = Fail
+        report.add_finding(ReviewFinding::new(
+            ReviewCategory::Security,
+            ReviewSeverity::Critical,
+            "Critical",
+        ).blocking(true));
+        report.calculate_assessment();
+        assert_eq!(report.assessment, ReviewAssessment::Fail);
+        assert!(report.retry_recommended);
+
+        // Reset with high severity
+        report.findings.clear();
+        report.update_metrics();
+        report.add_finding(ReviewFinding::new(
+            ReviewCategory::Security,
+            ReviewSeverity::High,
+            "High",
+        ));
+        report.calculate_assessment();
+        assert_eq!(report.assessment, ReviewAssessment::NeedsImprovements);
+        assert!(report.retry_recommended);
+
+        // Reset with medium severity
+        report.findings.clear();
+        report.update_metrics();
+        report.add_finding(ReviewFinding::new(
+            ReviewCategory::Quality,
+            ReviewSeverity::Medium,
+            "Medium",
+        ));
+        report.calculate_assessment();
+        assert_eq!(report.assessment, ReviewAssessment::Warning);
+        assert!(!report.retry_recommended);
+    }
+
+    #[test]
+    fn test_review_report_findings_by_severity() {
+        let mut report = ReviewReport::new("task-123");
+
+        report.add_finding(ReviewFinding::new(
+            ReviewCategory::Security,
+            ReviewSeverity::Critical,
+            "Critical 1",
+        ));
+        report.add_finding(ReviewFinding::new(
+            ReviewCategory::Security,
+            ReviewSeverity::Critical,
+            "Critical 2",
+        ));
+        report.add_finding(ReviewFinding::new(
+            ReviewCategory::Quality,
+            ReviewSeverity::High,
+            "High 1",
+        ));
+        report.add_finding(ReviewFinding::new(
+            ReviewCategory::Quality,
+            ReviewSeverity::Medium,
+            "Medium 1",
+        ));
+
+        let critical = report.findings_by_severity(ReviewSeverity::Critical);
+        let high = report.findings_by_severity(ReviewSeverity::High);
+        let medium = report.findings_by_severity(ReviewSeverity::Medium);
+
+        assert_eq!(critical.len(), 2);
+        assert_eq!(high.len(), 1);
+        assert_eq!(medium.len(), 1);
+    }
+
+    #[test]
+    fn test_review_report_findings_by_category() {
+        let mut report = ReviewReport::new("task-123");
+
+        report.add_finding(ReviewFinding::new(
+            ReviewCategory::Security,
+            ReviewSeverity::High,
+            "Security 1",
+        ));
+        report.add_finding(ReviewFinding::new(
+            ReviewCategory::Security,
+            ReviewSeverity::Medium,
+            "Security 2",
+        ));
+        report.add_finding(ReviewFinding::new(
+            ReviewCategory::Performance,
+            ReviewSeverity::Medium,
+            "Performance 1",
+        ));
+
+        let security = report.findings_by_category(ReviewCategory::Security);
+        let performance = report.findings_by_category(ReviewCategory::Performance);
+        let quality = report.findings_by_category(ReviewCategory::Quality);
+
+        assert_eq!(security.len(), 2);
+        assert_eq!(performance.len(), 1);
+        assert_eq!(quality.len(), 0);
+    }
+
+    #[test]
+    fn test_review_report_to_markdown() {
+        let mut report = ReviewReport::new("task-123");
+        report.summary = "Code review summary".to_string();
+        report.strengths.push("Good error handling".to_string());
+        report.add_finding(ReviewFinding::new(
+            ReviewCategory::Security,
+            ReviewSeverity::High,
+            "Security Issue",
+        )
+        .with_file("src/main.rs", 42)
+        .with_description("User input not sanitized"));
+
+        let md = report.to_markdown();
+
+        assert!(md.contains("# Review Report: task-123"));
+        assert!(md.contains("Security Issue"));
+        assert!(md.contains("src/main.rs:42"));
+        assert!(md.contains("Good error handling"));
+        assert!(md.contains("## Findings"));
+    }
+
+    #[test]
+    fn test_review_error_is_recoverable() {
+        let critical = ReviewError::CriticalIssues("Security vulnerabilities found".to_string());
+        let agent_err = ReviewError::AgentError("Connection failed".to_string());
+        let timeout = ReviewError::Timeout(300);
+        let config_err = ReviewError::ConfigError("Invalid setting".to_string());
+
+        assert!(critical.is_recoverable());
+        assert!(!agent_err.is_recoverable());
+        assert!(!timeout.is_recoverable());
+        assert!(!config_err.is_recoverable());
+    }
+
+    #[test]
+    fn test_review_error_is_fatal() {
+        let critical = ReviewError::CriticalIssues("Issues found".to_string());
+        let agent_err = ReviewError::AgentError("Connection failed".to_string());
+        let timeout = ReviewError::Timeout(300);
+        let parse_err = ReviewError::ParseError("Invalid JSON".to_string());
+
+        assert!(!critical.is_fatal());
+        assert!(agent_err.is_fatal());
+        assert!(timeout.is_fatal());
+        assert!(parse_err.is_fatal());
+    }
+
+    #[test]
+    fn test_review_error_error_codes() {
+        assert_eq!(
+            ReviewError::AgentError("test".to_string()).error_code(),
+            "REVIEW_AGENT_ERROR"
+        );
+        assert_eq!(
+            ReviewError::ParseError("test".to_string()).error_code(),
+            "REVIEW_PARSE_ERROR"
+        );
+        assert_eq!(ReviewError::Timeout(100).error_code(), "REVIEW_TIMEOUT");
+        assert_eq!(
+            ReviewError::CriticalIssues("test".to_string()).error_code(),
+            "REVIEW_CRITICAL_ISSUES"
+        );
+        assert_eq!(
+            ReviewError::ConfigError("test".to_string()).error_code(),
+            "REVIEW_CONFIG_ERROR"
+        );
+    }
+
+    #[test]
+    fn test_code_issue_to_finding_conversion() {
+        let issue = CodeIssue {
+            category: IssueCategory::Security,
+            severity: IssueSeverity::High,
+            file: Some("src/db.rs".to_string()),
+            line: Some(42),
+            title: "SQL Injection".to_string(),
+            description: "Unsanitized input".to_string(),
+            suggestion: Some("Use parameterized queries".to_string()),
+            code_snippet: Some("query(input)".to_string()),
+            blocking: true,
+        };
+
+        let finding = issue.to_finding();
+
+        assert_eq!(finding.category, ReviewCategory::Security);
+        assert_eq!(finding.severity, ReviewSeverity::High);
+        assert_eq!(finding.file, Some("src/db.rs".to_string()));
+        assert_eq!(finding.line, Some(42));
+        assert_eq!(finding.title, "SQL Injection");
+        assert_eq!(finding.description, "Unsanitized input");
+        assert_eq!(finding.suggestion, Some("Use parameterized queries".to_string()));
+        assert!(finding.blocking);
+    }
+
+    #[test]
+    fn test_code_issue_from_finding_conversion() {
+        let finding = ReviewFinding::new(
+            ReviewCategory::Performance,
+            ReviewSeverity::Medium,
+            "Slow query",
+        )
+        .with_file("src/db.rs", 100)
+        .with_description("Missing index")
+        .blocking(false);
+
+        let issue = CodeIssue::from_finding(&finding);
+
+        assert_eq!(issue.category, IssueCategory::Performance);
+        assert_eq!(issue.severity, IssueSeverity::Medium);
+        assert_eq!(issue.file, Some("src/db.rs".to_string()));
+        assert_eq!(issue.line, Some(100));
+        assert_eq!(issue.title, "Slow query");
+        assert_eq!(issue.description, "Missing index");
+        assert!(!issue.blocking);
+    }
+
+    #[test]
+    fn test_review_config_severity_threshold_conversion() {
+        let config = ReviewConfig {
+            severity_threshold: IssueSeverity::High,
+            ..Default::default()
+        };
+
+        let threshold = config.severity_threshold_as_review();
+        assert_eq!(threshold, ReviewSeverity::High);
+    }
+
+    #[test]
+    fn test_type_aliases_compatibility() {
+        // Test that type aliases work correctly
+        let severity: IssueSeverity = ReviewSeverity::High;
+        assert_eq!(severity, ReviewSeverity::High);
+
+        let category: IssueCategory = ReviewCategory::Security;
+        assert_eq!(category, ReviewCategory::Security);
+
+        // Test that comparison works
+        let s1: IssueSeverity = ReviewSeverity::Critical;
+        let s2: ReviewSeverity = IssueSeverity::High;
+        assert!(s1 > s2);
+    }
+
+    #[test]
+    fn test_review_metrics_default() {
+        let metrics = ReviewMetrics::default();
+
+        assert_eq!(metrics.total_findings, 0);
+        assert!(metrics.by_severity.is_empty());
+        assert!(metrics.by_category.is_empty());
+        assert_eq!(metrics.blocking_count, 0);
+        assert_eq!(metrics.files_affected, 0);
+        assert_eq!(metrics.avg_confidence, 0.0);
+    }
+
+    #[test]
+    fn test_review_config_snapshot() {
+        let snapshot = ReviewConfigSnapshot {
+            severity_threshold: ReviewSeverity::Low,
+            categories_checked: vec![
+                ReviewCategory::Security,
+                ReviewCategory::Performance,
+            ],
+            max_issues_per_category: 15,
+            expert_mode: true,
+        };
+
+        assert_eq!(snapshot.severity_threshold, ReviewSeverity::Low);
+        assert_eq!(snapshot.categories_checked.len(), 2);
+        assert_eq!(snapshot.max_issues_per_category, 15);
+        assert!(snapshot.expert_mode);
     }
 }

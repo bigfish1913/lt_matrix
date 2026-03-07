@@ -7,7 +7,7 @@
 #![allow(clippy::too_many_lines)]
 
 use anyhow::{anyhow, Context, Result};
-use clap::{Parser, error::ErrorKind};
+use clap::Parser;
 use std::env;
 use std::io::Write;
 use std::path::PathBuf;
@@ -465,9 +465,9 @@ fn execute_release_command(
 }
 
 /// Execute the completions subcommand
-#[instrument(skip(app_state, completions_args))]
+#[instrument(skip(_app_state, completions_args))]
 fn execute_completions_command(
-    app_state: &mut AppState,
+    _app_state: &mut AppState,
     completions_args: &ltmatrix::cli::args::CompletionsArgs,
 ) -> Result<i32> {
     info!("Executing completions command for shell: {}", completions_args.shell);
@@ -482,9 +482,9 @@ fn execute_completions_command(
 }
 
 /// Execute the man subcommand
-#[instrument(skip(app_state, man_args))]
+#[instrument(skip(_app_state, man_args))]
 fn execute_man_command(
-    app_state: &mut AppState,
+    _app_state: &mut AppState,
     man_args: &ltmatrix::cli::args::ManArgs,
 ) -> Result<i32> {
     info!("Executing man command");
@@ -499,9 +499,9 @@ fn execute_man_command(
 }
 
 /// Execute the cleanup subcommand
-#[instrument(skip(app_state, cleanup_args))]
+#[instrument(skip(_app_state, cleanup_args))]
 fn execute_cleanup_command(
-    app_state: &mut AppState,
+    _app_state: &mut AppState,
     cleanup_args: &ltmatrix::cli::args::CleanupArgs,
 ) -> Result<i32> {
     info!("Executing cleanup command");

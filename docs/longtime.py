@@ -28,8 +28,11 @@ RESET  = "\033[0m"
 
 # ─── Config ───────────────────────────────────────────────────────────────────
 SCRIPT_DIR   = Path(__file__).parent.resolve()
-MODEL_FAST   = "claude-sonnet-4-6"
-MODEL_SMART  = "claude-opus-4-6"
+# MODEL_FAST   = "claude-sonnet-4-6"
+# MODEL_SMART  = "claude-opus-4-6"
+
+MODEL_FAST   = "glm-5"
+MODEL_SMART  = "glm-5"
 MAX_DEPTH    = 3
 MAX_RETRIES  = 3
 TIMEOUT_PLAN = 120    # seconds: task planning / assess / verify
