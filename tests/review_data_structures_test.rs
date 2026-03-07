@@ -34,11 +34,13 @@ fn test_review_error_not_recoverable_for_other_errors() {
     let parse_error = ReviewError::ParseError("Invalid JSON".to_string());
     let timeout = ReviewError::Timeout(60);
     let config_error = ReviewError::ConfigError("Invalid config".to_string());
+    let io_error = ReviewError::IoError(std::io::Error::new(std::io::ErrorKind::NotFound, "file not found"));
 
     assert!(!agent_error.is_recoverable());
     assert!(!parse_error.is_recoverable());
     assert!(!timeout.is_recoverable());
     assert!(!config_error.is_recoverable());
+    assert!(!io_error.is_recoverable());
 }
 
 #[test]
@@ -47,11 +49,13 @@ fn test_review_error_is_fatal_for_non_critical_issues() {
     let parse_error = ReviewError::ParseError("Invalid JSON".to_string());
     let timeout = ReviewError::Timeout(60);
     let config_error = ReviewError::ConfigError("Invalid config".to_string());
+    let io_error = ReviewError::IoError(std::io::Error::new(std::io::ErrorKind::NotFound, "file not found"));
 
     assert!(agent_error.is_fatal());
     assert!(parse_error.is_fatal());
     assert!(timeout.is_fatal());
     assert!(config_error.is_fatal());
+    assert!(!io_error.is_fatal(), "IoError should not be fatal (not in the is_fatal match)");
 }
 
 #[test]
@@ -81,6 +85,10 @@ fn test_review_error_error_codes() {
     assert_eq!(
         ReviewError::ConfigError("test".to_string()).error_code(),
         "REVIEW_CONFIG_ERROR"
+    );
+    assert_eq!(
+        ReviewError::IoError(std::io::Error::new(std::io::ErrorKind::NotFound, "file not found")).error_code(),
+        "REVIEW_IO_ERROR"
     );
 }
 
@@ -1097,4 +1105,152 @@ fn test_review_config_severity_threshold_conversion() {
     let expert_config = ReviewConfig::expert_mode();
     let expert_threshold = expert_config.severity_threshold_as_review();
     assert_eq!(expert_threshold, ReviewSeverity::Low);
+}
+
+// =============================================================================
+// Additional Edge Case Tests
+// =============================================================================
+
+#[test]
+fn test_review_error_io_error_from_std_io_error() {
+    // Test that std::io::Error can be converted into ReviewError
+    let io_err = std::io::Error::new(std::io::ErrorKind::PermissionDenied, "access denied");
+    let review_err: ReviewError = io_err.into();
+
+    assert_eq!(review_err.error_code(), "REVIEW_IO_ERROR");
+    assert!(!review_err.is_recoverable(), "IoError should not be recoverable");
+    assert!(!review_err.is_fatal(), "IoError should not be fatal");
+}
+
+#[test]
+fn test_review_finding_with_empty_tags() {
+    let finding = ReviewFinding::new(ReviewCategory::Quality, ReviewSeverity::Low, "Test")
+        .with_tag("first")
+        .with_tag("second");
+
+    assert_eq!(finding.tags.len(), 2);
+    assert!(finding.tags.contains(&"first".to_string()));
+    assert!(finding.tags.contains(&"second".to_string()));
+}
+
+#[test]
+fn test_review_report_empty_findings_by_severity() {
+    let report = ReviewReport::new("task-empty");
+
+    // Should return empty vector for any severity when no findings exist
+    assert!(report.findings_by_severity(ReviewSeverity::Critical).is_empty());
+    assert!(report.findings_by_severity(ReviewSeverity::High).is_empty());
+    assert!(report.findings_by_severity(ReviewSeverity::Medium).is_empty());
+    assert!(report.findings_by_severity(ReviewSeverity::Low).is_empty());
+    assert!(report.findings_by_severity(ReviewSeverity::Info).is_empty());
+}
+
+#[test]
+fn test_review_report_empty_findings_by_category() {
+    let report = ReviewReport::new("task-empty");
+
+    // Should return empty vector for any category when no findings exist
+    assert!(report.findings_by_category(ReviewCategory::Security).is_empty());
+    assert!(report.findings_by_category(ReviewCategory::Performance).is_empty());
+    assert!(report.findings_by_category(ReviewCategory::Quality).is_empty());
+}
+
+#[test]
+fn test_review_report_multiple_findings_same_file() {
+    let mut report = ReviewReport::new("task-123");
+
+    // Add multiple findings in the same file
+    report.add_finding(
+        ReviewFinding::new(ReviewCategory::Security, ReviewSeverity::High, "Issue 1")
+            .with_file("src/lib.rs", 10),
+    );
+    report.add_finding(
+        ReviewFinding::new(ReviewCategory::Quality, ReviewSeverity::Medium, "Issue 2")
+            .with_file("src/lib.rs", 20),
+    );
+    report.add_finding(
+        ReviewFinding::new(ReviewCategory::Performance, ReviewSeverity::Low, "Issue 3")
+            .with_file("src/lib.rs", 30),
+    );
+
+    // Should count as 1 file affected, not 3
+    assert_eq!(report.metrics.files_affected, 1);
+    assert_eq!(report.findings.len(), 3);
+}
+
+#[test]
+fn test_review_finding_confidence_boundary_values() {
+    // Test exact boundary values
+    let exact_one = ReviewFinding::new(ReviewCategory::Quality, ReviewSeverity::Low, "Test")
+        .with_confidence(1.0);
+    assert!((exact_one.confidence - 1.0).abs() < f32::EPSILON);
+
+    let exact_zero = ReviewFinding::new(ReviewCategory::Quality, ReviewSeverity::Low, "Test")
+        .with_confidence(0.0);
+    assert!((exact_zero.confidence - 0.0).abs() < f32::EPSILON);
+}
+
+#[test]
+fn test_review_severity_ordering_edge_cases() {
+    // Test transitivity
+    assert!(ReviewSeverity::Critical > ReviewSeverity::Medium);
+    assert!(ReviewSeverity::Medium > ReviewSeverity::Low);
+    // If Critical > Medium and Medium > Low, then Critical > Low (transitivity)
+    assert!(ReviewSeverity::Critical > ReviewSeverity::Low);
+
+    // Test self-comparison
+    assert!(ReviewSeverity::Medium >= ReviewSeverity::Medium);
+    assert!(ReviewSeverity::Medium <= ReviewSeverity::Medium);
+}
+
+#[test]
+fn test_review_category_is_enabled_consistency() {
+    // Security should always be enabled in both modes
+    assert!(ReviewCategory::Security.is_enabled_for_mode(true));
+    assert!(ReviewCategory::Security.is_enabled_for_mode(false));
+
+    // Quality should always be enabled in both modes
+    assert!(ReviewCategory::Quality.is_enabled_for_mode(true));
+    assert!(ReviewCategory::Quality.is_enabled_for_mode(false));
+
+    // ErrorHandling should always be enabled in both modes
+    assert!(ReviewCategory::ErrorHandling.is_enabled_for_mode(true));
+    assert!(ReviewCategory::ErrorHandling.is_enabled_for_mode(false));
+}
+
+#[test]
+fn test_review_assessment_serde_values() {
+    // Note: serde(rename_all = "lowercase") converts NeedsImprovements to "needsimprovements"
+    assert_eq!(serde_json::to_string(&ReviewAssessment::Pass).unwrap(), "\"pass\"");
+    assert_eq!(serde_json::to_string(&ReviewAssessment::Warning).unwrap(), "\"warning\"");
+    assert_eq!(
+        serde_json::to_string(&ReviewAssessment::NeedsImprovements).unwrap(),
+        "\"needsimprovements\""
+    );
+    assert_eq!(serde_json::to_string(&ReviewAssessment::Fail).unwrap(), "\"fail\"");
+}
+
+#[test]
+fn test_code_issue_with_code_snippet_conversion() {
+    let issue = CodeIssue {
+        category: IssueCategory::Security,
+        severity: IssueSeverity::High,
+        file: Some("src/auth.rs".to_string()),
+        line: Some(100),
+        title: "Hardcoded secret".to_string(),
+        description: "API key is hardcoded in source".to_string(),
+        suggestion: Some("Use environment variables".to_string()),
+        code_snippet: Some("const API_KEY: &str = \"secret123\";".to_string()),
+        blocking: false,
+    };
+
+    let finding = issue.to_finding();
+    assert_eq!(
+        finding.code_snippet,
+        Some("const API_KEY: &str = \"secret123\";".to_string())
+    );
+
+    // Convert back
+    let converted = CodeIssue::from_finding(&finding);
+    assert_eq!(converted.code_snippet, issue.code_snippet);
 }
