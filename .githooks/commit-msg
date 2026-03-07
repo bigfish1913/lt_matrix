@@ -1,0 +1,73 @@
+#!/bin/bash
+# Commit message hook for ltmatrix
+# Validates commit messages follow conventional commit format
+#
+# Format: <type>(<scope>): <description>
+#
+# Types: feat, fix, docs, style, refactor, test, chore, perf, ci, build, revert
+# Scope: optional, e.g., cli, agent, pipeline, config, git, memory
+
+set -e
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+COMMIT_MSG_FILE="$1"
+COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
+
+# Skip validation for merge commits, revert commits, or fixup/squash commits
+if echo "$COMMIT_MSG" | grep -qE '^(Merge branch|Merge pull request|Revert|fixup!|squash!)'; then
+    echo -e "${YELLOW}Skipping commit message validation for special commit${NC}"
+    exit 0
+fi
+
+# Get the first line (subject)
+FIRST_LINE=$(echo "$COMMIT_MSG" | head -n1)
+
+# Valid commit types
+VALID_TYPES="feat|fix|docs|style|refactor|test|chore|perf|ci|build|revert"
+
+# Pattern for conventional commits
+# Format: type(scope): description or type: description
+PATTERN="^($VALID_TYPES)(\([a-zA-Z0-9_-]+\))?:\s.+"
+
+if echo "$FIRST_LINE" | grep -qE "$PATTERN"; then
+    echo -e "${GREEN}✓ Commit message follows conventional format${NC}"
+    exit 0
+else
+    echo -e "${RED}✗ Invalid commit message format${NC}"
+    echo ""
+    echo -e "${YELLOW}Commit message must follow conventional format:${NC}"
+    echo "  <type>(<scope>): <description>"
+    echo "  or"
+    echo "  <type>: <description>"
+    echo ""
+    echo -e "${YELLOW}Valid types:${NC}"
+    echo "  feat     - A new feature"
+    echo "  fix      - A bug fix"
+    echo "  docs     - Documentation only changes"
+    echo "  style    - Changes that do not affect the meaning of the code"
+    echo "  refactor - A code change that neither fixes a bug nor adds a feature"
+    echo "  test     - Adding missing tests or correcting existing tests"
+    echo "  chore    - Changes to the build process or auxiliary tools"
+    echo "  perf     - A code change that improves performance"
+    echo "  ci       - Changes to CI configuration files and scripts"
+    echo "  build    - Changes that affect the build system or dependencies"
+    echo "  revert   - Reverts a previous commit"
+    echo ""
+    echo -e "${YELLOW}Examples:${NC}"
+    echo "  feat(cli): add --fast flag for quick execution"
+    echo "  fix(agent): handle timeout gracefully"
+    echo "  docs(readme): update installation instructions"
+    echo "  test(pipeline): add integration tests for verify stage"
+    echo ""
+    echo -e "${YELLOW}Your message:${NC}"
+    echo "  $FIRST_LINE"
+    echo ""
+    echo "To bypass this check, use:"
+    echo "  git commit --no-verify"
+    exit 1
+fi

@@ -142,6 +142,49 @@ ltmatrix --resume
 ltmatrix --dry-run "refactor database layer"
 ```
 
+## Development
+
+### Quick Start
+
+```bash
+# Clone the repository
+git clone https://github.com/bigfish/ltmatrix.git
+cd ltmatrix
+
+# Install Git hooks (recommended)
+make install-hooks
+# Or manually:
+./scripts/install-hooks.sh      # Linux/macOS
+scripts\install-hooks.bat       # Windows
+
+# Build
+cargo build
+
+# Run tests
+cargo test
+```
+
+### Git Hooks
+
+We use Git hooks to ensure code quality:
+
+| Hook | Runs |
+|------|------|
+| `pre-commit` | Format check, clippy, fast unit tests |
+| `pre-push` | Full test suite, release build |
+| `commit-msg` | Conventional commit format validation |
+
+```bash
+# Install hooks
+make install-hooks
+
+# Bypass hooks temporarily (not recommended)
+git commit --no-verify
+git push --no-verify
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed development guidelines.
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

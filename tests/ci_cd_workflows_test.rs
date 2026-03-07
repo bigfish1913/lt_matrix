@@ -443,6 +443,298 @@ mod release_workflow_tests {
             "At least half of release build jobs should have caching"
         );
     }
+
+    #[test]
+    fn release_uses_cargo_zigbuild_for_cross_compilation() {
+        let workflows = Workflows::load();
+        let jobs = workflows.release.get("jobs").expect("Workflow should have 'jobs'");
+
+        // Find Linux build job
+        let linux_build_job = jobs.as_mapping().unwrap().iter()
+            .find(|(k, _)| k.as_str().map(|s| s.contains("build") && s.contains("linux")).unwrap_or(false))
+            .map(|(_, v)| v);
+
+        assert!(linux_build_job.is_some(), "Should have Linux build job");
+
+        if let Some(job) = linux_build_job {
+            let steps = job.get("steps")
+                .and_then(|s| s.as_sequence())
+                .expect("Linux build job should have steps");
+
+            // Check for cargo-zigbuild installation
+            let has_zigbuild_install = steps.iter().any(|step| {
+                step.get("run")
+                    .and_then(|r| r.as_str())
+                    .map(|r| r.contains("cargo-zigbuild") || r.contains("pip install cargo-zigbuild"))
+                    .unwrap_or(false)
+            });
+
+            // Check for cargo zigbuild command
+            let has_zigbuild_command = steps.iter().any(|step| {
+                step.get("run")
+                    .and_then(|r| r.as_str())
+                    .map(|r| r.contains("cargo zigbuild"))
+                    .unwrap_or(false)
+            });
+
+            assert!(
+                has_zigbuild_install || has_zigbuild_command,
+                "Linux build job should use cargo-zigbuild for cross-compilation"
+            );
+        }
+    }
+
+    #[test]
+    fn release_supports_draft_releases() {
+        let workflows = Workflows::load();
+        let workflow = &workflows.release;
+
+        // Check workflow_dispatch has draft input
+        let on = workflow.get("on").expect("Workflow should have 'on' trigger");
+        let dispatch = on.get("workflow_dispatch")
+            .expect("Release should support workflow_dispatch for draft releases");
+        let inputs = dispatch.get("inputs")
+            .expect("workflow_dispatch should have inputs");
+
+        // Check for draft input
+        let draft_input = inputs.get("draft");
+        assert!(draft_input.is_some(), "workflow_dispatch should have 'draft' input");
+
+        if let Some(draft) = draft_input {
+            let draft_type = draft.get("type").and_then(|t| t.as_str());
+            assert_eq!(draft_type, Some("boolean"), "draft input should be boolean type");
+        }
+
+        // Verify create-release job uses draft setting
+        let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
+        let create_release = jobs.get("create-release")
+            .expect("Should have create-release job");
+
+        let steps = create_release.get("steps")
+            .and_then(|s| s.as_sequence())
+            .expect("create-release should have steps");
+
+        let uses_draft = steps.iter().any(|step| {
+            let with = step.get("with");
+            if let Some(with) = with {
+                with.get("draft").is_some()
+            } else {
+                false
+            }
+        });
+
+        assert!(uses_draft, "create-release job should use draft input");
+    }
+
+    #[test]
+    fn release_generates_changelog() {
+        let workflows = Workflows::load();
+        let jobs = workflows.release.get("jobs").expect("Workflow should have 'jobs'");
+
+        // Check for changelog job
+        let changelog_job = jobs.get("changelog");
+        assert!(changelog_job.is_some(), "Release workflow should have 'changelog' job");
+
+        if let Some(job) = changelog_job {
+            let steps = job.get("steps")
+                .and_then(|s| s.as_sequence())
+                .expect("changelog job should have steps");
+
+            // Check for changelog generation step
+            let has_generate_step = steps.iter().any(|step| {
+                let name = step.get("name").and_then(|n| n.as_str()).unwrap_or("");
+                let run = step.get("run").and_then(|r| r.as_str()).unwrap_or("");
+                name.to_lowercase().contains("changelog") ||
+                run.to_lowercase().contains("changelog")
+            });
+
+            assert!(has_generate_step, "changelog job should have changelog generation step");
+
+            // Check for artifact upload
+            let has_artifact_upload = steps.iter().any(|step| {
+                step.get("uses")
+                    .and_then(|u| u.as_str())
+                    .map(|u| u.contains("upload-artifact"))
+                    .unwrap_or(false)
+            });
+
+            assert!(has_artifact_upload, "changelog job should upload artifact");
+        }
+    }
+
+    #[test]
+    fn release_builds_all_target_platforms() {
+        let workflows = Workflows::load();
+        let jobs = workflows.release.get("jobs").expect("Workflow should have 'jobs'");
+
+        // Required platforms for release (documented targets)
+        let _required_platforms = [
+            // Linux
+            ("linux", vec!["x86_64-unknown-linux-gnu", "x86_64-unknown-linux-musl", "aarch64-unknown-linux-gnu", "aarch64-unknown-linux-musl"]),
+            // macOS
+            ("macos", vec!["x86_64-apple-darwin", "aarch64-apple-darwin", "universal-apple-darwin"]),
+            // Windows
+            ("windows", vec!["x86_64-pc-windows-msvc", "aarch64-pc-windows-msvc"]),
+        ];
+
+        // Check for Linux build job with matrix
+        let linux_job = jobs.as_mapping().unwrap().iter()
+            .find(|(k, _)| k.as_str().map(|s| s.contains("build") && s.contains("linux")).unwrap_or(false))
+            .map(|(_, v)| v);
+
+        if let Some(job) = linux_job {
+            // Check matrix includes required targets
+            let matrix = job.get("strategy")
+                .and_then(|s| s.get("matrix"))
+                .and_then(|m| m.get("include"));
+
+            if let Some(matrix_includes) = matrix.and_then(|m| m.as_sequence()) {
+                let targets: Vec<&str> = matrix_includes.iter()
+                    .filter_map(|item| item.get("target").and_then(|t| t.as_str()))
+                    .collect();
+
+                assert!(
+                    targets.iter().any(|t| t.contains("x86_64-unknown-linux")),
+                    "Linux build should include x86_64 target"
+                );
+                assert!(
+                    targets.iter().any(|t| t.contains("aarch64-unknown-linux")),
+                    "Linux build should include ARM64 target"
+                );
+                assert!(
+                    targets.iter().any(|t| t.contains("musl")),
+                    "Linux build should include musl (static) target"
+                );
+            }
+        }
+
+        // Check for macOS build job
+        let macos_job = jobs.as_mapping().unwrap().iter()
+            .find(|(k, _)| k.as_str().map(|s| s.contains("build") && s.contains("macos") && !s.contains("universal")).unwrap_or(false))
+            .map(|(_, v)| v);
+
+        assert!(macos_job.is_some(), "Should have macOS build job");
+
+        // Check for macOS universal build job
+        let macos_universal = jobs.as_mapping().unwrap().iter()
+            .find(|(k, _)| k.as_str().map(|s| s.contains("macos") && s.contains("universal")).unwrap_or(false))
+            .map(|(_, v)| v);
+
+        assert!(macos_universal.is_some(), "Should have macOS universal binary build job");
+
+        // Check for Windows build job
+        let windows_job = jobs.as_mapping().unwrap().iter()
+            .find(|(k, _)| k.as_str().map(|s| s.contains("build") && s.contains("windows")).unwrap_or(false))
+            .map(|(_, v)| v);
+
+        assert!(windows_job.is_some(), "Should have Windows build job");
+    }
+
+    #[test]
+    fn release_creates_github_release_with_artifacts() {
+        let workflows = Workflows::load();
+        let jobs = workflows.release.get("jobs").expect("Workflow should have 'jobs'");
+
+        let create_release = jobs.get("create-release")
+            .expect("Should have create-release job");
+
+        let steps = create_release.get("steps")
+            .and_then(|s| s.as_sequence())
+            .expect("create-release should have steps");
+
+        // Check for release action usage
+        let release_step = steps.iter().find(|step| {
+            step.get("uses")
+                .and_then(|u| u.as_str())
+                .map(|u| u.contains("release"))
+                .unwrap_or(false)
+        });
+
+        assert!(release_step.is_some(), "create-release should use a release action");
+
+        if let Some(step) = release_step {
+            let with = step.get("with");
+            assert!(with.is_some(), "Release action should have 'with' configuration");
+
+            if let Some(config) = with {
+                // Should have tag_name
+                assert!(
+                    config.get("tag_name").is_some(),
+                    "Release action should specify tag_name"
+                );
+                // Should have release name
+                assert!(
+                    config.get("name").is_some(),
+                    "Release action should specify name"
+                );
+                // Should have body or body_path for changelog
+                assert!(
+                    config.get("body_path").is_some() || config.get("body").is_some(),
+                    "Release action should include changelog (body or body_path)"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn release_triggers_on_version_tags() {
+        let workflows = Workflows::load();
+        let on = workflows.release.get("on").expect("Workflow should have 'on' trigger");
+
+        // Check push trigger with tags
+        let push = on.get("push").expect("Release should have push trigger");
+        let tags = push.get("tags")
+            .and_then(|t| t.as_sequence())
+            .expect("Push trigger should have tags");
+
+        let tag_patterns: Vec<&str> = tags.iter()
+            .filter_map(|t| t.as_str())
+            .collect();
+
+        // Should trigger on version tags like v*.*.*
+        assert!(
+            tag_patterns.iter().any(|p| p.starts_with('v') && p.contains('*')),
+            "Release should trigger on version tag pattern (e.g., 'v*.*.*')"
+        );
+    }
+
+    #[test]
+    fn release_has_prepare_job() {
+        let workflows = Workflows::load();
+        let jobs = workflows.release.get("jobs").expect("Workflow should have 'jobs'");
+
+        let prepare = jobs.get("prepare");
+        assert!(prepare.is_some(), "Release workflow should have 'prepare' job");
+
+        if let Some(job) = prepare {
+            // Should output version
+            let outputs = job.get("outputs");
+            assert!(outputs.is_some(), "prepare job should have outputs");
+
+            if let Some(outputs) = outputs {
+                assert!(
+                    outputs.get("version").is_some(),
+                    "prepare job should output 'version'"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn release_has_release_summary() {
+        let workflows = Workflows::load();
+        let jobs = workflows.release.get("jobs").expect("Workflow should have 'jobs'");
+
+        // Check for summary job
+        let summary_job = jobs.as_mapping().unwrap().iter()
+            .find(|(k, _)| {
+                k.as_str()
+                    .map(|s| s.contains("summary"))
+                    .unwrap_or(false)
+            });
+
+        assert!(summary_job.is_some(), "Release workflow should have release summary job");
+    }
 }
 
 // ============================================================================

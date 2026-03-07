@@ -7,6 +7,7 @@
 
 use ltmatrix::config::mcp::McpConfig;
 use ltmatrix::config::settings::load_config_from_args;
+use serial_test::serial;
 use std::fs;
 use tempfile::TempDir;
 
@@ -190,6 +191,7 @@ fn test_config_without_mcp_still_has_defaults() {
 }
 
 #[test]
+#[serial]
 fn test_mcp_config_with_project_config_integration() {
     use clap::Parser;
 
@@ -220,9 +222,12 @@ command = "test-command"
 
     fs::write(&mcp_config_path, mcp_content).unwrap();
 
-    // Change to project directory
+    // Change to project directory with guard for restoration
     let original_dir = std::env::current_dir().unwrap();
     std::env::set_current_dir(temp_dir.path()).unwrap();
+    let _guard = scopeguard::guard(original_dir, |dir| {
+        let _ = std::env::set_current_dir(dir);
+    });
 
     // Parse args
     let args = ltmatrix::cli::Args::try_parse_from([
@@ -235,8 +240,8 @@ command = "test-command"
 
     let config = load_config_from_args(args).unwrap();
 
-    // Restore original directory
-    std::env::set_current_dir(original_dir).unwrap();
+    // Explicitly restore (guard will also restore on drop)
+    std::env::set_current_dir(&*_guard).unwrap();
 
     // Verify both configs are loaded
     assert!(config.mcp.is_some(), "MCP config should be loaded");
@@ -253,6 +258,7 @@ command = "test-command"
 }
 
 #[test]
+#[serial]
 fn test_mcp_config_cli_arg_precedence_over_defaults() {
     use clap::Parser;
 
@@ -285,6 +291,9 @@ type = "type2"
 
     let original_dir = std::env::current_dir().unwrap();
     std::env::set_current_dir(temp_dir.path()).unwrap();
+    let _guard = scopeguard::guard(original_dir, |dir| {
+        let _ = std::env::set_current_dir(dir);
+    });
 
     // CLI arg should take precedence
     let args = ltmatrix::cli::Args::try_parse_from([
@@ -297,7 +306,8 @@ type = "type2"
 
     let config = load_config_from_args(args).unwrap();
 
-    std::env::set_current_dir(original_dir).unwrap();
+    // Explicitly restore (guard will also restore on drop)
+    std::env::set_current_dir(&*_guard).unwrap();
 
     // Should load MCP config from CLI arg, not from any other source
     assert!(config.mcp.is_some());

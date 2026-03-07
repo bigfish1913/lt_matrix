@@ -107,3 +107,7 @@ targets = ["x86_64-unknown-linux-gnu", "x86_64-apple-darwin", "x86_64-pc-windows
 [dev-dependencies]
 # YAML parsing for CI/CD workflow tests
 serde_yaml = "0.9"
+# Serial test execution for tests that modify global state
+serial_test = "3.0"
+# Guard pattern for ensuring cleanup in tests
+scopeguard = "1.2"

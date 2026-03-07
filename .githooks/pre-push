@@ -1,0 +1,91 @@
+#!/bin/bash
+# Pre-push hook for ltmatrix
+# Runs comprehensive checks before allowing pushes
+#
+# This hook runs:
+# - cargo fmt --check (formatting)
+# - cargo clippy (linting)
+# - cargo test --all (full test suite including integration tests)
+# - cargo build --release (verify release build works)
+
+set -e
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+echo -e "${YELLOW}Running pre-push checks...${NC}"
+
+# Get the directory where the hook is located
+HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$HOOK_DIR/.." && pwd)"
+
+cd "$PROJECT_ROOT"
+
+# Track if any check fails
+FAILED=0
+
+# ====================
+# Check 1: Formatting
+# ====================
+echo -e "${YELLOW}[1/4] Checking code formatting...${NC}"
+if cargo fmt --check 2>/dev/null; then
+    echo -e "${GREEN}✓ Code formatting is correct${NC}"
+else
+    echo -e "${RED}✗ Code formatting issues found${NC}"
+    echo -e "${YELLOW}  Run 'cargo fmt' to fix${NC}"
+    FAILED=1
+fi
+
+# ====================
+# Check 2: Clippy
+# ====================
+echo -e "${YELLOW}[2/4] Running clippy...${NC}"
+if cargo clippy --all-targets --all-features -- -D warnings 2>/dev/null; then
+    echo -e "${GREEN}✓ No clippy warnings${NC}"
+else
+    echo -e "${RED}✗ Clippy found issues${NC}"
+    echo -e "${YELLOW}  Run 'cargo clippy --fix' for automatic fixes${NC}"
+    FAILED=1
+fi
+
+# ====================
+# Check 3: Full Test Suite
+# ====================
+echo -e "${YELLOW}[3/4] Running full test suite...${NC}"
+if cargo test --all-features 2>/dev/null; then
+    echo -e "${GREEN}✓ All tests passed${NC}"
+else
+    echo -e "${RED}✗ Some tests failed${NC}"
+    echo -e "${YELLOW}  Run 'cargo test' for details${NC}"
+    FAILED=1
+fi
+
+# ====================
+# Check 4: Release Build
+# ====================
+echo -e "${YELLOW}[4/4] Verifying release build...${NC}"
+if cargo build --release 2>/dev/null; then
+    echo -e "${GREEN}✓ Release build successful${NC}"
+else
+    echo -e "${RED}✗ Release build failed${NC}"
+    FAILED=1
+fi
+
+# ====================
+# Summary
+# ====================
+echo ""
+if [ $FAILED -eq 0 ]; then
+    echo -e "${GREEN}✓ All pre-push checks passed!${NC}"
+    exit 0
+else
+    echo -e "${RED}✗ Pre-push checks failed${NC}"
+    echo -e "${YELLOW}Please fix the issues above before pushing${NC}"
+    echo ""
+    echo "To bypass these checks temporarily, use:"
+    echo "  git push --no-verify"
+    exit 1
+fi

@@ -1,11 +1,12 @@
 # Release workflow for ltmatrix
 #
 # This workflow creates releases with cross-platform binaries.
-# Triggered by pushing version tags (v*.*.*).
-# Creates:
-# - GitHub Release with release notes
+# Triggered by pushing version tags (v*.*.*) or manual workflow dispatch.
+# Features:
+# - Cross-platform builds using cargo-zigbuild for Linux
+# - Draft release support for manual review
+# - Automatic changelog generation
 # - Binary artifacts for all supported platforms
-# - Source archives
 
 name: Release
 
@@ -13,72 +14,190 @@ on:
   push:
     tags:
       - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      draft:
+        description: 'Create as draft release'
+        required: false
+        default: 'true'
+        type: boolean
+      version:
+        description: 'Version tag (e.g., 0.1.0)'
+        required: false
+        type: string
 
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: short
+  # Minimum Rust version for building
+  RUST_VERSION: '1.75.0'
 
 permissions:
   contents: write
 
 jobs:
   # ====================
+  # Prepare Release
+  # ====================
+  prepare:
+    name: Prepare Release
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      is_draft: ${{ steps.version.outputs.is_draft }}
+      is_prerelease: ${{ steps.version.outputs.is_prerelease }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ github.event.inputs.version }}" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+            IS_DRAFT="${{ github.event.inputs.draft }}"
+          else
+            VERSION="${GITHUB_REF#refs/tags/v}"
+            IS_DRAFT="false"
+          fi
+
+          # Check if version contains prerelease identifier
+          if [[ "$VERSION" =~ - ]]; then
+            IS_PRERELEASE="true"
+          else
+            IS_PRERELEASE="false"
+          fi
+
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "is_draft=$IS_DRAFT" >> $GITHUB_OUTPUT
+          echo "is_prerelease=$IS_PRERELEASE" >> $GITHUB_OUTPUT
+
+          echo "::notice::Preparing release for version $VERSION"
+
+  # ====================
+  # Generate Changelog
+  # ====================
+  changelog:
+    name: Generate Changelog
+    needs: prepare
+    runs-on: ubuntu-latest
+    outputs:
+      changelog_path: ${{ steps.generate.outputs.changelog_path }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate changelog
+        id: generate
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          CHANGELOG_FILE="CHANGELOG-${VERSION}.md"
+
+          # Try to extract from CHANGELOG.md
+          if [ -f CHANGELOG.md ]; then
+            # Extract section for this version
+            sed -n "/^## \[${VERSION}\]/,/^## \[/p" CHANGELOG.md | sed '$d' > "$CHANGELOG_FILE" || true
+          fi
+
+          # If no changelog entry found, generate from git commits
+          if [ ! -s "$CHANGELOG_FILE" ]; then
+            echo "## Changes in v${VERSION}" > "$CHANGELOG_FILE"
+            echo "" >> "$CHANGELOG_FILE"
+
+            # Get previous tag
+            PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+
+            if [ -n "$PREV_TAG" ]; then
+              echo "### Commits since $PREV_TAG" >> "$CHANGELOG_FILE"
+              echo "" >> "$CHANGELOG_FILE"
+              git log --pretty=format:"- %s (%h)" "$PREV_TAG"..HEAD >> "$CHANGELOG_FILE" 2>/dev/null || true
+            else
+              echo "### All commits" >> "$CHANGELOG_FILE"
+              echo "" >> "$CHANGELOG_FILE"
+              git log --pretty=format:"- %s (%h)" -20 >> "$CHANGELOG_FILE" 2>/dev/null || true
+            fi
+          fi
+
+          echo "" >> "$CHANGELOG_FILE"
+          echo "" >> "$CHANGELOG_FILE"
+          echo "---" >> "$CHANGELOG_FILE"
+          echo "" >> "$CHANGELOG_FILE"
+          echo "### Downloads" >> "$CHANGELOG_FILE"
+          echo "" >> "$CHANGELOG_FILE"
+          echo "| Platform | Architecture | Download |" >> "$CHANGELOG_FILE"
+          echo "|----------|-------------|----------|" >> "$CHANGELOG_FILE"
+          echo "| Linux | x86_64 (glibc) | \`ltmatrix-${VERSION}-x86_64-unknown-linux-gnu.tar.gz\` |" >> "$CHANGELOG_FILE"
+          echo "| Linux | x86_64 (musl/static) | \`ltmatrix-${VERSION}-x86_64-unknown-linux-musl.tar.gz\` |" >> "$CHANGELOG_FILE"
+          echo "| Linux | ARM64 (glibc) | \`ltmatrix-${VERSION}-aarch64-unknown-linux-gnu.tar.gz\` |" >> "$CHANGELOG_FILE"
+          echo "| Linux | ARM64 (musl/static) | \`ltmatrix-${VERSION}-aarch64-unknown-linux-musl.tar.gz\` |" >> "$CHANGELOG_FILE"
+          echo "| macOS | Intel | \`ltmatrix-${VERSION}-x86_64-apple-darwin.tar.gz\` |" >> "$CHANGELOG_FILE"
+          echo "| macOS | Apple Silicon | \`ltmatrix-${VERSION}-aarch64-apple-darwin.tar.gz\` |" >> "$CHANGELOG_FILE"
+          echo "| macOS | Universal | \`ltmatrix-${VERSION}-universal-apple-darwin.tar.gz\` |" >> "$CHANGELOG_FILE"
+          echo "| Windows | x86_64 | \`ltmatrix-${VERSION}-x86_64-pc-windows-msvc.zip\` |" >> "$CHANGELOG_FILE"
+          echo "| Windows | ARM64 | \`ltmatrix-${VERSION}-aarch64-pc-windows-msvc.zip\` |" >> "$CHANGELOG_FILE"
+
+          echo "changelog_path=$CHANGELOG_FILE" >> $GITHUB_OUTPUT
+
+      - name: Upload changelog artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: changelog
+          path: CHANGELOG-*.md
+          retention-days: 1
+
+  # ====================
   # Create GitHub Release
   # ====================
   create-release:
     name: Create Release
+    needs: [prepare, changelog]
     runs-on: ubuntu-latest
     outputs:
       upload_url: ${{ steps.create-release.outputs.upload_url }}
-      version: ${{ steps.get-version.outputs.version }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Get version from tag
-        id: get-version
-        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-
-      - name: Extract release notes
-        id: extract-notes
-        run: |
-          # Extract release notes from CHANGELOG.md if it exists
-          if [ -f CHANGELOG.md ]; then
-            # Get the section for this version
-            sed -n "/^## \[${{ steps.get-version.outputs.version }}\]/,/^## \[/p" CHANGELOG.md | sed '$d' > release_notes.md || true
-          fi
-          if [ ! -s release_notes.md ]; then
-            echo "Release ${{ steps.get-version.outputs.version }}" > release_notes.md
-          fi
+      - name: Download changelog
+        uses: actions/download-artifact@v4
+        with:
+          name: changelog
+          path: .
 
       - name: Create GitHub Release
         id: create-release
         uses: softprops/action-gh-release@v2
         with:
-          name: ltmatrix ${{ steps.get-version.outputs.version }}
-          body_path: release_notes.md
-          draft: false
-          prerelease: ${{ contains(steps.get-version.outputs.version, '-') }}
-          generate_release_notes: true
+          tag_name: v${{ needs.prepare.outputs.version }}
+          name: ltmatrix ${{ needs.prepare.outputs.version }}
+          body_path: CHANGELOG-${{ needs.prepare.outputs.version }}.md
+          draft: ${{ needs.prepare.outputs.is_draft == 'true' }}
+          prerelease: ${{ needs.prepare.outputs.is_prerelease == 'true' }}
+          generate_release_notes: false
 
   # ====================
-  # Build Linux Binaries
+  # Build Linux Binaries (using cargo-zigbuild)
   # ====================
   build-linux:
     name: Build Linux (${{ matrix.target }})
-    needs: create-release
+    needs: [prepare, create-release]
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         include:
           - target: x86_64-unknown-linux-gnu
-            archive: tar.gz
+            use_zigbuild: false
           - target: x86_64-unknown-linux-musl
-            archive: tar.gz
+            use_zigbuild: true
           - target: aarch64-unknown-linux-gnu
-            archive: tar.gz
+            use_zigbuild: true
           - target: aarch64-unknown-linux-musl
-            archive: tar.gz
+            use_zigbuild: true
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -93,41 +212,52 @@ jobs:
         with:
           key: ${{ matrix.target }}
 
-      - name: Install cross-compilation tools
-        if: endsWith(matrix.target, '-musl') || startsWith(matrix.target, 'aarch64')
+      - name: Install cargo-zigbuild
+        if: matrix.use_zigbuild
+        run: |
+          pip install cargo-zigbuild
+
+      - name: Install cross-compilation tools (non-zigbuild)
+        if: "!matrix.use_zigbuild && startsWith(matrix.target, 'aarch64')"
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu musl-tools
+          sudo apt-get install -y gcc-aarch64-linux-gnu
 
-      - name: Build binary
-        run: cargo build --release --target ${{ matrix.target }} --features static
+      - name: Build with cargo-zigbuild
+        if: matrix.use_zigbuild
+        run: |
+          cargo zigbuild --release --target ${{ matrix.target }} --features static
+
+      - name: Build with cargo
+        if: "!matrix.use_zigbuild"
+        run: |
+          cargo build --release --target ${{ matrix.target }}
 
       - name: Package binary
         run: |
           cd target/${{ matrix.target }}/release
           strip ltmatrix || true
-          tar -czvf ltmatrix-${{ needs.create-release.outputs.version }}-${{ matrix.target }}.tar.gz ltmatrix
-          mv ltmatrix-${{ needs.create-release.outputs.version }}-${{ matrix.target }}.tar.gz $GITHUB_WORKSPACE/
+          tar -czvf ltmatrix-${{ needs.prepare.outputs.version }}-${{ matrix.target }}.tar.gz ltmatrix
+          mv ltmatrix-${{ needs.prepare.outputs.version }}-${{ matrix.target }}.tar.gz $GITHUB_WORKSPACE/
 
       - name: Upload release asset
         uses: softprops/action-gh-release@v2
         with:
-          files: ltmatrix-${{ needs.create-release.outputs.version }}-${{ matrix.target }}.tar.gz
+          files: ltmatrix-${{ needs.prepare.outputs.version }}-${{ matrix.target }}.tar.gz
 
   # ====================
   # Build macOS Binaries
   # ====================
   build-macos:
     name: Build macOS (${{ matrix.target }})
-    needs: create-release
+    needs: [prepare, create-release]
     runs-on: macos-latest
     strategy:
+      fail-fast: false
       matrix:
-        include:
-          - target: x86_64-apple-darwin
-            archive: tar.gz
-          - target: aarch64-apple-darwin
-            archive: tar.gz
+        target:
+          - x86_64-apple-darwin
+          - aarch64-apple-darwin
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -149,20 +279,20 @@ jobs:
         run: |
           cd target/${{ matrix.target }}/release
           strip ltmatrix || true
-          tar -czvf ltmatrix-${{ needs.create-release.outputs.version }}-${{ matrix.target }}.tar.gz ltmatrix
-          mv ltmatrix-${{ needs.create-release.outputs.version }}-${{ matrix.target }}.tar.gz $GITHUB_WORKSPACE/
+          tar -czvf ltmatrix-${{ needs.prepare.outputs.version }}-${{ matrix.target }}.tar.gz ltmatrix
+          mv ltmatrix-${{ needs.prepare.outputs.version }}-${{ matrix.target }}.tar.gz $GITHUB_WORKSPACE/
 
       - name: Upload release asset
         uses: softprops/action-gh-release@v2
         with:
-          files: ltmatrix-${{ needs.create-release.outputs.version }}-${{ matrix.target }}.tar.gz
+          files: ltmatrix-${{ needs.prepare.outputs.version }}-${{ matrix.target }}.tar.gz
 
   # ====================
   # Build macOS Universal Binary
   # ====================
   build-macos-universal:
     name: Build macOS Universal Binary
-    needs: [create-release, build-macos]
+    needs: [prepare, create-release, build-macos]
     runs-on: macos-latest
     steps:
       - name: Checkout repository
@@ -194,28 +324,27 @@ jobs:
       - name: Package universal binary
         run: |
           cd target
-          tar -czvf ltmatrix-${{ needs.create-release.outputs.version }}-universal-apple-darwin.tar.gz ltmatrix-universal
-          mv ltmatrix-${{ needs.create-release.outputs.version }}-universal-apple-darwin.tar.gz $GITHUB_WORKSPACE/
+          tar -czvf ltmatrix-${{ needs.prepare.outputs.version }}-universal-apple-darwin.tar.gz ltmatrix-universal
+          mv ltmatrix-${{ needs.prepare.outputs.version }}-universal-apple-darwin.tar.gz $GITHUB_WORKSPACE/
 
       - name: Upload release asset
         uses: softprops/action-gh-release@v2
         with:
-          files: ltmatrix-${{ needs.create-release.outputs.version }}-universal-apple-darwin.tar.gz
+          files: ltmatrix-${{ needs.prepare.outputs.version }}-universal-apple-darwin.tar.gz
 
   # ====================
   # Build Windows Binaries
   # ====================
   build-windows:
     name: Build Windows (${{ matrix.target }})
-    needs: create-release
+    needs: [prepare, create-release]
     runs-on: windows-latest
     strategy:
+      fail-fast: false
       matrix:
-        include:
-          - target: x86_64-pc-windows-msvc
-            archive: zip
-          - target: aarch64-pc-windows-msvc
-            archive: zip
+        target:
+          - x86_64-pc-windows-msvc
+          - aarch64-pc-windows-msvc
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -236,21 +365,27 @@ jobs:
       - name: Package binary
         run: |
           cd target/${{ matrix.target }}/release
-          7z a ltmatrix-${{ needs.create-release.outputs.version }}-${{ matrix.target }}.zip ltmatrix.exe
-          mv ltmatrix-${{ needs.create-release.outputs.version }}-${{ matrix.target }}.zip $GITHUB_WORKSPACE/
+          7z a ltmatrix-${{ needs.prepare.outputs.version }}-${{ matrix.target }}.zip ltmatrix.exe
+          mv ltmatrix-${{ needs.prepare.outputs.version }}-${{ matrix.target }}.zip $GITHUB_WORKSPACE/
 
       - name: Upload release asset
         uses: softprops/action-gh-release@v2
         with:
-          files: ltmatrix-${{ needs.create-release.outputs.version }}-${{ matrix.target }}.zip
+          files: ltmatrix-${{ needs.prepare.outputs.version }}-${{ matrix.target }}.zip
 
   # ====================
   # Publish to Crates.io
   # ====================
   publish-crates:
     name: Publish to Crates.io
-    needs: [create-release, build-linux, build-macos, build-windows]
+    needs:
+      - prepare
+      - create-release
+      - build-linux
+      - build-macos
+      - build-windows
     runs-on: ubuntu-latest
+    if: needs.prepare.outputs.is_draft != 'true'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -267,9 +402,14 @@ jobs:
   # ====================
   update-homebrew:
     name: Update Homebrew Formula
-    needs: [create-release, build-macos-universal]
+    needs:
+      - prepare
+      - create-release
+      - build-macos-universal
     runs-on: ubuntu-latest
-    if: ${{ !contains(needs.create-release.outputs.version, '-') }}
+    if: |
+      needs.prepare.outputs.is_draft != 'true' &&
+      needs.prepare.outputs.is_prerelease != 'true'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -277,7 +417,7 @@ jobs:
       - name: Update homebrew tap
         run: |
           echo "Homebrew formula update would go here"
-          echo "Version: ${{ needs.create-release.outputs.version }}"
+          echo "Version: ${{ needs.prepare.outputs.version }}"
         continue-on-error: true
 
   # ====================
@@ -286,12 +426,12 @@ jobs:
   release-summary:
     name: Release Summary
     needs:
+      - prepare
       - create-release
       - build-linux
       - build-macos
       - build-macos-universal
       - build-windows
-      - publish-crates
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -299,13 +439,25 @@ jobs:
         run: |
           echo "## Release Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Version:** ${{ needs.create-release.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ needs.prepare.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Draft:** ${{ needs.prepare.outputs.is_draft }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Prerelease:** ${{ needs.prepare.outputs.is_prerelease }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Build Status" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Linux | ${{ needs.build-linux.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| macOS | ${{ needs.build-macos.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| macOS Universal | ${{ needs.build-macos-universal.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Windows | ${{ needs.build-windows.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
           echo "- Linux x86_64 (glibc)" >> $GITHUB_STEP_SUMMARY
-          echo "- Linux x86_64 (musl/static)" >> $GITHUB_STEP_SUMMARY
-          echo "- Linux ARM64 (glibc)" >> $GITHUB_STEP_SUMMARY
-          echo "- Linux ARM64 (musl/static)" >> $GITHUB_STEP_SUMMARY
+          echo "- Linux x86_64 (musl/static) - built with cargo-zigbuild" >> $GITHUB_STEP_SUMMARY
+          echo "- Linux ARM64 (glibc) - built with cargo-zigbuild" >> $GITHUB_STEP_SUMMARY
+          echo "- Linux ARM64 (musl/static) - built with cargo-zigbuild" >> $GITHUB_STEP_SUMMARY
           echo "- macOS x86_64 (Intel)" >> $GITHUB_STEP_SUMMARY
           echo "- macOS ARM64 (Apple Silicon)" >> $GITHUB_STEP_SUMMARY
           echo "- macOS Universal Binary" >> $GITHUB_STEP_SUMMARY
