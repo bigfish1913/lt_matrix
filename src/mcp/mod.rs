@@ -55,6 +55,7 @@
 
 pub mod client;
 pub mod correlation;
+pub mod heartbeat;
 pub mod protocol;
 pub mod transport;
 
@@ -208,5 +209,17 @@ pub use correlation::{
     PendingRequestInfo,
     TrackerStats,
     CorrelationError,
+};
+
+// Re-export heartbeat types
+pub use heartbeat::{
+    // Core types
+    HeartbeatManager,
+    HeartbeatConfig,
+    HeartbeatHandle,
+    HeartbeatStats,
+    ActivityTracker,
+    ConnectionHealth,
+    PingSender,
 };
 
