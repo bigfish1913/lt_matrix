@@ -196,8 +196,8 @@ verify = true
 
     let overrides: CliOverrides = args.into();
 
-    // Restore original directory
-    std::env::set_current_dir(original_dir).unwrap();
+    // Restore original directory (ignore errors - cleanup is best-effort on Windows)
+    let _ = std::env::set_current_dir(&original_dir);
 
     // Verify the CLI override correctly sets expert mode
     assert_eq!(
@@ -300,7 +300,8 @@ max_retries = 1
 
     let overrides: CliOverrides = args.into();
 
-    std::env::set_current_dir(original_dir).unwrap();
+    // Restore original directory (ignore errors - cleanup is best-effort on Windows)
+    let _ = std::env::set_current_dir(&original_dir);
 
     // The mode override should be set to expert
     assert_eq!(
