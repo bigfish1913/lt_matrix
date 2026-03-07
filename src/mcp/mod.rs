@@ -54,6 +54,7 @@
 //! ```
 
 pub mod client;
+pub mod correlation;
 pub mod protocol;
 pub mod transport;
 
@@ -196,5 +197,16 @@ pub use client::{
     ConnectionState,
     ServerInfo,
     StateTransitionError,
+};
+
+// Re-export correlation types
+pub use correlation::{
+    // Core types
+    RequestTracker,
+    PendingRequest,
+    PendingRequestHandle,
+    PendingRequestInfo,
+    TrackerStats,
+    CorrelationError,
 };
 

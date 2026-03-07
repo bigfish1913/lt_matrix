@@ -210,6 +210,9 @@ pub enum McpErrorCode {
     /// Configuration error (-32515)
     ConfigurationError,
 
+    /// Request cancelled (-32516)
+    RequestCancelled,
+
     /// Custom MCP error (-32550 to -32599)
     Custom(i32),
 }
@@ -249,6 +252,7 @@ impl McpErrorCode {
             -32513 => McpErrorCode::VersionMismatch,
             -32514 => McpErrorCode::SessionError,
             -32515 => McpErrorCode::ConfigurationError,
+            -32516 => McpErrorCode::RequestCancelled,
             code if (-32599..=-32550).contains(&code) => McpErrorCode::Custom(code),
             // Default to internal error
             _ => McpErrorCode::InternalError,
@@ -289,6 +293,7 @@ impl McpErrorCode {
             McpErrorCode::VersionMismatch => -32513,
             McpErrorCode::SessionError => -32514,
             McpErrorCode::ConfigurationError => -32515,
+            McpErrorCode::RequestCancelled => -32516,
             McpErrorCode::Custom(code) => *code,
         }
     }
@@ -327,6 +332,7 @@ impl McpErrorCode {
             McpErrorCode::VersionMismatch => "Protocol version mismatch",
             McpErrorCode::SessionError => "Session error",
             McpErrorCode::ConfigurationError => "Configuration error",
+            McpErrorCode::RequestCancelled => "Request cancelled",
             McpErrorCode::Custom(_) => "Custom error",
         }
     }

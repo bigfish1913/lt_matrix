@@ -49,13 +49,13 @@
 //!     client.connect().await?;
 //!
 //!     // Check state
-//!     assert_eq!(client.state(), ConnectionState::Connected);
+//!     assert_eq!(client.state().await, ConnectionState::Connected);
 //!
 //!     // Use the client...
 //!
 //!     // Disconnect
 //!     client.disconnect().await?;
-//!     assert_eq!(client.state(), ConnectionState::Disconnected);
+//!     assert_eq!(client.state().await, ConnectionState::Disconnected);
 //!
 //!     Ok(())
 //! }
@@ -382,7 +382,7 @@ impl From<StateTransitionError> for McpError {
 ///
 ///     // Connect
 ///     client.connect().await?;
-///     println!("Connected! State: {}", client.state());
+///     println!("Connected! State: {}", client.state().await);
 ///
 ///     // ... use client ...
 ///
@@ -423,7 +423,8 @@ impl McpClient {
     /// let config = McpClientConfig::new("my-client", "1.0.0");
     /// let client = McpClient::new(config);
     ///
-    /// assert!(!client.is_connected());
+    /// // Note: is_connected() is async, use in async context:
+    /// // assert!(!client.is_connected().await);
     /// ```
     pub fn new(config: McpClientConfig) -> Self {
         Self {
