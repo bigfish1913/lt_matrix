@@ -799,7 +799,7 @@ mod capabilities_tests {
 
         let json = serde_json::to_string(&caps).unwrap();
         assert!(json.contains("\"roots\""));
-        assert!(json.contains("\"list_changed\":true"));
+        assert!(json.contains("\"listChanged\":true"));
         // Optional fields should not be serialized when None
         assert!(!json.contains("\"experimental\""));
         assert!(!json.contains("\"sampling\""));
@@ -828,7 +828,7 @@ mod capabilities_tests {
 
         let json = serde_json::to_string(&caps).unwrap();
         assert!(json.contains("\"tools\""));
-        assert!(json.contains("\"list_changed\":true"));
+        assert!(json.contains("\"listChanged\":true"));
     }
 
     #[test]
@@ -844,7 +844,7 @@ mod capabilities_tests {
         let json = serde_json::to_string(&caps).unwrap();
         assert!(json.contains("\"resources\""));
         assert!(json.contains("\"subscribe\":true"));
-        assert!(json.contains("\"list_changed\":true"));
+        assert!(json.contains("\"listChanged\":true"));
     }
 }
 

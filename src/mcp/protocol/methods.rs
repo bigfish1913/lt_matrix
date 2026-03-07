@@ -57,7 +57,8 @@ pub struct ClientCapabilities {
 }
 
 /// Roots capability configuration
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct RootsCapability {
     /// Client supports roots list change notifications
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -102,7 +103,8 @@ pub struct ServerCapabilities {
 }
 
 /// Prompts capability configuration
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct PromptsCapability {
     /// Server supports prompts list change notifications
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -110,7 +112,8 @@ pub struct PromptsCapability {
 }
 
 /// Resources capability configuration
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct ResourcesCapability {
     /// Server supports resource subscriptions
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -122,7 +125,8 @@ pub struct ResourcesCapability {
 }
 
 /// Tools capability configuration
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct ToolsCapability {
     /// Server supports tools list change notifications
     #[serde(skip_serializing_if = "Option::is_none")]

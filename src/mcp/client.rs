@@ -67,7 +67,8 @@ use crate::mcp::protocol::methods::{
     ClientCapabilities, ImplementationInfo, InitializeParams, InitializeResult,
     Resource, ResourceReadParams, ResourceReadResult,
     ResourcesListParams, ResourcesListResult, ServerCapabilities, Tool, ToolCallParams,
-    ToolCallResult, ToolContent, ToolsListParams, ToolsListResult, MCP_PROTOCOL_VERSION,
+    ToolCallResult, ToolContent, ToolsListParams, ToolsListResult,
+    MCP_PROTOCOL_VERSION,
 };
 use crate::mcp::protocol::wrappers::{
     Initialize, McpMethod, McpNotification, NotificationsInitialized,
@@ -1226,6 +1227,245 @@ impl McpClient {
             .as_ref()
             .map(|info| info.capabilities.tools.is_some())
             .unwrap_or(false)
+    }
+
+    // ========================================================================
+    // Tool Parameter Validation
+    // ========================================================================
+
+    /// Find a tool by name from the server's available tools
+    ///
+    /// This method lists tools and searches for one with the given name.
+    ///
+    /// # Arguments
+    ///
+    /// - `name`: The name of the tool to find
+    ///
+    /// # Returns
+    ///
+    /// The tool definition if found, or None if not found.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use ltmatrix::mcp::client::McpClient;
+    ///
+    /// async fn example(client: &McpClient) -> Result<(), Box<dyn std::error::Error>> {
+    ///     if let Some(tool) = client.find_tool("browser_navigate").await? {
+    ///         println!("Found tool: {}", tool.description);
+    ///     } else {
+    ///         println!("Tool not found");
+    ///     }
+    ///     Ok(())
+    /// }
+    /// ```
+    pub async fn find_tool(&self, name: &str) -> McpResult<Option<Tool>> {
+        let tools = self.list_all_tools().await?;
+        Ok(tools.into_iter().find(|t| t.name == name))
+    }
+
+    /// Check if a tool exists on the server
+    ///
+    /// # Arguments
+    ///
+    /// - `name`: The name of the tool to check
+    ///
+    /// # Returns
+    ///
+    /// `true` if the tool exists, `false` otherwise.
+    pub async fn tool_exists(&self, name: &str) -> McpResult<bool> {
+        Ok(self.find_tool(name).await?.is_some())
+    }
+
+    /// Validate that a tool exists and optionally validate arguments against its schema
+    ///
+    /// This is a convenience method that combines `find_tool` with basic validation.
+    ///
+    /// # Arguments
+    ///
+    /// - `name`: The name of the tool
+    /// - `arguments`: Optional arguments to validate
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())` if validation passes, or an error describing the validation failure.
+    pub async fn validate_tool_call(
+        &self,
+        name: &str,
+        arguments: Option<&serde_json::Value>,
+    ) -> McpResult<()> {
+        // Check if tools are supported
+        if !self.supports_tools().await {
+            return Err(McpError::new(
+                McpErrorCode::CapabilityNotSupported,
+                "Server does not support tools",
+            ));
+        }
+
+        // Find the tool
+        let tool = self.find_tool(name).await?;
+        if tool.is_none() {
+            return Err(McpError::new(
+                McpErrorCode::ToolNotFound,
+                format!("Tool '{}' not found", name),
+            ).with_data(serde_json::json!({ "tool": name })));
+        }
+
+        // Basic validation: if arguments provided, ensure they're an object
+        if let Some(args) = arguments {
+            if !args.is_object() && !args.is_null() {
+                return Err(McpError::new(
+                    McpErrorCode::InvalidParams,
+                    "Tool arguments must be an object or null",
+                ));
+            }
+        }
+
+        Ok(())
+    }
+
+    // ========================================================================
+    // Result Formatting Helpers
+    // ========================================================================
+
+    /// Extract all text content from a tool call result
+    ///
+    /// This extracts text from all text-type content items and joins them with newlines.
+    ///
+    /// # Arguments
+    ///
+    /// - `result`: The tool call result to extract text from
+    ///
+    /// # Returns
+    ///
+    /// A string containing all text content joined by newlines.
+    pub fn extract_text_from_result(result: &ToolCallResult) -> String {
+        result.content.iter()
+            .filter_map(|c| match c {
+                ToolContent::Text { text } => Some(text.clone()),
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+
+    /// Extract all image data from a tool call result
+    ///
+    /// # Arguments
+    ///
+    /// - `result`: The tool call result to extract images from
+    ///
+    /// # Returns
+    ///
+    /// A vector of (data, mime_type) tuples for each image.
+    pub fn extract_images_from_result(result: &ToolCallResult) -> Vec<(String, String)> {
+        result.content.iter()
+            .filter_map(|c| match c {
+                ToolContent::Image { data, mime_type } => Some((data.clone(), mime_type.clone())),
+                _ => None,
+            })
+            .collect()
+    }
+
+    /// Extract all resource references from a tool call result
+    ///
+    /// # Arguments
+    ///
+    /// - `result`: The tool call result to extract resource references from
+    ///
+    /// # Returns
+    ///
+    /// A vector of (uri, mime_type) tuples for each resource reference.
+    pub fn extract_resources_from_result(result: &ToolCallResult) -> Vec<(String, Option<String>)> {
+        result.content.iter()
+            .filter_map(|c| match c {
+                ToolContent::Resource { uri, mime_type } => {
+                    Some((uri.clone(), mime_type.clone()))
+                }
+                _ => None,
+            })
+            .collect()
+    }
+
+    /// Check if a tool call result contains any error content
+    ///
+    /// # Arguments
+    ///
+    /// - `result`: The tool call result to check
+    ///
+    /// # Returns
+    ///
+    /// `true` if the result indicates an error or contains error text.
+    pub fn is_result_error(result: &ToolCallResult) -> bool {
+        if result.is_error {
+            return true;
+        }
+
+        // Also check for error-like content
+        result.content.iter().any(|c| {
+            matches!(c, ToolContent::Text { text } if
+                text.to_lowercase().contains("error") ||
+                text.to_lowercase().contains("failed") ||
+                text.to_lowercase().contains("exception")
+            )
+        })
+    }
+
+    /// Get a summary of tool call result content types
+    ///
+    /// # Arguments
+    ///
+    /// - `result`: The tool call result to summarize
+    ///
+    /// # Returns
+    ///
+    /// A tuple of (text_count, image_count, resource_count).
+    pub fn result_content_summary(result: &ToolCallResult) -> (usize, usize, usize) {
+        let mut text_count = 0;
+        let mut image_count = 0;
+        let mut resource_count = 0;
+
+        for content in &result.content {
+            match content {
+                ToolContent::Text { .. } => text_count += 1,
+                ToolContent::Image { .. } => image_count += 1,
+                ToolContent::Resource { .. } => resource_count += 1,
+            }
+        }
+
+        (text_count, image_count, resource_count)
+    }
+
+    /// Call a tool with validation
+    ///
+    /// This combines validation and execution in a single method.
+    ///
+    /// # Arguments
+    ///
+    /// - `name`: The name of the tool to call
+    /// - `arguments`: Optional JSON arguments for the tool
+    ///
+    /// # Returns
+    ///
+    /// The tool execution result.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The server doesn't support tools
+    /// - The tool doesn't exist
+    /// - The arguments are invalid
+    /// - The tool execution fails
+    pub async fn call_tool_validated(
+        &self,
+        name: &str,
+        arguments: Option<serde_json::Value>,
+    ) -> McpResult<ToolCallResult> {
+        // Validate the tool call
+        self.validate_tool_call(name, arguments.as_ref()).await?;
+
+        // Execute the tool call
+        self.call_tool(name, arguments).await
     }
 }
 
