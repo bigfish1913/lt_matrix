@@ -1,0 +1,144 @@
+name: Feature Request
+description: Suggest a new feature or enhancement for ltmatrix
+title: "[Feature]: "
+labels: ["enhancement", "needs-triage"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a new feature! Please fill out the sections below to help us understand your idea.
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Pre-flight checklist
+      description: Please confirm the following before submitting
+      options:
+        - label: I searched for existing issues to prevent duplicates
+          required: true
+        - label: I checked the documentation to confirm this feature doesn't exist
+          required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: |
+        Is your feature request related to a problem? Please describe it.
+        Example: "I'm always frustrated when..."
+      placeholder: "I need to be able to... but currently there's no way to..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe the solution you'd like to see
+      placeholder: |
+        It would be great if ltmatrix could...
+
+        This could be implemented by adding a `--new-flag` option that...
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Have you considered any alternative solutions or workarounds?
+      placeholder: |
+        I considered using `--workaround` but it doesn't quite solve the problem because...
+        Another option would be to use external tool X, but...
+
+  - type: textarea
+    id: examples
+    attributes:
+      label: Example Usage
+      description: |
+        Show how this feature would be used. Include command examples, config snippets, or code.
+      render: shell
+      placeholder: |
+        # Example command
+        ltmatrix "goal" --new-feature --option value
+
+        # Or in config.toml
+        [default]
+        new_feature = true
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Feature Category
+      description: What area of ltmatrix does this feature relate to?
+      options:
+        - CLI / Command Line Interface
+        - Agent Backend (Claude, OpenCode, etc.)
+        - Pipeline Stages (Generate, Execute, etc.)
+        - Configuration
+        - Logging / Output
+        - Testing
+        - Git Integration
+        - Memory / Context
+        - MCP / Tools
+        - Performance
+        - Cross-platform Support
+        - Documentation
+        - Other
+      default: 0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: How important is this feature to you?
+      options:
+        - Nice to have
+        - Would be very useful
+        - Critical for my use case
+        - Blocking my adoption of ltmatrix
+      default: 0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: willing-to-implement
+    attributes:
+      label: Implementation Interest
+      description: Would you be willing to implement this feature?
+      options:
+        - "Yes, I'd like to submit a PR"
+        - "Yes, with some guidance"
+        - "No, but I can help test it"
+        - "No, just suggesting"
+      default: 3
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: |
+        Add any other context, mockups, screenshots, or references here
+      placeholder: |
+        Similar features exist in:
+        - Tool X has this feature...
+        - Related to issue #123
+
+  - type: checkboxes
+    id: impact
+    attributes:
+      label: Breaking Changes
+      description: |
+        Would this feature introduce breaking changes?
+      options:
+        - label: This feature would not break existing functionality
+          required: false
+        - label: This feature might require changes to existing configs/CLI
+          required: false
+        - label: This would be a breaking change (major version bump)
+          required: false

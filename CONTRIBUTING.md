@@ -393,10 +393,113 @@ cargo doc --open --no-deps
 - Keep documentation up-to-date with code changes
 - Use markdown formatting in doc comments
 
+## Reporting Issues
+
+### Bug Reports
+
+When reporting bugs, please use our [Bug Report Template](https://github.com/bigfish/ltmatrix/issues/new?template=bug_report.yml) and include:
+
+- **Clear description** of the bug
+- **Steps to reproduce** the issue
+- **Expected vs actual behavior**
+- **Environment details** (OS, Rust version, ltmatrix version)
+- **Relevant logs** (run with `--log-level debug` if possible)
+- **Minimal configuration** that triggers the bug
+
+<details>
+<summary>Bug Report Quick Template</summary>
+
+```markdown
+## Description
+[What is the bug?]
+
+## Steps to Reproduce
+1. [First step]
+2. [Second step]
+3. [What fails]
+
+## Expected Behavior
+[What should happen?]
+
+## Actual Behavior
+[What actually happens?]
+
+## Environment
+- ltmatrix version: [output of `ltmatrix --version`]
+- OS: [e.g., Ubuntu 22.04, Windows 11, macOS 14]
+- Rust version: [output of `rustc --version`]
+
+## Logs
+```
+[Paste relevant log output here]
+```
+
+## Configuration
+```toml
+[Paste relevant config here, removing sensitive data]
+```
+```
+
+</details>
+
+### Feature Requests
+
+For feature requests, please use our [Feature Request Template](https://github.com/bigfish/ltmatrix/issues/new?template=feature_request.yml) and include:
+
+- **Problem statement**: What problem does this solve?
+- **Proposed solution**: How should it work?
+- **Alternatives considered**: What other approaches did you think about?
+- **Category**: CLI, agent, pipeline, etc.
+
+<details>
+<summary>Feature Request Quick Template</summary>
+
+```markdown
+## Problem Statement
+[What problem are you trying to solve?]
+
+## Proposed Solution
+[Describe your proposed solution]
+
+## Alternatives Considered
+[What other solutions did you consider?]
+
+## Example Usage
+```bash
+# How would this feature be used?
+ltmatrix --new-flag "your goal"
+```
+
+## Category
+- [ ] CLI
+- [ ] Agent Backend
+- [ ] Pipeline
+- [ ] Configuration
+- [ ] Other: [specify]
+```
+
+</details>
+
+### Questions and Discussions
+
+For general questions or discussions:
+- Use [GitHub Discussions](https://github.com/bigfish/ltmatrix/discussions) for broader topics
+- Use our [Question Template](https://github.com/bigfish/ltmatrix/issues/new?template=question.yml) for specific questions
+
+## Security Issues
+
+**Do not report security vulnerabilities through public GitHub issues.**
+
+Instead, please:
+1. Email security concerns to the repository maintainers
+2. Include "SECURITY" in the subject line
+3. Provide details about the vulnerability
+4. Allow time for response before public disclosure
+
 ## Getting Help
 
-- Open an issue for bugs or feature requests
-- Check existing issues before creating new ones
-- Provide minimal reproducible examples for bugs
+- Check the [documentation](https://docs.ltmatrix.dev) (if available)
+- Search [existing issues](https://github.com/bigfish/ltmatrix/issues) before creating new ones
+- Join [discussions](https://github.com/bigfish/ltmatrix/discussions) for community support
 
 Thank you for contributing to ltmatrix!

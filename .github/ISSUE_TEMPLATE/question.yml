@@ -1,0 +1,51 @@
+name: Question / Discussion
+description: Ask a question or start a discussion about ltmatrix
+title: "[Question]: "
+labels: ["question"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have a question about ltmatrix? This is the right place!
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Pre-flight checklist
+      options:
+        - label: I searched existing issues and discussions
+          required: true
+        - label: I read the documentation
+          required: true
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Your Question
+      description: What would you like to know?
+      placeholder: "How do I...?"
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: |
+        Provide any relevant context that might help us answer your question:
+        - ltmatrix version
+        - Operating system
+        - Configuration
+        - What you've already tried
+      placeholder: |
+        - ltmatrix version: 0.1.0
+        - OS: Ubuntu 22.04
+        - I tried running with --verbose flag but...
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Log Output
+      description: If applicable, paste any relevant log output
+      render: shell

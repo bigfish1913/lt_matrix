@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: GitHub Issues
+    url: https://github.com/bigfish/ltmatrix/issues
+    about: Report bugs and request features
+  - name: Discussions
+    url: https://github.com/bigfish/ltmatrix/discussions
+    about: Ask questions and discuss ideas
