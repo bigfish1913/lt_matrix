@@ -558,3 +558,505 @@ fn test_security_md_command_allowlist() {
         "SECURITY.md should document allowed external commands"
     );
 }
+
+// =============================================================================
+// Security Module Public API Tests
+// =============================================================================
+
+// -----------------------------------------------------------------------------
+// Command Security Tests
+// -----------------------------------------------------------------------------
+
+/// Test command allowlist functionality
+#[test]
+fn test_command_allowlist_default() {
+    let allowlist = CommandAllowlist::new();
+
+    // Default allowed commands
+    assert!(allowlist.is_allowed("git"), "git should be allowed by default");
+    assert!(allowlist.is_allowed("claude"), "claude should be allowed by default");
+    assert!(allowlist.is_allowed("cargo"), "cargo should be allowed by default");
+    assert!(allowlist.is_allowed("npm"), "npm should be allowed by default");
+
+    // Case insensitive
+    assert!(allowlist.is_allowed("GIT"), "Allowlist should be case insensitive");
+    assert!(allowlist.is_allowed("Claude"), "Allowlist should be case insensitive");
+}
+
+#[test]
+fn test_command_allowlist_modification() {
+    let mut allowlist = CommandAllowlist::empty();
+
+    // Empty allowlist
+    assert!(!allowlist.is_allowed("git"), "Empty allowlist should not allow any command");
+
+    // Add command
+    allowlist.allow("git");
+    assert!(allowlist.is_allowed("git"), "After allowing, command should be permitted");
+
+    // Remove command
+    allowlist.deny("git");
+    assert!(!allowlist.is_allowed("git"), "After denying, command should not be permitted");
+}
+
+/// Test command name validation
+#[test]
+fn test_validate_command_name_valid() {
+    assert!(validate_command_name("git").is_ok());
+    assert!(validate_command_name("my-tool").is_ok());
+    assert!(validate_command_name("cargo").is_ok());
+    assert!(validate_command_name("python3").is_ok());
+}
+
+#[test]
+fn test_validate_command_name_invalid() {
+    // Empty
+    assert!(validate_command_name("").is_err());
+
+    // Path separators
+    assert!(validate_command_name("/bin/sh").is_err());
+    assert!(validate_command_name(".\\cmd").is_err());
+
+    // Dangerous characters
+    assert!(validate_command_name("rm; ls").is_err());
+    assert!(validate_command_name("cmd && other").is_err());
+    assert!(validate_command_name("cmd`whoami`").is_err());
+    assert!(validate_command_name("cmd$(id)").is_err());
+
+    // Shell builtins
+    assert!(validate_command_name("eval").is_err());
+    assert!(validate_command_name("exec").is_err());
+    assert!(validate_command_name("source").is_err());
+}
+
+/// Test command argument validation
+#[test]
+fn test_validate_command_argument_valid() {
+    assert!(validate_command_argument("file.txt").is_ok());
+    assert!(validate_command_argument("--option=value").is_ok());
+    assert!(validate_command_argument("src/main.rs").is_ok());
+    assert!(validate_command_argument("path/to/file").is_ok());
+}
+
+#[test]
+fn test_validate_command_argument_invalid() {
+    // Null bytes
+    assert!(validate_command_argument("file\0.txt").is_err());
+
+    // Command injection attempts
+    assert!(validate_command_argument("file; rm -rf /").is_err());
+    assert!(validate_command_argument("file && cat /etc/passwd").is_err());
+    assert!(validate_command_argument("file`whoami`").is_err());
+    assert!(validate_command_argument("file\nother").is_err());
+    assert!(validate_command_argument("file\rother").is_err());
+}
+
+/// Test sanitize command argument for display
+#[test]
+fn test_sanitize_command_argument_for_display() {
+    assert_eq!(sanitize_command_argument_for_display("file.txt"), "file.txt");
+    assert_eq!(sanitize_command_argument_for_display("file\nname"), "file_name");
+    assert_eq!(sanitize_command_argument_for_display("file\rname"), "file_name");
+    assert_eq!(sanitize_command_argument_for_display("file\0name"), "file_name");
+}
+
+/// Test environment variable name validation
+#[test]
+fn test_validate_env_var_name_valid() {
+    assert!(validate_env_var_name("PATH").is_ok());
+    assert!(validate_env_var_name("MY_VAR").is_ok());
+    assert!(validate_env_var_name("_PRIVATE").is_ok());
+    assert!(validate_env_var_name("API_KEY_123").is_ok());
+}
+
+#[test]
+fn test_validate_env_var_name_invalid() {
+    assert!(validate_env_var_name("").is_err());
+    assert!(validate_env_var_name("123VAR").is_err());
+    assert!(validate_env_var_name("MY-VAR").is_err());
+    assert!(validate_env_var_name("MY.VAR").is_err());
+}
+
+/// Test sensitive environment variable detection
+#[test]
+fn test_is_sensitive_env_var() {
+    // Sensitive patterns
+    assert!(is_sensitive_env_var("API_KEY"));
+    assert!(is_sensitive_env_var("PASSWORD"));
+    assert!(is_sensitive_env_var("SECRET_TOKEN"));
+    assert!(is_sensitive_env_var("MY_PRIVATE_KEY"));
+    assert!(is_sensitive_env_var("ACCESS_KEY"));
+    assert!(is_sensitive_env_var("AUTH_TOKEN"));
+
+    // Non-sensitive
+    assert!(!is_sensitive_env_var("PATH"));
+    assert!(!is_sensitive_env_var("HOME"));
+    assert!(!is_sensitive_env_var("DEBUG"));
+    assert!(!is_sensitive_env_var("APP_NAME"));
+
+    // Case insensitive
+    assert!(is_sensitive_env_var("password"));
+    assert!(is_sensitive_env_var("Secret_Key"));
+}
+
+/// Test sensitive value masking
+#[test]
+fn test_mask_sensitive_value() {
+    assert_eq!(mask_sensitive_value("sk-1234567890abcdef"), "sk-1...cdef");
+    assert_eq!(mask_sensitive_value("short"), "sh...rt");
+    assert_eq!(mask_sensitive_value("ab"), "***");
+    assert_eq!(mask_sensitive_value(""), "***");
+    assert_eq!(mask_sensitive_value("abcd"), "***");
+}
+
+// -----------------------------------------------------------------------------
+// Path Security Tests
+// -----------------------------------------------------------------------------
+
+/// Test path validation
+#[test]
+fn test_validate_path_valid() {
+    assert!(validate_path(Path::new("src/main.rs")).is_ok());
+    assert!(validate_path(Path::new("file.txt")).is_ok());
+    assert!(validate_path(Path::new("/absolute/path")).is_ok());
+    assert!(validate_path(Path::new("./relative")).is_ok());
+}
+
+#[test]
+fn test_validate_path_traversal() {
+    assert!(validate_path(Path::new("../../../etc/passwd")).is_err());
+    assert!(validate_path(Path::new("..\\..\\windows")).is_err());
+    assert!(validate_path(Path::new("sub/../../etc")).is_err());
+}
+
+#[test]
+fn test_validate_path_null_byte() {
+    assert!(validate_path(Path::new("file\0.txt")).is_err());
+}
+
+/// Test contains_traversal
+#[test]
+fn test_contains_traversal() {
+    assert!(contains_traversal(Path::new("../parent")));
+    assert!(contains_traversal(Path::new("sub/../other")));
+    assert!(contains_traversal(Path::new("a/b/../../c")));
+    assert!(!contains_traversal(Path::new("sub/dir/file")));
+    assert!(!contains_traversal(Path::new("./file")));
+}
+
+/// Test sanitize_path_component
+#[test]
+fn test_sanitize_path_component() {
+    assert_eq!(sanitize_path_component("file.txt"), "file.txt");
+    assert_eq!(sanitize_path_component("file<name>"), "file_name_");
+    assert_eq!(sanitize_path_component("file|name?"), "file_name_");
+    assert_eq!(sanitize_path_component("file:name"), "file_name");
+}
+
+/// Test validate_file_extension
+#[test]
+fn test_validate_file_extension_valid() {
+    assert!(validate_file_extension("rs").is_ok());
+    assert!(validate_file_extension("txt").is_ok());
+    assert!(validate_file_extension("json").is_ok());
+    assert!(validate_file_extension("my-format").is_ok());
+}
+
+#[test]
+fn test_validate_file_extension_invalid() {
+    assert!(validate_file_extension("").is_err());
+    assert!(validate_file_extension("ex>e").is_err());
+    assert!(validate_file_extension("name|ext").is_err());
+    assert!(validate_file_extension(&"a".repeat(40)).is_err());
+}
+
+/// Test has_dangerous_extension
+#[test]
+fn test_has_dangerous_extension() {
+    let dangerous: &[&str] = &["exe", "bat", "cmd", "sh", "ps1"];
+
+    assert!(has_dangerous_extension(Path::new("malware.exe"), dangerous));
+    assert!(has_dangerous_extension(Path::new("script.bat"), dangerous));
+    assert!(has_dangerous_extension(Path::new("script.BAT"), dangerous)); // Case insensitive
+    assert!(has_dangerous_extension(Path::new("script.CMD"), dangerous));
+    assert!(!has_dangerous_extension(Path::new("document.pdf"), dangerous));
+    assert!(!has_dangerous_extension(Path::new("source.rs"), dangerous));
+    assert!(!has_dangerous_extension(Path::new("config.json"), dangerous));
+}
+
+// -----------------------------------------------------------------------------
+// Input Validation Tests
+// -----------------------------------------------------------------------------
+
+/// Test identifier validation
+#[test]
+fn test_validate_identifier_valid() {
+    assert!(validate_identifier("task-123").is_ok());
+    assert!(validate_identifier("my_feature").is_ok());
+    assert!(validate_identifier("Task123").is_ok());
+    assert!(validate_identifier("a").is_ok());
+}
+
+#[test]
+fn test_validate_identifier_invalid() {
+    assert!(validate_identifier("").is_err());
+    assert!(validate_identifier("-invalid").is_err());
+    assert!(validate_identifier("_invalid").is_err());
+    assert!(validate_identifier("invalid;id").is_err());
+    assert!(validate_identifier("invalid id").is_err());
+    assert!(validate_identifier(&"a".repeat(300)).is_err());
+}
+
+/// Test sanitize_identifier
+#[test]
+fn test_sanitize_identifier() {
+    assert_eq!(sanitize_identifier("my-task"), "my-task");
+    assert_eq!(sanitize_identifier("my task"), "my_task");
+    assert_eq!(sanitize_identifier("my;task"), "my_task");
+    assert_eq!(sanitize_identifier(""), "unnamed");
+    assert_eq!(sanitize_identifier("-task"), "x-task");
+    assert_eq!(sanitize_identifier("_task"), "x_task");
+}
+
+/// Test is_safe_for_command_arg
+#[test]
+fn test_is_safe_for_command_arg() {
+    // Safe
+    assert!(is_safe_for_command_arg("hello"));
+    assert!(is_safe_for_command_arg("hello world"));
+    assert!(is_safe_for_command_arg("file.txt"));
+
+    // Unsafe
+    assert!(!is_safe_for_command_arg("hello; rm -rf /"));
+    assert!(!is_safe_for_command_arg("hello `whoami`"));
+    assert!(!is_safe_for_command_arg("hello$(whoami)"));
+    assert!(!is_safe_for_command_arg("hello\nworld"));
+    assert!(!is_safe_for_command_arg("hello$world"));
+}
+
+/// Test validate_command_arg
+#[test]
+fn test_validate_command_arg_valid() {
+    assert!(validate_command_arg("hello").is_ok());
+    assert!(validate_command_arg("hello world").is_ok());
+    assert!(validate_command_arg("--option=value").is_ok());
+}
+
+#[test]
+fn test_validate_command_arg_invalid() {
+    assert!(validate_command_arg("hello; world").is_err());
+    assert!(validate_command_arg("hello$world").is_err());
+    assert!(validate_command_arg("hello`world`").is_err());
+}
+
+/// Test sanitize_command_arg
+#[test]
+fn test_sanitize_command_arg() {
+    assert_eq!(sanitize_command_arg("hello"), "hello");
+    assert_eq!(sanitize_command_arg("hello; world"), "hello world");
+    assert_eq!(sanitize_command_arg("hello$world"), "helloworld");
+    assert_eq!(sanitize_command_arg("hello`whoami`"), "hellowhoami");
+}
+
+/// Test validate_task_title
+#[test]
+fn test_validate_task_title_valid() {
+    assert!(validate_task_title("Implement feature X").is_ok());
+    assert!(validate_task_title("Fix bug in parser").is_ok());
+    assert!(validate_task_title("a").is_ok());
+}
+
+#[test]
+fn test_validate_task_title_invalid() {
+    assert!(validate_task_title("").is_err());
+    assert!(validate_task_title(&"a".repeat(600)).is_err());
+    assert!(validate_task_title("hello\nworld").is_err());
+    assert!(validate_task_title("hello\tworld").is_err());
+}
+
+/// Test validate_task_description
+#[test]
+fn test_validate_task_description_valid() {
+    assert!(validate_task_description("This is a task description").is_ok());
+    assert!(validate_task_description("").is_ok()); // Empty is allowed
+    assert!(validate_task_description(&"a".repeat(9999)).is_ok());
+}
+
+#[test]
+fn test_validate_task_description_invalid() {
+    assert!(validate_task_description(&"a".repeat(10001)).is_err());
+    assert!(validate_task_description("description\0with null").is_err());
+}
+
+/// Test validate_branch_name
+#[test]
+fn test_validate_branch_name_valid() {
+    assert!(validate_branch_name("main").is_ok());
+    assert!(validate_branch_name("feature/my-feature").is_ok());
+    assert!(validate_branch_name("fix-bug-123").is_ok());
+    assert!(validate_branch_name("release/v1.0.0").is_ok());
+}
+
+#[test]
+fn test_validate_branch_name_invalid() {
+    assert!(validate_branch_name("").is_err());
+    assert!(validate_branch_name(".hidden").is_err());
+    assert!(validate_branch_name("invalid..name").is_err());
+    assert!(validate_branch_name("invalid name").is_err());
+    assert!(validate_branch_name("branch.lock").is_err());
+    assert!(validate_branch_name("@").is_err());
+    assert!(validate_branch_name("branch~1").is_err());
+    assert!(validate_branch_name("branch^1").is_err());
+}
+
+/// Test validate_commit_message
+#[test]
+fn test_validate_commit_message_valid() {
+    assert!(validate_commit_message("Add new feature").is_ok());
+    assert!(validate_commit_message("fix: resolve issue").is_ok());
+    assert!(validate_commit_message(&"a".repeat(49999)).is_ok());
+}
+
+#[test]
+fn test_validate_commit_message_invalid() {
+    assert!(validate_commit_message("").is_err());
+    assert!(validate_commit_message(&"a".repeat(50001)).is_err());
+    assert!(validate_commit_message("message\0with null").is_err());
+}
+
+/// Test validate_model_name
+#[test]
+fn test_validate_model_name_valid() {
+    assert!(validate_model_name("claude-sonnet-4-6").is_ok());
+    assert!(validate_model_name("claude-opus-4.6").is_ok());
+    assert!(validate_model_name("gpt-4").is_ok());
+    assert!(validate_model_name("model_v2").is_ok());
+}
+
+#[test]
+fn test_validate_model_name_invalid() {
+    assert!(validate_model_name("").is_err());
+    assert!(validate_model_name("model/name").is_err());
+    assert!(validate_model_name("model name").is_err());
+    assert!(validate_model_name("model@v1").is_err());
+}
+
+/// Test sanitize_model_name
+#[test]
+fn test_sanitize_model_name() {
+    assert_eq!(sanitize_model_name("claude-sonnet-4-6"), "claude-sonnet-4-6");
+    assert_eq!(sanitize_model_name("model/name"), "modelname");
+    assert_eq!(sanitize_model_name("model name"), "modelname");
+    assert_eq!(sanitize_model_name("model@v1"), "modelv1");
+}
+
+// -----------------------------------------------------------------------------
+// Integration Tests
+// -----------------------------------------------------------------------------
+
+/// Test that security module properly prevents command injection
+#[test]
+fn test_command_injection_prevention() {
+    // Common command injection payloads that should all be rejected
+    let injection_payloads = [
+        "file; rm -rf /",
+        "file && cat /etc/passwd",
+        "file || whoami",
+        "file`id`",
+        "file$(whoami)",
+        "file\nrm -rf /",
+        "file\r\nrm -rf /",
+        "file | cat /etc/passwd",
+    ];
+
+    for payload in &injection_payloads {
+        assert!(
+            validate_command_argument(payload).is_err(),
+            "Payload '{}' should be rejected",
+            payload
+        );
+        assert!(
+            !is_safe_for_command_arg(payload),
+            "Payload '{}' should be detected as unsafe",
+            payload
+        );
+    }
+}
+
+/// Test that path traversal is prevented
+#[test]
+fn test_path_traversal_prevention() {
+    let traversal_payloads = [
+        "../../../etc/passwd",
+        "..\\..\\..\\windows\\system32",
+        "sub/../../../etc",
+        "./../sensitive",
+    ];
+
+    for payload in &traversal_payloads {
+        let path = Path::new(payload);
+        assert!(
+            validate_path(path).is_err() || contains_traversal(path),
+            "Traversal payload '{}' should be detected",
+            payload
+        );
+    }
+}
+
+/// Test that sensitive data is properly masked
+#[test]
+fn test_sensitive_data_masking() {
+    // Test various sensitive data formats
+    let test_cases = [
+        ("sk-1234567890abcdef", "sk-1...cdef"),  // API key
+        ("ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", "ghp_...xxxx"),  // GitHub token
+        ("AKIAIOSFODNN7EXAMPLE", "AKIA...MPLE"),  // AWS key
+        ("supersecret", "su...et"),  // Short secret
+    ];
+
+    for (value, expected) in &test_cases {
+        let masked = mask_sensitive_value(value);
+        assert!(
+            masked.contains("..."),
+            "Value should be masked with ellipsis"
+        );
+        // The original should not be fully visible
+        assert_ne!(
+            &masked, value,
+            "Masked value should not equal original"
+        );
+    }
+}
+
+/// Test CommandAllowlist builder pattern
+#[test]
+fn test_command_allowlist_builder() {
+    let mut allowlist = CommandAllowlist::new();
+    allowlist.allow("custom-tool").allow("my-agent");
+
+    assert!(allowlist.is_allowed("custom-tool"));
+    assert!(allowlist.is_allowed("my-agent"));
+
+    allowlist.deny("git");
+    assert!(!allowlist.is_allowed("git"));
+    assert!(allowlist.is_allowed("cargo")); // Still allowed
+}
+
+/// Test that resolve_safe_path rejects traversal
+#[test]
+fn test_resolve_safe_path_rejects_traversal() {
+    let base = Path::new("/tmp/test");
+    let traversal_paths = [
+        Path::new("../../../etc/passwd"),
+        Path::new("..\\..\\windows"),
+        Path::new("sub/../.."),
+    ];
+
+    for traversal in &traversal_paths {
+        assert!(
+            resolve_safe_path(traversal, base).is_err(),
+            "resolve_safe_path should reject traversal: {:?}",
+            traversal
+        );
+    }
+}

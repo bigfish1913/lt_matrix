@@ -2,7 +2,7 @@
 //!
 //! This module provides the central plugin management functionality.
 
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result};
 use glob::Pattern;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -198,7 +198,7 @@ impl PluginManager {
     pub async fn register_builtin<P: Plugin + 'static>(&self, plugin: P) -> Result<()> {
         let metadata = plugin.metadata().clone();
         let id = metadata.id.clone();
-        let plugin_type = metadata.plugin_type;
+        let _plugin_type = metadata.plugin_type;
 
         info!("Registering built-in plugin: {}", id);
 

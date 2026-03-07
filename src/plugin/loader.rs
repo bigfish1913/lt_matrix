@@ -16,15 +16,20 @@ impl PluginLoader {
     }
 
     /// Load a plugin from a shared library
+    ///
+    /// Note: Dynamic plugin loading is disabled by default for security
+    /// and cross-platform compatibility. This method exists for future
+    /// implementation when the `dynamic-plugins` feature is added.
+    #[allow(unexpected_cfgs)] // Feature will be added in future release
     #[cfg(feature = "dynamic-plugins")]
     pub async fn load_shared_library(&self, path: &Path) -> Result<()> {
-        // Dynamic library loading is disabled by default for security
-        // and cross-platform compatibility
+        let _path = path; // Reserved for future implementation
         bail!("Dynamic plugin loading is not enabled. Recompile with 'dynamic-plugins' feature.")
     }
 
     /// Load a plugin from a WASM module
     pub async fn load_wasm_module(&self, path: &Path) -> Result<()> {
+        let _path = path; // Reserved for future implementation
         // WASM loading is planned for future implementation
         bail!("WASM plugin loading is not yet implemented")
     }
@@ -57,7 +62,7 @@ mod tests {
 
     #[test]
     fn test_plugin_loader_creation() {
-        let loader = PluginLoader::new();
+        let _loader = PluginLoader::new();
         // Basic creation test
         assert!(true);
     }
