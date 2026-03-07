@@ -122,6 +122,44 @@ jobs:
         run: cargo test --test '*' --all-features
 
   # ====================
+  # Cross-Platform Compatibility Tests
+  # ====================
+  test-cross-platform:
+    name: Cross-Platform Tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: cross-platform-${{ matrix.os }}
+
+      - name: Run cross-platform compatibility tests
+        run: cargo test --test cross_platform_test --all-features
+
+      - name: Upload test results on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cross-platform-test-results-${{ matrix.os }}
+          path: |
+            target/debug/test-results/
+            target/debug/**/*.log
+          retention-days: 7
+
+  # ====================
   # Cross-Platform Builds
   # ====================
   build-linux:
@@ -292,6 +330,7 @@ jobs:
       - audit
       - test-unit
       - test-integration
+      - test-cross-platform
       - build-linux
       - build-macos
       - build-windows
@@ -305,6 +344,7 @@ jobs:
                 "${{ needs.audit.result }}" != "success" || \
                 "${{ needs.test-unit.result }}" != "success" || \
                 "${{ needs.test-integration.result }}" != "success" || \
+                "${{ needs.test-cross-platform.result }}" != "success" || \
                 "${{ needs.build-linux.result }}" != "success" || \
                 "${{ needs.build-macos.result }}" != "success" || \
                 "${{ needs.build-windows.result }}" != "success" || \
