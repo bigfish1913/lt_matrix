@@ -492,15 +492,12 @@ mod github_release_tests {
 
         for (job_name, job) in build_jobs {
             let steps = job.get("steps")
-                .and_then(|s| s.as_sequence())
-                .unwrap_or(&serde_yaml::Value::Null);
+                .and_then(|s| s.as_sequence());
 
-            let has_upload = steps.as_sequence()
-                .map(|steps| steps.iter().any(|step| {
-                    let uses = step.get("uses").and_then(|u| u.as_str()).unwrap_or("");
-                    uses.contains("upload") || uses.contains("release")
-                }))
-                .unwrap_or(false);
+            let has_upload = steps.map(|s| s.iter().any(|step| {
+                let uses = step.get("uses").and_then(|u| u.as_str()).unwrap_or("");
+                uses.contains("upload") || uses.contains("release")
+            })).unwrap_or(false);
 
             assert!(
                 has_upload,
