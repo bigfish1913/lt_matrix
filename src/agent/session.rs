@@ -284,11 +284,96 @@ impl SessionManager {
 mod tests {
     use super::*;
 
+    // =========================================================================
+    // SessionData Tests
+    // =========================================================================
+
+    #[test]
+    fn test_session_data_new() {
+        let session = SessionData::new("claude", "claude-sonnet-4-6");
+
+        assert!(!session.session_id.is_empty());
+        assert_eq!(session.agent_name, "claude");
+        assert_eq!(session.model, "claude-sonnet-4-6");
+        assert_eq!(session.reuse_count, 0);
+        assert!(session.file_path.as_os_str().is_empty());
+    }
+
+    #[test]
+    fn test_session_data_mark_accessed() {
+        let mut session = SessionData::new("claude", "claude-sonnet-4-6");
+        let initial_accessed = session.last_accessed;
+
+        session.mark_accessed();
+
+        assert_eq!(session.reuse_count, 1);
+        assert!(session.last_accessed >= initial_accessed);
+
+        session.mark_accessed();
+        assert_eq!(session.reuse_count, 2);
+    }
+
+    #[test]
+    fn test_session_data_not_stale_initially() {
+        let session = SessionData::new("claude", "claude-sonnet-4-6");
+        assert!(!session.is_stale());
+    }
+
+    #[test]
+    fn test_session_data_is_stale_after_one_hour() {
+        let mut session = SessionData::new("claude", "claude-sonnet-4-6");
+        // Set last_accessed to 2 hours ago
+        session.last_accessed = chrono::Utc::now() - chrono::Duration::hours(2);
+
+        assert!(session.is_stale());
+    }
+
+    #[test]
+    fn test_session_data_not_stale_at_boundary() {
+        let mut session = SessionData::new("claude", "claude-sonnet-4-6");
+        // Set last_accessed to 59 minutes ago (just under 1 hour)
+        session.last_accessed = chrono::Utc::now() - chrono::Duration::seconds(3599);
+
+        assert!(!session.is_stale());
+    }
+
+    #[test]
+    fn test_session_data_serialization() {
+        let session = SessionData::new("claude", "claude-sonnet-4-6");
+
+        let json = serde_json::to_string(&session);
+        assert!(json.is_ok());
+
+        let parsed: Result<SessionData, _> = serde_json::from_str(&json.unwrap());
+        assert!(parsed.is_ok());
+
+        let parsed_session = parsed.unwrap();
+        assert_eq!(parsed_session.session_id, session.session_id);
+        assert_eq!(parsed_session.agent_name, session.agent_name);
+        assert_eq!(parsed_session.model, session.model);
+    }
+
+    // =========================================================================
+    // SessionManager Tests
+    // =========================================================================
+
     #[tokio::test]
     async fn test_session_manager_creation() {
         let temp_dir = tempfile::tempdir().unwrap();
         let manager = SessionManager::new(temp_dir.path()).unwrap();
 
+        assert!(manager.sessions_dir.exists());
+        // Verify the path contains the expected directory structure
+        let path_str = manager.sessions_dir.to_string_lossy();
+        assert!(path_str.contains(".ltmatrix") || path_str.contains("sessions"));
+    }
+
+    #[tokio::test]
+    async fn test_session_manager_default_manager() {
+        let manager = SessionManager::default_manager();
+        assert!(manager.is_ok());
+
+        let manager = manager.unwrap();
         assert!(manager.sessions_dir.exists());
     }
 
@@ -313,6 +398,20 @@ mod tests {
         assert_eq!(loaded.session_id, session.session_id);
         assert_eq!(loaded.agent_name, "claude");
         assert_eq!(loaded.model, "claude-sonnet-4-6");
+        assert_eq!(loaded.reuse_count, 1); // Incremented on load
+    }
+
+    #[tokio::test]
+    async fn test_session_load_nonexistent() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let manager = SessionManager::new(temp_dir.path()).unwrap();
+
+        let loaded = manager
+            .load_session("nonexistent-session-id")
+            .await
+            .unwrap();
+
+        assert!(loaded.is_none());
     }
 
     #[tokio::test]
@@ -320,13 +419,173 @@ mod tests {
         let temp_dir = tempfile::tempdir().unwrap();
         let manager = SessionManager::new(temp_dir.path()).unwrap();
 
-        let mut session = manager
+        let session = manager
             .create_session("claude", "claude-sonnet-4-6")
             .await
             .unwrap();
         assert_eq!(session.reuse_count, 0);
 
+        // Load once - increments reuse count
+        let loaded1 = manager.load_session(&session.session_id).await.unwrap().unwrap();
+        assert_eq!(loaded1.reuse_count, 1);
+
+        // Load again - increments reuse count
+        let loaded2 = manager.load_session(&session.session_id).await.unwrap().unwrap();
+        assert_eq!(loaded2.reuse_count, 2);
+    }
+
+    #[tokio::test]
+    async fn test_session_delete() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let manager = SessionManager::new(temp_dir.path()).unwrap();
+
+        let session = manager
+            .create_session("claude", "claude-sonnet-4-6")
+            .await
+            .unwrap();
+
+        // Delete session
+        let deleted = manager.delete_session(&session.session_id).await.unwrap();
+        assert!(deleted);
+
+        // Verify session is gone
+        let loaded = manager.load_session(&session.session_id).await.unwrap();
+        assert!(loaded.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_session_delete_nonexistent() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let manager = SessionManager::new(temp_dir.path()).unwrap();
+
+        let deleted = manager.delete_session("nonexistent-id").await.unwrap();
+        assert!(!deleted);
+    }
+
+    #[tokio::test]
+    async fn test_session_save() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let manager = SessionManager::new(temp_dir.path()).unwrap();
+
+        let mut session = manager
+            .create_session("claude", "claude-sonnet-4-6")
+            .await
+            .unwrap();
+
+        // Modify and save
         session.mark_accessed();
-        assert_eq!(session.reuse_count, 1);
+        session.mark_accessed();
+        manager.save_session(&session).await.unwrap();
+
+        // Reload and verify
+        let loaded = manager.load_session(&session.session_id).await.unwrap().unwrap();
+        assert_eq!(loaded.reuse_count, 3); // 2 marks + 1 from load
+    }
+
+    #[tokio::test]
+    async fn test_list_sessions_empty() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let manager = SessionManager::new(temp_dir.path()).unwrap();
+
+        let sessions = manager.list_sessions().await.unwrap();
+        assert!(sessions.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_list_sessions_multiple() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let manager = SessionManager::new(temp_dir.path()).unwrap();
+
+        // Create multiple sessions
+        let session1 = manager.create_session("claude", "claude-sonnet-4-6").await.unwrap();
+        let session2 = manager.create_session("opencode", "gpt-4").await.unwrap();
+        let session3 = manager.create_session("kimi-code", "moonshot-v1").await.unwrap();
+
+        let sessions = manager.list_sessions().await.unwrap();
+        assert_eq!(sessions.len(), 3);
+
+        // Verify all sessions are present
+        let ids: Vec<&str> = sessions.iter().map(|s| s.session_id.as_str()).collect();
+        assert!(ids.contains(&session1.session_id.as_str()));
+        assert!(ids.contains(&session2.session_id.as_str()));
+        assert!(ids.contains(&session3.session_id.as_str()));
+    }
+
+    #[tokio::test]
+    async fn test_cleanup_stale_sessions() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let manager = SessionManager::new(temp_dir.path()).unwrap();
+
+        // Create a fresh session
+        let fresh_session = manager.create_session("claude", "claude-sonnet-4-6").await.unwrap();
+
+        // Create a stale session by modifying its last_accessed time
+        let mut stale_session = manager.create_session("claude", "claude-sonnet-4-6").await.unwrap();
+        stale_session.last_accessed = chrono::Utc::now() - chrono::Duration::hours(2);
+        manager.save_session(&stale_session).await.unwrap();
+
+        // Cleanup stale sessions
+        let cleaned = manager.cleanup_stale_sessions().await.unwrap();
+        assert_eq!(cleaned, 1);
+
+        // Verify fresh session still exists
+        let loaded = manager.load_session(&fresh_session.session_id).await.unwrap();
+        assert!(loaded.is_some());
+
+        // Verify stale session is gone
+        let loaded = manager.load_session(&stale_session.session_id).await.unwrap();
+        assert!(loaded.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_cleanup_no_stale_sessions() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let manager = SessionManager::new(temp_dir.path()).unwrap();
+
+        // Create only fresh sessions
+        manager.create_session("claude", "claude-sonnet-4-6").await.unwrap();
+        manager.create_session("opencode", "gpt-4").await.unwrap();
+
+        let cleaned = manager.cleanup_stale_sessions().await.unwrap();
+        assert_eq!(cleaned, 0);
+
+        let sessions = manager.list_sessions().await.unwrap();
+        assert_eq!(sessions.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn test_different_agents_separate_sessions() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let manager = SessionManager::new(temp_dir.path()).unwrap();
+
+        let claude_session = manager.create_session("claude", "claude-sonnet-4-6").await.unwrap();
+        let opencode_session = manager.create_session("opencode", "gpt-4").await.unwrap();
+
+        assert_ne!(claude_session.session_id, opencode_session.session_id);
+
+        let sessions = manager.list_sessions().await.unwrap();
+        assert_eq!(sessions.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn test_session_persistence_across_managers() {
+        let temp_dir = tempfile::tempdir().unwrap();
+
+        // Create session with first manager
+        let manager1 = SessionManager::new(temp_dir.path()).unwrap();
+        let session = manager1
+            .create_session("claude", "claude-sonnet-4-6")
+            .await
+            .unwrap();
+
+        // Create second manager with same base dir
+        let manager2 = SessionManager::new(temp_dir.path()).unwrap();
+        let loaded = manager2
+            .load_session(&session.session_id)
+            .await
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(loaded.session_id, session.session_id);
     }
 }

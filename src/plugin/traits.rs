@@ -359,6 +359,42 @@ mod tests {
     use super::*;
     use std::str::FromStr;
 
+    // =========================================================================
+    // PluginType Tests
+    // =========================================================================
+
+    #[test]
+    fn test_plugin_type_variants() {
+        assert_eq!(PluginType::AgentBackend, PluginType::AgentBackend);
+        assert_ne!(PluginType::AgentBackend, PluginType::Formatter);
+    }
+
+    #[test]
+    fn test_plugin_type_serialization() {
+        let types = [
+            PluginType::AgentBackend,
+            PluginType::PipelineStage,
+            PluginType::Formatter,
+            PluginType::Validator,
+        ];
+
+        for t in types {
+            let json = serde_json::to_string(&t).unwrap();
+            let parsed: PluginType = serde_json::from_str(&json).unwrap();
+            assert_eq!(t, parsed);
+        }
+    }
+
+    #[test]
+    fn test_plugin_type_snake_case() {
+        let json = serde_json::to_string(&PluginType::AgentBackend).unwrap();
+        assert!(json.contains("agent_backend"));
+    }
+
+    // =========================================================================
+    // PluginMetadata Tests
+    // =========================================================================
+
     #[test]
     fn test_plugin_metadata_creation() {
         let meta = PluginMetadata::new("test-plugin", "Test Plugin", "1.0.0", PluginType::PipelineStage)
@@ -368,8 +404,47 @@ mod tests {
         assert_eq!(meta.id, "test-plugin");
         assert_eq!(meta.name, "Test Plugin");
         assert_eq!(meta.version, "1.0.0");
+        assert_eq!(meta.description, "A test plugin");
+        assert_eq!(meta.author, Some("Test Author".to_string()));
         assert_eq!(meta.plugin_type, PluginType::PipelineStage);
     }
+
+    #[test]
+    fn test_plugin_metadata_default_fields() {
+        let meta = PluginMetadata::new("id", "name", "1.0", PluginType::Validator);
+
+        assert!(meta.description.is_empty());
+        assert!(meta.author.is_none());
+        assert!(meta.min_version.is_none());
+        assert!(meta.homepage.is_none());
+        assert!(meta.repository.is_none());
+        assert!(meta.license.is_none());
+        assert!(meta.tags.is_empty());
+    }
+
+    #[test]
+    fn test_plugin_metadata_serialization() {
+        let meta = PluginMetadata::new("test", "Test", "1.0.0", PluginType::Formatter)
+            .with_description("Description");
+
+        let json = serde_json::to_string(&meta).unwrap();
+        let parsed: PluginMetadata = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(meta.id, parsed.id);
+        assert_eq!(meta.name, parsed.name);
+        assert_eq!(meta.description, parsed.description);
+    }
+
+    #[test]
+    fn test_plugin_metadata_clone() {
+        let meta = PluginMetadata::new("id", "name", "1.0", PluginType::AgentBackend);
+        let cloned = meta.clone();
+        assert_eq!(meta.id, cloned.id);
+    }
+
+    // =========================================================================
+    // StandardStage Tests
+    // =========================================================================
 
     #[test]
     fn test_standard_stage_parsing() {
@@ -383,6 +458,120 @@ mod tests {
         );
         assert!(StandardStage::from_str("unknown").is_err());
     }
+
+    #[test]
+    fn test_standard_stage_display() {
+        assert_eq!(StandardStage::Generate.to_string(), "generate");
+        assert_eq!(StandardStage::Assess.to_string(), "assess");
+        assert_eq!(StandardStage::Execute.to_string(), "execute");
+        assert_eq!(StandardStage::Test.to_string(), "test");
+        assert_eq!(StandardStage::Review.to_string(), "review");
+        assert_eq!(StandardStage::Verify.to_string(), "verify");
+        assert_eq!(StandardStage::Commit.to_string(), "commit");
+        assert_eq!(StandardStage::Memory.to_string(), "memory");
+    }
+
+    #[test]
+    fn test_standard_stage_serialization() {
+        for stage in [
+            StandardStage::Generate,
+            StandardStage::Assess,
+            StandardStage::Execute,
+            StandardStage::Test,
+            StandardStage::Review,
+            StandardStage::Verify,
+            StandardStage::Commit,
+            StandardStage::Memory,
+        ] {
+            let json = serde_json::to_string(&stage).unwrap();
+            let parsed: StandardStage = serde_json::from_str(&json).unwrap();
+            assert_eq!(stage, parsed);
+        }
+    }
+
+    #[test]
+    fn test_standard_stage_to_pipeline_stage() {
+        assert!(matches!(
+            StandardStage::Generate.to_pipeline_stage(),
+            crate::models::PipelineStage::Generate
+        ));
+        assert!(matches!(
+            StandardStage::Assess.to_pipeline_stage(),
+            crate::models::PipelineStage::Assess
+        ));
+    }
+
+    // =========================================================================
+    // StagePosition Tests
+    // =========================================================================
+
+    #[test]
+    fn test_stage_position_variants() {
+        let before = StagePosition::Before(StandardStage::Execute);
+        let after = StagePosition::After(StandardStage::Test);
+        let first = StagePosition::First;
+        let last = StagePosition::Last;
+        let replace = StagePosition::Replace(StandardStage::Review);
+
+        // Test equality
+        assert_eq!(first, StagePosition::First);
+        assert_ne!(before, after);
+    }
+
+    #[test]
+    fn test_stage_position_serialization() {
+        let positions = [
+            StagePosition::Before(StandardStage::Generate),
+            StagePosition::After(StandardStage::Execute),
+            StagePosition::First,
+            StagePosition::Last,
+            StagePosition::Replace(StandardStage::Test),
+        ];
+
+        for pos in positions {
+            let json = serde_json::to_string(&pos).unwrap();
+            let parsed: StagePosition = serde_json::from_str(&json).unwrap();
+            assert_eq!(pos, parsed);
+        }
+    }
+
+    // =========================================================================
+    // StageResult Tests
+    // =========================================================================
+
+    #[test]
+    fn test_stage_result_success() {
+        let result = StageResult::success(vec![])
+            .with_metric("count".to_string(), serde_json::json!(42));
+
+        assert!(result.success);
+        assert!(result.error.is_none());
+        assert_eq!(result.metrics.get("count").unwrap(), &serde_json::json!(42));
+    }
+
+    #[test]
+    fn test_stage_result_failure() {
+        let result = StageResult::failure(vec![], "Something went wrong");
+
+        assert!(!result.success);
+        assert_eq!(result.error, Some("Something went wrong".to_string()));
+        assert!(result.metrics.is_empty());
+    }
+
+    #[test]
+    fn test_stage_result_multiple_metrics() {
+        let result = StageResult::success(vec![])
+            .with_metric("a", serde_json::json!(1))
+            .with_metric("b", serde_json::json!(2))
+            .with_metric("c", serde_json::json!(3));
+
+        assert_eq!(result.metrics.len(), 3);
+        assert_eq!(result.metrics.get("a").unwrap(), &serde_json::json!(1));
+    }
+
+    // =========================================================================
+    // CustomStageConfig Tests
+    // =========================================================================
 
     #[test]
     fn test_custom_stage_config() {
@@ -400,12 +589,56 @@ mod tests {
     }
 
     #[test]
-    fn test_stage_result() {
-        let result = StageResult::success(vec![])
-            .with_metric("count".to_string(), serde_json::json!(42));
+    fn test_custom_stage_config_defaults() {
+        let config = CustomStageConfig::new("id", "name", StagePosition::First);
 
-        assert!(result.success);
-        assert!(result.error.is_none());
-        assert_eq!(result.metrics.get("count").unwrap(), &serde_json::json!(42));
+        assert!(config.enabled);
+        assert!(!config.skip_on_failure);
+        assert_eq!(config.timeout_seconds, 3600);
+        assert!(config.config.is_empty());
+        assert!(config.modes.is_empty());
+        assert!(config.plugin.is_none());
+    }
+
+    #[test]
+    fn test_custom_stage_config_modes() {
+        let config = CustomStageConfig::new("id", "name", StagePosition::First)
+            .with_modes(vec!["fast".to_string(), "standard".to_string()]);
+
+        assert!(config.should_run_for_mode(&crate::models::ExecutionMode::Fast));
+        assert!(config.should_run_for_mode(&crate::models::ExecutionMode::Standard));
+        // Note: Expert mode is not in the list, but the test depends on how ExecutionMode::to_string() works
+    }
+
+    #[test]
+    fn test_custom_stage_config_empty_modes_runs_all() {
+        let config = CustomStageConfig::new("id", "name", StagePosition::First);
+
+        // Empty modes should run for all modes
+        assert!(config.should_run_for_mode(&crate::models::ExecutionMode::Fast));
+        assert!(config.should_run_for_mode(&crate::models::ExecutionMode::Standard));
+        assert!(config.should_run_for_mode(&crate::models::ExecutionMode::Expert));
+    }
+
+    #[test]
+    fn test_custom_stage_config_serialization() {
+        let config = CustomStageConfig::new("id", "name", StagePosition::Last)
+            .with_description("desc")
+            .with_enabled(false);
+
+        let json = serde_json::to_string(&config).unwrap();
+        let parsed: CustomStageConfig = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(config.id, parsed.id);
+        assert_eq!(config.name, parsed.name);
+        assert_eq!(config.enabled, parsed.enabled);
+    }
+
+    #[test]
+    fn test_custom_stage_config_with_enabled() {
+        let config = CustomStageConfig::new("id", "name", StagePosition::First)
+            .with_enabled(false);
+
+        assert!(!config.enabled);
     }
 }

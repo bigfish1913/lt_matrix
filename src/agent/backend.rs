@@ -559,3 +559,364 @@ pub trait AgentBackend: Send + Sync {
         self.agent().name.as_str()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // =========================================================================
+    // AgentError Tests
+    // =========================================================================
+
+    #[test]
+    fn test_agent_error_command_not_found() {
+        let error = AgentError::CommandNotFound {
+            command: "claude".to_string(),
+        };
+        assert_eq!(
+            error.to_string(),
+            "Agent command 'claude' not found"
+        );
+    }
+
+    #[test]
+    fn test_agent_error_execution_failed() {
+        let error = AgentError::ExecutionFailed {
+            command: "opencode".to_string(),
+            message: "Process exited with code 1".to_string(),
+        };
+        assert_eq!(
+            error.to_string(),
+            "Agent 'opencode' execution failed: Process exited with code 1"
+        );
+    }
+
+    #[test]
+    fn test_agent_error_timeout() {
+        let error = AgentError::Timeout {
+            command: "kimi-code".to_string(),
+            timeout_secs: 3600,
+        };
+        assert_eq!(
+            error.to_string(),
+            "Agent 'kimi-code' timed out after 3600 seconds"
+        );
+    }
+
+    #[test]
+    fn test_agent_error_invalid_response() {
+        let error = AgentError::InvalidResponse {
+            reason: "JSON parse error".to_string(),
+        };
+        assert_eq!(
+            error.to_string(),
+            "Invalid agent response: JSON parse error"
+        );
+    }
+
+    #[test]
+    fn test_agent_error_config_validation() {
+        let error = AgentError::ConfigValidation {
+            field: "timeout_secs".to_string(),
+            message: "Timeout must be greater than 0".to_string(),
+        };
+        assert_eq!(
+            error.to_string(),
+            "Config validation failed for 'timeout_secs': Timeout must be greater than 0"
+        );
+    }
+
+    #[test]
+    fn test_agent_error_session_not_found() {
+        let error = AgentError::SessionNotFound {
+            session_id: "abc-123".to_string(),
+        };
+        assert_eq!(
+            error.to_string(),
+            "Session 'abc-123' not found"
+        );
+    }
+
+    #[test]
+    fn test_agent_error_is_std_error() {
+        let error = AgentError::CommandNotFound {
+            command: "test".to_string(),
+        };
+        // Verify it implements std::error::Error
+        let _: &dyn std::error::Error = &error;
+    }
+
+    // =========================================================================
+    // AgentConfig Tests
+    // =========================================================================
+
+    #[test]
+    fn test_agent_config_default() {
+        let config = AgentConfig::default();
+        assert_eq!(config.name, "claude");
+        assert_eq!(config.model, "claude-sonnet-4-6");
+        assert_eq!(config.command, "claude");
+        assert_eq!(config.timeout_secs, 3600);
+        assert_eq!(config.max_retries, 3);
+        assert!(config.enable_session);
+    }
+
+    #[test]
+    fn test_agent_config_validate_valid() {
+        let config = AgentConfig::default();
+        assert!(config.validate().is_ok());
+    }
+
+    #[test]
+    fn test_agent_config_validate_empty_name() {
+        let config = AgentConfig {
+            name: "".to_string(),
+            ..Default::default()
+        };
+        let result = config.validate();
+        assert!(result.is_err());
+        if let Err(AgentError::ConfigValidation { field, .. }) = result {
+            assert_eq!(field, "name");
+        } else {
+            panic!("Expected ConfigValidation error");
+        }
+    }
+
+    #[test]
+    fn test_agent_config_validate_whitespace_name() {
+        let config = AgentConfig {
+            name: "   ".to_string(),
+            ..Default::default()
+        };
+        let result = config.validate();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_agent_config_validate_empty_model() {
+        let config = AgentConfig {
+            model: "".to_string(),
+            ..Default::default()
+        };
+        let result = config.validate();
+        assert!(result.is_err());
+        if let Err(AgentError::ConfigValidation { field, .. }) = result {
+            assert_eq!(field, "model");
+        } else {
+            panic!("Expected ConfigValidation error");
+        }
+    }
+
+    #[test]
+    fn test_agent_config_validate_empty_command() {
+        let config = AgentConfig {
+            command: "".to_string(),
+            ..Default::default()
+        };
+        let result = config.validate();
+        assert!(result.is_err());
+        if let Err(AgentError::ConfigValidation { field, .. }) = result {
+            assert_eq!(field, "command");
+        } else {
+            panic!("Expected ConfigValidation error");
+        }
+    }
+
+    #[test]
+    fn test_agent_config_validate_zero_timeout() {
+        let config = AgentConfig {
+            timeout_secs: 0,
+            ..Default::default()
+        };
+        let result = config.validate();
+        assert!(result.is_err());
+        if let Err(AgentError::ConfigValidation { field, .. }) = result {
+            assert_eq!(field, "timeout_secs");
+        } else {
+            panic!("Expected ConfigValidation error");
+        }
+    }
+
+    // =========================================================================
+    // AgentConfigBuilder Tests
+    // =========================================================================
+
+    #[test]
+    fn test_agent_config_builder_default() {
+        let config = AgentConfig::builder().build();
+        assert_eq!(config.name, "claude");
+    }
+
+    #[test]
+    fn test_agent_config_builder_custom() {
+        let config = AgentConfig::builder()
+            .name("opencode")
+            .model("gpt-4")
+            .command("opencode")
+            .timeout_secs(7200)
+            .max_retries(5)
+            .enable_session(false)
+            .build();
+
+        assert_eq!(config.name, "opencode");
+        assert_eq!(config.model, "gpt-4");
+        assert_eq!(config.command, "opencode");
+        assert_eq!(config.timeout_secs, 7200);
+        assert_eq!(config.max_retries, 5);
+        assert!(!config.enable_session);
+    }
+
+    #[test]
+    fn test_agent_config_builder_chaining() {
+        let config = AgentConfig::builder()
+            .name("a")
+            .model("b")
+            .command("c")
+            .timeout_secs(1)
+            .max_retries(0)
+            .enable_session(true)
+            .build();
+
+        assert_eq!(config.name, "a");
+        assert_eq!(config.model, "b");
+        assert_eq!(config.command, "c");
+        assert_eq!(config.timeout_secs, 1);
+        assert_eq!(config.max_retries, 0);
+        assert!(config.enable_session);
+    }
+
+    // =========================================================================
+    // MemorySession Tests
+    // =========================================================================
+
+    #[test]
+    fn test_memory_session_default() {
+        let session = MemorySession::default();
+        assert!(!session.session_id.is_empty());
+        assert_eq!(session.agent_name, "claude");
+        assert_eq!(session.model, "claude-sonnet-4-6");
+        assert_eq!(session.reuse_count, 0);
+    }
+
+    #[test]
+    fn test_memory_session_mark_accessed() {
+        let mut session = MemorySession::default();
+        assert_eq!(session.reuse_count, 0);
+
+        session.mark_accessed();
+        assert_eq!(session.reuse_count, 1);
+
+        session.mark_accessed();
+        assert_eq!(session.reuse_count, 2);
+    }
+
+    #[test]
+    fn test_memory_session_not_stale_initially() {
+        let session = MemorySession::default();
+        assert!(!session.is_stale());
+    }
+
+    #[test]
+    fn test_memory_session_is_stale_after_time() {
+        let session = MemorySession {
+            session_id: "test".to_string(),
+            agent_name: "claude".to_string(),
+            model: "claude-sonnet-4-6".to_string(),
+            created_at: chrono::Utc::now() - chrono::Duration::hours(2),
+            last_accessed: chrono::Utc::now() - chrono::Duration::hours(2),
+            reuse_count: 0,
+        };
+        assert!(session.is_stale());
+    }
+
+    #[test]
+    fn test_memory_session_trait_implementation() {
+        let mut session = MemorySession::default();
+
+        // Test trait methods
+        let _ = session.session_id();
+        let _ = session.agent_name();
+        let _ = session.model();
+        let _ = session.created_at();
+        let _ = session.last_accessed();
+        let _ = session.reuse_count();
+        session.mark_accessed();
+        let _ = session.is_stale();
+    }
+
+    // =========================================================================
+    // AgentResponse Tests
+    // =========================================================================
+
+    #[test]
+    fn test_agent_response_default() {
+        let response = AgentResponse::default();
+        assert!(response.output.is_empty());
+        assert!(response.structured_data.is_none());
+        assert!(!response.is_complete);
+        assert!(response.error.is_none());
+    }
+
+    #[test]
+    fn test_agent_response_with_output() {
+        let response = AgentResponse {
+            output: "Task completed".to_string(),
+            structured_data: Some(serde_json::json!({"key": "value"})),
+            is_complete: true,
+            error: None,
+        };
+        assert_eq!(response.output, "Task completed");
+        assert!(response.structured_data.is_some());
+        assert!(response.is_complete);
+    }
+
+    #[test]
+    fn test_agent_response_with_error() {
+        let response = AgentResponse {
+            output: String::new(),
+            structured_data: None,
+            is_complete: false,
+            error: Some("Execution failed".to_string()),
+        };
+        assert!(response.error.is_some());
+        assert_eq!(response.error.unwrap(), "Execution failed");
+    }
+
+    // =========================================================================
+    // ExecutionConfig Tests
+    // =========================================================================
+
+    #[test]
+    fn test_execution_config_default() {
+        let config = ExecutionConfig::default();
+        assert_eq!(config.model, "claude-sonnet-4-6");
+        assert_eq!(config.max_retries, 3);
+        assert_eq!(config.timeout, 3600);
+        assert!(config.enable_session);
+        assert!(config.env_vars.is_empty());
+    }
+
+    #[test]
+    fn test_execution_config_custom() {
+        let config = ExecutionConfig {
+            model: "claude-opus-4-6".to_string(),
+            max_retries: 5,
+            timeout: 7200,
+            enable_session: false,
+            env_vars: vec![("KEY".to_string(), "VALUE".to_string())],
+        };
+        assert_eq!(config.model, "claude-opus-4-6");
+        assert_eq!(config.max_retries, 5);
+        assert_eq!(config.timeout, 7200);
+        assert!(!config.enable_session);
+        assert_eq!(config.env_vars.len(), 1);
+    }
+
+    #[test]
+    fn test_execution_config_clone() {
+        let config = ExecutionConfig::default();
+        let cloned = config.clone();
+        assert_eq!(config.model, cloned.model);
+        assert_eq!(config.timeout, cloned.timeout);
+    }
+}
