@@ -1,0 +1,30 @@
+{
+  "output": "I've analyzed the requirements and broken down the goal into the following tasks:\n\n```json\n{\n  \"tasks\": [\n    {\n      \"id\": \"task-001\",\n      \"title\": \"Setup project structure\",\n      \"description\": \"Create basic directory layout and initial configuration files\",\n      \"complexity\": \"simple\",\n      \"depends_on\": []\n    },\n    {\n      \"id\": \"task-002\",\n      \"title\": \"Implement core module\",\n      \"description\": \"Create the main module with basic functionality\",\n      \"complexity\": \"moderate\",\n      \"depends_on\": [\"task-001\"]\n    },\n    {\n      \"id\": \"task-003\",\n      \"title\": \"Add tests\",\n      \"description\": \"Write comprehensive unit tests\",\n      \"complexity\": \"moderate\",\n      \"depends_on\": [\"task-002\"]\n    }\n  ]\n}\n```\n\nThe tasks are ordered by dependency, with each task building on the previous one.",
+  "structured_data": {
+    "tasks": [
+      {
+        "id": "task-001",
+        "title": "Setup project structure",
+        "description": "Create basic directory layout and initial configuration files",
+        "complexity": "simple",
+        "depends_on": []
+      },
+      {
+        "id": "task-002",
+        "title": "Implement core module",
+        "description": "Create the main module with basic functionality",
+        "complexity": "moderate",
+        "depends_on": ["task-001"]
+      },
+      {
+        "id": "task-003",
+        "title": "Add tests",
+        "description": "Write comprehensive unit tests",
+        "complexity": "moderate",
+        "depends_on": ["task-002"]
+      }
+    ]
+  },
+  "is_complete": true,
+  "error": null
+}

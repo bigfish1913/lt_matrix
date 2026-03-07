@@ -1,0 +1,20 @@
+{
+  "output": "I've reviewed the implementation against the original requirements.\n\n```json\n{\n  \"passed\": false,\n  \"reasoning\": \"The implementation is missing critical functionality for error handling. The code will panic on invalid input.\",\n  \"unmet_criteria\": [\n    \"Missing error handling for edge cases\",\n    \"No validation of user input\",\n    \"Test coverage below required threshold\"\n  ],\n  \"suggestions\": [\n    \"Add input validation before processing\",\n    \"Implement proper error types using thiserror\",\n    \"Add unit tests for error scenarios\"\n  ],\n  \"retry_recommended\": true\n}\n```\n\nThe task needs additional work to meet the requirements.",
+  "structured_data": {
+    "passed": false,
+    "reasoning": "The implementation is missing critical functionality for error handling. The code will panic on invalid input.",
+    "unmet_criteria": [
+      "Missing error handling for edge cases",
+      "No validation of user input",
+      "Test coverage below required threshold"
+    ],
+    "suggestions": [
+      "Add input validation before processing",
+      "Implement proper error types using thiserror",
+      "Add unit tests for error scenarios"
+    ],
+    "retry_recommended": true
+  },
+  "is_complete": false,
+  "error": null
+}

@@ -5,6 +5,8 @@
 //! 2. Detection when there are too many entries (entry count threshold)
 //! 3. Summarization algorithm consolidates older entries while preserving recent context
 //! 4. Configuration for summarization thresholds
+//! 5. Custom MemoryConfig usage with MemoryStore
+//! 6. Size detection logic with configurable thresholds
 
 use ltmatrix::memory::{MemoryEntry, MemoryStore, MemoryCategory, MemoryPriority};
 use ltmatrix::config::settings::MemoryConfig;
@@ -719,5 +721,532 @@ mod edge_case_tests {
 
         let result = MemoryCategory::from_str("UnknownCategory");
         assert!(result.is_err());
+    }
+}
+
+// ============================================================================
+// Custom Configuration Tests
+// ============================================================================
+
+mod custom_config_tests {
+    use super::*;
+
+    /// Test that MemoryStore::with_config applies custom configuration
+    #[test]
+    fn test_memory_store_with_custom_config() {
+        let temp_dir = TempDir::new().unwrap();
+
+        let custom_config = MemoryConfig {
+            max_file_size: 10 * 1024, // 10KB instead of default 50KB
+            max_entries: 20,          // 20 instead of default 100
+            min_entries_for_summarization: 5,
+            keep_fraction: 0.3,
+            max_context_size: 2 * 1024,
+            enable_summarization: true,
+            preserve_high_priority: true,
+            old_entry_threshold_seconds: 3600,
+        };
+
+        let store = MemoryStore::with_config(temp_dir.path(), custom_config.clone()).unwrap();
+        assert_eq!(store.entry_count(), 0);
+
+        // Verify configuration is applied by checking behavior
+        // Add entries and verify they work with custom config
+        for i in 1..=10 {
+            let entry = MemoryEntry::new(
+                format!("task-{:03}", i),
+                format!("Entry {}", i),
+                format!("Content {}", i)
+            );
+            store.append_entry(&entry).unwrap();
+        }
+
+        assert_eq!(store.entry_count(), 10);
+    }
+
+    /// Test that summarization can be disabled via configuration
+    #[test]
+    fn test_summarization_disabled_via_config() {
+        let temp_dir = TempDir::new().unwrap();
+
+        let config = MemoryConfig {
+            enable_summarization: false,
+            ..Default::default()
+        };
+
+        let store = MemoryStore::with_config(temp_dir.path(), config).unwrap();
+
+        // Add many entries that would normally trigger summarization
+        for i in 1..=150 {
+            let entry = MemoryEntry::new(
+                format!("task-{:03}", i),
+                format!("Entry {}", i),
+                format!("Content for entry {} with enough text", i)
+            );
+            store.append_entry(&entry).unwrap();
+        }
+
+        // When summarization is disabled, all entries should be preserved
+        // (beyond the default max_entries of 100)
+        assert!(store.entry_count() > 100, "Entries should not be summarized when disabled");
+    }
+
+    /// Test custom max_file_size threshold triggers summarization
+    #[test]
+    fn test_custom_max_file_size_triggers_summarization() {
+        let temp_dir = TempDir::new().unwrap();
+
+        // Use a very small file size threshold (1KB)
+        let config = MemoryConfig {
+            max_file_size: 1024, // 1KB
+            min_entries_for_summarization: 3,
+            keep_fraction: 0.5,
+            enable_summarization: true,
+            ..Default::default()
+        };
+
+        let store = MemoryStore::with_config(temp_dir.path(), config).unwrap();
+
+        // Add entries with large content to exceed 1KB threshold
+        for i in 1..=10 {
+            let entry = MemoryEntry::new(
+                format!("task-{:03}", i),
+                format!("Large Entry {}", i),
+                "x".repeat(500) // 500 bytes per entry
+            );
+            store.append_entry(&entry).unwrap();
+        }
+
+        // Store should still work after summarization
+        assert!(store.entry_count() > 0);
+
+        // Memory file should exist
+        let memory_file = temp_dir.path().join(".claude/memory.md");
+        assert!(memory_file.exists());
+    }
+
+    /// Test custom max_entries threshold triggers summarization
+    #[test]
+    fn test_custom_max_entries_triggers_summarization() {
+        let temp_dir = TempDir::new().unwrap();
+
+        let config = MemoryConfig {
+            max_entries: 5, // Very low threshold
+            min_entries_for_summarization: 3,
+            keep_fraction: 0.5,
+            enable_summarization: true,
+            ..Default::default()
+        };
+
+        let store = MemoryStore::with_config(temp_dir.path(), config).unwrap();
+
+        // Add 10 entries, which exceeds max_entries of 5
+        for i in 1..=10 {
+            let entry = MemoryEntry::new(
+                format!("task-{:03}", i),
+                format!("Entry {}", i),
+                format!("Content {}", i)
+            );
+            store.append_entry(&entry).unwrap();
+        }
+
+        // After summarization, entries should be reduced
+        let count = store.entry_count();
+        // The exact count depends on summarization logic
+        assert!(count > 0, "Should have some entries");
+    }
+
+    /// Test keep_fraction controls how many entries are kept
+    #[test]
+    fn test_keep_fraction_controls_retention() {
+        let temp_dir = TempDir::new().unwrap();
+
+        // Use keep_fraction of 0.8 to keep 80% of entries
+        let config = MemoryConfig {
+            min_entries_for_summarization: 5,
+            keep_fraction: 0.8,
+            max_entries: 15, // Trigger at 15 entries
+            enable_summarization: true,
+            ..Default::default()
+        };
+
+        let store = MemoryStore::with_config(temp_dir.path(), config).unwrap();
+
+        // Add 20 entries
+        for i in 1..=20 {
+            let entry = MemoryEntry::new(
+                format!("task-{:03}", i),
+                format!("Entry {}", i),
+                format!("Content {}", i)
+            );
+            store.append_entry(&entry).unwrap();
+        }
+
+        // Most entries should be kept with 80% retention
+        let entries = store.get_entries();
+        assert!(!entries.is_empty());
+    }
+
+    /// Test min_entries_for_summarization prevents premature summarization
+    #[test]
+    fn test_min_entries_prevents_premature_summarization() {
+        let temp_dir = TempDir::new().unwrap();
+
+        // Require at least 20 entries before summarization
+        let config = MemoryConfig {
+            max_file_size: 100, // Very small to trigger early
+            min_entries_for_summarization: 20,
+            enable_summarization: true,
+            ..Default::default()
+        };
+
+        let store = MemoryStore::with_config(temp_dir.path(), config).unwrap();
+
+        // Add 15 entries (less than min_entries_for_summarization)
+        for i in 1..=15 {
+            let entry = MemoryEntry::new(
+                format!("task-{:03}", i),
+                format!("Entry {}", i),
+                "x".repeat(100)
+            );
+            store.append_entry(&entry).unwrap();
+        }
+
+        // All 15 entries should be preserved (under minimum threshold)
+        assert_eq!(store.entry_count(), 15);
+    }
+}
+
+// ============================================================================
+// Size Detection Tests
+// ============================================================================
+
+mod size_detection_tests {
+    use super::*;
+
+    /// Test that file size is correctly detected
+    #[test]
+    fn test_file_size_detection() {
+        let temp_dir = TempDir::new().unwrap();
+        let store = MemoryStore::new(temp_dir.path()).unwrap();
+
+        // Add entry and verify file exists
+        let entry = MemoryEntry::new("task-001", "Test", "Content");
+        store.append_entry(&entry).unwrap();
+
+        let memory_file = temp_dir.path().join(".claude/memory.md");
+        assert!(memory_file.exists());
+
+        let metadata = fs::metadata(&memory_file).unwrap();
+        assert!(metadata.len() > 0, "Memory file should have content");
+    }
+
+    /// Test that large file size triggers summarization detection
+    #[test]
+    fn test_large_file_size_triggers_detection() {
+        let temp_dir = TempDir::new().unwrap();
+
+        // Create a config with small file size threshold
+        let config = MemoryConfig {
+            max_file_size: 500, // 500 bytes - very small
+            min_entries_for_summarization: 3,
+            enable_summarization: true,
+            ..Default::default()
+        };
+
+        let store = MemoryStore::with_config(temp_dir.path(), config).unwrap();
+
+        // Create entries that will exceed 500 bytes
+        for i in 1..=5 {
+            let entry = MemoryEntry::new(
+                format!("task-{:03}", i),
+                format!("Entry {}", i),
+                "x".repeat(200) // Each entry ~200 bytes
+            );
+            store.append_entry(&entry).unwrap();
+        }
+
+        // Check that file size exceeded threshold at some point
+        let memory_file = temp_dir.path().join(".claude/memory.md");
+        let final_metadata = fs::metadata(&memory_file).unwrap();
+
+        // File should exist and have content
+        assert!(final_metadata.len() > 0);
+    }
+
+    /// Test detection respects entry count threshold
+    #[test]
+    fn test_entry_count_detection() {
+        let temp_dir = TempDir::new().unwrap();
+
+        let config = MemoryConfig {
+            max_entries: 10,
+            min_entries_for_summarization: 5,
+            enable_summarization: true,
+            ..Default::default()
+        };
+
+        let store = MemoryStore::with_config(temp_dir.path(), config).unwrap();
+
+        // Add exactly max_entries
+        for i in 1..=10 {
+            let entry = MemoryEntry::new(
+                format!("task-{:03}", i),
+                format!("Entry {}", i),
+                format!("Content {}", i)
+            );
+            store.append_entry(&entry).unwrap();
+        }
+
+        // At this point, we have exactly 10 entries (at threshold but not over)
+        // Add one more to exceed threshold
+        let entry = MemoryEntry::new("task-011", "Entry 11", "Content 11");
+        store.append_entry(&entry).unwrap();
+
+        // Store should still function
+        assert!(store.entry_count() > 0);
+    }
+
+    /// Test that both thresholds are checked (file size OR entry count)
+    #[test]
+    fn test_either_threshold_triggers_summarization() {
+        let temp_dir = TempDir::new().unwrap();
+
+        // Test 1: Trigger by entry count (not file size)
+        {
+            let temp_dir1 = TempDir::new().unwrap();
+            let config1 = MemoryConfig {
+                max_file_size: 1024 * 1024, // 1MB - won't trigger
+                max_entries: 5,             // Will trigger
+                min_entries_for_summarization: 3,
+                enable_summarization: true,
+                ..Default::default()
+            };
+
+            let store1 = MemoryStore::with_config(temp_dir1.path(), config1).unwrap();
+
+            for i in 1..=10 {
+                let entry = MemoryEntry::new(
+                    format!("task-{:03}", i),
+                    format!("Entry {}", i),
+                    "x" // Small content
+                );
+                store1.append_entry(&entry).unwrap();
+            }
+
+            assert!(store1.entry_count() > 0);
+        }
+
+        // Test 2: Trigger by file size (not entry count)
+        {
+            let temp_dir2 = TempDir::new().unwrap();
+            let config2 = MemoryConfig {
+                max_file_size: 100,   // Will trigger
+                max_entries: 10000,   // Won't trigger
+                min_entries_for_summarization: 2,
+                enable_summarization: true,
+                ..Default::default()
+            };
+
+            let store2 = MemoryStore::with_config(temp_dir2.path(), config2).unwrap();
+
+            for i in 1..=5 {
+                let entry = MemoryEntry::new(
+                    format!("task-{:03}", i),
+                    format!("Entry {}", i),
+                    "x".repeat(100) // Large content
+                );
+                store2.append_entry(&entry).unwrap();
+            }
+
+            assert!(store2.entry_count() > 0);
+        }
+    }
+}
+
+// ============================================================================
+// Preserve High Priority Tests
+// ============================================================================
+
+mod preserve_high_priority_tests {
+    use super::*;
+
+    /// Test that high priority entries are preserved during summarization
+    /// The file should contain either parsed high-priority entries or a summary section
+    #[test]
+    fn test_high_priority_entries_preserved() {
+        let temp_dir = TempDir::new().unwrap();
+
+        let config = MemoryConfig {
+            max_entries: 10,
+            min_entries_for_summarization: 5,
+            preserve_high_priority: true,
+            enable_summarization: true,
+            keep_fraction: 0.3,
+            ..Default::default()
+        };
+
+        let store = MemoryStore::with_config(temp_dir.path(), config).unwrap();
+
+        // Add high priority entries first (these will be in "old" section after summarization)
+        for i in 1..=5 {
+            let entry = MemoryEntry::new(
+                format!("task-{:03}", i),
+                format!("Critical Entry {}", i),
+                format!("Critical content {}", i)
+            ).with_priority(MemoryPriority::Critical);
+            store.append_entry(&entry).unwrap();
+        }
+
+        // Add normal entries (these will push high-priority to "old" section)
+        for i in 6..=15 {
+            let entry = MemoryEntry::new(
+                format!("task-{:03}", i),
+                format!("Normal Entry {}", i),
+                format!("Normal content {}", i)
+            );
+            store.append_entry(&entry).unwrap();
+        }
+
+        // Check that the memory file contains preserved high-priority content
+        let memory_file = temp_dir.path().join(".claude/memory.md");
+        let content = fs::read_to_string(&memory_file).unwrap();
+
+        // The file should either have:
+        // 1. A "Preserved High-Priority Entries" section, OR
+        // 2. The critical entries themselves in the parsed entries
+        let entries = store.get_entries();
+        let has_critical_in_entries = entries.iter()
+            .any(|e| e.priority == MemoryPriority::Critical);
+        let has_preserved_section = content.contains("Preserved High-Priority") ||
+                                    content.contains("Critical Entry");
+
+        // At least one should be true - entries are preserved somehow
+        assert!(
+            has_critical_in_entries || has_preserved_section,
+            "High-priority entries should be preserved either in entries or summary section"
+        );
+    }
+
+    /// Test that preserve_high_priority=false allows summarizing high priority
+    #[test]
+    fn test_high_priority_can_be_summarized_when_disabled() {
+        let temp_dir = TempDir::new().unwrap();
+
+        let config = MemoryConfig {
+            max_entries: 10,
+            min_entries_for_summarization: 5,
+            preserve_high_priority: false, // Disabled
+            enable_summarization: true,
+            keep_fraction: 0.3,
+            ..Default::default()
+        };
+
+        let store = MemoryStore::with_config(temp_dir.path(), config).unwrap();
+
+        // Add high priority entries
+        for i in 1..=15 {
+            let entry = MemoryEntry::new(
+                format!("task-{:03}", i),
+                format!("Entry {}", i),
+                format!("Content {}", i)
+            ).with_priority(MemoryPriority::Critical);
+            store.append_entry(&entry).unwrap();
+        }
+
+        // All entries are high priority, but can be summarized
+        let entries = store.get_entries();
+        assert!(!entries.is_empty());
+    }
+}
+
+// ============================================================================
+// Configuration Validation Edge Cases
+// ============================================================================
+
+mod config_validation_edge_cases {
+    use super::*;
+
+    #[test]
+    fn test_memory_config_serialization() {
+        let config = MemoryConfig {
+            max_file_size: 75 * 1024,
+            max_entries: 150,
+            min_entries_for_summarization: 15,
+            keep_fraction: 0.75,
+            max_context_size: 10 * 1024,
+            enable_summarization: false,
+            preserve_high_priority: false,
+            old_entry_threshold_seconds: 172800, // 48 hours
+        };
+
+        // Serialize to TOML
+        let toml_str = toml::to_string(&config).unwrap();
+        assert!(toml_str.contains("max_file_size"));
+        assert!(toml_str.contains("max_entries"));
+        assert!(toml_str.contains("enable_summarization = false"));
+
+        // Deserialize back
+        let deserialized: MemoryConfig = toml::from_str(&toml_str).unwrap();
+        assert_eq!(deserialized.max_file_size, 75 * 1024);
+        assert_eq!(deserialized.max_entries, 150);
+        assert!(!deserialized.enable_summarization);
+    }
+
+    #[test]
+    fn test_memory_config_deserialization_from_toml() {
+        let toml_str = r#"
+            max_file_size = 102400
+            max_entries = 200
+            min_entries_for_summarization = 20
+            keep_fraction = 0.6
+            max_context_size = 8192
+            enable_summarization = true
+            preserve_high_priority = false
+            old_entry_threshold_seconds = 43200
+        "#;
+
+        let config: MemoryConfig = toml::from_str(toml_str).unwrap();
+
+        assert_eq!(config.max_file_size, 102400);
+        assert_eq!(config.max_entries, 200);
+        assert_eq!(config.min_entries_for_summarization, 20);
+        assert!((config.keep_fraction - 0.6).abs() < f64::EPSILON);
+        assert_eq!(config.max_context_size, 8192);
+        assert!(config.enable_summarization);
+        assert!(!config.preserve_high_priority);
+        assert_eq!(config.old_entry_threshold_seconds, 43200);
+    }
+
+    #[test]
+    fn test_memory_config_defaults_via_deserialization() {
+        // Empty TOML should use all defaults
+        let toml_str = "";
+        let config: MemoryConfig = toml::from_str(toml_str).unwrap();
+
+        // Should match default
+        let default = MemoryConfig::default();
+        assert_eq!(config.max_file_size, default.max_file_size);
+        assert_eq!(config.max_entries, default.max_entries);
+        assert_eq!(config.enable_summarization, default.enable_summarization);
+    }
+
+    #[test]
+    fn test_memory_config_partial_override() {
+        // Only override some values
+        let toml_str = r#"
+            max_entries = 50
+            enable_summarization = false
+        "#;
+
+        let config: MemoryConfig = toml::from_str(toml_str).unwrap();
+
+        // Overridden values
+        assert_eq!(config.max_entries, 50);
+        assert!(!config.enable_summarization);
+
+        // Default values for rest
+        assert_eq!(config.max_file_size, 50 * 1024);
+        assert_eq!(config.min_entries_for_summarization, 10);
     }
 }

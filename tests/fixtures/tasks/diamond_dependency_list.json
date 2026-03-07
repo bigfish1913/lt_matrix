@@ -1,0 +1,45 @@
+{
+  "tasks": [
+    {
+      "id": "task-root",
+      "title": "Root Task",
+      "description": "The starting point of the diamond pattern",
+      "status": "pending",
+      "complexity": "simple",
+      "depends_on": [],
+      "subtasks": [],
+      "retry_count": 0
+    },
+    {
+      "id": "task-left",
+      "title": "Left Branch",
+      "description": "Left branch of the diamond",
+      "status": "pending",
+      "complexity": "moderate",
+      "depends_on": ["task-root"],
+      "subtasks": [],
+      "retry_count": 0
+    },
+    {
+      "id": "task-right",
+      "title": "Right Branch",
+      "description": "Right branch of the diamond - can run in parallel with left",
+      "status": "pending",
+      "complexity": "moderate",
+      "depends_on": ["task-root"],
+      "subtasks": [],
+      "retry_count": 0
+    },
+    {
+      "id": "task-merge",
+      "title": "Merge Task",
+      "description": "Merges results from both branches",
+      "status": "pending",
+      "complexity": "simple",
+      "depends_on": ["task-left", "task-right"],
+      "subtasks": [],
+      "retry_count": 0
+    }
+  ],
+  "_comment": "Diamond dependency pattern: task-root -> (task-left, task-right) -> task-merge. Left and Right can execute in parallel."
+}

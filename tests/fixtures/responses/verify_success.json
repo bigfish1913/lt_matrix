@@ -1,0 +1,15 @@
+{
+  "output": "I've reviewed the implementation against the original requirements.\n\n```json\n{\n  \"passed\": true,\n  \"reasoning\": \"The implementation correctly fulfills all the stated requirements. The code is well-structured, includes proper error handling, and follows the project's coding conventions.\",\n  \"unmet_criteria\": [],\n  \"suggestions\": [\n    \"Consider adding more inline documentation for complex logic\",\n    \"The error handling could benefit from custom error types\"\n  ],\n  \"retry_recommended\": false\n}\n```\n\nThe task has been completed successfully.",
+  "structured_data": {
+    "passed": true,
+    "reasoning": "The implementation correctly fulfills all the stated requirements. The code is well-structured, includes proper error handling, and follows the project's coding conventions.",
+    "unmet_criteria": [],
+    "suggestions": [
+      "Consider adding more inline documentation for complex logic",
+      "The error handling could benefit from custom error types"
+    ],
+    "retry_recommended": false
+  },
+  "is_complete": true,
+  "error": null
+}

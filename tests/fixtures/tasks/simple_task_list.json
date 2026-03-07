@@ -1,0 +1,34 @@
+{
+  "tasks": [
+    {
+      "id": "task-001",
+      "title": "Initialize project structure",
+      "description": "Create the basic directory structure and initial files for the project",
+      "status": "pending",
+      "complexity": "simple",
+      "depends_on": [],
+      "subtasks": [],
+      "retry_count": 0
+    },
+    {
+      "id": "task-002",
+      "title": "Add core dependencies",
+      "description": "Configure Cargo.toml with required dependencies",
+      "status": "pending",
+      "complexity": "simple",
+      "depends_on": ["task-001"],
+      "subtasks": [],
+      "retry_count": 0
+    },
+    {
+      "id": "task-003",
+      "title": "Implement main module",
+      "description": "Create the main entry point and basic CLI structure",
+      "status": "pending",
+      "complexity": "moderate",
+      "depends_on": ["task-002"],
+      "subtasks": [],
+      "retry_count": 0
+    }
+  ]
+}

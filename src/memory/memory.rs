@@ -66,6 +66,8 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 use tracing::{debug, info};
 
+use crate::config::settings::MemoryConfig;
+
 /// Maximum memory file size before triggering summarization (in bytes)
 const MAX_MEMORY_SIZE: usize = 50 * 1024; // 50KB
 
@@ -583,11 +585,19 @@ pub struct MemoryStore {
 
     /// In-memory cache of entries (for faster access)
     entries: Arc<RwLock<Vec<MemoryEntry>>>,
+
+    /// Configuration for memory management
+    config: MemoryConfig,
 }
 
 impl MemoryStore {
-    /// Create a new memory store for the given project root
+    /// Create a new memory store for the given project root with default configuration
     pub fn new(project_root: impl AsRef<Path>) -> Result<Self> {
+        Self::with_config(project_root, MemoryConfig::default())
+    }
+
+    /// Create a new memory store with custom configuration
+    pub fn with_config(project_root: impl AsRef<Path>, config: MemoryConfig) -> Result<Self> {
         let project_root = project_root.as_ref().canonicalize()
             .context("Failed to canonicalize project root path")?;
         let memory_file = project_root.join(MEMORY_FILE_PATH);
@@ -605,6 +615,7 @@ impl MemoryStore {
             project_root,
             memory_file,
             entries: Arc::new(RwLock::new(Vec::new())),
+            config,
         };
 
         // Load existing entries
@@ -720,6 +731,11 @@ impl MemoryStore {
 
     /// Check if summarization is needed and perform it
     fn check_and_summarize(&self) -> Result<()> {
+        // Skip if summarization is disabled
+        if !self.config.enable_summarization {
+            return Ok(());
+        }
+
         // Check file size
         if !self.memory_file.exists() {
             return Ok(());
@@ -729,10 +745,12 @@ impl MemoryStore {
             .context("Failed to get memory file metadata")?;
 
         let entries = self.entries.read().unwrap();
-        let needs_summarization = metadata.len() as usize > MAX_MEMORY_SIZE
-            || entries.len() > MAX_ENTRIES;
 
-        if needs_summarization {
+        // Use configurable thresholds
+        let needs_summarization = metadata.len() as usize > self.config.max_file_size
+            || entries.len() > self.config.max_entries;
+
+        if needs_summarization && entries.len() >= self.config.min_entries_for_summarization {
             info!("Memory file exceeds threshold, triggering summarization");
             drop(entries); // Release lock before summarization
             self.summarize()?;
@@ -745,19 +763,29 @@ impl MemoryStore {
     fn summarize(&self) -> Result<()> {
         let entries = self.entries.read().unwrap();
 
-        if entries.len() < 10 {
+        if entries.len() < self.config.min_entries_for_summarization {
             return Ok(()); // Not enough entries to summarize
         }
 
-        // Keep recent entries and summarize old ones
-        let keep_count = entries.len() / 2; // Keep half of the entries
+        // Calculate how many entries to keep based on config
+        let keep_count = ((entries.len() as f64) * self.config.keep_fraction) as usize;
+        let keep_count = keep_count.max(1); // Keep at least 1 entry
+
+        // Separate entries to keep vs summarize
         let (old_entries, recent_entries) = entries.split_at(entries.len() - keep_count);
 
-        // Group old entries by category
+        // Separate high-priority entries if preservation is enabled
+        let (high_priority_old, regular_old): (Vec<_>, Vec<_>) = if self.config.preserve_high_priority {
+            old_entries.iter().partition(|e| e.priority == MemoryPriority::High || e.priority == MemoryPriority::Critical)
+        } else {
+            (Vec::new(), old_entries.iter().collect())
+        };
+
+        // Group old entries by category (excluding high-priority if preserved)
         let mut categorized: std::collections::HashMap<String, Vec<&MemoryEntry>> =
             std::collections::HashMap::new();
 
-        for entry in old_entries {
+        for entry in regular_old {
             categorized
                 .entry(entry.category.to_string())
                 .or_insert_with(Vec::new)
@@ -785,6 +813,14 @@ impl MemoryStore {
             summary.push_str("\n");
         }
 
+        // Add preserved high-priority entries if any
+        if !high_priority_old.is_empty() {
+            summary.push_str("## Preserved High-Priority Entries\n\n");
+            for entry in high_priority_old {
+                summary.push_str(&entry.to_markdown());
+            }
+        }
+
         summary.push_str("## Recent Detailed Entries\n\n---\n");
 
         // Add recent entries in full detail
@@ -799,8 +835,8 @@ impl MemoryStore {
             .context("Failed to write summarized memory file")?;
 
         info!(
-            "Summarized memory: kept {} recent entries",
-            keep_count
+            "Summarized memory: kept {} recent entries ({} fraction)",
+            keep_count, self.config.keep_fraction
         );
 
         // Reload entries

@@ -386,6 +386,7 @@ fn test_merge_configs_preserves_global_when_not_in_project() {
         pool: ltmatrix::config::settings::PoolConfig::default(),
         mcp: None,
         telemetry: ltmatrix::telemetry::TelemetryConfig::default(),
+        memory: ltmatrix::config::settings::MemoryConfig::default(),
     };
 
     let merged = merge_configs(Some(global), Some(project));
@@ -609,6 +610,7 @@ fn test_config_serialization_roundtrip() {
         pool: ltmatrix::config::settings::PoolConfig::default(),
         mcp: None,
         telemetry: ltmatrix::telemetry::TelemetryConfig::default(),
+        memory: ltmatrix::config::settings::MemoryConfig::default(),
     };
 
     // Serialize to TOML
@@ -886,6 +888,7 @@ fn test_partial_cli_overrides() {
         pool: ltmatrix::config::settings::PoolConfig::default(),
         mcp: None,
         telemetry: ltmatrix::telemetry::TelemetryConfig::default(),
+        memory: ltmatrix::config::settings::MemoryConfig::default(),
     };
 
     // Simulate CLI override for output format only

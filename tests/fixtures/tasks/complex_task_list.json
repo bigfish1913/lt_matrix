@@ -1,0 +1,97 @@
+{
+  "tasks": [
+    {
+      "id": "task-001",
+      "title": "Setup project",
+      "description": "Initialize the project with basic structure",
+      "status": "completed",
+      "complexity": "simple",
+      "depends_on": [],
+      "subtasks": [],
+      "retry_count": 0,
+      "session_id": "session-setup-001"
+    },
+    {
+      "id": "task-002",
+      "title": "Implement authentication",
+      "description": "Add user authentication with OAuth2 support",
+      "status": "in_progress",
+      "complexity": "complex",
+      "depends_on": ["task-001"],
+      "subtasks": [
+        {
+          "id": "task-002-a",
+          "title": "Design auth schema",
+          "description": "Design the authentication data model",
+          "status": "completed",
+          "complexity": "moderate",
+          "depends_on": [],
+          "subtasks": [],
+          "retry_count": 0
+        },
+        {
+          "id": "task-002-b",
+          "title": "Implement OAuth providers",
+          "description": "Add support for Google and GitHub OAuth",
+          "status": "in_progress",
+          "complexity": "complex",
+          "depends_on": ["task-002-a"],
+          "subtasks": [],
+          "retry_count": 0
+        },
+        {
+          "id": "task-002-c",
+          "title": "Add session management",
+          "description": "Implement JWT token handling",
+          "status": "pending",
+          "complexity": "moderate",
+          "depends_on": ["task-002-b"],
+          "subtasks": [],
+          "retry_count": 0
+        }
+      ],
+      "retry_count": 0,
+      "parent_session_id": "session-setup-001"
+    },
+    {
+      "id": "task-003",
+      "title": "Create API endpoints",
+      "description": "Implement RESTful API endpoints",
+      "status": "blocked",
+      "complexity": "moderate",
+      "depends_on": ["task-002"],
+      "subtasks": [],
+      "retry_count": 0
+    },
+    {
+      "id": "task-004",
+      "title": "Write tests",
+      "description": "Add comprehensive test coverage",
+      "status": "pending",
+      "complexity": "moderate",
+      "depends_on": ["task-003"],
+      "subtasks": [],
+      "retry_count": 0
+    },
+    {
+      "id": "task-005",
+      "title": "Add documentation",
+      "description": "Create API documentation",
+      "status": "pending",
+      "complexity": "simple",
+      "depends_on": ["task-003"],
+      "subtasks": [],
+      "retry_count": 0
+    },
+    {
+      "id": "task-006",
+      "title": "Deploy to production",
+      "description": "Configure deployment pipeline",
+      "status": "pending",
+      "complexity": "complex",
+      "depends_on": ["task-004", "task-005"],
+      "subtasks": [],
+      "retry_count": 0
+    }
+  ]
+}

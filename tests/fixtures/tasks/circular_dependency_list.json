@@ -1,0 +1,35 @@
+{
+  "tasks": [
+    {
+      "id": "task-a",
+      "title": "Task A",
+      "description": "First task in circular chain",
+      "status": "pending",
+      "complexity": "simple",
+      "depends_on": ["task-c"],
+      "subtasks": [],
+      "retry_count": 0
+    },
+    {
+      "id": "task-b",
+      "title": "Task B",
+      "description": "Second task in circular chain",
+      "status": "pending",
+      "complexity": "simple",
+      "depends_on": ["task-a"],
+      "subtasks": [],
+      "retry_count": 0
+    },
+    {
+      "id": "task-c",
+      "title": "Task C",
+      "description": "Third task in circular chain - creates cycle back to A",
+      "status": "pending",
+      "complexity": "simple",
+      "depends_on": ["task-b"],
+      "subtasks": [],
+      "retry_count": 0
+    }
+  ],
+  "_comment": "This file intentionally contains circular dependencies for testing error detection"
+}

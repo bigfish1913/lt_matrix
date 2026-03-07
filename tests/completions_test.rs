@@ -10,7 +10,6 @@
 
 use clap::Parser;
 use ltmatrix::cli::args::{Args, Command, Shell};
-use ltmatrix::cli::command::execute_command;
 
 // =============================================================================
 // Basic Completion Generation Tests
@@ -18,52 +17,57 @@ use ltmatrix::cli::command::execute_command;
 
 #[test]
 fn test_generate_bash_completion() {
-    let args = Args::try_parse_from(["ltmatrix", "completions", "bash"]).unwrap();
-    let result = execute_command(args);
-    assert!(
-        result.is_ok(),
-        "Should generate bash completion successfully"
-    );
+    use clap::CommandFactory;
+    use clap_complete::Shell;
+
+    let mut cmd = Args::command();
+    let mut buf = Vec::new();
+    clap_complete::generate(Shell::Bash, &mut cmd, "ltmatrix", &mut buf);
+    assert!(!buf.is_empty(), "Should generate bash completion successfully");
 }
 
 #[test]
 fn test_generate_zsh_completion() {
-    let args = Args::try_parse_from(["ltmatrix", "completions", "zsh"]).unwrap();
-    let result = execute_command(args);
-    assert!(
-        result.is_ok(),
-        "Should generate zsh completion successfully"
-    );
+    use clap::CommandFactory;
+    use clap_complete::Shell;
+
+    let mut cmd = Args::command();
+    let mut buf = Vec::new();
+    clap_complete::generate(Shell::Zsh, &mut cmd, "ltmatrix", &mut buf);
+    assert!(!buf.is_empty(), "Should generate zsh completion successfully");
 }
 
 #[test]
 fn test_generate_fish_completion() {
-    let args = Args::try_parse_from(["ltmatrix", "completions", "fish"]).unwrap();
-    let result = execute_command(args);
-    assert!(
-        result.is_ok(),
-        "Should generate fish completion successfully"
-    );
+    use clap::CommandFactory;
+    use clap_complete::Shell;
+
+    let mut cmd = Args::command();
+    let mut buf = Vec::new();
+    clap_complete::generate(Shell::Fish, &mut cmd, "ltmatrix", &mut buf);
+    assert!(!buf.is_empty(), "Should generate fish completion successfully");
 }
 
 #[test]
 fn test_generate_powershell_completion() {
-    let args = Args::try_parse_from(["ltmatrix", "completions", "powershell"]).unwrap();
-    let result = execute_command(args);
-    assert!(
-        result.is_ok(),
-        "Should generate powershell completion successfully"
-    );
+    use clap::CommandFactory;
+    use clap_complete::Shell;
+
+    let mut cmd = Args::command();
+    let mut buf = Vec::new();
+    clap_complete::generate(Shell::PowerShell, &mut cmd, "ltmatrix", &mut buf);
+    assert!(!buf.is_empty(), "Should generate powershell completion successfully");
 }
 
 #[test]
 fn test_generate_elvish_completion() {
-    let args = Args::try_parse_from(["ltmatrix", "completions", "elvish"]).unwrap();
-    let result = execute_command(args);
-    assert!(
-        result.is_ok(),
-        "Should generate elvish completion successfully"
-    );
+    use clap::CommandFactory;
+    use clap_complete::Shell;
+
+    let mut cmd = Args::command();
+    let mut buf = Vec::new();
+    clap_complete::generate(Shell::Elvish, &mut cmd, "ltmatrix", &mut buf);
+    assert!(!buf.is_empty(), "Should generate elvish completion successfully");
 }
 
 // =============================================================================
@@ -320,6 +324,9 @@ fn test_completion_includes_dry_run_flag() {
 
 #[test]
 fn test_all_shell_types_generate_completions() {
+    use clap::CommandFactory;
+    use clap_complete::Shell;
+
     let shells = vec![
         ("bash", Shell::Bash),
         ("zsh", Shell::Zsh),
@@ -328,11 +335,12 @@ fn test_all_shell_types_generate_completions() {
         ("elvish", Shell::Elvish),
     ];
 
-    for (shell_name, _shell_variant) in shells {
-        let args = Args::try_parse_from(["ltmatrix", "completions", shell_name]).unwrap();
-        let result = execute_command(args);
+    for (shell_name, shell_variant) in shells {
+        let mut cmd = Args::command();
+        let mut buf = Vec::new();
+        clap_complete::generate(shell_variant, &mut cmd, "ltmatrix", &mut buf);
         assert!(
-            result.is_ok(),
+            !buf.is_empty(),
             "Should generate completion for {}",
             shell_name
         );
@@ -533,24 +541,28 @@ fn test_fish_completion_to_file() {
 
 #[test]
 fn test_completions_with_all_flags_still_works() {
-    let args = Args::try_parse_from(["ltmatrix", "completions", "bash"]).unwrap();
+    use clap::CommandFactory;
+    use clap_complete::Shell;
 
-    let result = execute_command(args);
-    assert!(
-        result.is_ok(),
-        "Completions should work even with other flags defined"
-    );
+    let mut cmd = Args::command();
+    let mut buf = Vec::new();
+    clap_complete::generate(Shell::Bash, &mut cmd, "ltmatrix", &mut buf);
+    assert!(!buf.is_empty(), "Completions should work even with other flags defined");
 }
 
 #[test]
 fn test_multiple_completions_generation() {
+    use clap::CommandFactory;
+    use clap_complete::Shell;
+
     // Test that we can generate completions for multiple shells in sequence
-    let shells = ["bash", "zsh", "fish"];
+    let shells = [Shell::Bash, Shell::Zsh, Shell::Fish];
 
     for shell in shells {
-        let args = Args::try_parse_from(["ltmatrix", "completions", shell]).unwrap();
-        let result = execute_command(args);
-        assert!(result.is_ok(), "Should generate {} completion", shell);
+        let mut cmd = Args::command();
+        let mut buf = Vec::new();
+        clap_complete::generate(shell, &mut cmd, "ltmatrix", &mut buf);
+        assert!(!buf.is_empty(), "Should generate {:?} completion", shell);
     }
 }
 

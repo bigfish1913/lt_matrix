@@ -546,6 +546,7 @@ fn test_merge_with_none_values_in_override() {
         pool: ltmatrix::config::settings::PoolConfig::default(),
         mcp: None,
         telemetry: ltmatrix::telemetry::TelemetryConfig::default(),
+        memory: ltmatrix::config::settings::MemoryConfig::default(),
     };
 
     let merged = merge_configs(Some(base), Some(override_config));
@@ -567,6 +568,7 @@ fn test_merge_with_none_values_in_base() {
         pool: ltmatrix::config::settings::PoolConfig::default(),
         mcp: None,
         telemetry: ltmatrix::telemetry::TelemetryConfig::default(),
+        memory: ltmatrix::config::settings::MemoryConfig::default(),
     };
 
     let mut override_config = Config::default();

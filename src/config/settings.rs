@@ -59,6 +59,10 @@ pub struct Config {
     /// Telemetry configuration
     #[serde(default)]
     pub telemetry: TelemetryConfig,
+
+    /// Memory summarization configuration
+    #[serde(default)]
+    pub memory: MemoryConfig,
 }
 
 impl Default for Config {
@@ -74,6 +78,7 @@ impl Default for Config {
             pool: PoolConfig::default(),
             mcp: None,
             telemetry: TelemetryConfig::default(),
+            memory: MemoryConfig::default(),
         }
     }
 }
@@ -595,6 +600,7 @@ fn merge_config(base: Config, override_config: Config) -> Config {
         warmup: override_config.warmup,
         pool: override_config.pool,
         mcp: override_config.mcp.or(base.mcp),
+        memory: override_config.memory,
     }
 }
 
@@ -1315,6 +1321,7 @@ agent = "claude"
             pool: PoolConfig::default(),
             mcp: None,
             telemetry: TelemetryConfig::default(),
+            memory: MemoryConfig::default(),
         };
 
         let project = Config {
@@ -1366,6 +1373,7 @@ agent = "claude"
             pool: PoolConfig::default(),
             mcp: None,
             telemetry: TelemetryConfig::default(),
+            memory: MemoryConfig::default(),
         };
 
         let merged = merge_configs(Some(global), Some(project));
@@ -1418,6 +1426,7 @@ agent = "claude"
             pool: PoolConfig::default(),
             mcp: None,
             telemetry: TelemetryConfig::default(),
+            memory: MemoryConfig::default(),
         };
 
         let merged = merge_configs(Some(config.clone()), None);
@@ -1584,6 +1593,7 @@ agent = "claude"
             pool: PoolConfig::default(),
             mcp: None,
             telemetry: TelemetryConfig::default(),
+            memory: MemoryConfig::default(),
         };
 
         let overrides = CliOverrides {
@@ -1628,6 +1638,7 @@ agent = "claude"
             pool: PoolConfig::default(),
             mcp: None,
             telemetry: TelemetryConfig::default(),
+            memory: MemoryConfig::default(),
         };
 
         let overrides = CliOverrides {
@@ -1671,6 +1682,7 @@ agent = "claude"
             pool: PoolConfig::default(),
             mcp: None,
             telemetry: TelemetryConfig::default(),
+            memory: MemoryConfig::default(),
         };
 
         let overrides = CliOverrides {
@@ -1715,6 +1727,7 @@ agent = "claude"
             pool: PoolConfig::default(),
             mcp: None,
             telemetry: TelemetryConfig::default(),
+            memory: MemoryConfig::default(),
         };
 
         let overrides = CliOverrides {
@@ -1779,6 +1792,7 @@ agent = "claude"
             pool: PoolConfig::default(),
             mcp: None,
             telemetry: TelemetryConfig::default(),
+            memory: MemoryConfig::default(),
         };
 
         let overrides = CliOverrides {
@@ -1839,6 +1853,7 @@ agent = "claude"
             pool: PoolConfig::default(),
             mcp: None,
             telemetry: TelemetryConfig::default(),
+            memory: MemoryConfig::default(),
         };
 
         let result = validate_config(&config);

@@ -1,0 +1,14 @@
+{
+  "output": "I encountered an error while implementing this task.\n\nError: Failed to parse the configuration file\n\nThe issue appears to be in the TOML syntax. The closing bracket on line 15 is missing.\n\nI've attempted to fix the issue but need more context about the expected configuration structure.",
+  "structured_data": {
+    "error_type": "parse_error",
+    "error_location": {
+      "file": "config/settings.toml",
+      "line": 15,
+      "column": 1
+    },
+    "suggested_fix": "Add missing closing bracket ']' to complete the array"
+  },
+  "is_complete": false,
+  "error": "Failed to parse configuration: missing closing bracket at line 15"
+}

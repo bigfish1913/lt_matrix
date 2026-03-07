@@ -507,6 +507,7 @@ fn test_config_serialization_idempotence() {
         pool: ltmatrix::config::settings::PoolConfig::default(),
         mcp: None,
         telemetry: ltmatrix::telemetry::TelemetryConfig::default(),
+        memory: ltmatrix::config::settings::MemoryConfig::default(),
     };
 
     // First serialization

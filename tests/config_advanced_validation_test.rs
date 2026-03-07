@@ -176,6 +176,7 @@ fn test_config_with_all_optional_fields_none() {
         pool: ltmatrix::config::settings::PoolConfig::default(),
         mcp: None,
         telemetry: ltmatrix::telemetry::TelemetryConfig::default(),
+        memory: ltmatrix::config::settings::MemoryConfig::default(),
     };
 
     // Should be able to serialize and deserialize
@@ -270,6 +271,7 @@ fn test_config_serialization_roundtrip_with_all_fields() {
         pool: ltmatrix::config::settings::PoolConfig::default(),
         mcp: None,
         telemetry: ltmatrix::telemetry::TelemetryConfig::default(),
+        memory: ltmatrix::config::settings::MemoryConfig::default(),
     };
 
     // Serialize and deserialize
@@ -362,6 +364,7 @@ fn test_merge_with_empty_override_config() {
         pool: ltmatrix::config::settings::PoolConfig::default(),
         mcp: None,
         telemetry: ltmatrix::telemetry::TelemetryConfig::default(),
+        memory: ltmatrix::config::settings::MemoryConfig::default(),
     };
     let merged = ltmatrix::config::settings::merge_configs(Some(base), Some(empty_config));
 

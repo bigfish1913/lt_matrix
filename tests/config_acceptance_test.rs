@@ -480,6 +480,7 @@ fn acceptance_5_4_merge_combines_all_sources() {
         pool: ltmatrix::config::settings::PoolConfig::default(),
         mcp: None,
         telemetry: ltmatrix::telemetry::TelemetryConfig::default(),
+        memory: ltmatrix::config::settings::MemoryConfig::default(),
     };
 
     let project = Config {
@@ -524,6 +525,7 @@ fn acceptance_5_4_merge_combines_all_sources() {
         pool: ltmatrix::config::settings::PoolConfig::default(),
         mcp: None,
         telemetry: ltmatrix::telemetry::TelemetryConfig::default(),
+        memory: ltmatrix::config::settings::MemoryConfig::default(),
     };
 
     let merged = merge_configs(Some(global), Some(project));

@@ -1,0 +1,58 @@
+{
+  "tasks": [
+    {
+      "id": "task-001",
+      "title": "Completed task",
+      "description": "This task completed successfully",
+      "status": "completed",
+      "complexity": "simple",
+      "depends_on": [],
+      "subtasks": [],
+      "retry_count": 0,
+      "session_id": "session-completed-001"
+    },
+    {
+      "id": "task-002",
+      "title": "Failed task - network error",
+      "description": "This task failed due to a network error",
+      "status": "failed",
+      "complexity": "moderate",
+      "depends_on": ["task-001"],
+      "subtasks": [],
+      "retry_count": 3,
+      "error": "Network timeout: Failed to connect to API after 30 seconds"
+    },
+    {
+      "id": "task-003",
+      "title": "Failed task - validation error",
+      "description": "This task failed due to invalid input",
+      "status": "failed",
+      "complexity": "simple",
+      "depends_on": ["task-001"],
+      "subtasks": [],
+      "retry_count": 1,
+      "error": "Validation error: Invalid JSON response from agent"
+    },
+    {
+      "id": "task-004",
+      "title": "Blocked task",
+      "description": "This task is blocked by a failed dependency",
+      "status": "blocked",
+      "complexity": "moderate",
+      "depends_on": ["task-002", "task-003"],
+      "subtasks": [],
+      "retry_count": 0,
+      "error": "Blocked: Dependencies task-002 and task-003 have failed"
+    },
+    {
+      "id": "task-005",
+      "title": "Pending task",
+      "description": "This task is waiting to be executed",
+      "status": "pending",
+      "complexity": "simple",
+      "depends_on": [],
+      "subtasks": [],
+      "retry_count": 0
+    }
+  ]
+}
