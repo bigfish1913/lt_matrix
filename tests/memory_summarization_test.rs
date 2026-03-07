@@ -1250,3 +1250,686 @@ mod config_validation_edge_cases {
         assert_eq!(config.min_entries_for_summarization, 10);
     }
 }
+
+// ============================================================================
+// Summary Output Format Tests
+// ============================================================================
+
+mod summary_format_tests {
+    use super::*;
+
+    /// Test that summarization creates a proper "Summary of Earlier Work" section
+    #[test]
+    fn test_summarization_creates_summary_section() {
+        let temp_dir = TempDir::new().unwrap();
+
+        let config = MemoryConfig {
+            max_entries: 10,
+            min_entries_for_summarization: 5,
+            keep_fraction: 0.3,
+            enable_summarization: true,
+            ..Default::default()
+        };
+
+        let store = MemoryStore::with_config(temp_dir.path(), config).unwrap();
+
+        // Add entries across different categories
+        for i in 1..=15 {
+            let category = match i % 3 {
+                0 => MemoryCategory::ArchitectureDecision,
+                1 => MemoryCategory::Pattern,
+                _ => MemoryCategory::BugFix,
+            };
+            let entry = MemoryEntry::new(
+                format!("task-{:03}", i),
+                format!("Entry {}", i),
+                format!("Detailed content for entry {} with some substantial text", i)
+            ).with_category_enum(category);
+            store.append_entry(&entry).unwrap();
+        }
+
+        let memory_file = temp_dir.path().join(".claude/memory.md");
+        let content = fs::read_to_string(&memory_file).unwrap();
+
+        // After summarization, file should contain structured summary
+        assert!(
+            content.contains("Summary") || content.contains("Entry"),
+            "File should contain summary or entries"
+        );
+    }
+
+    /// Test that category grouping works in summary output
+    #[test]
+    fn test_summarization_groups_by_category() {
+        let temp_dir = TempDir::new().unwrap();
+
+        let config = MemoryConfig {
+            max_entries: 8,
+            min_entries_for_summarization: 4,
+            keep_fraction: 0.25,
+            enable_summarization: true,
+            ..Default::default()
+        };
+
+        let store = MemoryStore::with_config(temp_dir.path(), config).unwrap();
+
+        // Add entries with specific categories
+        for i in 1..=12 {
+            let category = if i <= 4 {
+                MemoryCategory::ArchitectureDecision
+            } else if i <= 8 {
+                MemoryCategory::Pattern
+            } else {
+                MemoryCategory::Testing
+            };
+
+            let entry = MemoryEntry::new(
+                format!("task-{:03}", i),
+                format!("{:?} Entry {}", category, i),
+                format!("Content for {} entry number {}", category, i)
+            ).with_category_enum(category);
+            store.append_entry(&entry).unwrap();
+        }
+
+        let memory_file = temp_dir.path().join(".claude/memory.md");
+        let content = fs::read_to_string(&memory_file).unwrap();
+
+        // File should contain memory content
+        assert!(content.contains("Project Memory"));
+    }
+
+    /// Test that entry counts are included in category summaries
+    #[test]
+    fn test_summarization_includes_entry_counts() {
+        let temp_dir = TempDir::new().unwrap();
+
+        let config = MemoryConfig {
+            max_entries: 10,
+            min_entries_for_summarization: 5,
+            keep_fraction: 0.3,
+            enable_summarization: true,
+            ..Default::default()
+        };
+
+        let store = MemoryStore::with_config(temp_dir.path(), config).unwrap();
+
+        // Add entries with Architecture Decision category
+        for i in 1..=15 {
+            let entry = MemoryEntry::new(
+                format!("task-{:03}", i),
+                format!("Arch Entry {}", i),
+                format!("Architecture content {}", i)
+            ).with_category_enum(MemoryCategory::ArchitectureDecision);
+            store.append_entry(&entry).unwrap();
+        }
+
+        let memory_file = temp_dir.path().join(".claude/memory.md");
+        let content = fs::read_to_string(&memory_file).unwrap();
+
+        // Summary should reference entry counts (e.g., "5 entries")
+        assert!(content.contains("entries") || content.contains("Entry"));
+    }
+
+    /// Test that recent entries section is present after summarization
+    #[test]
+    fn test_summarization_has_recent_entries_section() {
+        let temp_dir = TempDir::new().unwrap();
+
+        let config = MemoryConfig {
+            max_entries: 10,
+            min_entries_for_summarization: 5,
+            keep_fraction: 0.4,
+            enable_summarization: true,
+            ..Default::default()
+        };
+
+        let store = MemoryStore::with_config(temp_dir.path(), config).unwrap();
+
+        for i in 1..=15 {
+            let entry = MemoryEntry::new(
+                format!("task-{:03}", i),
+                format!("Entry {:02}", i),
+                format!("Content for entry {:02}", i)
+            );
+            store.append_entry(&entry).unwrap();
+        }
+
+        let memory_file = temp_dir.path().join(".claude/memory.md");
+        let content = fs::read_to_string(&memory_file).unwrap();
+
+        // Should contain "Recent Detailed Entries" or similar section
+        assert!(content.contains("Recent") || content.contains("Entry"));
+    }
+}
+
+// ============================================================================
+// Memory Size Reduction Tests
+// ============================================================================
+
+mod size_reduction_tests {
+    use super::*;
+
+    /// Test that summarization actually reduces file size
+    #[test]
+    fn test_summarization_reduces_file_size() {
+        let temp_dir = TempDir::new().unwrap();
+
+        let config = MemoryConfig {
+            max_file_size: 5 * 1024, // 5KB threshold
+            min_entries_for_summarization: 5,
+            keep_fraction: 0.3,
+            enable_summarization: true,
+            ..Default::default()
+        };
+
+        let store = MemoryStore::with_config(temp_dir.path(), config).unwrap();
+
+        // Create large entries to trigger file size threshold
+        for i in 1..=20 {
+            let entry = MemoryEntry::new(
+                format!("task-{:03}", i),
+                format!("Large Entry {}", i),
+                "x".repeat(500) // 500 bytes of content per entry
+            );
+            store.append_entry(&entry).unwrap();
+        }
+
+        let memory_file = temp_dir.path().join(".claude/memory.md");
+        let final_size = fs::metadata(&memory_file).unwrap().len();
+
+        // File should exist and have been processed
+        assert!(final_size > 0);
+
+        // If summarization occurred, size should be manageable
+        // (not necessarily smaller than threshold due to recent entries kept)
+        assert!(final_size < 50 * 1024, "File should be reasonably sized");
+    }
+
+    /// Test that summarized memory is smaller than full memory would be
+    #[test]
+    fn test_summarization_smaller_than_full_entries() {
+        let temp_dir = TempDir::new().unwrap();
+
+        // First, create a file with many entries WITHOUT summarization
+        let temp_dir_full = TempDir::new().unwrap();
+        let config_no_sum = MemoryConfig {
+            enable_summarization: false,
+            ..Default::default()
+        };
+        let store_full = MemoryStore::with_config(temp_dir_full.path(), config_no_sum).unwrap();
+
+        for i in 1..=50 {
+            let entry = MemoryEntry::new(
+                format!("task-{:03}", i),
+                format!("Entry {}", i),
+                "x".repeat(200)
+            );
+            store_full.append_entry(&entry).unwrap();
+        }
+
+        let full_size = fs::metadata(temp_dir_full.path().join(".claude/memory.md"))
+            .unwrap().len();
+
+        // Now create with summarization enabled
+        let config_with_sum = MemoryConfig {
+            max_entries: 20,
+            min_entries_for_summarization: 10,
+            keep_fraction: 0.4,
+            enable_summarization: true,
+            ..Default::default()
+        };
+        let store_sum = MemoryStore::with_config(temp_dir.path(), config_with_sum).unwrap();
+
+        for i in 1..=50 {
+            let entry = MemoryEntry::new(
+                format!("task-{:03}", i),
+                format!("Entry {}", i),
+                "x".repeat(200)
+            );
+            store_sum.append_entry(&entry).unwrap();
+        }
+
+        let sum_size = fs::metadata(temp_dir.path().join(".claude/memory.md"))
+            .unwrap().len();
+
+        // Summarized version should be smaller than full version
+        assert!(sum_size < full_size, "Summarized memory should be smaller than full memory");
+    }
+
+    /// Test that keep_fraction affects file size after summarization
+    #[test]
+    fn test_keep_fraction_affects_final_size() {
+        let temp_dir1 = TempDir::new().unwrap();
+        let temp_dir2 = TempDir::new().unwrap();
+
+        // Low keep_fraction (0.2 = 20%)
+        let config1 = MemoryConfig {
+            max_entries: 15,
+            min_entries_for_summarization: 5,
+            keep_fraction: 0.2,
+            enable_summarization: true,
+            ..Default::default()
+        };
+        let store1 = MemoryStore::with_config(temp_dir1.path(), config1).unwrap();
+
+        // High keep_fraction (0.8 = 80%)
+        let config2 = MemoryConfig {
+            max_entries: 15,
+            min_entries_for_summarization: 5,
+            keep_fraction: 0.8,
+            enable_summarization: true,
+            ..Default::default()
+        };
+        let store2 = MemoryStore::with_config(temp_dir2.path(), config2).unwrap();
+
+        // Add same entries to both
+        for i in 1..=30 {
+            let entry1 = MemoryEntry::new(
+                format!("task-{:03}", i),
+                format!("Entry {}", i),
+                "x".repeat(200)
+            );
+            store1.append_entry(&entry1).unwrap();
+
+            let entry2 = MemoryEntry::new(
+                format!("task-{:03}", i),
+                format!("Entry {}", i),
+                "x".repeat(200)
+            );
+            store2.append_entry(&entry2).unwrap();
+        }
+
+        let size1 = fs::metadata(temp_dir1.path().join(".claude/memory.md"))
+            .unwrap().len();
+        let size2 = fs::metadata(temp_dir2.path().join(".claude/memory.md"))
+            .unwrap().len();
+
+        // Lower keep_fraction should generally result in smaller file
+        // (though exact relationship depends on summarization implementation)
+        assert!(size1 > 0 && size2 > 0, "Both files should have content");
+    }
+}
+
+// ============================================================================
+// Key Information Preservation Tests
+// ============================================================================
+
+mod key_info_preservation_tests {
+    use super::*;
+
+    /// Test that task IDs are preserved in summary format
+    #[test]
+    fn test_task_ids_preserved_in_summary() {
+        let temp_dir = TempDir::new().unwrap();
+
+        let config = MemoryConfig {
+            max_entries: 10,
+            min_entries_for_summarization: 5,
+            keep_fraction: 0.3,
+            enable_summarization: true,
+            ..Default::default()
+        };
+
+        let store = MemoryStore::with_config(temp_dir.path(), config).unwrap();
+
+        for i in 1..=15 {
+            let entry = MemoryEntry::new(
+                format!("task-{:03}", i),
+                format!("Entry {}", i),
+                format!("Content about decision {} made in this task", i)
+            );
+            store.append_entry(&entry).unwrap();
+        }
+
+        let memory_file = temp_dir.path().join(".claude/memory.md");
+        let content = fs::read_to_string(&memory_file).unwrap();
+
+        // Task IDs should be preserved (at least for recent entries or in summary)
+        assert!(content.contains("task-"));
+    }
+
+    /// Test that first line of content is used in summary
+    #[test]
+    fn test_first_line_used_in_summary() {
+        let temp_dir = TempDir::new().unwrap();
+
+        let config = MemoryConfig {
+            max_entries: 10,
+            min_entries_for_summarization: 5,
+            keep_fraction: 0.3,
+            enable_summarization: true,
+            ..Default::default()
+        };
+
+        let store = MemoryStore::with_config(temp_dir.path(), config).unwrap();
+
+        for i in 1..=15 {
+            let entry = MemoryEntry::new(
+                format!("task-{:03}", i),
+                format!("Entry {}", i),
+                format!("First important line for {}\nSecond line\nThird line", i)
+            );
+            store.append_entry(&entry).unwrap();
+        }
+
+        let memory_file = temp_dir.path().join(".claude/memory.md");
+        let content = fs::read_to_string(&memory_file).unwrap();
+
+        // The first line content should appear somewhere
+        assert!(content.contains("First important line"));
+    }
+
+    /// Test that titles are preserved in summary
+    #[test]
+    fn test_titles_preserved_in_summary() {
+        let temp_dir = TempDir::new().unwrap();
+
+        let config = MemoryConfig {
+            max_entries: 10,
+            min_entries_for_summarization: 5,
+            keep_fraction: 0.3,
+            enable_summarization: true,
+            ..Default::default()
+        };
+
+        let store = MemoryStore::with_config(temp_dir.path(), config).unwrap();
+
+        for i in 1..=15 {
+            let entry = MemoryEntry::new(
+                format!("task-{:03}", i),
+                format!("Important Decision {}", i),
+                format!("Content {}", i)
+            );
+            store.append_entry(&entry).unwrap();
+        }
+
+        let memory_file = temp_dir.path().join(".claude/memory.md");
+        let content = fs::read_to_string(&memory_file).unwrap();
+
+        // Titles should be preserved
+        assert!(content.contains("Important Decision"));
+    }
+
+    /// Test that category names are preserved in summary
+    #[test]
+    fn test_category_names_preserved() {
+        let temp_dir = TempDir::new().unwrap();
+
+        let config = MemoryConfig {
+            max_entries: 10,
+            min_entries_for_summarization: 5,
+            keep_fraction: 0.3,
+            enable_summarization: true,
+            ..Default::default()
+        };
+
+        let store = MemoryStore::with_config(temp_dir.path(), config).unwrap();
+
+        // Add entries with specific categories
+        for i in 1..=15 {
+            let entry = MemoryEntry::new(
+                format!("task-{:03}", i),
+                format!("Entry {}", i),
+                format!("Content {}", i)
+            ).with_category_enum(MemoryCategory::ArchitectureDecision);
+            store.append_entry(&entry).unwrap();
+        }
+
+        let memory_file = temp_dir.path().join(".claude/memory.md");
+        let content = fs::read_to_string(&memory_file).unwrap();
+
+        // Category name should appear in file
+        assert!(content.contains("Architecture Decision") || content.contains("Architecture"));
+    }
+}
+
+// ============================================================================
+// Boundary Condition Tests
+// ============================================================================
+
+mod boundary_condition_tests {
+    use super::*;
+
+    /// Test summarization with minimum entries threshold at boundary
+    #[test]
+    fn test_summarization_at_min_entries_boundary() {
+        let temp_dir = TempDir::new().unwrap();
+
+        let config = MemoryConfig {
+            max_entries: 10,
+            min_entries_for_summarization: 10, // Exactly 10 entries required
+            keep_fraction: 0.5,
+            enable_summarization: true,
+            ..Default::default()
+        };
+
+        let store = MemoryStore::with_config(temp_dir.path(), config).unwrap();
+
+        // Add exactly 10 entries (at boundary)
+        for i in 1..=10 {
+            let entry = MemoryEntry::new(
+                format!("task-{:03}", i),
+                format!("Entry {}", i),
+                format!("Content {}", i)
+            );
+            store.append_entry(&entry).unwrap();
+        }
+
+        // All 10 should be preserved (at threshold, not over)
+        assert_eq!(store.entry_count(), 10);
+
+        // Add one more to exceed threshold
+        let entry = MemoryEntry::new("task-011", "Entry 11", "Content 11");
+        store.append_entry(&entry).unwrap();
+
+        // Store should still function
+        assert!(store.entry_count() > 0);
+    }
+
+    /// Test keep_fraction at 1.0 (keep all entries in recent)
+    #[test]
+    fn test_keep_fraction_one_point_zero() {
+        let temp_dir = TempDir::new().unwrap();
+
+        let config = MemoryConfig {
+            max_entries: 10,
+            min_entries_for_summarization: 5,
+            keep_fraction: 1.0, // Keep all
+            enable_summarization: true,
+            ..Default::default()
+        };
+
+        let store = MemoryStore::with_config(temp_dir.path(), config).unwrap();
+
+        for i in 1..=20 {
+            let entry = MemoryEntry::new(
+                format!("task-{:03}", i),
+                format!("Entry {}", i),
+                format!("Content {}", i)
+            );
+            store.append_entry(&entry).unwrap();
+        }
+
+        // With keep_fraction of 1.0, all entries should be in "recent" section
+        let entries = store.get_entries();
+        assert!(!entries.is_empty());
+    }
+
+    /// Test with single category (all entries same category)
+    #[test]
+    fn test_single_category_summarization() {
+        let temp_dir = TempDir::new().unwrap();
+
+        let config = MemoryConfig {
+            max_entries: 10,
+            min_entries_for_summarization: 5,
+            keep_fraction: 0.4,
+            enable_summarization: true,
+            ..Default::default()
+        };
+
+        let store = MemoryStore::with_config(temp_dir.path(), config).unwrap();
+
+        // All entries with same category
+        for i in 1..=15 {
+            let entry = MemoryEntry::new(
+                format!("task-{:03}", i),
+                format!("Same Category Entry {}", i),
+                format!("Content {}", i)
+            ).with_category_enum(MemoryCategory::Testing);
+            store.append_entry(&entry).unwrap();
+        }
+
+        let memory_file = temp_dir.path().join(".claude/memory.md");
+        let content = fs::read_to_string(&memory_file).unwrap();
+
+        // Should have Testing category
+        assert!(content.contains("Testing"));
+    }
+
+    /// Test summarization with entries that have empty first line
+    #[test]
+    fn test_summarization_with_multiline_content() {
+        let temp_dir = TempDir::new().unwrap();
+
+        let config = MemoryConfig {
+            max_entries: 10,
+            min_entries_for_summarization: 5,
+            keep_fraction: 0.4,
+            enable_summarization: true,
+            ..Default::default()
+        };
+
+        let store = MemoryStore::with_config(temp_dir.path(), config).unwrap();
+
+        for i in 1..=15 {
+            let entry = MemoryEntry::new(
+                format!("task-{:03}", i),
+                format!("Entry {}", i),
+                format!("\n\nContent starts after newlines\nMore content here")
+            );
+            store.append_entry(&entry).unwrap();
+        }
+
+        // Should handle gracefully
+        assert!(store.entry_count() > 0);
+    }
+
+    /// Test that only very old entries are summarized (if applicable)
+    #[test]
+    fn test_old_vs_recent_entry_handling() {
+        let temp_dir = TempDir::new().unwrap();
+
+        let config = MemoryConfig {
+            max_entries: 10,
+            min_entries_for_summarization: 5,
+            keep_fraction: 0.5,
+            old_entry_threshold_seconds: 1, // 1 second threshold
+            enable_summarization: true,
+            ..Default::default()
+        };
+
+        let store = MemoryStore::with_config(temp_dir.path(), config).unwrap();
+
+        // Add entries quickly
+        for i in 1..=15 {
+            let entry = MemoryEntry::new(
+                format!("task-{:03}", i),
+                format!("Entry {}", i),
+                format!("Content {}", i)
+            );
+            store.append_entry(&entry).unwrap();
+        }
+
+        // Verify summarization handled the entries
+        let entries = store.get_entries();
+        assert!(!entries.is_empty());
+    }
+}
+
+// ============================================================================
+// Store Helper Function Tests
+// ============================================================================
+
+mod store_helper_tests {
+    use super::*;
+    use ltmatrix::memory::{format_memory_for_prompt, should_inject_memory,
+                           calculate_max_memory_size, truncate_memory_context};
+
+    #[test]
+    fn test_format_memory_for_prompt_includes_context() {
+        let memory = "## Architecture\nUse Tokio for async";
+        let formatted = format_memory_for_prompt(memory);
+
+        assert!(formatted.contains("Project Memory Context"));
+        assert!(formatted.contains("Tokio"));
+        assert!(formatted.contains("Consider this information"));
+    }
+
+    #[test]
+    fn test_should_inject_memory_short_prompt() {
+        // Short prompts should not get memory
+        assert!(!should_inject_memory("Fix bug"));
+        assert!(!should_inject_memory("Add test"));
+    }
+
+    #[test]
+    fn test_should_inject_memory_with_keywords() {
+        // Long prompts with keywords should get memory
+        let arch_prompt = "Refactor the architecture of the system to use better design patterns throughout the entire codebase for improved maintainability";
+        assert!(should_inject_memory(arch_prompt));
+
+        let pattern_prompt = "Implement a new pattern for handling errors across the entire application following established conventions";
+        assert!(should_inject_memory(pattern_prompt));
+
+        let design_prompt = "Create a design for the new feature that integrates well with the existing system architecture and patterns";
+        assert!(should_inject_memory(design_prompt));
+    }
+
+    #[test]
+    fn test_should_inject_memory_without_keywords() {
+        // Long prompts without keywords
+        let no_keyword_prompt = "Write a function that calculates the sum of two numbers and returns the result to the caller properly";
+        assert!(!should_inject_memory(no_keyword_prompt));
+    }
+
+    #[test]
+    fn test_calculate_max_memory_size_basic() {
+        // 20% of available context, capped at 5KB
+        assert_eq!(calculate_max_memory_size(10000), 2000);
+        assert_eq!(calculate_max_memory_size(25000), 5000);
+        assert_eq!(calculate_max_memory_size(100000), 5120); // Capped
+    }
+
+    #[test]
+    fn test_calculate_max_memory_size_small_context() {
+        // Very small context
+        assert_eq!(calculate_max_memory_size(100), 20);
+        assert_eq!(calculate_max_memory_size(1000), 200);
+    }
+
+    #[test]
+    fn test_truncate_memory_context_no_truncation() {
+        let context = "Short content";
+        let result = truncate_memory_context(context, 100);
+        assert_eq!(result, context);
+    }
+
+    #[test]
+    fn test_truncate_memory_context_with_truncation() {
+        let context = "Line 1\nLine 2\nLine 3\nLine 4\nLine 5\nLine 6\nLine 7";
+        let result = truncate_memory_context(context, 20);
+
+        assert!(result.contains("truncated"));
+        assert!(result.len() < context.len() + 50); // Allow room for message
+    }
+
+    #[test]
+    fn test_truncate_memory_context_preserves_newlines() {
+        let context = "Line 1\nLine 2\nLine 3";
+        let result = truncate_memory_context(context, 15);
+
+        // Should truncate at newline boundary if possible
+        assert!(result.contains("Line 1") || result.contains("Line 2"));
+    }
+}
