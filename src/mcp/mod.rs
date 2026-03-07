@@ -56,6 +56,7 @@
 pub mod client;
 pub mod correlation;
 pub mod heartbeat;
+pub mod notification;
 pub mod protocol;
 pub mod reconnect;
 pub mod router;
@@ -254,3 +255,10 @@ pub use router::{
     RouterStats,
 };
 
+// Re-export notification types
+pub use notification::{
+    NotificationDispatcher,
+    NotificationEvent,
+    NotificationBuilder,
+    NotificationStats,
+};

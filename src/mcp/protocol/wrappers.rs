@@ -627,6 +627,7 @@ pub struct NotificationsProgress;
 
 /// Progress notification parameters
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ProgressParams {
     /// Progress token matching the request
     pub progress_token: Value,
