@@ -60,3 +60,63 @@ pub use protocol::{
     LoggingSetLevelParams,
 };
 
+// Re-export type-safe wrappers
+pub use protocol::{
+    // Core traits
+    McpMethod,
+    PaginatedMethod,
+    McpNotification,
+    // Lifecycle methods
+    Initialize,
+    Ping,
+    PingParams,
+    PingResult,
+    // Tools methods
+    ToolsList,
+    ToolsCall,
+    // Resources methods
+    ResourcesList,
+    ResourcesRead,
+    ResourcesSubscribe,
+    ResourcesSubscribeParams,
+    ResourcesSubscribeResult,
+    ResourcesUnsubscribe,
+    ResourcesUnsubscribeParams,
+    ResourcesUnsubscribeResult,
+    // Prompts methods
+    PromptsList,
+    PromptsGet,
+    // Roots methods
+    RootsList,
+    // Logging methods
+    LoggingSetLevel,
+    LoggingSetLevelResult,
+    // Completion methods
+    CompletionComplete,
+    CompletionReference,
+    CompletionArgument,
+    CompletionCompleteParams,
+    CompletionCompleteResult,
+    CompletionInfo,
+    // Sampling methods
+    SamplingCreateMessage,
+    SamplingMessage,
+    SamplingContent,
+    SamplingCreateMessageParams,
+    SamplingCreateMessageResult,
+    ModelPreferences,
+    ModelHint,
+    // Notifications
+    NotificationsInitialized,
+    NotificationsToolsListChanged,
+    NotificationsResourcesListChanged,
+    NotificationsPromptsListChanged,
+    NotificationsRootsListChanged,
+    NotificationsProgress,
+    ProgressParams,
+    NotificationsMessage,
+    LogMessageParams,
+    // Method registry
+    McpMethodKind,
+};
+
