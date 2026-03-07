@@ -58,6 +58,7 @@ pub mod correlation;
 pub mod heartbeat;
 pub mod protocol;
 pub mod reconnect;
+pub mod router;
 pub mod transport;
 
 // Re-export JSON-RPC message types
@@ -236,5 +237,20 @@ pub use reconnect::{
     RecoveryConfig,
     RecoveryStrategy,
     Reconnector,
+};
+
+// Re-export router types
+pub use router::{
+    // Core types
+    RequestRouter,
+    ResponseParser,
+    ResponseCorrelator,
+    TypedResponse,
+    RequestBuilder,
+    MessageClassifier,
+    MessageKind,
+    RequestHandler,
+    NotificationHandler,
+    RouterStats,
 };
 
