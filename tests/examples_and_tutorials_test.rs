@@ -12,7 +12,6 @@
 //! - cross-platform-lib: Cross-platform project
 
 use std::fs;
-use std::path::Path;
 
 /// Example project directories with their descriptions
 const EXPECTED_EXAMPLES: &[(&str, &str)] = &[
