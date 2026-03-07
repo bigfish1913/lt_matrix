@@ -65,6 +65,15 @@ pub fn init_logging(level: LogLevel, log_file: Option<impl AsRef<Path>>) -> io::
     if let Some(ref file_path) = log_file {
         // For file logging, we need to create a custom file appender
         // that writes to the specific file path (not rolling daily)
+
+        // Ensure parent directory exists
+        if let Some(parent) = file_path.as_ref().parent() {
+            // Only create directory if parent is not empty (not just a filename in current dir)
+            if !parent.as_os_str().is_empty() {
+                std::fs::create_dir_all(parent)?;
+            }
+        }
+
         let file = std::fs::File::create(file_path.as_ref())?;
         let (non_blocking_file, worker_guard) = non_blocking(file);
 

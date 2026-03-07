@@ -104,7 +104,7 @@ impl From<i32> for RequestId {
 /// JSON-RPC 2.0 request message
 ///
 /// A request is a call from client to server that expects a response.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct JsonRpcRequest {
     /// JSON-RPC version (always "2.0")
     pub jsonrpc: String,
@@ -118,6 +118,49 @@ pub struct JsonRpcRequest {
     /// Method parameters (optional)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub params: Option<Value>,
+}
+
+/// Custom deserialization for JsonRpcRequest to enforce "id" field requirement
+impl<'de> Deserialize<'de> for JsonRpcRequest {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        use serde::de::Error;
+
+        // Parse into a generic Value to inspect the fields
+        let value = Value::deserialize(deserializer)?;
+
+        // Validate required fields
+        let jsonrpc = value
+            .get("jsonrpc")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| Error::missing_field("jsonrpc"))?
+            .to_string();
+
+        // Request MUST have an "id" field
+        let id_value = value
+            .get("id")
+            .ok_or_else(|| Error::missing_field("id"))?;
+
+        let id = RequestId::deserialize(id_value)
+            .map_err(|_| Error::custom("Invalid 'id' field in request"))?;
+
+        let method = value
+            .get("method")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| Error::missing_field("method"))?
+            .to_string();
+
+        let params = value.get("params").cloned();
+
+        Ok(JsonRpcRequest {
+            jsonrpc,
+            id,
+            method,
+            params,
+        })
+    }
 }
 
 impl JsonRpcRequest {
@@ -234,7 +277,7 @@ impl JsonRpcResponse {
 /// JSON-RPC 2.0 notification message
 ///
 /// A notification is a one-way message that does not expect a response.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct JsonRpcNotification {
     /// JSON-RPC version (always "2.0")
     pub jsonrpc: String,
@@ -245,6 +288,48 @@ pub struct JsonRpcNotification {
     /// Method parameters (optional)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub params: Option<Value>,
+}
+
+/// Custom deserialization for JsonRpcNotification to enforce "id" field rejection
+impl<'de> Deserialize<'de> for JsonRpcNotification {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        use serde::de::Error;
+
+        // Parse into a generic Value to inspect the fields
+        let value = Value::deserialize(deserializer)?;
+
+        // Check for "id" field - notifications should NOT have an id
+        if value.get("id").is_some() {
+            return Err(Error::custom(
+                "Notification message must not have an 'id' field. \
+                 Notifications are one-way messages that do not expect a response.",
+            ));
+        }
+
+        // Validate required fields
+        let jsonrpc = value
+            .get("jsonrpc")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| Error::missing_field("jsonrpc"))?
+            .to_string();
+
+        let method = value
+            .get("method")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| Error::missing_field("method"))?
+            .to_string();
+
+        let params = value.get("params").cloned();
+
+        Ok(JsonRpcNotification {
+            jsonrpc,
+            method,
+            params,
+        })
+    }
 }
 
 impl JsonRpcNotification {
