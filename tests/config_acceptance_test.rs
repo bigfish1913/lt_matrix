@@ -25,7 +25,7 @@ use tempfile::TempDir;
 fn acceptance_1_1_global_config_path_exists() {
     // Verify the function to get global config path works
     let result = get_global_config_path();
-    assert!(result.is_ok(), "Should be able to get global config path");
+    assert!(result.is_some(), "Should be able to get global config path");
 
     let path = result.unwrap();
     let path_str = path.to_string_lossy();

@@ -488,11 +488,9 @@ fn merge_agent_configs(
 
 /// Gets the global configuration path
 ///
-/// Returns `~/.ltmatrix/config.toml`
-pub fn get_global_config_path() -> Result<PathBuf> {
-    let home = dirs::home_dir().context("Failed to determine home directory")?;
-
-    Ok(home.join(".ltmatrix").join("config.toml"))
+/// Returns `~/.ltmatrix/config.toml` if home directory can be determined
+pub fn get_global_config_path() -> Option<PathBuf> {
+    dirs::home_dir().map(|home| home.join(".ltmatrix").join("config.toml"))
 }
 
 /// Gets the project configuration path
@@ -689,7 +687,7 @@ pub fn load_config_from_args(args: crate::cli::Args) -> Result<Config> {
 ///
 /// Returns a merged and validated `Config`.
 pub fn load_config_with_overrides(overrides: Option<CliOverrides>) -> Result<Config> {
-    let global_path = get_global_config_path()?;
+    let global_path = get_global_config_path();
     let project_path = get_project_config_path();
 
     // Use custom config file if specified, otherwise use standard paths
@@ -700,7 +698,9 @@ pub fn load_config_with_overrides(overrides: Option<CliOverrides>) -> Result<Con
         } else {
             // Load from standard paths
             let mut paths = Vec::new();
-            paths.push(global_path.clone());
+            if let Some(ref global) = global_path {
+                paths.push(global.clone());
+            }
             if let Some(ref project) = project_path {
                 paths.push(project.clone());
             }
@@ -709,7 +709,9 @@ pub fn load_config_with_overrides(overrides: Option<CliOverrides>) -> Result<Con
     } else {
         // No overrides, use standard paths
         let mut paths = Vec::new();
-        paths.push(global_path.clone());
+        if let Some(ref global) = global_path {
+            paths.push(global.clone());
+        }
         if let Some(ref project) = project_path {
             paths.push(project.clone());
         }

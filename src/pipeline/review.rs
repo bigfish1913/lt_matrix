@@ -511,7 +511,7 @@ async fn review_single_task(
 }
 
 /// Build the review prompt for a task
-fn build_review_prompt(task: &Task, config: &ReviewConfig) -> String {
+pub fn build_review_prompt(task: &Task, config: &ReviewConfig) -> String {
     let mut checks = Vec::new();
 
     if config.check_security {
@@ -866,5 +866,408 @@ mod tests {
         assert_eq!(summary.total_tasks, 1);
         assert_eq!(summary.skipped_tasks, 1);
         assert_eq!(summary.passed_tasks, 0);
+    }
+
+    #[test]
+    fn test_parse_issue_json_complete() {
+        let json = serde_json::json!({
+            "category": "security",
+            "severity": "critical",
+            "file": "src/main.rs",
+            "line": 42,
+            "title": "SQL Injection",
+            "description": "User input not sanitized",
+            "suggestion": "Use parameterized queries",
+            "code_snippet": "format!(\"SELECT * FROM users WHERE id = {}\", input)",
+            "blocking": true
+        });
+
+        let issue = parse_issue_json(&json).expect("Should parse valid issue");
+
+        assert_eq!(issue.category, IssueCategory::Security);
+        assert_eq!(issue.severity, IssueSeverity::Critical);
+        assert_eq!(issue.file, Some("src/main.rs".to_string()));
+        assert_eq!(issue.line, Some(42));
+        assert_eq!(issue.title, "SQL Injection");
+        assert_eq!(issue.description, "User input not sanitized");
+        assert_eq!(issue.suggestion, Some("Use parameterized queries".to_string()));
+        assert_eq!(issue.code_snippet, Some("format!(\"SELECT * FROM users WHERE id = {}\", input)".to_string()));
+        assert!(issue.blocking);
+    }
+
+    #[test]
+    fn test_parse_issue_json_minimal() {
+        let json = serde_json::json!({
+            "category": "performance",
+            "severity": "medium",
+            "title": "Inefficient loop",
+            "description": "Using O(n²) algorithm"
+        });
+
+        let issue = parse_issue_json(&json).expect("Should parse minimal issue");
+
+        assert_eq!(issue.category, IssueCategory::Performance);
+        assert_eq!(issue.severity, IssueSeverity::Medium);
+        assert_eq!(issue.file, None);
+        assert_eq!(issue.line, None);
+        assert_eq!(issue.title, "Inefficient loop");
+        assert_eq!(issue.suggestion, None);
+        assert_eq!(issue.code_snippet, None);
+        assert!(!issue.blocking);
+    }
+
+    #[test]
+    fn test_parse_issue_json_all_categories() {
+        let categories = [
+            ("security", IssueCategory::Security),
+            ("performance", IssueCategory::Performance),
+            ("quality", IssueCategory::Quality),
+            ("best_practices", IssueCategory::BestPractices),
+            ("documentation", IssueCategory::Documentation),
+            ("testing", IssueCategory::Testing),
+            ("error_handling", IssueCategory::ErrorHandling),
+        ];
+
+        for (category_str, expected_category) in categories {
+            let json = serde_json::json!({
+                "category": category_str,
+                "severity": "low",
+                "title": "Test issue",
+                "description": "Test description"
+            });
+
+            let issue = parse_issue_json(&json).expect(&format!("Should parse category: {}", category_str));
+            assert_eq!(issue.category, expected_category, "Category mismatch for {}", category_str);
+        }
+    }
+
+    #[test]
+    fn test_parse_issue_json_all_severities() {
+        let severities = [
+            ("critical", IssueSeverity::Critical),
+            ("high", IssueSeverity::High),
+            ("medium", IssueSeverity::Medium),
+            ("low", IssueSeverity::Low),
+            ("info", IssueSeverity::Info),
+        ];
+
+        for (severity_str, expected_severity) in severities {
+            let json = serde_json::json!({
+                "category": "quality",
+                "severity": severity_str,
+                "title": "Test issue",
+                "description": "Test description"
+            });
+
+            let issue = parse_issue_json(&json).expect(&format!("Should parse severity: {}", severity_str));
+            assert_eq!(issue.severity, expected_severity, "Severity mismatch for {}", severity_str);
+        }
+    }
+
+    #[test]
+    fn test_parse_issue_json_invalid_category() {
+        let json = serde_json::json!({
+            "category": "invalid_category",
+            "severity": "high",
+            "title": "Test",
+            "description": "Test"
+        });
+
+        assert!(parse_issue_json(&json).is_none(), "Should return None for invalid category");
+    }
+
+    #[test]
+    fn test_parse_issue_json_missing_required_fields() {
+        // Missing category
+        let json1 = serde_json::json!({
+            "severity": "high",
+            "title": "Test",
+            "description": "Test"
+        });
+        assert!(parse_issue_json(&json1).is_none());
+
+        // Missing severity
+        let json2 = serde_json::json!({
+            "category": "security",
+            "title": "Test",
+            "description": "Test"
+        });
+        assert!(parse_issue_json(&json2).is_none());
+    }
+
+    #[test]
+    fn test_parse_json_review_pass() {
+        let json = serde_json::json!({
+            "assessment": "pass",
+            "summary": "Code is excellent, no issues found",
+            "strengths": ["Good error handling", "Well documented"],
+            "issues": []
+        });
+
+        let config = ReviewConfig::default();
+        let (issues, assessment, summary, strengths) = parse_json_review(&json, &config)
+            .expect("Should parse valid JSON review");
+
+        assert_eq!(assessment, ReviewAssessment::Pass);
+        assert_eq!(summary, "Code is excellent, no issues found");
+        assert_eq!(strengths.len(), 2);
+        assert!(strengths.contains(&"Good error handling".to_string()));
+        assert_eq!(issues.len(), 0);
+    }
+
+    #[test]
+    fn test_parse_json_review_with_issues() {
+        let json = serde_json::json!({
+            "assessment": "needs_improvements",
+            "summary": "Several issues found that need fixing",
+            "strengths": ["Good structure"],
+            "issues": [
+                {
+                    "category": "security",
+                    "severity": "high",
+                    "title": "SQL injection",
+                    "description": "Unsanitized input",
+                    "blocking": false
+                },
+                {
+                    "category": "performance",
+                    "severity": "medium",
+                    "title": "Slow query",
+                    "description": "Missing index",
+                    "blocking": false
+                }
+            ]
+        });
+
+        let config = ReviewConfig {
+            severity_threshold: IssueSeverity::Low,
+            max_issues_per_category: 10,
+            ..Default::default()
+        };
+
+        let (issues, assessment, summary, strengths) = parse_json_review(&json, &config)
+            .expect("Should parse JSON review with issues");
+
+        assert_eq!(assessment, ReviewAssessment::NeedsImprovements);
+        assert_eq!(issues.len(), 2);
+        assert_eq!(issues[0].category, IssueCategory::Security);
+        assert_eq!(issues[1].category, IssueCategory::Performance);
+        assert_eq!(strengths.len(), 1);
+    }
+
+    #[test]
+    fn test_parse_json_review_filters_by_severity() {
+        let json = serde_json::json!({
+            "assessment": "warning",
+            "summary": "Some minor issues",
+            "strengths": [],
+            "issues": [
+                {
+                    "category": "quality",
+                    "severity": "low",
+                    "title": "Minor style issue",
+                    "description": "Inconsistent naming",
+                    "blocking": false
+                },
+                {
+                    "category": "quality",
+                    "severity": "info",
+                    "title": "Suggestion",
+                    "description": "Could be more idiomatic",
+                    "blocking": false
+                }
+            ]
+        });
+
+        let config = ReviewConfig {
+            severity_threshold: IssueSeverity::Low,
+            max_issues_per_category: 10,
+            ..Default::default()
+        };
+
+        let (issues, _, _, _) = parse_json_review(&json, &config)
+            .expect("Should parse and filter by severity");
+
+        // Only include issues with severity >= Low (Low and above, not Info)
+        assert_eq!(issues.len(), 1);
+        assert_eq!(issues[0].severity, IssueSeverity::Low);
+    }
+
+    #[test]
+    fn test_parse_json_review_limits_issues_per_category() {
+        // Create 15 issues in the same category
+        let issues: Vec<serde_json::Value> = (0..15)
+            .map(|i| serde_json::json!({
+                "category": "quality",
+                "severity": "medium",
+                "title": format!("Issue {}", i),
+                "description": format!("Description {}", i),
+                "blocking": false
+            }))
+            .collect();
+
+        let json = serde_json::json!({
+            "assessment": "warning",
+            "summary": "Many issues",
+            "strengths": [],
+            "issues": issues
+        });
+
+        let config = ReviewConfig {
+            severity_threshold: IssueSeverity::Info,
+            max_issues_per_category: 10,
+            ..Default::default()
+        };
+
+        let (issues, _, _, _) = parse_json_review(&json, &config)
+            .expect("Should parse and limit issues");
+
+        assert_eq!(issues.len(), 10, "Should limit to max_issues_per_category");
+    }
+
+    #[test]
+    fn test_parse_json_review_handles_invalid_assessment() {
+        let json = serde_json::json!({
+            "assessment": "invalid_assessment",
+            "summary": "Test",
+            "strengths": [],
+            "issues": []
+        });
+
+        let config = ReviewConfig::default();
+        let (_, assessment, _, _) = parse_json_review(&json, &config)
+            .expect("Should handle invalid assessment gracefully");
+
+        // Should default to Warning for unknown assessment
+        assert_eq!(assessment, ReviewAssessment::Warning);
+    }
+
+    #[test]
+    fn test_parse_text_review_fail() {
+        let response = "CRITICAL issues found in the code. Security vulnerabilities detected.";
+
+        let config = ReviewConfig::default();
+        let (issues, assessment, summary, strengths) = parse_text_review(response, &config)
+            .expect("Should parse text review");
+
+        assert_eq!(assessment, ReviewAssessment::Fail);
+        assert!(summary.contains("CRITICAL"));
+        assert_eq!(issues.len(), 0); // Text parsing doesn't extract structured issues
+    }
+
+    #[test]
+    fn test_parse_text_review_needs_improvements() {
+        let response = "The code has some issues that should be fixed. Performance is lacking and needs improvement.";
+
+        let config = ReviewConfig::default();
+        let (_, assessment, _, _) = parse_text_review(response, &config)
+            .expect("Should parse text review");
+
+        assert_eq!(assessment, ReviewAssessment::NeedsImprovements);
+    }
+
+    #[test]
+    fn test_parse_text_review_warning() {
+        let response = "Code looks good but there are some minor issues and warnings to consider.";
+
+        let config = ReviewConfig::default();
+        let (_, assessment, _, _) = parse_text_review(response, &config)
+            .expect("Should parse text review");
+
+        assert_eq!(assessment, ReviewAssessment::Warning);
+    }
+
+    #[test]
+    fn test_parse_text_review_pass() {
+        let response = "Excellent implementation! Everything works correctly.";
+
+        let config = ReviewConfig::default();
+        let (_, assessment, _, _) = parse_text_review(response, &config)
+            .expect("Should parse text review");
+
+        assert_eq!(assessment, ReviewAssessment::Pass);
+    }
+
+    #[test]
+    fn test_parse_text_review_extracts_strengths() {
+        let response = "Good error handling throughout. The code is well structured and properly documented. Excellent performance characteristics.";
+
+        let config = ReviewConfig::default();
+        let (_, _, _, strengths) = parse_text_review(response, &config)
+            .expect("Should parse text review");
+
+        assert!(!strengths.is_empty());
+        assert!(strengths.iter().any(|s| s.contains("Good") || s.contains("well") || s.contains("Excellent")));
+    }
+
+    #[test]
+    fn test_parse_text_review_truncates_long_summary() {
+        let long_response = "A".repeat(300);
+        let config = ReviewConfig::default();
+
+        let (_, _, summary, _) = parse_text_review(&long_response, &config)
+            .expect("Should parse and truncate long summary");
+
+        assert!(summary.len() <= 203, "Summary should be truncated to ~200 chars plus ellipsis");
+        assert!(summary.ends_with("..."));
+    }
+
+    #[test]
+    fn test_build_review_prompt_formatting() {
+        let task = Task::new("task-1", "Implement auth", "Add JWT authentication");
+        let config = ReviewConfig::expert_mode();
+
+        let prompt = build_review_prompt(&task, &config);
+
+        // Check key elements are present
+        assert!(prompt.contains("expert code reviewer"));
+        assert!(prompt.contains("Task: Implement auth"));
+        assert!(prompt.contains("Add JWT authentication"));
+        assert!(prompt.contains("Overall assessment"));
+        assert!(prompt.contains("Severity levels"));
+        assert!(prompt.contains("blocking"));
+    }
+
+    #[test]
+    fn test_review_assessment_retry_recommendation() {
+        // Pass should not recommend retry
+        let result1 = ReviewResult {
+            task: Task::new("test-1", "Test", "Description"),
+            assessment: ReviewAssessment::Pass,
+            issues: vec![],
+            summary: "Good".to_string(),
+            strengths: vec![],
+            retry_recommended: false,
+            review_time: 10,
+        };
+
+        // Check manually calculated retry recommendation
+        let needs_retry = matches!(
+            result1.assessment,
+            ReviewAssessment::NeedsImprovements | ReviewAssessment::Fail
+        );
+        assert!(!needs_retry);
+
+        // NeedsImprovements should recommend retry
+        let result2 = ReviewResult {
+            assessment: ReviewAssessment::NeedsImprovements,
+            ..result1.clone()
+        };
+        let needs_retry = matches!(
+            result2.assessment,
+            ReviewAssessment::NeedsImprovements | ReviewAssessment::Fail
+        );
+        assert!(needs_retry);
+
+        // Fail should recommend retry
+        let result3 = ReviewResult {
+            assessment: ReviewAssessment::Fail,
+            ..result1
+        };
+        let needs_retry = matches!(
+            result3.assessment,
+            ReviewAssessment::NeedsImprovements | ReviewAssessment::Fail
+        );
+        assert!(needs_retry);
     }
 }

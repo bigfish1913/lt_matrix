@@ -374,7 +374,7 @@ fn test_load_config_file_only_comments() {
 #[test]
 fn test_get_global_config_path_format() {
     let path = get_global_config_path();
-    assert!(path.is_ok());
+    assert!(path.is_some(), "Should be able to determine global config path");
 
     let path = path.unwrap();
     let path_str = path.to_string_lossy();

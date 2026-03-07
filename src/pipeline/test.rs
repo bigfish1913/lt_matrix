@@ -3,9 +3,152 @@
 //! This module handles automatic detection and execution of tests across
 //! multiple frameworks: pytest, npm, Go, and Cargo.
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, anyhow};
 use std::fs;
 use std::path::{Path, PathBuf};
+use tracing::{debug, info, warn};
+
+use crate::models::{ModeConfig, Task};
+
+/// Configuration for the test stage
+#[derive(Debug, Clone)]
+pub struct TestConfig {
+    /// Mode configuration
+    pub mode_config: ModeConfig,
+
+    /// Whether to enable testing
+    pub enabled: bool,
+
+    /// Working directory
+    pub work_dir: PathBuf,
+
+    /// Test framework to use
+    pub framework: TestFramework,
+
+    /// Timeout for test execution (seconds)
+    pub timeout: u64,
+
+    /// Whether to fail on test errors
+    pub fail_on_error: bool,
+}
+
+impl Default for TestConfig {
+    fn default() -> Self {
+        TestConfig {
+            mode_config: ModeConfig::default(),
+            enabled: true,
+            work_dir: std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
+            framework: TestFramework::None,
+            timeout: 300,
+            fail_on_error: true,
+        }
+    }
+}
+
+impl TestConfig {
+    /// Create config for fast mode
+    pub fn fast_mode() -> Self {
+        TestConfig {
+            mode_config: ModeConfig::fast_mode(),
+            enabled: false, // Tests disabled in fast mode
+            work_dir: std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
+            framework: TestFramework::None,
+            timeout: 120,
+            fail_on_error: false,
+        }
+    }
+
+    /// Create config for expert mode
+    pub fn expert_mode() -> Self {
+        TestConfig {
+            mode_config: ModeConfig::expert_mode(),
+            enabled: true,
+            work_dir: std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
+            framework: TestFramework::None,
+            timeout: 600,
+            fail_on_error: true,
+        }
+    }
+}
+
+/// Test completed tasks
+///
+/// This function detects the test framework and runs tests for completed tasks.
+pub async fn test_tasks(tasks: Vec<Task>, config: &TestConfig) -> Result<Vec<Task>> {
+    if !config.enabled {
+        debug!("Test stage disabled by config");
+        return Ok(tasks);
+    }
+
+    if tasks.is_empty() {
+        debug!("No tasks to test");
+        return Ok(tasks);
+    }
+
+    info!("Testing {} completed tasks", tasks.len());
+
+    // Detect test framework if not set
+    let framework = if config.framework == TestFramework::None {
+        detect_test_framework(&config.work_dir)?.framework
+    } else {
+        config.framework.clone()
+    };
+
+    if framework == TestFramework::None {
+        debug!("No test framework detected, skipping tests");
+        return Ok(tasks);
+    }
+
+    info!("Using test framework: {}", framework.display_name());
+
+    let command = framework.test_command();
+    debug!("Running test command: {}", command);
+
+    // Run the test command
+    let result = tokio::process::Command::new("sh")
+        .args(["-c", command])
+        .current_dir(&config.work_dir)
+        .output()
+        .await;
+
+    match result {
+        Ok(output) => {
+            if output.status.success() {
+                info!("Tests passed successfully");
+                // Mark all completed tasks as tested
+                let tested_tasks: Vec<Task> = tasks
+                    .into_iter()
+                    .map(|task| {
+                        if task.is_completed() {
+                            // Task passed tests
+                            debug!("Task {} passed tests", task.id);
+                        }
+                        task
+                    })
+                    .collect();
+                Ok(tested_tasks)
+            } else {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                warn!("Tests failed: {}", stderr);
+                if config.fail_on_error {
+                    Err(anyhow!("Tests failed: {}", stderr))
+                } else {
+                    info!("Tests failed but continuing due to fail_on_error=false");
+                    Ok(tasks)
+                }
+            }
+        }
+        Err(e) => {
+            warn!("Failed to run tests: {}", e);
+            if config.fail_on_error {
+                Err(anyhow!("Failed to execute test command: {}", e))
+            } else {
+                info!("Test execution failed but continuing due to fail_on_error=false");
+                Ok(tasks)
+            }
+        }
+    }
+}
 
 /// Supported testing frameworks
 #[derive(Debug, Clone, PartialEq, Eq)]

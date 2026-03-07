@@ -484,7 +484,7 @@ fn test_merge_multiple_levels() {
 #[test]
 fn test_global_path_home_exists() {
     let path = get_global_config_path();
-    assert!(path.is_ok());
+    assert!(path.is_some(), "Should be able to determine global config path");
 
     let path = path.unwrap();
     // Parent directory should be home
