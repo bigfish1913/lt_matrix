@@ -6,34 +6,31 @@
 //! - Configuration options for memory injection
 //! - Memory loading behavior with various file states
 
-use ltmatrix::memory::{MemoryIntegration, MemoryEntry};
+use ltmatrix::memory::{MemoryIntegration, MemoryStore, MemoryEntry};
 use ltmatrix::models::{Task, TaskComplexity, TaskStatus};
 use ltmatrix::pipeline::execute::{
     build_task_context, build_execution_prompt, ExecuteConfig,
-    get_execution_order, load_project_memory,
+    get_execution_order,
 };
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::PathBuf;
 use tempfile::TempDir;
-use tokio::runtime::Runtime;
 
 // ============================================================================
-// Memory Loading Tests
+// Memory Loading Tests (via MemoryIntegration public API)
 // ============================================================================
 
 #[test]
-fn test_load_project_memory_existing_file() {
-    let rt = Runtime::new().unwrap();
-    rt.block_on(async {
-        let temp_dir = TempDir::new().unwrap();
-        let memory_file = temp_dir.path().join(".claude/memory.md");
+fn test_memory_loading_existing_file() {
+    let temp_dir = TempDir::new().unwrap();
+    let memory_file = temp_dir.path().join(".claude/memory.md");
 
-        // Create memory file with content
-        fs::create_dir_all(temp_dir.path().join(".claude")).unwrap();
-        fs::write(
-            &memory_file,
-            r#"# Project Memory
+    // Create memory file with content
+    fs::create_dir_all(temp_dir.path().join(".claude")).unwrap();
+    fs::write(
+        &memory_file,
+        r#"# Project Memory
 
 ---
 
@@ -46,129 +43,155 @@ Using Tokio for async operations.
 
 ---
 "#,
-        )
-        .unwrap();
+    )
+    .unwrap();
 
-        // Load memory
-        let memory = load_project_memory(&memory_file).await.unwrap();
+    // Load memory via MemoryIntegration
+    let integration = MemoryIntegration::new(temp_dir.path()).unwrap();
 
-        assert!(!memory.is_empty(), "Memory should be loaded from existing file");
-        assert!(
-            memory.contains("Tokio"),
-            "Memory should contain stored content"
+    // Verify memory is loaded
+    assert_eq!(integration.entry_count(), 1, "Should load existing entry");
+
+    // Verify content is available
+    let context = integration.get_context_for_prompt().unwrap();
+    assert!(
+        context.contains("Tokio"),
+        "Memory should contain stored content"
+    );
+}
+
+#[test]
+fn test_memory_loading_nonexistent_file() {
+    let temp_dir = TempDir::new().unwrap();
+
+    // Create MemoryIntegration without existing memory file
+    let integration = MemoryIntegration::new(temp_dir.path()).unwrap();
+
+    // Should handle gracefully
+    assert_eq!(integration.entry_count(), 0, "Should have no entries");
+
+    let context = integration.get_context_for_prompt().unwrap();
+    assert!(
+        context.contains("No project memory"),
+        "Should indicate no memory available"
+    );
+}
+
+#[test]
+fn test_memory_loading_empty_file() {
+    let temp_dir = TempDir::new().unwrap();
+    let memory_file = temp_dir.path().join(".claude/memory.md");
+
+    // Create empty memory file
+    fs::create_dir_all(temp_dir.path().join(".claude")).unwrap();
+    fs::write(&memory_file, "").unwrap();
+
+    // Load memory
+    let integration = MemoryIntegration::new(temp_dir.path()).unwrap();
+
+    assert_eq!(
+        integration.entry_count(), 0,
+        "Empty file should result in no entries"
+    );
+}
+
+#[test]
+fn test_memory_loading_header_only() {
+    let temp_dir = TempDir::new().unwrap();
+    let memory_file = temp_dir.path().join(".claude/memory.md");
+
+    // Create memory file with only header (no valid entries)
+    fs::create_dir_all(temp_dir.path().join(".claude")).unwrap();
+    fs::write(&memory_file, "# Project Memory\n\nNo entries yet.\n").unwrap();
+
+    // Load memory
+    let integration = MemoryIntegration::new(temp_dir.path()).unwrap();
+
+    // Header only should result in no parsed entries
+    assert_eq!(
+        integration.entry_count(), 0,
+        "Header-only file should have no entries"
+    );
+}
+
+#[test]
+fn test_memory_loading_large_file() {
+    let temp_dir = TempDir::new().unwrap();
+
+    // Use MemoryStore to add many entries
+    let store = MemoryStore::new(temp_dir.path()).unwrap();
+
+    // Add many entries
+    for i in 0..50 {
+        let entry = MemoryEntry::new(
+            &format!("task-{:03}", i),
+            &format!("Entry {}", i),
+            &format!("Content for entry {} with additional text", i),
         );
-        assert!(
-            memory.contains("task-001"),
-            "Memory should contain task reference"
+        store.append_entry(&entry).unwrap();
+    }
+
+    // Create new MemoryIntegration to reload
+    let integration = MemoryIntegration::new(temp_dir.path()).unwrap();
+
+    assert_eq!(
+        integration.entry_count(), 50,
+        "Large file should load all entries"
+    );
+
+    // Verify context is available
+    let context = integration.get_context_for_prompt().unwrap();
+    assert!(!context.is_empty(), "Context should be available");
+}
+
+#[test]
+fn test_memory_loading_unicode_content() {
+    let temp_dir = TempDir::new().unwrap();
+
+    // Create store with unicode content
+    let store = MemoryStore::new(temp_dir.path()).unwrap();
+
+    let entry = MemoryEntry::new(
+        "task-001",
+        "国际化 测试",
+        "支持中文 🚀 Émojis and accents",
+    );
+    store.append_entry(&entry).unwrap();
+
+    // Reload via MemoryIntegration
+    let integration = MemoryIntegration::new(temp_dir.path()).unwrap();
+
+    let context = integration.get_context_for_prompt().unwrap();
+    assert!(context.contains("中文"), "Should handle Chinese characters");
+    assert!(context.contains("🚀"), "Should handle emojis");
+    assert!(context.contains("Émojis"), "Should handle accents");
+}
+
+#[test]
+fn test_memory_loading_persistence() {
+    let temp_dir = TempDir::new().unwrap();
+
+    // First load - create memory
+    {
+        let store = MemoryStore::new(temp_dir.path()).unwrap();
+        let entry = MemoryEntry::new("task-001", "Setup", "Architecture decision: Use Rust for performance");
+        store.append_entry(&entry).unwrap();
+    }
+
+    // Second load - verify persistence via MemoryIntegration
+    {
+        let integration = MemoryIntegration::new(temp_dir.path()).unwrap();
+        assert_eq!(
+            integration.entry_count(), 1,
+            "Memory should persist between loads"
         );
-    });
-}
 
-#[test]
-fn test_load_project_memory_nonexistent_file() {
-    let rt = Runtime::new().unwrap();
-    rt.block_on(async {
-        let temp_dir = TempDir::new().unwrap();
-        let memory_file = temp_dir.path().join(".claude/nonexistent.md");
-
-        // Load memory from non-existent file
-        let memory = load_project_memory(&memory_file).await.unwrap();
-
+        let context = integration.get_context_for_prompt().unwrap();
         assert!(
-            memory.is_empty(),
-            "Non-existent file should return empty string"
+            context.contains("Rust"),
+            "Stored memory should be available after reload"
         );
-    });
-}
-
-#[test]
-fn test_load_project_memory_empty_file() {
-    let rt = Runtime::new().unwrap();
-    rt.block_on(async {
-        let temp_dir = TempDir::new().unwrap();
-        let memory_file = temp_dir.path().join(".claude/memory.md");
-
-        // Create empty memory file
-        fs::create_dir_all(temp_dir.path().join(".claude")).unwrap();
-        fs::write(&memory_file, "").unwrap();
-
-        // Load memory
-        let memory = load_project_memory(&memory_file).await.unwrap();
-
-        assert!(memory.is_empty(), "Empty file should return empty string");
-    });
-}
-
-#[test]
-fn test_load_project_memory_header_only() {
-    let rt = Runtime::new().unwrap();
-    rt.block_on(async {
-        let temp_dir = TempDir::new().unwrap();
-        let memory_file = temp_dir.path().join(".claude/memory.md");
-
-        // Create memory file with only header
-        fs::create_dir_all(temp_dir.path().join(".claude")).unwrap();
-        fs::write(&memory_file, "# Project Memory\n\nNo entries yet.\n").unwrap();
-
-        // Load memory
-        let memory = load_project_memory(&memory_file).await.unwrap();
-
-        assert!(!memory.is_empty(), "Header-only file should return content");
-        assert!(
-            memory.contains("Project Memory"),
-            "Should contain header content"
-        );
-    });
-}
-
-#[test]
-fn test_load_project_memory_large_file() {
-    let rt = Runtime::new().unwrap();
-    rt.block_on(async {
-        let temp_dir = TempDir::new().unwrap();
-        let memory_file = temp_dir.path().join(".claude/memory.md");
-
-        // Create large memory file
-        fs::create_dir_all(temp_dir.path().join(".claude")).unwrap();
-        let mut content = String::from("# Project Memory\n\n");
-        for i in 0..100 {
-            content.push_str(&format!(
-                "## Entry {}\n\nContent for entry {} with some additional text to make it larger.\n\n---\n\n",
-                i, i
-            ));
-        }
-        fs::write(&memory_file, &content).unwrap();
-
-        // Load memory - should handle large files
-        let memory = load_project_memory(&memory_file).await.unwrap();
-
-        assert!(!memory.is_empty(), "Large file should be loaded");
-        assert!(memory.len() > 1000, "Large file should have substantial content");
-    });
-}
-
-#[test]
-fn test_load_project_memory_unicode_content() {
-    let rt = Runtime::new().unwrap();
-    rt.block_on(async {
-        let temp_dir = TempDir::new().unwrap();
-        let memory_file = temp_dir.path().join(".claude/memory.md");
-
-        // Create memory file with unicode
-        fs::create_dir_all(temp_dir.path().join(".claude")).unwrap();
-        fs::write(
-            &memory_file,
-            "# Project Memory\n\n## Decision\n\n支持中文 🚀 Émojis and accents\n",
-        )
-        .unwrap();
-
-        // Load memory
-        let memory = load_project_memory(&memory_file).await.unwrap();
-
-        assert!(memory.contains("中文"), "Should handle Chinese characters");
-        assert!(memory.contains("🚀"), "Should handle emojis");
-        assert!(memory.contains("Émojis"), "Should handle accents");
-    });
+    }
 }
 
 // ============================================================================
@@ -298,6 +321,43 @@ fn test_build_execution_prompt_format() {
     assert!(prompt.contains("Document changes"), "Should mention documentation");
 }
 
+#[test]
+fn test_context_structure_with_memory() {
+    let task = create_test_task("task-001", "Test", "Test");
+    let task_map = create_task_map(&[task.clone()]);
+    let completed_tasks = HashSet::new();
+    let project_memory = "Memory content";
+
+    let context =
+        build_task_context(&task, &task_map, &completed_tasks, project_memory).unwrap();
+
+    // Memory should appear before task context
+    let memory_pos = context.find("Project Memory").unwrap();
+    let task_pos = context.find("Task Context").unwrap();
+
+    assert!(
+        memory_pos < task_pos,
+        "Memory should appear before task context"
+    );
+}
+
+#[test]
+fn test_context_with_task_complexity() {
+    let mut task = create_test_task("task-001", "Complex Task", "Hard work");
+    task.complexity = TaskComplexity::Complex;
+    let task_map = create_task_map(&[task.clone()]);
+    let completed_tasks = HashSet::new();
+    let project_memory = "";
+
+    let context =
+        build_task_context(&task, &task_map, &completed_tasks, project_memory).unwrap();
+
+    assert!(
+        context.contains("Complexity: Complex"),
+        "Context should include task complexity"
+    );
+}
+
 // ============================================================================
 // Configuration Tests
 // ============================================================================
@@ -349,6 +409,17 @@ fn test_execute_config_expert_mode_memory_file() {
     );
 }
 
+#[test]
+fn test_execute_config_all_fields() {
+    let config = ExecuteConfig::default();
+
+    // Verify all expected fields exist
+    assert_eq!(config.max_retries, 3);
+    assert_eq!(config.timeout, 3600);
+    assert!(config.enable_sessions);
+    assert_eq!(config.memory_file, PathBuf::from(".claude/memory.md"));
+}
+
 // ============================================================================
 // End-to-End Pipeline Memory Flow Tests
 // ============================================================================
@@ -365,19 +436,29 @@ fn test_memory_flow_from_creation_to_prompt() {
         .unwrap();
 
     // 2. Get context for prompt
-    let context = integration.get_context_for_prompt().unwrap();
+    let memory_context = integration.get_context_for_prompt().unwrap();
 
     // 3. Verify memory flows through
     assert!(
-        context.contains("Tokio"),
+        memory_context.contains("Tokio"),
         "Memory should be available for prompt injection"
     );
 
-    // 4. Build execution prompt with memory
-    let prompt = build_execution_prompt(&task, &context);
+    // 4. Build task context with memory
+    let task_map = create_task_map(&[task.clone()]);
+    let completed = HashSet::new();
+    let full_context = build_task_context(&task, &task_map, &completed, &memory_context).unwrap();
+
+    assert!(
+        full_context.contains("Tokio"),
+        "Memory should be in task context"
+    );
+
+    // 5. Build execution prompt
+    let prompt = build_execution_prompt(&task, &full_context);
     assert!(
         prompt.contains("Tokio"),
-        "Memory should be in execution prompt"
+        "Memory should flow to execution prompt"
     );
 }
 
@@ -398,8 +479,7 @@ fn test_memory_persistence_across_pipeline_runs() {
     {
         let integration = MemoryIntegration::new(temp_dir.path()).unwrap();
         assert_eq!(
-            integration.entry_count(),
-            1,
+            integration.entry_count(), 1,
             "Memory should persist across runs"
         );
 
@@ -468,27 +548,19 @@ fn test_memory_context_limits_entries() {
 // ============================================================================
 
 #[test]
-fn test_memory_file_corrupted_content() {
-    let rt = Runtime::new().unwrap();
-    rt.block_on(async {
-        let temp_dir = TempDir::new().unwrap();
-        let memory_file = temp_dir.path().join(".claude/memory.md");
+fn test_memory_integration_handles_new_project_directory() {
+    let temp_dir = TempDir::new().unwrap();
+    let new_project = temp_dir.path().join("new_project");
 
-        // Create corrupted/invalid markdown file
-        fs::create_dir_all(temp_dir.path().join(".claude")).unwrap();
-        fs::write(
-            &memory_file,
-            "This is not valid memory format\nJust random text\nNo headers or structure",
-        )
-        .unwrap();
+    // Create the project directory (but not .claude subdirectory)
+    // MemoryIntegration will create the .claude directory
+    fs::create_dir_all(&new_project).unwrap();
 
-        // Should still load (even if parsing later might fail)
-        let memory = load_project_memory(&memory_file).await.unwrap();
-        assert!(
-            !memory.is_empty(),
-            "Should load content even if format is unexpected"
-        );
-    });
+    let integration = MemoryIntegration::new(&new_project).unwrap();
+    assert_eq!(integration.entry_count(), 0);
+
+    // .claude directory should be created
+    assert!(new_project.join(".claude").exists());
 }
 
 #[test]
@@ -506,40 +578,67 @@ fn test_memory_with_special_characters_in_paths() {
 }
 
 #[test]
-fn test_build_context_with_task_complexity() {
-    let mut task = create_test_task("task-001", "Complex Task", "Hard work");
-    task.complexity = TaskComplexity::Complex;
+fn test_empty_memory_context_in_task_context() {
+    let task = create_test_task("task-001", "Test", "Test");
     let task_map = create_task_map(&[task.clone()]);
-    let completed_tasks = HashSet::new();
-    let project_memory = "";
+    let completed = HashSet::new();
+    let empty_memory = "";
 
-    let context =
-        build_task_context(&task, &task_map, &completed_tasks, project_memory).unwrap();
+    let context = build_task_context(&task, &task_map, &completed, empty_memory).unwrap();
 
+    // Should not crash and should still have task context
+    assert!(context.contains("Task Context"), "Should have task context");
+    assert!(context.contains("Task: Test"), "Should have task info");
+    // Should not have Project Memory section since memory is empty
     assert!(
-        context.contains("Complexity: Complex"),
-        "Context should include task complexity"
+        !context.contains("## Project Memory"),
+        "Should not have memory section for empty memory"
     );
 }
 
 #[test]
-fn test_memory_injection_order() {
-    let task = create_test_task("task-001", "Test", "Test");
-    let task_map = create_task_map(&[task.clone()]);
-    let completed_tasks = HashSet::new();
-    let project_memory = "Memory content";
+fn test_memory_integration_with_concurrent_tasks() {
+    let temp_dir = TempDir::new().unwrap();
+    let integration = MemoryIntegration::new(temp_dir.path()).unwrap();
 
-    let context =
-        build_task_context(&task, &task_map, &completed_tasks, project_memory).unwrap();
+    // Simulate multiple tasks completing and storing memories
+    let tasks: Vec<Task> = (1..=10)
+        .map(|i| create_test_task(&format!("task-{:03}", i), &format!("Task {}", i), "Desc"))
+        .collect();
 
-    // Memory should appear before task context
-    let memory_pos = context.find("Project Memory").unwrap();
-    let task_pos = context.find("Task Context").unwrap();
+    for task in &tasks {
+        integration
+            .store_task_summary(task, &[])
+            .unwrap();
+    }
 
-    assert!(
-        memory_pos < task_pos,
-        "Memory should appear before task context"
-    );
+    // All memories should be stored
+    assert_eq!(integration.entry_count(), 10);
+
+    // Context should be available
+    let context = integration.get_context_for_prompt().unwrap();
+    assert!(!context.is_empty());
+}
+
+#[test]
+fn test_get_execution_order_with_memory_aware_tasks() {
+    // Create tasks with dependencies
+    let task1 = create_test_task("task-001", "Setup", "Initial setup");
+    let mut task2 = create_test_task("task-002", "Build", "Build on setup");
+    task2.depends_on = vec!["task-001".to_string()];
+    let mut task3 = create_test_task("task-003", "Deploy", "Deploy after build");
+    task3.depends_on = vec!["task-002".to_string()];
+
+    let task_map = create_task_map(&[task1, task2, task3]);
+
+    // Get execution order
+    let order = get_execution_order(&task_map).unwrap();
+
+    // Verify order respects dependencies
+    assert_eq!(order.len(), 3);
+    assert_eq!(order[0], "task-001");
+    assert_eq!(order[1], "task-002");
+    assert_eq!(order[2], "task-003");
 }
 
 // ============================================================================

@@ -482,7 +482,11 @@ level = "info"
     // Load and merge config
     let result = load_config_with_overrides(Some(overrides));
 
-    std::env::set_current_dir(original_dir).unwrap();
+    // Restore original directory BEFORE any assertions that might panic
+    // This ensures cleanup happens even if assertions fail
+    if let Err(e) = std::env::set_current_dir(&original_dir) {
+        panic!("Failed to restore original directory {:?}: {}", original_dir, e);
+    }
 
     assert!(
         result.is_ok(),
@@ -504,4 +508,7 @@ level = "info"
         ExecutionModeArg::Expert,
         "CLI should have expert mode set"
     );
+
+    // Keep temp_dir alive until end of test (but drop it after we've restored directory)
+    drop(temp_dir);
 }
