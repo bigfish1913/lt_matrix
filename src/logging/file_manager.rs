@@ -119,7 +119,8 @@ impl LogManager {
 
     /// Generates a new timestamped log file path
     ///
-    /// Format: logs/run-YYYYMMDD-HHMMSS.log
+    /// Format: logs/run-YYYYMMDD-HHMMSS-###.log
+    /// where ### is milliseconds (3 digits) for uniqueness
     ///
     /// # Returns
     ///
@@ -127,8 +128,10 @@ impl LogManager {
     #[must_use]
     pub fn generate_log_path(&self) -> PathBuf {
         let now = Local::now();
+        // Include milliseconds for uniqueness when creating multiple files rapidly
         let timestamp = now.format("%Y%m%d-%H%M%S");
-        let filename = format!("run-{}.log", timestamp);
+        let millis = now.timestamp_subsec_millis();
+        let filename = format!("run-{}-{:03}.log", timestamp, millis);
         self.logs_dir.join(filename)
     }
 
@@ -356,6 +359,11 @@ impl LogManager {
     /// A vector of LogFileInfo for each log file
     pub fn get_log_info(&self) -> io::Result<Vec<LogFileInfo>> {
         let mut log_info = Vec::new();
+
+        // Return empty list if logs directory doesn't exist yet
+        if !self.logs_dir.exists() {
+            return Ok(log_info);
+        }
 
         let entries = self.get_log_files_sorted()?;
 

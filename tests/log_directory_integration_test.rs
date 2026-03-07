@@ -58,16 +58,21 @@ fn test_timestamped_log_file_format() {
         .and_then(|n| n.to_str())
         .expect("Filename should be valid UTF-8");
 
-    // Should match pattern: run-YYYYMMDD-HHMMSS.log
+    // Should match pattern: run-YYYYMMDD-HHMMSS-###.log
     assert!(filename.starts_with("run-"), "Filename should start with 'run-'");
     assert!(filename.ends_with(".log"), "Filename should end with '.log'");
 
-    // Extract timestamp part
+    // Extract timestamp part (without 'run-' prefix and '.log' suffix)
     let timestamp_part = &filename[4..filename.len() - 4];
-    assert_eq!(timestamp_part.len(), 15, "Timestamp should be 15 characters (YYYYMMDD-HHMMSS)");
+    // Format: YYYYMMDD-HHMMSS-### (8 date + 1 hyphen + 6 time + 1 hyphen + 3 millis = 19 chars)
+    assert_eq!(timestamp_part.len(), 19, "Timestamp should be 19 characters (YYYYMMDD-HHMMSS-###)");
     assert!(
         timestamp_part.chars().nth(8) == Some('-'),
-        "Should have hyphen separator"
+        "Should have hyphen separator after date"
+    );
+    assert!(
+        timestamp_part.chars().nth(15) == Some('-'),
+        "Should have hyphen separator before milliseconds"
     );
 }
 
@@ -296,7 +301,12 @@ fn test_logging_with_manager_writes_to_file() {
 
     // Log file should have content
     let log_info = log_manager.get_log_info().unwrap();
-    let log_file = &log_info[0];
+    assert!(!log_info.is_empty(), "Should have at least one log file");
+
+    // Find the file that contains our message (the most recently modified one)
+    let log_file = log_info.iter()
+        .max_by_key(|f| f.modified_time)
+        .expect("Should have at least one log file");
 
     let content = fs::read_to_string(&log_file.path).unwrap();
     assert!(content.contains("Test message for logging integration"),
@@ -346,7 +356,12 @@ fn test_log_file_info_structure() {
 
     let info = &log_info[0];
     assert_eq!(info.path, log_path);
-    assert_eq!(info.size, 15); // "Test log content" is 15 bytes
+    // Note: File size should be exactly the content we wrote
+    let content_bytes = fs::read(&log_path).unwrap();
+    let content = std::str::from_utf8(&content_bytes).unwrap();
+    // The content should be exactly what we wrote
+    assert_eq!(content, "Test log content", "Content should match what we wrote: {:?}", content_bytes);
+    assert_eq!(info.size, content_bytes.len() as u64, "File size should match content length");
     assert!(info.age_days >= 0);
     assert!(info.age_days < 1); // Should be very recent
 }

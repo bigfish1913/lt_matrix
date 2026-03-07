@@ -63,32 +63,36 @@ pub fn init_logging(level: LogLevel, log_file: Option<impl AsRef<Path>>) -> io::
 
     // Initialize logging based on whether we have a file
     if let Some(ref file_path) = log_file {
-        let log_dir = file_path
-            .as_ref()
-            .parent()
-            .unwrap_or_else(|| Path::new("."));
-        let file_name = file_path
-            .as_ref()
-            .file_stem()
-            .and_then(|s| s.to_str())
-            .unwrap_or("ltmatrix");
+        // For file logging, we need to create a custom file appender
+        // that writes to the specific file path (not rolling daily)
+        let file = std::fs::File::create(file_path.as_ref())?;
+        let (non_blocking_file, worker_guard) = non_blocking(file);
 
-        let file_appender = rolling::daily(log_dir, file_name);
-        let (_non_blocking, worker_guard) = non_blocking(file_appender);
+        // Set up subscriber with both console and file output
+        let subscriber = Registry::default()
+            .with(env_filter)
+            .with(
+                fmt::layer()
+                    .with_writer(io::stdout)
+                    .with_span_events(FmtSpan::CLOSE)
+                    .with_ansi(true)
+                    .with_target(true)
+                    .with_file(true)
+                    .with_line_number(true),
+            )
+            .with(
+                fmt::layer()
+                    .with_writer(non_blocking_file)
+                    .with_span_events(FmtSpan::CLOSE)
+                    .with_ansi(false)
+                    .with_target(true)
+                    .with_file(true)
+                    .with_line_number(true),
+            );
 
-        // Console and file logging - use try_init to handle tests
-        let _ = tracing_subscriber::fmt()
-            .with_env_filter(env_filter)
-            .with_writer(io::stdout)
-            .with_span_events(FmtSpan::CLOSE)
-            .with_ansi(true)
-            .with_target(true)
-            .with_file(true)
-            .with_line_number(true)
-            .with_max_level(tracing::Level::TRACE)
-            .try_init();
+        // Use try_init to handle tests
+        let _ = subscriber.try_init();
 
-        // Add file appender separately using a different approach
         let path: &Path = file_path.as_ref();
         tracing::info!("Logging to file: {}", path.display());
 

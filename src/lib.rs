@@ -23,6 +23,7 @@ pub mod pipeline;
 pub mod progress;
 pub mod tasks;
 pub mod terminal;
+pub mod testing;
 pub mod validate;
 pub mod workspace;
 

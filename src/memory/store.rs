@@ -249,9 +249,9 @@ mod tests {
         let context = integration.get_context_for_prompt().unwrap();
         assert!(context.contains("No project memory available"));
 
-        // Add entry
+        // Add entry using a pattern that the extractor will recognize
         let task = create_test_task();
-        integration.extract_and_store(&task, "Decision: Use Tokio runtime").unwrap();
+        integration.extract_and_store(&task, "Architecture decision: Use Tokio runtime for async operations").unwrap();
 
         let context = integration.get_context_for_prompt().unwrap();
         assert!(context.contains("Project Memory Context"));
