@@ -166,6 +166,7 @@ async fn test_execute_single_task_success() {
         memory_file: PathBuf::from("nonexistent.md"),
         enable_workspace_persistence: false,
         project_root: None,
+        agent_pool: None,
     };
 
     // Note: This test requires execute_tasks to be callable, but it needs

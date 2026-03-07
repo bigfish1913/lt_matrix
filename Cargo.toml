@@ -66,6 +66,9 @@ which = "6.0"
 # Directory resolution
 dirs = "5.0"
 
+# Regular expressions
+regex = "1.10"
+
 [features]
 # Default features - balanced for development and production
 default = []

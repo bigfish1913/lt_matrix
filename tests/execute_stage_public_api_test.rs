@@ -67,6 +67,7 @@ fn test_execute_config_custom() {
         memory_file: PathBuf::from("/custom/memory.md"),
         enable_workspace_persistence: false,
         project_root: None,
+        agent_pool: None,
     };
 
     assert_eq!(config.max_retries, 5);

@@ -202,6 +202,7 @@ async fn test_execution_config_edge_cases() {
         memory_file: PathBuf::from("memory.md"),
         enable_workspace_persistence: false,
         project_root: None,
+        agent_pool: None,
     };
     assert_eq!(config.timeout, 0);
     assert_eq!(config.max_retries, 0);
@@ -216,6 +217,7 @@ async fn test_execution_config_edge_cases() {
         memory_file: PathBuf::from("memory.md"),
         enable_workspace_persistence: false,
         project_root: None,
+        agent_pool: None,
     };
     assert_eq!(config.timeout, 86400);
     assert_eq!(config.max_retries, 1000);

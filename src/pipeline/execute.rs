@@ -17,6 +17,7 @@ use tracing::{debug, error, info, warn};
 use crate::agent::backend::{AgentBackend, ExecutionConfig};
 use crate::agent::claude::ClaudeAgent;
 use crate::agent::session::SessionManager;
+use crate::agent::AgentPool;
 use crate::models::{ModeConfig, Task, TaskComplexity, TaskStatus};
 use crate::workspace::WorkspaceState;
 
@@ -46,6 +47,12 @@ pub struct ExecuteConfig {
 
     /// Project root directory for workspace state
     pub project_root: Option<PathBuf>,
+
+    /// Optional AgentPool for session management
+    ///
+    /// When provided, this takes precedence over SessionManager
+    /// for all session operations.
+    pub agent_pool: Option<AgentPool>,
 }
 
 impl Default for ExecuteConfig {
@@ -59,6 +66,7 @@ impl Default for ExecuteConfig {
             memory_file: PathBuf::from(".claude/memory.md"),
             enable_workspace_persistence: false,
             project_root: None,
+            agent_pool: None,
         }
     }
 }
@@ -75,6 +83,7 @@ impl ExecuteConfig {
             memory_file: PathBuf::from(".claude/memory.md"),
             enable_workspace_persistence: false,
             project_root: None,
+            agent_pool: None,
         }
     }
 
@@ -89,6 +98,7 @@ impl ExecuteConfig {
             memory_file: PathBuf::from(".claude/memory.md"),
             enable_workspace_persistence: false,
             project_root: None,
+            agent_pool: None,
         }
     }
 }
@@ -148,16 +158,22 @@ pub async fn execute_tasks(
 
     let start_time = std::time::Instant::now();
 
-    // Create agent and session manager
+    // Create agent and session manager (fallback when agent_pool not provided)
     let agent = ClaudeAgent::new().context("Failed to create Claude agent")?;
-    let session_manager =
-        SessionManager::new(&config.work_dir).context("Failed to create session manager")?;
+    let session_manager = if config.agent_pool.is_none() {
+        Some(SessionManager::new(&config.work_dir).context("Failed to create session manager")?)
+    } else {
+        None
+    };
 
     // Clean up stale sessions
-    session_manager
-        .cleanup_stale_sessions()
-        .await
-        .context("Failed to cleanup stale sessions")?;
+    if let Some(pool) = &config.agent_pool {
+        pool.cleanup_stale_sessions().await;
+    } else if let Some(sm) = &session_manager {
+        sm.cleanup_stale_sessions()
+            .await
+            .context("Failed to cleanup stale sessions")?;
+    }
 
     // Load project memory for context
     let project_memory = load_project_memory(&config.memory_file).await?;
@@ -220,17 +236,30 @@ pub async fn execute_tasks(
         // Build task context
         let context = build_task_context(&task, &task_map, &completed_tasks, &project_memory)?;
 
-        // Execute task with retry logic
-        let execution_result = execute_task_with_retry(
-            &task,
-            &context,
-            model,
-            session_id,
-            &agent,
-            &session_manager,
-            config,
-        )
-        .await?;
+        // Execute task with retry logic - use AgentPool if available
+        let execution_result = if let Some(pool) = &config.agent_pool {
+            execute_task_with_agent_pool(
+                &mut task,
+                &context,
+                model,
+                session_id,
+                pool,
+                &agent,
+                config,
+            )
+            .await?
+        } else {
+            execute_task_with_retry(
+                &task,
+                &context,
+                model,
+                session_id,
+                &agent,
+                session_manager.as_ref().unwrap(),
+                config,
+            )
+            .await?
+        };
 
         stats.total_retries += execution_result.retries;
         stats.total_time += execution_result.execution_time;
@@ -467,6 +496,96 @@ async fn execute_task_with_retry(
         output: last_output,
         retries,
         session_id: current_session,
+        execution_time: start_time.elapsed().as_secs(),
+    })
+}
+
+/// Execute a task with AgentPool integration
+///
+/// This function uses AgentPool for session management, providing:
+/// - Session reuse for retry scenarios
+/// - Session inheritance for dependency chains
+/// - Cross-task session sharing
+async fn execute_task_with_agent_pool(
+    task: &mut Task,
+    context: &str,
+    model: &str,
+    session_id: Option<String>,
+    pool: &AgentPool,
+    agent: &ClaudeAgent,
+    config: &ExecuteConfig,
+) -> Result<TaskExecutionResult> {
+    let start_time = std::time::Instant::now();
+    let mut last_output = String::new();
+    let mut retries = 0;
+
+    // Set parent session ID if provided (dependency chain)
+    if let Some(parent_sid) = session_id {
+        task.set_parent_session_id(&parent_sid);
+    }
+
+    for attempt in 0..=config.max_retries {
+        if attempt > 0 {
+            info!(
+                "Retrying task {} (attempt {}/{})",
+                task.id, attempt, config.max_retries
+            );
+            retries += 1;
+            task.prepare_retry();
+        }
+
+        // Build execution config
+        let exec_config = ExecutionConfig {
+            model: model.to_string(),
+            max_retries: 0, // We handle retries at the task level
+            timeout: config.timeout,
+            enable_session: config.enable_sessions,
+            env_vars: Vec::new(),
+        };
+
+        // Build prompt with context
+        let prompt = build_execution_prompt(task, context);
+
+        // Get or create session using AgentPool
+        // This handles retry reuse, dependency inheritance, and cross-task sharing
+        let _session_id = pool
+            .get_or_create_session_for_task(task, agent.backend_name(), model)
+            .await;
+
+        // Execute using the agent pool
+        let result = pool
+            .execute_with_session(task, agent, &prompt, &exec_config)
+            .await?;
+
+        last_output = result.output.clone();
+
+        // Check if execution was successful
+        if task.error.is_none() {
+            debug!("Task {} completed successfully with AgentPool", task.id);
+            return Ok(TaskExecutionResult {
+                task: task.clone(),
+                output: last_output,
+                retries,
+                session_id: task.get_session_id().map(|s| s.to_string()),
+                execution_time: start_time.elapsed().as_secs(),
+            });
+        }
+
+        // Check if we should retry
+        if attempt < config.max_retries && task.can_retry(config.max_retries) {
+            warn!("Task {} failed, will retry: {:?}", task.id, task.error);
+            continue;
+        } else {
+            break;
+        }
+    }
+
+    // All retries exhausted
+    Ok(TaskExecutionResult {
+        task: task.clone(),
+        output: last_output,
+        retries,
+        session_id: task.get_session_id().map(|s| s.to_string()),
         execution_time: start_time.elapsed().as_secs(),
     })
 }

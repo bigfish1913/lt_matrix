@@ -27,6 +27,7 @@ async fn test_execution_with_empty_task_list() {
         memory_file: PathBuf::from("nonexistent.md"),
         enable_workspace_persistence: false,
         project_root: None,
+        agent_pool: None,
     };
 
     // This should handle empty task list gracefully
@@ -81,6 +82,7 @@ async fn test_load_memory_from_nonexistent_file() {
         memory_file: memory_path.clone(),
         enable_workspace_persistence: false,
         project_root: None,
+        agent_pool: None,
     };
 
     // Verify the config points to nonexistent file
@@ -107,6 +109,7 @@ async fn test_load_malformed_memory_file() {
         memory_file: memory_path,
         enable_workspace_persistence: false,
         project_root: None,
+        agent_pool: None,
     };
 
     // Config should still be valid
@@ -130,6 +133,7 @@ async fn test_load_empty_memory_file() {
         memory_file: memory_path,
         enable_workspace_persistence: false,
         project_root: None,
+        agent_pool: None,
     };
 
     assert!(config.memory_file.exists());
@@ -363,6 +367,7 @@ async fn test_execution_config_with_invalid_work_dir() {
         memory_file: PathBuf::from("memory.md"),
         enable_workspace_persistence: false,
         project_root: None,
+        agent_pool: None,
     };
 
     // Config should still be constructable

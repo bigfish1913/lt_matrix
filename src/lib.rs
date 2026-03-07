@@ -23,6 +23,7 @@ pub mod pipeline;
 pub mod progress;
 pub mod tasks;
 pub mod terminal;
+pub mod validate;
 pub mod workspace;
 
 // Re-export commonly used types

@@ -58,6 +58,7 @@ fn test_execute_config_custom_paths() {
         memory_file: PathBuf::from("/custom/memory.md"),
         enable_workspace_persistence: false,
         project_root: None,
+        agent_pool: None,
     };
 
     assert_eq!(config.work_dir, PathBuf::from("/custom/work"));
