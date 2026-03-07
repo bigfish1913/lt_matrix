@@ -64,10 +64,15 @@
 use crate::mcp::protocol::errors::{McpError, McpErrorCode, McpResult};
 use crate::mcp::protocol::messages::RequestId;
 use crate::mcp::protocol::methods::{
-    ClientCapabilities, ImplementationInfo, InitializeParams, InitializeResult, ServerCapabilities,
-    MCP_PROTOCOL_VERSION,
+    ClientCapabilities, ImplementationInfo, InitializeParams, InitializeResult,
+    Resource, ResourceReadParams, ResourceReadResult,
+    ResourcesListParams, ResourcesListResult, ServerCapabilities, Tool, ToolCallParams,
+    ToolCallResult, ToolContent, ToolsListParams, ToolsListResult, MCP_PROTOCOL_VERSION,
 };
-use crate::mcp::protocol::wrappers::{Initialize, McpMethod, McpNotification, NotificationsInitialized};
+use crate::mcp::protocol::wrappers::{
+    Initialize, McpMethod, McpNotification, NotificationsInitialized,
+    Ping, PingParams, ResourcesList, ResourcesRead, ToolsList, ToolsCall,
+};
 use crate::mcp::transport::{create_transport, Transport, TransportConfig, TransportMessage};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
@@ -765,6 +770,462 @@ impl McpClient {
             .as_ref()
             .map(|t| t.stats())
             .unwrap_or_default()
+    }
+
+    // ========================================================================
+    // Core MCP Methods
+    // ========================================================================
+
+    /// Call any MCP method with typed request/response
+    ///
+    /// This is the low-level method for calling MCP methods. Prefer using
+    /// the typed methods like [`list_resources`](Self::list_resources) when available.
+    ///
+    /// # Type Parameters
+    ///
+    /// - `M`: The MCP method type implementing [`McpMethod`]
+    ///
+    /// # Arguments
+    ///
+    /// - `params`: The method parameters
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The client is not connected
+    /// - The request fails to send
+    /// - The response times out
+    /// - The response contains an error
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use ltmatrix::mcp::client::McpClient;
+    /// use ltmatrix::mcp::protocol::wrappers::{Ping, McpMethod, PingParams};
+    ///
+    /// async fn example(client: &McpClient) -> Result<(), Box<dyn std::error::Error>> {
+    ///     let result = client.call_method::<Ping>(PingParams::default()).await?;
+    ///     Ok(())
+    /// }
+    /// ```
+    pub async fn call_method<M: McpMethod>(&self, params: M::Params) -> McpResult<M::Result> {
+        // Check connection state
+        if !self.is_connected().await {
+            return Err(McpError::with_category(
+                McpErrorCode::SessionError,
+                "Client not connected",
+                crate::mcp::protocol::errors::ErrorCategory::Protocol,
+            ));
+        }
+
+        let request_id = self.next_request_id();
+        let request = M::build_request(request_id.clone(), params);
+
+        if self.config.debug_logging {
+            tracing::debug!("Sending {} request: {:?}", M::METHOD_NAME, request);
+        }
+
+        // Send the request
+        {
+            let transport = self.transport.as_ref().ok_or_else(|| {
+                McpError::communication("Transport not available")
+            })?;
+            transport.send_request(request).await?;
+        }
+
+        // Wait for response with timeout
+        let response = tokio::time::timeout(
+            self.config.request_timeout,
+            self.wait_for_response(&request_id)
+        ).await
+            .map_err(|_| McpError::timeout(M::METHOD_NAME, self.config.request_timeout))??;
+
+        if self.config.debug_logging {
+            tracing::debug!("Received {} response: {:?}", M::METHOD_NAME, response);
+        }
+
+        // Parse and return the result
+        M::parse_response(response)
+    }
+
+    /// Ping the server to check connection health
+    ///
+    /// This sends a `ping` request to the server and waits for a response.
+    /// It's useful for checking if the connection is still alive.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the client is not connected or the ping fails.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use ltmatrix::mcp::client::McpClient;
+    ///
+    /// async fn example(client: &McpClient) -> Result<(), Box<dyn std::error::Error>> {
+    ///     client.ping().await?;
+    ///     println!("Server is alive!");
+    ///     Ok(())
+    /// }
+    /// ```
+    pub async fn ping(&self) -> McpResult<()> {
+        self.call_method::<Ping>(PingParams::default()).await?;
+        Ok(())
+    }
+
+    // ========================================================================
+    // Resources Methods
+    // ========================================================================
+
+    /// List available resources from the server
+    ///
+    /// This sends a `resources/list` request to discover what resources
+    /// the server provides.
+    ///
+    /// # Arguments
+    ///
+    /// - `cursor`: Optional pagination cursor for large result sets
+    ///
+    /// # Returns
+    ///
+    /// A list of available resources and an optional next cursor for pagination.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The client is not connected
+    /// - The server doesn't support resources
+    /// - The request fails
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use ltmatrix::mcp::client::McpClient;
+    ///
+    /// async fn example(client: &McpClient) -> Result<(), Box<dyn std::error::Error>> {
+    ///     let result = client.list_resources(None).await?;
+    ///     for resource in result.resources {
+    ///         println!("Resource: {} ({})", resource.name, resource.uri);
+    ///     }
+    ///     Ok(())
+    /// }
+    /// ```
+    pub async fn list_resources(&self, cursor: Option<&str>) -> McpResult<ResourcesListResult> {
+        let params = match cursor {
+            Some(c) => ResourcesListParams {
+                cursor: Some(c.to_string()),
+            },
+            None => ResourcesListParams::default(),
+        };
+        self.call_method::<ResourcesList>(params).await
+    }
+
+    /// List all resources, handling pagination automatically
+    ///
+    /// This method fetches all pages of resources until no more are available.
+    ///
+    /// # Returns
+    ///
+    /// A vector of all available resources.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if any page request fails.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use ltmatrix::mcp::client::McpClient;
+    ///
+    /// async fn example(client: &McpClient) -> Result<(), Box<dyn std::error::Error>> {
+    ///     let resources = client.list_all_resources().await?;
+    ///     println!("Found {} resources", resources.len());
+    ///     Ok(())
+    /// }
+    /// ```
+    pub async fn list_all_resources(&self) -> McpResult<Vec<Resource>> {
+        let mut all_resources = Vec::new();
+        let mut cursor: Option<String> = None;
+
+        loop {
+            let result = self.list_resources(cursor.as_deref()).await?;
+            all_resources.extend(result.resources);
+
+            cursor = result.next_cursor;
+            if cursor.is_none() {
+                break;
+            }
+        }
+
+        Ok(all_resources)
+    }
+
+    /// Read a specific resource by URI
+    ///
+    /// This sends a `resources/read` request to fetch the contents of a resource.
+    ///
+    /// # Arguments
+    ///
+    /// - `uri`: The URI of the resource to read
+    ///
+    /// # Returns
+    ///
+    /// The resource contents, which may be text or binary data.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The client is not connected
+    /// - The resource doesn't exist
+    /// - The request fails
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use ltmatrix::mcp::client::McpClient;
+    ///
+    /// async fn example(client: &McpClient) -> Result<(), Box<dyn std::error::Error>> {
+    ///     let result = client.read_resource("file:///project/README.md").await?;
+    ///     for contents in result.contents {
+    ///         if let Some(text) = contents.text {
+    ///             println!("Content: {}", text);
+    ///         }
+    ///     }
+    ///     Ok(())
+    /// }
+    /// ```
+    pub async fn read_resource(&self, uri: &str) -> McpResult<ResourceReadResult> {
+        let params = ResourceReadParams::new(uri);
+        self.call_method::<ResourcesRead>(params).await
+    }
+
+    /// Read a resource and return its text content
+    ///
+    /// This is a convenience method that reads a resource and extracts
+    /// the text content, returning an error if the resource is binary.
+    ///
+    /// # Arguments
+    ///
+    /// - `uri`: The URI of the resource to read
+    ///
+    /// # Returns
+    ///
+    /// The text content of the resource.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the resource is binary or contains no text.
+    pub async fn read_resource_text(&self, uri: &str) -> McpResult<String> {
+        let result = self.read_resource(uri).await?;
+
+        // Combine all text contents
+        let mut text = String::new();
+        for contents in result.contents {
+            if let Some(t) = contents.text {
+                if !text.is_empty() {
+                    text.push('\n');
+                }
+                text.push_str(&t);
+            }
+        }
+
+        if text.is_empty() {
+            return Err(McpError::with_category(
+                McpErrorCode::InternalError,
+                "Resource contains no text content",
+                crate::mcp::protocol::errors::ErrorCategory::Protocol,
+            ));
+        }
+
+        Ok(text)
+    }
+
+    // ========================================================================
+    // Tools Methods
+    // ========================================================================
+
+    /// List available tools from the server
+    ///
+    /// This sends a `tools/list` request to discover what tools
+    /// the server provides.
+    ///
+    /// # Arguments
+    ///
+    /// - `cursor`: Optional pagination cursor for large result sets
+    ///
+    /// # Returns
+    ///
+    /// A list of available tools and an optional next cursor for pagination.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The client is not connected
+    /// - The server doesn't support tools
+    /// - The request fails
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use ltmatrix::mcp::client::McpClient;
+    ///
+    /// async fn example(client: &McpClient) -> Result<(), Box<dyn std::error::Error>> {
+    ///     let result = client.list_tools(None).await?;
+    ///     for tool in result.tools {
+    ///         println!("Tool: {} - {}", tool.name, tool.description);
+    ///     }
+    ///     Ok(())
+    /// }
+    /// ```
+    pub async fn list_tools(&self, cursor: Option<&str>) -> McpResult<ToolsListResult> {
+        let params = match cursor {
+            Some(c) => ToolsListParams {
+                cursor: Some(c.to_string()),
+            },
+            None => ToolsListParams::default(),
+        };
+        self.call_method::<ToolsList>(params).await
+    }
+
+    /// List all tools, handling pagination automatically
+    ///
+    /// This method fetches all pages of tools until no more are available.
+    ///
+    /// # Returns
+    ///
+    /// A vector of all available tools.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if any page request fails.
+    pub async fn list_all_tools(&self) -> McpResult<Vec<Tool>> {
+        let mut all_tools = Vec::new();
+        let mut cursor: Option<String> = None;
+
+        loop {
+            let result = self.list_tools(cursor.as_deref()).await?;
+            all_tools.extend(result.tools);
+
+            cursor = result.next_cursor;
+            if cursor.is_none() {
+                break;
+            }
+        }
+
+        Ok(all_tools)
+    }
+
+    /// Call a tool on the server
+    ///
+    /// This sends a `tools/call` request to execute a tool with the given arguments.
+    ///
+    /// # Arguments
+    ///
+    /// - `name`: The name of the tool to call
+    /// - `arguments`: Optional JSON arguments for the tool
+    ///
+    /// # Returns
+    ///
+    /// The tool execution result, which may contain text, images, or resource references.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The client is not connected
+    /// - The tool doesn't exist
+    /// - The tool execution fails
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use ltmatrix::mcp::client::McpClient;
+    /// use serde_json::json;
+    ///
+    /// async fn example(client: &McpClient) -> Result<(), Box<dyn std::error::Error>> {
+    ///     let result = client.call_tool("browser_navigate", Some(json!({
+    ///         "url": "https://example.com"
+    ///     }))).await?;
+    ///
+    ///     if result.is_error {
+    ///         println!("Tool failed!");
+    ///     } else {
+    ///         for content in result.content {
+    ///             println!("Result: {:?}", content);
+    ///         }
+    ///     }
+    ///     Ok(())
+    /// }
+    /// ```
+    pub async fn call_tool(
+        &self,
+        name: &str,
+        arguments: Option<serde_json::Value>,
+    ) -> McpResult<ToolCallResult> {
+        let params = ToolCallParams {
+            name: name.to_string(),
+            arguments,
+        };
+        self.call_method::<ToolsCall>(params).await
+    }
+
+    /// Call a tool and return the text content
+    ///
+    /// This is a convenience method that calls a tool and extracts
+    /// all text content from the result.
+    ///
+    /// # Arguments
+    ///
+    /// - `name`: The name of the tool to call
+    /// - `arguments`: Optional JSON arguments for the tool
+    ///
+    /// # Returns
+    ///
+    /// A tuple of (text_content, is_error).
+    pub async fn call_tool_text(
+        &self,
+        name: &str,
+        arguments: Option<serde_json::Value>,
+    ) -> McpResult<(String, bool)> {
+        let result = self.call_tool(name, arguments).await?;
+
+        let mut text = String::new();
+        for content in &result.content {
+            match content {
+                ToolContent::Text { text: t } => {
+                    if !text.is_empty() {
+                        text.push('\n');
+                    }
+                    text.push_str(t);
+                }
+                _ => {} // Skip non-text content
+            }
+        }
+
+        Ok((text, result.is_error))
+    }
+
+    /// Check if the server supports resources
+    ///
+    /// Returns true if the server advertised resources capability during handshake.
+    pub async fn supports_resources(&self) -> bool {
+        self.server_info
+            .read()
+            .await
+            .as_ref()
+            .map(|info| info.capabilities.resources.is_some())
+            .unwrap_or(false)
+    }
+
+    /// Check if the server supports tools
+    ///
+    /// Returns true if the server advertised tools capability during handshake.
+    pub async fn supports_tools(&self) -> bool {
+        self.server_info
+            .read()
+            .await
+            .as_ref()
+            .map(|info| info.capabilities.tools.is_some())
+            .unwrap_or(false)
     }
 }
 
