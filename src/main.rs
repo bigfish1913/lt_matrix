@@ -147,6 +147,9 @@ fn run_application(args: Args) -> Result<i32> {
         Some(Command::Cleanup(cleanup_args)) => {
             execute_cleanup_command(&mut app_state, cleanup_args)?
         }
+        Some(Command::Memory(memory_args)) => {
+            execute_memory_command(&mut app_state, memory_args)?
+        }
         None => {
             // Default: run the main pipeline
             execute_run_command(&mut app_state)?
@@ -509,6 +512,23 @@ fn execute_cleanup_command(
     // Delegate to CLI command handler
     if let Err(e) = ltmatrix::cli::command::execute_cleanup(cleanup_args) {
         error!("Cleanup command failed: {}", e);
+        return Ok(1);
+    }
+
+    Ok(0)
+}
+
+/// Execute the memory subcommand
+#[instrument(skip(_app_state, memory_args))]
+fn execute_memory_command(
+    _app_state: &mut AppState,
+    memory_args: &ltmatrix::cli::args::MemoryArgs,
+) -> Result<i32> {
+    info!("Executing memory command");
+
+    // Delegate to CLI command handler
+    if let Err(e) = ltmatrix::cli::command::execute_memory(memory_args) {
+        error!("Memory command failed: {}", e);
         return Ok(1);
     }
 

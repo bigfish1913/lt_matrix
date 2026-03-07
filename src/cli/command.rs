@@ -2,11 +2,12 @@
 //!
 //! This module handles the execution of different CLI commands and subcommands.
 
-use super::args::{Args, Command, CleanupArgs};
+use super::args::{Args, Command, CleanupArgs, MemoryArgs};
 use crate::config::settings::{self, CliOverrides};
 use crate::interactive::{ClarificationRunner, ClarificationSession, NonInteractiveRunner};
 use crate::workspace::WorkspaceState;
 use anyhow::{Context, Result};
+use std::path::PathBuf;
 use tracing::{info, warn};
 
 /// Execute the command specified in the arguments
@@ -16,6 +17,7 @@ pub fn execute_command(args: Args) -> Result<()> {
         Some(Command::Completions(ref completions_args)) => execute_completions(completions_args),
         Some(Command::Man(ref man_args)) => execute_man(man_args),
         Some(Command::Cleanup(ref cleanup_args)) => execute_cleanup(cleanup_args),
+        Some(Command::Memory(ref memory_args)) => execute_memory(memory_args),
         None => {
             // Default to run command
             execute_run(&args)
@@ -503,6 +505,303 @@ fn print_help() {
     println!("  ltmatrix-cleanup(1)   Cleanup subcommand");
     println!();
     println!("For more information, visit: https://github.com/bigfish/ltmatrix");
+}
+
+/// Execute the memory subcommand
+pub fn execute_memory(args: &MemoryArgs) -> Result<()> {
+    use super::args::MemoryAction;
+
+    match &args.action {
+        MemoryAction::Summarize(summarize_args) => {
+            execute_memory_summarize(summarize_args)
+        }
+        MemoryAction::Status(status_args) => {
+            execute_memory_status(status_args)
+        }
+        MemoryAction::Clear(clear_args) => {
+            execute_memory_clear(clear_args)
+        }
+    }
+}
+
+/// Execute memory summarize subcommand
+fn execute_memory_summarize(args: &super::args::MemorySummarizeArgs) -> Result<()> {
+    use crate::memory::MemoryStore;
+    use crate::config::settings::MemoryConfig;
+    use std::env;
+
+    println!("ltmatrix - Memory Summarization");
+    println!();
+
+    // Get project root
+    let project_root = args.project.clone()
+        .unwrap_or_else(|| env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
+
+    println!("Project root: {}", project_root.display());
+    println!();
+
+    // Create memory store with custom config
+    let mut config = MemoryConfig::default();
+    if let Some(keep_fraction) = args.keep_fraction {
+        if keep_fraction <= 0.0 || keep_fraction > 1.0 {
+            anyhow::bail!("keep-fraction must be between 0.0 (exclusive) and 1.0 (inclusive)");
+        }
+        config.keep_fraction = keep_fraction;
+    }
+
+    let store = MemoryStore::with_config(&project_root, config.clone())
+        .context("Failed to create memory store")?;
+
+    let entry_count = store.entry_count();
+    println!("Current entries: {}", entry_count);
+
+    if entry_count == 0 {
+        println!("No memory entries to summarize.");
+        return Ok(());
+    }
+
+    // Check if summarization is needed
+    let memory_file = project_root.join(".claude/memory.md");
+    let file_size = if memory_file.exists() {
+        std::fs::metadata(&memory_file)
+            .map(|m| m.len() as usize)
+            .unwrap_or(0)
+    } else {
+        0
+    };
+
+    println!("Memory file size: {} bytes", file_size);
+    println!();
+
+    // Determine if we should summarize
+    let needs_summarization = args.force
+        || file_size > config.max_file_size
+        || entry_count > config.max_entries;
+
+    if !needs_summarization {
+        println!("Memory is within configured thresholds.");
+        println!("  Max file size: {} bytes", config.max_file_size);
+        println!("  Max entries: {}", config.max_entries);
+        println!();
+        if !args.force {
+            println!("Use --force to summarize anyway.");
+            return Ok(());
+        }
+    }
+
+    if args.dry_run {
+        println!("DRY RUN - Would summarize memory:");
+        println!("  Entries to process: {}", entry_count);
+        println!("  Keep fraction: {:.0}%", config.keep_fraction * 100.0);
+        println!("  Estimated entries to keep: {}", (entry_count as f64 * config.keep_fraction) as usize);
+    } else {
+        println!("Summarizing memory...");
+        println!("  Keep fraction: {:.0}%", config.keep_fraction * 100.0);
+
+        // Force summarization by triggering it with a modified config
+        let mut force_config = MemoryConfig::default();
+        force_config.max_file_size = 1;
+        force_config.max_entries = 1;
+        force_config.min_entries_for_summarization = 1;
+
+        let _ = MemoryStore::with_config(&project_root, force_config)
+            .context("Failed to summarize memory")?;
+
+        println!();
+        println!("✓ Memory summarized successfully");
+
+        // Show new state
+        let new_store = MemoryStore::new(&project_root)?;
+        println!("  New entry count: {}", new_store.entry_count());
+    }
+
+    Ok(())
+}
+
+/// Execute memory status subcommand
+fn execute_memory_status(args: &super::args::MemoryStatusArgs) -> Result<()> {
+    use crate::memory::MemoryStore;
+    use crate::config::settings::MemoryConfig;
+    use std::env;
+
+    println!("ltmatrix - Memory Status");
+    println!();
+
+    // Get project root
+    let project_root = args.project.clone()
+        .unwrap_or_else(|| env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
+
+    let memory_file = project_root.join(".claude/memory.md");
+
+    // Check if memory file exists
+    if !memory_file.exists() {
+        if args.json {
+            println!("{}", serde_json::json!({
+                "exists": false,
+                "project_root": project_root.display().to_string()
+            }));
+        } else {
+            println!("No memory file found at: {}", memory_file.display());
+            println!();
+            println!("Memory will be created automatically when tasks complete.");
+        }
+        return Ok(());
+    }
+
+    // Load memory store
+    let store = MemoryStore::new(&project_root)
+        .context("Failed to load memory store")?;
+
+    let entries = store.get_entries();
+    let entry_count = entries.len();
+
+    // Get file size
+    let file_size = std::fs::metadata(&memory_file)
+        .map(|m| m.len())
+        .unwrap_or(0);
+
+    // Count by category
+    let mut by_category: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+    for entry in &entries {
+        *by_category.entry(entry.category.to_string()).or_insert(0) += 1;
+    }
+
+    // Count by priority
+    let mut by_priority: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+    for entry in &entries {
+        *by_priority.entry(format!("{:?}", entry.priority)).or_insert(0) += 1;
+    }
+
+    // Count deprecated entries
+    let deprecated_count = entries.iter().filter(|e| e.deprecated).count();
+
+    if args.json {
+        let status = serde_json::json!({
+            "exists": true,
+            "project_root": project_root.display().to_string(),
+            "memory_file": memory_file.display().to_string(),
+            "file_size_bytes": file_size,
+            "entry_count": entry_count,
+            "by_category": by_category,
+            "by_priority": by_priority,
+            "deprecated_count": deprecated_count,
+            "config": {
+                "max_file_size": MemoryConfig::default().max_file_size,
+                "max_entries": MemoryConfig::default().max_entries,
+            }
+        });
+        println!("{}", serde_json::to_string_pretty(&status)?);
+    } else {
+        println!("Memory file: {}", memory_file.display());
+        println!();
+        println!("Statistics:");
+        println!("  Total entries: {}", entry_count);
+        println!("  File size: {} bytes", file_size);
+        println!("  Deprecated entries: {}", deprecated_count);
+        println!();
+
+        if !by_category.is_empty() {
+            println!("By category:");
+            let mut categories: Vec<_> = by_category.iter().collect();
+            categories.sort_by_key(|(_, c)| std::cmp::Reverse(*c));
+            for (category, count) in categories {
+                println!("  {}: {}", category, count);
+            }
+            println!();
+        }
+
+        if !by_priority.is_empty() {
+            println!("By priority:");
+            let mut priorities: Vec<_> = by_priority.iter().collect();
+            priorities.sort_by_key(|(_, c)| std::cmp::Reverse(*c));
+            for (priority, count) in priorities {
+                println!("  {}: {}", priority, count);
+            }
+            println!();
+        }
+
+        // Show configuration thresholds
+        let config = MemoryConfig::default();
+        println!("Configuration:");
+        println!("  Max file size: {} bytes", config.max_file_size);
+        println!("  Max entries: {}", config.max_entries);
+        println!();
+
+        // Show summarization status
+        let needs_summarization = file_size as usize > config.max_file_size
+            || entry_count > config.max_entries;
+
+        if needs_summarization {
+            println!("⚠ Memory exceeds configured thresholds.");
+            println!("  Run 'ltmatrix memory summarize' to reduce size.");
+        } else {
+            println!("✓ Memory is within configured thresholds.");
+        }
+    }
+
+    Ok(())
+}
+
+/// Execute memory clear subcommand
+fn execute_memory_clear(args: &super::args::MemoryClearArgs) -> Result<()> {
+    use crate::memory::MemoryStore;
+    use std::env;
+
+    println!("ltmatrix - Memory Clear");
+    println!();
+
+    // Get project root
+    let project_root = args.project.clone()
+        .unwrap_or_else(|| env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
+
+    let memory_file = project_root.join(".claude/memory.md");
+
+    // Check if memory file exists
+    if !memory_file.exists() {
+        println!("No memory file found at: {}", memory_file.display());
+        return Ok(());
+    }
+
+    // Load store to get entry count
+    let store = MemoryStore::new(&project_root)
+        .context("Failed to load memory store")?;
+
+    let entry_count = store.entry_count();
+    println!("Memory file: {}", memory_file.display());
+    println!("Entries to clear: {}", entry_count);
+    println!();
+
+    // Confirm unless --force
+    if !args.force {
+        if console::user_attended() {
+            use dialoguer::Confirm;
+            let confirm = Confirm::new()
+                .with_prompt("Are you sure you want to clear all memory entries?")
+                .default(false)
+                .interact()?;
+
+            if !confirm {
+                println!("Cancelled.");
+                return Ok(());
+            }
+        } else {
+            println!("Use --force to clear memory without confirmation.");
+            return Ok(());
+        }
+    }
+
+    // Remove the memory file
+    std::fs::remove_file(&memory_file)
+        .context("Failed to remove memory file")?;
+
+    // Remove the .claude directory if empty
+    if let Some(parent) = memory_file.parent() {
+        let _ = std::fs::remove_dir(parent); // Ignore error if not empty
+    }
+
+    println!("✓ Memory cleared successfully ({} entries removed)", entry_count);
+
+    Ok(())
 }
 
 #[cfg(test)]

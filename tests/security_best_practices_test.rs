@@ -17,7 +17,7 @@ use ltmatrix::security::{
     validate_command_name, validate_command_argument, sanitize_command_argument_for_display,
     validate_env_var_name, is_sensitive_env_var, mask_sensitive_value, CommandAllowlist,
     // Path security
-    validate_path, validate_path_within_base, sanitize_path_component, contains_traversal,
+    validate_path, sanitize_path_component, contains_traversal,
     resolve_safe_path, validate_file_extension, has_dangerous_extension,
     // Input validation
     validate_identifier, sanitize_identifier, is_safe_for_command_arg, validate_command_arg,
@@ -958,26 +958,41 @@ fn test_sanitize_model_name() {
 #[test]
 fn test_command_injection_prevention() {
     // Common command injection payloads that should all be rejected
-    let injection_payloads = [
+    // These use validate_command_argument which checks for shell metacharacters
+    let command_arg_payloads = [
         "file; rm -rf /",
         "file && cat /etc/passwd",
         "file || whoami",
         "file`id`",
-        "file$(whoami)",
         "file\nrm -rf /",
         "file\r\nrm -rf /",
         "file | cat /etc/passwd",
     ];
 
-    for payload in &injection_payloads {
+    for payload in &command_arg_payloads {
         assert!(
             validate_command_argument(payload).is_err(),
-            "Payload '{}' should be rejected",
+            "validate_command_argument should reject payload '{}'",
+            payload
+        );
+    }
+
+    // These use validate_command_arg (from input module) which is stricter
+    let input_payloads = [
+        "file$(whoami)",
+        "file$variable",
+        "hello`whoami`",
+    ];
+
+    for payload in &input_payloads {
+        assert!(
+            validate_command_arg(payload).is_err(),
+            "validate_command_arg should reject payload '{}'",
             payload
         );
         assert!(
             !is_safe_for_command_arg(payload),
-            "Payload '{}' should be detected as unsafe",
+            "is_safe_for_command_arg should detect '{}' as unsafe",
             payload
         );
     }
@@ -1014,7 +1029,7 @@ fn test_sensitive_data_masking() {
         ("supersecret", "su...et"),  // Short secret
     ];
 
-    for (value, expected) in &test_cases {
+    for (value, _expected) in &test_cases {
         let masked = mask_sensitive_value(value);
         assert!(
             masked.contains("..."),

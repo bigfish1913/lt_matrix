@@ -162,6 +162,10 @@ pub enum Command {
     /// Clean up workspace state
     #[command(name = "cleanup")]
     Cleanup(CleanupArgs),
+
+    /// Manage project memory
+    #[command(name = "memory")]
+    Memory(MemoryArgs),
 }
 
 /// Arguments for the 'release' subcommand
@@ -226,6 +230,74 @@ pub struct CleanupArgs {
     /// Show what would be cleaned up without actually doing it
     #[arg(long)]
     pub dry_run: bool,
+}
+
+/// Arguments for the 'memory' subcommand
+#[derive(Debug, Clone, Parser)]
+pub struct MemoryArgs {
+    /// The action to perform on memory
+    #[command(subcommand)]
+    pub action: MemoryAction,
+}
+
+/// Memory subcommands
+#[derive(Debug, Clone, Subcommand)]
+pub enum MemoryAction {
+    /// Summarize memory entries to reduce file size
+    #[command(name = "summarize")]
+    Summarize(MemorySummarizeArgs),
+
+    /// Show memory status and statistics
+    #[command(name = "status")]
+    Status(MemoryStatusArgs),
+
+    /// Clear all memory entries
+    #[command(name = "clear")]
+    Clear(MemoryClearArgs),
+}
+
+/// Arguments for memory summarize subcommand
+#[derive(Debug, Clone, Parser)]
+pub struct MemorySummarizeArgs {
+    /// Force summarization even if thresholds aren't exceeded
+    #[arg(long)]
+    pub force: bool,
+
+    /// Keep only this fraction of entries (0.0 to 1.0)
+    #[arg(long, value_name = "FRACTION")]
+    pub keep_fraction: Option<f64>,
+
+    /// Project root directory (defaults to current directory)
+    #[arg(long, value_name = "DIR")]
+    pub project: Option<PathBuf>,
+
+    /// Dry run - show what would be summarized without making changes
+    #[arg(long)]
+    pub dry_run: bool,
+}
+
+/// Arguments for memory status subcommand
+#[derive(Debug, Clone, Parser)]
+pub struct MemoryStatusArgs {
+    /// Project root directory (defaults to current directory)
+    #[arg(long, value_name = "DIR")]
+    pub project: Option<PathBuf>,
+
+    /// Output in JSON format
+    #[arg(long)]
+    pub json: bool,
+}
+
+/// Arguments for memory clear subcommand
+#[derive(Debug, Clone, Parser)]
+pub struct MemoryClearArgs {
+    /// Project root directory (defaults to current directory)
+    #[arg(long, value_name = "DIR")]
+    pub project: Option<PathBuf>,
+
+    /// Force clear without confirmation
+    #[arg(long)]
+    pub force: bool,
 }
 
 /// Execution mode presets

@@ -103,3 +103,7 @@ full = ["ssh"]
 features = ["full"]
 # Target to build docs for
 targets = ["x86_64-unknown-linux-gnu", "x86_64-apple-darwin", "x86_64-pc-windows-msvc"]
+
+[dev-dependencies]
+# YAML parsing for CI/CD workflow tests
+serde_yaml = "0.9"
