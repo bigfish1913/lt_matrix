@@ -252,8 +252,7 @@ timeout_exec = 3600
 
     let result = load_config_with_overrides(Some(overrides));
 
-    std::env::set_current_dir(original_dir).unwrap();
-
+    // Verify results before restoring directory (restoration may fail on some systems)
     assert!(result.is_ok(), "Should load config successfully");
     let _config = result.unwrap();
 
@@ -263,6 +262,9 @@ timeout_exec = 3600
     assert_eq!(max_retries, Some(10));
     assert_eq!(timeout, Some(7200));
     assert_eq!(mode, Some("expert".to_string()));
+
+    // Restore original directory (ignore errors - cleanup is best-effort)
+    let _ = std::env::set_current_dir(original_dir);
 }
 
 // ============================================================================

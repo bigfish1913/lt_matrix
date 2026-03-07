@@ -11,22 +11,45 @@
 //! - **Automatic summarization**: Large memory files are automatically summarized
 //! - **Context injection**: Memory can be injected into agent prompts for context
 //! - **Thread-safe operations**: All operations are safe for concurrent access
+//! - **Rich metadata**: Entries include files affected, decisions, and code snippets
+//!
+//! # Memory Entry Format
+//!
+//! Each memory entry follows this markdown structure:
+//!
+//! ```markdown
+//! ## [Category] Entry Title
+//!
+//! **Task**: task-xxx
+//! **Date**: 2026-03-07 12:00:00 UTC
+//! **Category**: Architecture Decision
+//! **Files**: src/main.rs, src/lib.rs
+//!
+//! Content describing the decision or insight...
+//!
+//! ### Key Points
+//! - Point 1
+//! - Point 2
+//!
+//! ---
+//! ```
 //!
 //! # Example
 //!
 //! ```no_run
-//! use ltmatrix::memory::{MemoryStore, MemoryEntry};
+//! use ltmatrix::memory::{MemoryStore, MemoryEntry, MemoryEntryBuilder, MemoryCategory};
 //!
 //! # async fn example() -> anyhow::Result<()> {
 //! // Load memory store
 //! let mut store = MemoryStore::new("./my-project")?;
 //!
-//! // Add a memory entry
-//! let entry = MemoryEntry::new(
-//!     "task-042",
-//!     "Architecture Decision",
-//!     "Decided to use async Rust with Tokio for all I/O operations"
-//! );
+//! // Add a memory entry using the builder pattern
+//! let entry = MemoryEntryBuilder::new("task-042", "Architecture Decision")
+//!     .content("Decided to use async Rust with Tokio for all I/O operations")
+//!     .category(MemoryCategory::ArchitectureDecision)
+//!     .files(vec!["src/main.rs".to_string(), "src/lib.rs".to_string()])
+//!     .key_points(vec!["All I/O is async".to_string(), "Use tokio runtime".to_string()])
+//!     .build()?;
 //! store.append_entry(&entry)?;
 //!
 //! // Get memory for context injection
@@ -52,9 +75,139 @@ const MAX_ENTRIES: usize = 100;
 /// Default memory file path relative to project root
 const MEMORY_FILE_PATH: &str = ".claude/memory.md";
 
+/// Categories for memory entries
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MemoryCategory {
+    /// Architecture and design decisions
+    ArchitectureDecision,
+
+    /// Patterns established in the codebase
+    Pattern,
+
+    /// API design decisions
+    ApiDesign,
+
+    /// Data model changes
+    DataModel,
+
+    /// Error handling patterns
+    ErrorHandling,
+
+    /// Performance optimizations
+    Performance,
+
+    /// Security-related decisions
+    Security,
+
+    /// Testing strategies
+    Testing,
+
+    /// Dependencies and integrations
+    Dependencies,
+
+    /// Code organization decisions
+    CodeOrganization,
+
+    /// Bug fixes and their rationale
+    BugFix,
+
+    /// Configuration decisions
+    Configuration,
+
+    /// General important notes
+    ImportantNote,
+
+    /// Task completion summaries
+    TaskCompletion,
+
+    /// Other uncategorized memories
+    General,
+}
+
+impl Default for MemoryCategory {
+    fn default() -> Self {
+        MemoryCategory::General
+    }
+}
+
+impl std::fmt::Display for MemoryCategory {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MemoryCategory::ArchitectureDecision => write!(f, "Architecture Decision"),
+            MemoryCategory::Pattern => write!(f, "Pattern"),
+            MemoryCategory::ApiDesign => write!(f, "API Design"),
+            MemoryCategory::DataModel => write!(f, "Data Model"),
+            MemoryCategory::ErrorHandling => write!(f, "Error Handling"),
+            MemoryCategory::Performance => write!(f, "Performance"),
+            MemoryCategory::Security => write!(f, "Security"),
+            MemoryCategory::Testing => write!(f, "Testing"),
+            MemoryCategory::Dependencies => write!(f, "Dependencies"),
+            MemoryCategory::CodeOrganization => write!(f, "Code Organization"),
+            MemoryCategory::BugFix => write!(f, "Bug Fix"),
+            MemoryCategory::Configuration => write!(f, "Configuration"),
+            MemoryCategory::ImportantNote => write!(f, "Important Note"),
+            MemoryCategory::TaskCompletion => write!(f, "Task Completion"),
+            MemoryCategory::General => write!(f, "General"),
+        }
+    }
+}
+
+impl std::str::FromStr for MemoryCategory {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let lower = s.to_lowercase().replace('_', " ").replace('-', " ");
+        match lower.as_str() {
+            "architecture decision" | "architectural decision" => Ok(MemoryCategory::ArchitectureDecision),
+            "pattern" | "patterns" => Ok(MemoryCategory::Pattern),
+            "api design" | "api" => Ok(MemoryCategory::ApiDesign),
+            "data model" | "data models" => Ok(MemoryCategory::DataModel),
+            "error handling" => Ok(MemoryCategory::ErrorHandling),
+            "performance" => Ok(MemoryCategory::Performance),
+            "security" => Ok(MemoryCategory::Security),
+            "testing" => Ok(MemoryCategory::Testing),
+            "dependencies" | "dependency" => Ok(MemoryCategory::Dependencies),
+            "code organization" => Ok(MemoryCategory::CodeOrganization),
+            "bug fix" | "bugfix" => Ok(MemoryCategory::BugFix),
+            "configuration" | "config" => Ok(MemoryCategory::Configuration),
+            "important note" | "important" | "note" => Ok(MemoryCategory::ImportantNote),
+            "task completion" | "completed" => Ok(MemoryCategory::TaskCompletion),
+            "general" => Ok(MemoryCategory::General),
+            _ => Err(format!("Unknown memory category: {}", s)),
+        }
+    }
+}
+
+/// Priority level for memory entries
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum MemoryPriority {
+    /// Low priority - informational only
+    Low,
+
+    /// Normal priority - useful context
+    Normal,
+
+    /// High priority - critical architectural decisions
+    High,
+
+    /// Critical - must be considered in all future work
+    Critical,
+}
+
+impl Default for MemoryPriority {
+    fn default() -> Self {
+        MemoryPriority::Normal
+    }
+}
+
 /// A single memory entry representing a key decision or insight
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MemoryEntry {
+    /// Unique identifier for this entry
+    pub id: String,
+
     /// Task ID that generated this memory
     pub task_id: String,
 
@@ -67,38 +220,355 @@ pub struct MemoryEntry {
     /// Timestamp when the memory was created
     pub timestamp: DateTime<Utc>,
 
-    /// Category of the memory (e.g., "Architecture Decision", "Pattern", "Bug Fix")
-    pub category: String,
+    /// Category of the memory
+    pub category: MemoryCategory,
+
+    /// Priority/importance of this memory
+    pub priority: MemoryPriority,
+
+    /// Files affected by this decision/insight
+    pub files: Vec<String>,
+
+    /// Key points extracted from the content
+    pub key_points: Vec<String>,
+
+    /// Related task IDs
+    pub related_tasks: Vec<String>,
+
+    /// Tags for searching and filtering
+    pub tags: Vec<String>,
+
+    /// Code snippets if relevant
+    pub code_snippets: Vec<CodeSnippet>,
+
+    /// Whether this entry is deprecated/obsolete
+    pub deprecated: bool,
+
+    /// Reason for deprecation if applicable
+    pub deprecation_reason: Option<String>,
+}
+
+/// A code snippet associated with a memory entry
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CodeSnippet {
+    /// File path
+    pub file: String,
+
+    /// Starting line number
+    pub start_line: usize,
+
+    /// Ending line number
+    pub end_line: usize,
+
+    /// The code content
+    pub code: String,
+
+    /// Description of what this code does
+    pub description: String,
 }
 
 impl MemoryEntry {
-    /// Create a new memory entry
+    /// Create a new memory entry with required fields
     pub fn new(task_id: impl Into<String>, title: impl Into<String>, content: impl Into<String>) -> Self {
+        let now = Utc::now();
+        let task_id = task_id.into();
+        let title = title.into();
+
+        // Generate unique ID
+        let id = format!(
+            "mem-{}-{}",
+            now.timestamp(),
+            title.chars()
+                .filter(|c| c.is_alphanumeric() || *c == '-' || *c == ' ')
+                .take(20)
+                .collect::<String>()
+                .replace(' ', "-")
+                .to_lowercase()
+        );
+
         Self {
-            task_id: task_id.into(),
-            title: title.into(),
+            id,
+            task_id,
+            title,
             content: content.into(),
-            timestamp: Utc::now(),
-            category: "General".to_string(),
+            timestamp: now,
+            category: MemoryCategory::General,
+            priority: MemoryPriority::Normal,
+            files: Vec::new(),
+            key_points: Vec::new(),
+            related_tasks: Vec::new(),
+            tags: Vec::new(),
+            code_snippets: Vec::new(),
+            deprecated: false,
+            deprecation_reason: None,
         }
     }
 
     /// Set the category of the memory
     pub fn with_category(mut self, category: impl Into<String>) -> Self {
-        self.category = category.into();
+        let category_str = category.into();
+        self.category = category_str.parse().unwrap_or(MemoryCategory::General);
+        self
+    }
+
+    /// Set the category directly
+    pub fn with_category_enum(mut self, category: MemoryCategory) -> Self {
+        self.category = category;
+        self
+    }
+
+    /// Set the priority
+    pub fn with_priority(mut self, priority: MemoryPriority) -> Self {
+        self.priority = priority;
+        self
+    }
+
+    /// Add affected files
+    pub fn with_files(mut self, files: Vec<String>) -> Self {
+        self.files = files;
+        self
+    }
+
+    /// Add key points
+    pub fn with_key_points(mut self, points: Vec<String>) -> Self {
+        self.key_points = points;
+        self
+    }
+
+    /// Add tags
+    pub fn with_tags(mut self, tags: Vec<String>) -> Self {
+        self.tags = tags;
+        self
+    }
+
+    /// Add related tasks
+    pub fn with_related_tasks(mut self, tasks: Vec<String>) -> Self {
+        self.related_tasks = tasks;
         self
     }
 
     /// Format the memory entry as markdown
     pub fn to_markdown(&self) -> String {
+        let mut md = String::new();
+
+        // Title with category
+        md.push_str(&format!("## [{}] {}\n\n", self.category, self.title));
+
+        // Metadata
+        md.push_str(&format!("**Task**: {}\n", self.task_id));
+        md.push_str(&format!("**Date**: {}\n", self.timestamp.format("%Y-%m-%d %H:%M:%S UTC")));
+        md.push_str(&format!("**Priority**: {:?}\n", self.priority));
+
+        if !self.files.is_empty() {
+            md.push_str(&format!("**Files**: {}\n", self.files.join(", ")));
+        }
+
+        if !self.tags.is_empty() {
+            md.push_str(&format!("**Tags**: {}\n", self.tags.join(", ")));
+        }
+
+        md.push('\n');
+
+        // Main content
+        md.push_str(&self.content);
+        md.push_str("\n\n");
+
+        // Key points if any
+        if !self.key_points.is_empty() {
+            md.push_str("### Key Points\n\n");
+            for point in &self.key_points {
+                md.push_str(&format!("- {}\n", point));
+            }
+            md.push('\n');
+        }
+
+        // Code snippets if any
+        if !self.code_snippets.is_empty() {
+            md.push_str("### Code Examples\n\n");
+            for snippet in &self.code_snippets {
+                md.push_str(&format!("**{}** ({}:{}-{})\n",
+                    snippet.description, snippet.file, snippet.start_line, snippet.end_line));
+                md.push_str(&format!("```rust\n{}\n```\n\n", snippet.code));
+            }
+        }
+
+        // Deprecation notice if applicable
+        if self.deprecated {
+            md.push_str("> ⚠️ **Deprecated**");
+            if let Some(ref reason) = self.deprecation_reason {
+                md.push_str(&format!(": {}", reason));
+            }
+            md.push_str("\n\n");
+        }
+
+        md.push_str("---\n");
+
+        md
+    }
+
+    /// Create a summary line for this entry
+    pub fn to_summary(&self) -> String {
         format!(
-            "## {}\n\n**Task**: {}\n**Category**: {}\n**Date**: {}\n\n{}\n\n---\n",
-            self.title,
-            self.task_id,
+            "- [{}] **{}**: {}",
             self.category,
-            self.timestamp.format("%Y-%m-%d %H:%M:%S UTC"),
-            self.content
+            self.title,
+            self.content.lines().next().unwrap_or("")
         )
+    }
+
+    /// Check if this entry matches a search query
+    pub fn matches(&self, query: &str) -> bool {
+        let query_lower = query.to_lowercase();
+
+        // Check title
+        if self.title.to_lowercase().contains(&query_lower) {
+            return true;
+        }
+
+        // Check content
+        if self.content.to_lowercase().contains(&query_lower) {
+            return true;
+        }
+
+        // Check tags
+        if self.tags.iter().any(|t| t.to_lowercase().contains(&query_lower)) {
+            return true;
+        }
+
+        // Check files
+        if self.files.iter().any(|f| f.to_lowercase().contains(&query_lower)) {
+            return true;
+        }
+
+        false
+    }
+}
+
+/// Builder for creating memory entries with a fluent API
+pub struct MemoryEntryBuilder {
+    task_id: String,
+    title: String,
+    content: Option<String>,
+    category: MemoryCategory,
+    priority: MemoryPriority,
+    files: Vec<String>,
+    key_points: Vec<String>,
+    related_tasks: Vec<String>,
+    tags: Vec<String>,
+    code_snippets: Vec<CodeSnippet>,
+}
+
+impl MemoryEntryBuilder {
+    /// Create a new builder with required fields
+    pub fn new(task_id: impl Into<String>, title: impl Into<String>) -> Self {
+        Self {
+            task_id: task_id.into(),
+            title: title.into(),
+            content: None,
+            category: MemoryCategory::General,
+            priority: MemoryPriority::Normal,
+            files: Vec::new(),
+            key_points: Vec::new(),
+            related_tasks: Vec::new(),
+            tags: Vec::new(),
+            code_snippets: Vec::new(),
+        }
+    }
+
+    /// Set the content
+    pub fn content(mut self, content: impl Into<String>) -> Self {
+        self.content = Some(content.into());
+        self
+    }
+
+    /// Set the category
+    pub fn category(mut self, category: MemoryCategory) -> Self {
+        self.category = category;
+        self
+    }
+
+    /// Set the category from string
+    pub fn category_str(mut self, category: impl Into<String>) -> Self {
+        self.category = category.into().parse().unwrap_or(MemoryCategory::General);
+        self
+    }
+
+    /// Set the priority
+    pub fn priority(mut self, priority: MemoryPriority) -> Self {
+        self.priority = priority;
+        self
+    }
+
+    /// Add files
+    pub fn files(mut self, files: Vec<String>) -> Self {
+        self.files = files;
+        self
+    }
+
+    /// Add a single file
+    pub fn file(mut self, file: impl Into<String>) -> Self {
+        self.files.push(file.into());
+        self
+    }
+
+    /// Add key points
+    pub fn key_points(mut self, points: Vec<String>) -> Self {
+        self.key_points = points;
+        self
+    }
+
+    /// Add a single key point
+    pub fn key_point(mut self, point: impl Into<String>) -> Self {
+        self.key_points.push(point.into());
+        self
+    }
+
+    /// Add tags
+    pub fn tags(mut self, tags: Vec<String>) -> Self {
+        self.tags = tags;
+        self
+    }
+
+    /// Add a single tag
+    pub fn tag(mut self, tag: impl Into<String>) -> Self {
+        self.tags.push(tag.into());
+        self
+    }
+
+    /// Add related tasks
+    pub fn related_tasks(mut self, tasks: Vec<String>) -> Self {
+        self.related_tasks = tasks;
+        self
+    }
+
+    /// Add a code snippet
+    pub fn code_snippet(mut self, snippet: CodeSnippet) -> Self {
+        self.code_snippets.push(snippet);
+        self
+    }
+
+    /// Build the memory entry
+    pub fn build(self) -> Result<MemoryEntry> {
+        let content = self.content.ok_or_else(|| {
+            anyhow::anyhow!("Content is required for memory entry")
+        })?;
+
+        Ok(MemoryEntry {
+            id: String::new(), // Will be generated in new()
+            task_id: self.task_id,
+            title: self.title,
+            content,
+            timestamp: Utc::now(),
+            category: self.category,
+            priority: self.priority,
+            files: self.files,
+            key_points: self.key_points,
+            related_tasks: self.related_tasks,
+            tags: self.tags,
+            code_snippets: self.code_snippets,
+            deprecated: false,
+            deprecation_reason: None,
+        })
     }
 }
 
@@ -289,7 +759,7 @@ impl MemoryStore {
 
         for entry in old_entries {
             categorized
-                .entry(entry.category.clone())
+                .entry(entry.category.to_string())
                 .or_insert_with(Vec::new)
                 .push(entry);
         }
@@ -390,22 +860,33 @@ fn parse_memory_file(content: &str) -> Result<Vec<MemoryEntry>> {
 fn parse_memory_section(section: &str) -> Option<MemoryEntry> {
     let lines: Vec<&str> = section.lines().collect();
 
-    // Extract title (first ## heading)
-    let title = lines
+    // Extract title (first ## heading, may have category prefix like "[Architecture Decision]")
+    let title_line = lines
         .iter()
-        .find(|line| line.starts_with("## "))
-        .map(|line| line.trim_start_matches("## ").to_string())?;
+        .find(|line| line.starts_with("## "))?;
+
+    // Extract title, potentially removing category prefix
+    let title_text = title_line.trim_start_matches("## ");
+    let title = if title_text.starts_with('[') {
+        // Extract title after "] " pattern
+        title_text.split("] ").nth(1).unwrap_or(title_text).to_string()
+    } else {
+        title_text.to_string()
+    };
 
     // Extract metadata
     let mut task_id = String::new();
-    let mut category = "General".to_string();
+    let mut category_str = String::new();
     let mut timestamp = Utc::now();
+    let mut files: Vec<String> = Vec::new();
+    let mut tags: Vec<String> = Vec::new();
+    let mut key_points: Vec<String> = Vec::new();
 
     for line in &lines {
         if line.starts_with("**Task**: ") {
             task_id = line.trim_start_matches("**Task**: ").to_string();
         } else if line.starts_with("**Category**: ") {
-            category = line.trim_start_matches("**Category**: ").to_string();
+            category_str = line.trim_start_matches("**Category**: ").to_string();
         } else if line.starts_with("**Date**: ") {
             let date_str = line.trim_start_matches("**Date**: ");
             if let Ok(parsed) = chrono::NaiveDateTime::parse_from_str(
@@ -414,18 +895,42 @@ fn parse_memory_section(section: &str) -> Option<MemoryEntry> {
             ) {
                 timestamp = DateTime::from_naive_utc_and_offset(parsed, Utc);
             }
+        } else if line.starts_with("**Files**: ") {
+            let files_str = line.trim_start_matches("**Files**: ");
+            files = files_str.split(", ").map(|s| s.to_string()).collect();
+        } else if line.starts_with("**Tags**: ") {
+            let tags_str = line.trim_start_matches("**Tags**: ");
+            tags = tags_str.split(", ").map(|s| s.to_string()).collect();
         }
     }
 
-    // Extract content (everything after metadata, before next section)
+    // Extract key points (lines starting with "- " after "### Key Points")
+    let mut in_key_points = false;
+    for line in &lines {
+        if line.contains("### Key Points") {
+            in_key_points = true;
+        } else if line.starts_with("### ") && in_key_points {
+            in_key_points = false;
+        } else if in_key_points && line.starts_with("- ") {
+            key_points.push(line.trim_start_matches("- ").to_string());
+        }
+    }
+
+    // Extract content (everything after metadata, before Key Points or Code Examples)
     let content_start = lines
         .iter()
         .position(|line| line.is_empty() && !task_id.is_empty())
         .unwrap_or(0);
 
+    let content_end = lines
+        .iter()
+        .position(|line| line.starts_with("### "))
+        .unwrap_or(lines.len());
+
     let content = lines
         .iter()
         .skip(content_start + 1)
+        .take(content_end.saturating_sub(content_start + 1))
         .cloned()
         .collect::<Vec<_>>()
         .join("\n")
@@ -436,13 +941,27 @@ fn parse_memory_section(section: &str) -> Option<MemoryEntry> {
         return None;
     }
 
-    Some(MemoryEntry {
-        task_id,
-        title,
-        content,
-        timestamp,
-        category,
-    })
+    // Create entry using the constructor
+    let mut entry = MemoryEntry::new(&task_id, &title, &content);
+
+    // Set timestamp
+    entry.timestamp = timestamp;
+
+    // Set category
+    entry.category = category_str.parse().unwrap_or(MemoryCategory::General);
+
+    // Set additional fields
+    if !files.is_empty() {
+        entry.files = files;
+    }
+    if !tags.is_empty() {
+        entry.tags = tags;
+    }
+    if !key_points.is_empty() {
+        entry.key_points = key_points;
+    }
+
+    Some(entry)
 }
 
 #[cfg(test)]
@@ -461,15 +980,15 @@ mod tests {
         assert_eq!(entry.task_id, "task-001");
         assert_eq!(entry.title, "Test Decision");
         assert_eq!(entry.content, "This is a test decision");
-        assert_eq!(entry.category, "General");
+        assert_eq!(entry.category, MemoryCategory::General);
     }
 
     #[test]
     fn test_memory_entry_with_category() {
         let entry = MemoryEntry::new("task-001", "Test", "Content")
-            .with_category("Architecture Decision");
+            .with_category_enum(MemoryCategory::ArchitectureDecision);
 
-        assert_eq!(entry.category, "Architecture Decision");
+        assert_eq!(entry.category, MemoryCategory::ArchitectureDecision);
     }
 
     #[test]
@@ -478,10 +997,10 @@ mod tests {
 
         let markdown = entry.to_markdown();
 
-        assert!(markdown.contains("## Test Title"));
+        // Title includes category prefix: ## [General] Test Title
+        assert!(markdown.contains("## [General] Test Title"));
         assert!(markdown.contains("**Task**: task-042"));
         assert!(markdown.contains("Test content line 1"));
-        assert!(markdown.contains("---"));
     }
 
     #[test]
@@ -564,7 +1083,7 @@ It can span multiple lines.
 
         assert_eq!(entry.title, "Test Decision");
         assert_eq!(entry.task_id, "task-042");
-        assert_eq!(entry.category, "Architecture Decision");
+        assert_eq!(entry.category, MemoryCategory::ArchitectureDecision);
         assert!(entry.content.contains("content of the decision"));
     }
 

@@ -45,8 +45,14 @@ pub mod memory;
 pub mod store;
 
 // Re-export main types for convenience
-pub use memory::{MemoryEntry, MemoryStore};
-pub use extractor::{extract_memory_from_task, extract_task_summary};
+pub use memory::{
+    MemoryEntry, MemoryStore, MemoryCategory, MemoryPriority,
+    CodeSnippet, MemoryEntryBuilder,
+};
+pub use extractor::{
+    extract_memory_from_task, extract_task_summary,
+    extract_files_affected,
+};
 pub use store::{
     MemoryIntegration,
     format_memory_for_prompt,

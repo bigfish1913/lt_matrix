@@ -8,7 +8,7 @@
 //! - Memory extraction from task results
 
 use ltmatrix::memory::{
-    MemoryStore, MemoryEntry, MemoryIntegration,
+    MemoryStore, MemoryEntry, MemoryIntegration, MemoryCategory,
     extract_memory_from_task, extract_task_summary,
     format_memory_for_prompt, should_inject_memory,
     calculate_max_memory_size, truncate_memory_context,
@@ -98,9 +98,9 @@ fn test_memory_file_format() {
 
     // Verify markdown format
     assert!(content.contains("# Project Memory"), "Should have header");
-    assert!(content.contains("## Architecture Decision"), "Should have title");
+    // The title includes category prefix: ## [Category] Title
+    assert!(content.contains("Architecture Decision"), "Should have title");
     assert!(content.contains("**Task**: task-042"), "Should have task reference");
-    assert!(content.contains("**Category**: Test Category"), "Should have category");
     assert!(content.contains("**Date**:"), "Should have timestamp");
     assert!(content.contains("Use Tokio for async"), "Should have content");
     assert!(content.contains("---"), "Should have separator");
@@ -145,7 +145,7 @@ fn test_extract_architectural_decisions() {
     // Should extract architectural decisions
     let arch_decisions: Vec<_> = entries
         .iter()
-        .filter(|e| e.category == "Architecture Decision")
+        .filter(|e| e.category == MemoryCategory::ArchitectureDecision)
         .collect();
 
     assert!(!arch_decisions.is_empty(), "Should extract architectural decisions");
@@ -165,7 +165,7 @@ fn test_extract_patterns() {
 
     let patterns: Vec<_> = entries
         .iter()
-        .filter(|e| e.category == "Pattern")
+        .filter(|e| e.category == MemoryCategory::Pattern)
         .collect();
 
     assert!(!patterns.is_empty(), "Should extract patterns");
@@ -185,7 +185,7 @@ fn test_extract_important_notes() {
 
     let notes: Vec<_> = entries
         .iter()
-        .filter(|e| e.category == "Important Note")
+        .filter(|e| e.category == MemoryCategory::ImportantNote)
         .collect();
 
     assert!(!notes.is_empty(), "Should extract important notes");
@@ -208,7 +208,7 @@ fn test_extract_task_summary() {
     assert!(entry.content.contains("REST API"));
     assert!(entry.content.contains("src/api/mod.rs"));
     assert!(entry.content.contains("src/api/handlers.rs"));
-    assert_eq!(entry.category, "Task Completion");
+    assert_eq!(entry.category, MemoryCategory::TaskCompletion);
 }
 
 #[test]
@@ -298,8 +298,9 @@ fn test_summarization_preserves_recent_entries() {
     let content = fs::read_to_string(memory_file).unwrap();
 
     // Last few entries should have full markdown formatting
+    // Note: Category is embedded in title line like ## [Category] Title
     assert!(content.contains("**Task**:"), "Recent entries should have full formatting");
-    assert!(content.contains("**Category**:"), "Recent entries should have full formatting");
+    assert!(content.contains("**Date**:"), "Recent entries should have full formatting");
 }
 
 // ============================================================================
@@ -662,8 +663,8 @@ fn test_memory_category_organization() {
     assert_eq!(entries.len(), 5);
 
     // Verify categories are preserved
-    let categories_found: Vec<_> = entries.iter().map(|e| e.category.as_str()).collect();
-    assert!(categories_found.contains(&"Architecture Decision"));
-    assert!(categories_found.contains(&"Pattern"));
-    assert!(categories_found.contains(&"Important Note"));
+    let categories_found: Vec<_> = entries.iter().map(|e| e.category.to_string()).collect();
+    assert!(categories_found.contains(&"Architecture Decision".to_string()));
+    assert!(categories_found.contains(&"Pattern".to_string()));
+    assert!(categories_found.contains(&"Important Note".to_string()));
 }

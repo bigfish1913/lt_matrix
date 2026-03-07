@@ -70,6 +70,9 @@ dirs = "5.0"
 # Regular expressions
 regex = "1.10"
 
+# Glob pattern matching
+glob = "0.3"
+
 # Signal handling (Unix only)
 [target.'cfg(unix)'.dependencies]
 signal-hook = "0.3"

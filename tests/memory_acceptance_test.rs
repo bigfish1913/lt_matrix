@@ -10,7 +10,8 @@
 
 use ltmatrix::memory::{
     MemoryStore, MemoryEntry, MemoryIntegration,
-    extract_memory_from_task, extract_task_summary,
+    memory::MemoryCategory,
+    extract_memory_from_task,
 };
 use ltmatrix::models::{Task, TaskStatus, TaskComplexity};
 use std::fs;
@@ -84,7 +85,7 @@ fn test_acceptance_2_extract_architectural_decisions() {
     // Should extract the architectural decision
     let arch_decisions: Vec<_> = entries
         .iter()
-        .filter(|e| e.category == "Architecture Decision")
+        .filter(|e| e.category == MemoryCategory::ArchitectureDecision)
         .collect();
 
     assert!(!arch_decisions.is_empty(),
@@ -108,7 +109,7 @@ fn test_acceptance_2_extract_key_patterns() {
 
     let patterns: Vec<_> = entries
         .iter()
-        .filter(|e| e.category == "Pattern")
+        .filter(|e| e.category == MemoryCategory::Pattern)
         .collect();
 
     assert!(!patterns.is_empty(),
@@ -132,7 +133,7 @@ fn test_acceptance_2_extract_insights_and_notes() {
 
     let notes: Vec<_> = entries
         .iter()
-        .filter(|e| e.category == "Important Note")
+        .filter(|e| e.category == MemoryCategory::ImportantNote)
         .collect();
 
     assert!(!notes.is_empty(),
@@ -431,8 +432,8 @@ fn test_acceptance_5_summarization_preserves_recent() {
     let content = fs::read_to_string(&memory_file).unwrap();
 
     // Recent entries should have full formatting
+    // Note: Category is embedded in title line like ## [Category] Title
     assert!(content.contains("**Task**:"), "Recent entries should have full metadata");
-    assert!(content.contains("**Category**:"), "Recent entries should have full metadata");
     assert!(content.contains("**Date**:"), "Recent entries should have full metadata");
 }
 

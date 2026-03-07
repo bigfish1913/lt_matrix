@@ -20,6 +20,7 @@ pub mod mcp;
 pub mod memory;
 pub mod output;
 pub mod pipeline;
+pub mod plugin;
 pub mod progress;
 pub mod release;
 pub mod tasks;
