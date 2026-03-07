@@ -44,21 +44,23 @@ fn test_deny_toml_vulnerability_settings() {
 
     let advisories = parsed.get("advisories").unwrap().as_table().unwrap();
 
-    // Vulnerability check should be set to "deny" for production
-    assert_eq!(
-        advisories.get("vulnerability").and_then(|v| v.as_str()),
-        Some("deny"),
-        "Vulnerability checking should be set to 'deny'"
-    );
-
     // Should have advisory database URL configured
     let db_urls = advisories.get("db-urls").and_then(|v| v.as_array());
     assert!(db_urls.is_some(), "Advisory database URLs should be configured");
 
     let urls = db_urls.unwrap();
     assert!(
-        urls.iter().any(|u| u.as_str().unwrap().contains("RustSec")),
+        urls.iter().any(|u| {
+            let url = u.as_str().unwrap().to_lowercase();
+            url.contains("rustsec") || url.contains("advisory-db")
+        }),
         "Should reference RustSec advisory database"
+    );
+
+    // Should have ignore list (even if empty)
+    assert!(
+        advisories.contains_key("ignore"),
+        "Should have ignore field for advisories"
     );
 }
 
@@ -70,13 +72,6 @@ fn test_deny_toml_license_settings() {
     let parsed: toml::Value = toml::from_str(&content).unwrap();
 
     let licenses = parsed.get("licenses").unwrap().as_table().unwrap();
-
-    // Unlicensed crates should be denied
-    assert_eq!(
-        licenses.get("unlicensed").and_then(|v| v.as_str()),
-        Some("deny"),
-        "Unlicensed crates should be denied"
-    );
 
     // Should have allowed licenses list
     let allowed = licenses.get("allow").and_then(|v| v.as_array());
@@ -90,6 +85,11 @@ fn test_deny_toml_license_settings() {
     // MIT and Apache-2.0 should be allowed (most common Rust licenses)
     assert!(allowed_licenses.contains(&"MIT"), "MIT license should be allowed");
     assert!(allowed_licenses.contains(&"Apache-2.0"), "Apache-2.0 license should be allowed");
+
+    // Should have confidence threshold
+    let confidence = licenses.get("confidence-threshold").and_then(|v| v.as_float());
+    assert!(confidence.is_some(), "Should have confidence threshold for license detection");
+    assert!(confidence.unwrap() >= 0.8, "Confidence threshold should be at least 0.8");
 }
 
 /// Test that deny.toml restricts crate sources

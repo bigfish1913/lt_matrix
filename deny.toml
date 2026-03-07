@@ -49,6 +49,7 @@ allow = [
     "MPL-2.0",
     "Unicode-3.0",  # Unicode License v3 - OSI approved
     "Unicode-DFS-2016",  # Unicode License - used by some crates
+    "CDLA-Permissive-2.0",  # Community Data License Agreement Permissive 2.0
 ]
 
 # The confidence threshold for detecting a license from license text
