@@ -7,7 +7,53 @@
 //!
 //! This module provides a complete MCP client implementation for communicating
 //! with MCP servers (e.g., Playwright, browser automation tools) for end-to-end testing.
+//!
+//! # Architecture
+//!
+//! ```text
+//! ┌─────────────────────────────────────────────────────────────────┐
+//! │                        MCP Module                                │
+//! ├─────────────────────────────────────────────────────────────────┤
+//! │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐  │
+//! │  │   Client     │  │   Protocol   │  │      Transport       │  │
+//! │  │  (McpClient) │  │  (Messages)  │  │  (Stdio/WebSocket)   │  │
+//! │  └──────────────┘  └──────────────┘  └──────────────────────┘  │
+//! │         │                 │                    │                │
+//! │         └─────────────────┼────────────────────┘                │
+//! │                           ▼                                     │
+//! │              ┌──────────────────────┐                           │
+//! │              │    MCP Server        │                           │
+//! │              │  (Playwright, etc.)  │                           │
+//! │              └──────────────────────┘                           │
+//! └─────────────────────────────────────────────────────────────────┘
+//! ```
+//!
+//! # Quick Start
+//!
+//! ```no_run
+//! use ltmatrix::mcp::client::{McpClient, McpClientConfig, ConnectionState};
+//! use ltmatrix::mcp::transport::TransportConfig;
+//!
+//! async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//!     // Create client configuration
+//!     let transport_config = TransportConfig::stdio_command("playwright-mcp-server");
+//!     let config = McpClientConfig::new("my-app", "1.0.0")
+//!         .with_transport(transport_config);
+//!
+//!     // Create and connect client
+//!     let mut client = McpClient::new(config);
+//!     client.connect().await?;
+//!
+//!     // Check connection state
+//!     println!("Connected: {}", client.is_connected().await);
+//!
+//!     // Disconnect
+//!     client.disconnect().await?;
+//!     Ok(())
+//! }
+//! ```
 
+pub mod client;
 pub mod protocol;
 pub mod transport;
 
@@ -140,5 +186,15 @@ pub use transport::{
     FramingError,
     LineDelimitedFramer,
     ContentLengthFramer,
+};
+
+// Re-export client types
+pub use client::{
+    // Core types
+    McpClient,
+    McpClientConfig,
+    ConnectionState,
+    ServerInfo,
+    StateTransitionError,
 };
 
