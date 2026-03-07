@@ -330,6 +330,16 @@ impl Default for ExecutionMode {
     }
 }
 
+impl std::fmt::Display for ExecutionMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ExecutionMode::Fast => write!(f, "fast"),
+            ExecutionMode::Standard => write!(f, "standard"),
+            ExecutionMode::Expert => write!(f, "expert"),
+        }
+    }
+}
+
 impl ExecutionMode {
     /// Returns true if tests should be run in this mode
     pub fn run_tests(&self) -> bool {
@@ -380,6 +390,9 @@ pub enum PipelineStage {
     /// Write and run tests
     Test,
 
+    /// Code review for quality and best practices (expert mode only)
+    Review,
+
     /// Verify task completion
     Verify,
 
@@ -402,11 +415,21 @@ impl PipelineStage {
                 PipelineStage::Commit,
                 PipelineStage::Memory,
             ],
-            ExecutionMode::Standard | ExecutionMode::Expert => vec![
+            ExecutionMode::Standard => vec![
                 PipelineStage::Generate,
                 PipelineStage::Assess,
                 PipelineStage::Execute,
                 PipelineStage::Test,
+                PipelineStage::Verify,
+                PipelineStage::Commit,
+                PipelineStage::Memory,
+            ],
+            ExecutionMode::Expert => vec![
+                PipelineStage::Generate,
+                PipelineStage::Assess,
+                PipelineStage::Execute,
+                PipelineStage::Test,
+                PipelineStage::Review,
                 PipelineStage::Verify,
                 PipelineStage::Commit,
                 PipelineStage::Memory,
@@ -421,6 +444,7 @@ impl PipelineStage {
             PipelineStage::Assess => "Assess",
             PipelineStage::Execute => "Execute",
             PipelineStage::Test => "Test",
+            PipelineStage::Review => "Code Review",
             PipelineStage::Verify => "Verify",
             PipelineStage::Commit => "Commit",
             PipelineStage::Memory => "Memory",

@@ -364,6 +364,7 @@ fn test_args() -> Args {
         on_blocked: Some(BlockedStrategy::Skip),
         mcp_config: None,
         no_color: false,
+        telemetry: false,
         command: None,
     }
 }

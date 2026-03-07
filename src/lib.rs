@@ -22,6 +22,7 @@ pub mod output;
 pub mod pipeline;
 pub mod progress;
 pub mod tasks;
+pub mod telemetry;
 pub mod terminal;
 pub mod testing;
 pub mod validate;

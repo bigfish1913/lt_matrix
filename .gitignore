@@ -188,7 +188,6 @@ lcov.info
 .claude/
 /docs/tasks/
 logs/
-workspace/
 .ltmatrix/*
 
 

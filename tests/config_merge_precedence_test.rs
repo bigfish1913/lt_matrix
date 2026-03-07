@@ -675,6 +675,7 @@ fn test_validation_valid_config() {
         warmup: WarmupConfig::default(),
         pool: ltmatrix::config::settings::PoolConfig::default(),
         mcp: None,
+        telemetry: ltmatrix::telemetry::TelemetryConfig::default(),
     };
 
     let result = validate_config(&config);
@@ -704,6 +705,7 @@ fn test_validation_missing_default_agent() {
         warmup: WarmupConfig::default(),
         pool: ltmatrix::config::settings::PoolConfig::default(),
         mcp: None,
+        telemetry: ltmatrix::telemetry::TelemetryConfig::default(),
     };
 
     let result = validate_config(&config);
@@ -742,6 +744,7 @@ fn test_validation_zero_timeout() {
         warmup: WarmupConfig::default(),
         pool: ltmatrix::config::settings::PoolConfig::default(),
         mcp: None,
+        telemetry: ltmatrix::telemetry::TelemetryConfig::default(),
     };
 
     let result = validate_config(&config);
@@ -780,6 +783,7 @@ fn test_validation_excessive_timeout() {
         warmup: WarmupConfig::default(),
         pool: ltmatrix::config::settings::PoolConfig::default(),
         mcp: None,
+        telemetry: ltmatrix::telemetry::TelemetryConfig::default(),
     };
 
     let result = validate_config(&config);
@@ -818,6 +822,7 @@ fn test_validation_empty_command() {
         warmup: WarmupConfig::default(),
         pool: ltmatrix::config::settings::PoolConfig::default(),
         mcp: None,
+        telemetry: ltmatrix::telemetry::TelemetryConfig::default(),
     };
 
     let result = validate_config(&config);
@@ -868,6 +873,7 @@ fn test_validation_mode_max_depth_exceeded() {
         warmup: WarmupConfig::default(),
         pool: ltmatrix::config::settings::PoolConfig::default(),
         mcp: None,
+        telemetry: ltmatrix::telemetry::TelemetryConfig::default(),
     };
 
     let result = validate_config(&config);
@@ -918,6 +924,7 @@ fn test_validation_mode_max_retries_exceeded() {
         warmup: WarmupConfig::default(),
         pool: ltmatrix::config::settings::PoolConfig::default(),
         mcp: None,
+        telemetry: ltmatrix::telemetry::TelemetryConfig::default(),
     };
 
     let result = validate_config(&config);
@@ -968,6 +975,7 @@ fn test_validation_mode_zero_timeout_plan() {
         warmup: WarmupConfig::default(),
         pool: ltmatrix::config::settings::PoolConfig::default(),
         mcp: None,
+        telemetry: ltmatrix::telemetry::TelemetryConfig::default(),
     };
 
     let result = validate_config(&config);
@@ -1018,6 +1026,7 @@ fn test_validation_mode_zero_timeout_exec() {
         warmup: WarmupConfig::default(),
         pool: ltmatrix::config::settings::PoolConfig::default(),
         mcp: None,
+        telemetry: ltmatrix::telemetry::TelemetryConfig::default(),
     };
 
     let result = validate_config(&config);
@@ -1068,6 +1077,7 @@ fn test_validation_mode_too_short_timeout_exec() {
         warmup: WarmupConfig::default(),
         pool: ltmatrix::config::settings::PoolConfig::default(),
         mcp: None,
+        telemetry: ltmatrix::telemetry::TelemetryConfig::default(),
     };
 
     let result = validate_config(&config);
@@ -1119,6 +1129,7 @@ fn test_validation_fast_mode_allows_short_timeout() {
         warmup: WarmupConfig::default(),
         pool: ltmatrix::config::settings::PoolConfig::default(),
         mcp: None,
+        telemetry: ltmatrix::telemetry::TelemetryConfig::default(),
     };
 
     let result = validate_config(&config);
@@ -1138,6 +1149,7 @@ fn test_validation_no_default_agent() {
         warmup: WarmupConfig::default(),
         pool: ltmatrix::config::settings::PoolConfig::default(),
         mcp: None,
+        telemetry: ltmatrix::telemetry::TelemetryConfig::default(),
     };
 
     let result = validate_config(&config);
@@ -1174,6 +1186,7 @@ fn test_merge_with_none_global() {
         warmup: WarmupConfig::default(),
         pool: ltmatrix::config::settings::PoolConfig::default(),
         mcp: None,
+        telemetry: ltmatrix::telemetry::TelemetryConfig::default(),
     };
 
     let merged = merge_configs(None, Some(project_config));
@@ -1193,6 +1206,7 @@ fn test_merge_with_none_project() {
         warmup: WarmupConfig::default(),
         pool: ltmatrix::config::settings::PoolConfig::default(),
         mcp: None,
+        telemetry: ltmatrix::telemetry::TelemetryConfig::default(),
     };
 
     let merged = merge_configs(Some(global_config), None);

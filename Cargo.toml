@@ -58,7 +58,7 @@ dialoguer = "0.11"
 tempfile = "3.12"
 
 # UUID generation
-uuid = { version = "1.11", features = ["v4"] }
+uuid = { version = "1.11", features = ["v4", "serde"] }
 
 # Command detection
 which = "6.0"

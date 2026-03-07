@@ -43,7 +43,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::RwLock;
-use tracing::{debug, error, info, instrument};
+use tracing::{debug, error, info, instrument, warn};
 
 use crate::agent::AgentPool;
 use crate::models::{
@@ -54,7 +54,7 @@ use crate::pipeline::commit::{CommitConfig, commit_tasks};
 use crate::pipeline::execute::{ExecuteConfig, execute_tasks};
 use crate::pipeline::generate::{GenerateConfig, generate_tasks};
 use crate::pipeline::memory::{MemoryConfig, update_memory};
-use crate::pipeline::review::ReviewConfig;
+use crate::pipeline::review::{review_tasks, ReviewConfig};
 use crate::pipeline::test::{TestConfig, test_tasks};
 use crate::pipeline::verify::{VerifyConfig, verify_tasks};
 
@@ -428,6 +428,10 @@ impl PipelineOrchestrator {
                 let tasks = self.get_completed_tasks().await?;
                 self.execute_test_stage(tasks, pb.as_ref()).await?
             }
+            PipelineStage::Review => {
+                let tasks = self.get_completed_tasks().await?;
+                self.execute_review_stage(tasks, pb.as_ref()).await?
+            }
             PipelineStage::Verify => {
                 let tasks = self.get_completed_tasks().await?;
                 self.execute_verify_stage(tasks, pb.as_ref()).await?
@@ -547,6 +551,83 @@ impl PipelineOrchestrator {
         }
 
         Ok(tested_tasks)
+    }
+
+    /// Execute the Review stage (expert mode only)
+    async fn execute_review_stage(
+        &self,
+        tasks: Vec<Task>,
+        pb: Option<&ProgressBar>,
+    ) -> Result<Vec<Task>> {
+        if !self.config.review_config.should_run() {
+            debug!("Review stage skipped: only runs in expert mode with verify enabled");
+            return Ok(tasks);
+        }
+
+        if tasks.is_empty() {
+            return Ok(tasks);
+        }
+
+        if let Some(pb) = pb {
+            pb.set_message(format!("Reviewing {} tasks...", tasks.len()));
+        }
+
+        let (reviewed_tasks, review_summary) = review_tasks(tasks, &self.config.review_config).await?;
+
+        // Count blocking issues
+        let blocking_count = review_summary
+            .all_issues
+            .iter()
+            .filter(|issue| issue.blocking)
+            .count();
+
+        // Log review summary
+        info!(
+            "Review completed: {} tasks assessed, {} blocking issues found",
+            review_summary.total_tasks,
+            blocking_count
+        );
+
+        if let Some(pb) = pb {
+            let approved = reviewed_tasks.iter().filter(|t| t.is_completed()).count();
+            pb.set_message(format!(
+                "Reviewed {}/{} tasks ({} blocking issues)",
+                approved,
+                reviewed_tasks.len(),
+                blocking_count
+            ));
+            pb.inc(50);
+        }
+
+        // If there are critical issues that block the pipeline, log them
+        if blocking_count > 0 {
+            warn!("Found {} blocking issues that must be addressed:", blocking_count);
+
+            // Group blocking issues by category for better reporting
+            use std::collections::HashMap;
+            let mut blocking_by_category: HashMap<crate::pipeline::review::IssueCategory, Vec<&crate::pipeline::review::CodeIssue>> = HashMap::new();
+
+            for issue in &review_summary.all_issues {
+                if issue.blocking {
+                    blocking_by_category
+                        .entry(issue.category)
+                        .or_insert_with(Vec::new)
+                        .push(issue);
+                }
+            }
+
+            for (category, issues) in blocking_by_category {
+                warn!("  {:?}: {} blocking issues", category, issues.len());
+                for issue in issues.iter().take(5) {
+                    warn!("    - {}: {}", issue.title, issue.description);
+                }
+                if issues.len() > 5 {
+                    warn!("    ... and {} more", issues.len() - 5);
+                }
+            }
+        }
+
+        Ok(reviewed_tasks)
     }
 
     /// Execute the Verify stage

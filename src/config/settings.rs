@@ -12,6 +12,7 @@ use tracing::debug;
 use crate::config::mcp::LoadedMcpConfig;
 use crate::feature::FeatureConfig;
 use crate::models::Agent;
+use crate::telemetry::TelemetryConfig;
 
 /// Root configuration structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -54,6 +55,10 @@ pub struct Config {
     /// as it's loaded from a separate file specified via CLI.
     #[serde(skip)]
     pub mcp: Option<LoadedMcpConfig>,
+
+    /// Telemetry configuration
+    #[serde(default)]
+    pub telemetry: TelemetryConfig,
 }
 
 impl Default for Config {
@@ -68,6 +73,7 @@ impl Default for Config {
             warmup: WarmupConfig::default(),
             pool: PoolConfig::default(),
             mcp: None,
+            telemetry: TelemetryConfig::default(),
         }
     }
 }
@@ -459,6 +465,7 @@ fn merge_config(base: Config, override_config: Config) -> Config {
         },
         output: override_config.output,
         logging: override_config.logging,
+        telemetry: override_config.telemetry,
         features: override_config.features,
         warmup: override_config.warmup,
         pool: override_config.pool,
@@ -1182,6 +1189,7 @@ agent = "claude"
             warmup: WarmupConfig::default(),
             pool: PoolConfig::default(),
             mcp: None,
+            telemetry: TelemetryConfig::default(),
         };
 
         let project = Config {
@@ -1232,6 +1240,7 @@ agent = "claude"
             warmup: WarmupConfig::default(),
             pool: PoolConfig::default(),
             mcp: None,
+            telemetry: TelemetryConfig::default(),
         };
 
         let merged = merge_configs(Some(global), Some(project));
@@ -1283,6 +1292,7 @@ agent = "claude"
             warmup: WarmupConfig::default(),
             pool: PoolConfig::default(),
             mcp: None,
+            telemetry: TelemetryConfig::default(),
         };
 
         let merged = merge_configs(Some(config.clone()), None);
@@ -1448,6 +1458,7 @@ agent = "claude"
             warmup: WarmupConfig::default(),
             pool: PoolConfig::default(),
             mcp: None,
+            telemetry: TelemetryConfig::default(),
         };
 
         let overrides = CliOverrides {
@@ -1491,6 +1502,7 @@ agent = "claude"
             warmup: WarmupConfig::default(),
             pool: PoolConfig::default(),
             mcp: None,
+            telemetry: TelemetryConfig::default(),
         };
 
         let overrides = CliOverrides {
@@ -1533,6 +1545,7 @@ agent = "claude"
             warmup: WarmupConfig::default(),
             pool: PoolConfig::default(),
             mcp: None,
+            telemetry: TelemetryConfig::default(),
         };
 
         let overrides = CliOverrides {
@@ -1576,6 +1589,7 @@ agent = "claude"
             warmup: WarmupConfig::default(),
             pool: PoolConfig::default(),
             mcp: None,
+            telemetry: TelemetryConfig::default(),
         };
 
         let overrides = CliOverrides {
@@ -1639,6 +1653,7 @@ agent = "claude"
             warmup: WarmupConfig::default(),
             pool: PoolConfig::default(),
             mcp: None,
+            telemetry: TelemetryConfig::default(),
         };
 
         let overrides = CliOverrides {
@@ -1698,6 +1713,7 @@ agent = "claude"
             warmup: WarmupConfig::default(),
             pool: PoolConfig::default(),
             mcp: None,
+            telemetry: TelemetryConfig::default(),
         };
 
         let result = validate_config(&config);

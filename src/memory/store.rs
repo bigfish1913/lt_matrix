@@ -4,7 +4,7 @@
 //! making it easy to inject memory into agent prompts and extract memories
 //! from task completions.
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use std::path::Path;
 use tracing::{debug, info};
 

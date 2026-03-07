@@ -115,6 +115,10 @@ pub struct Args {
     #[arg(long, global = true)]
     pub no_color: bool,
 
+    /// Enable anonymous usage telemetry (opt-in)
+    #[arg(long)]
+    pub telemetry: bool,
+
     /// Subcommand to execute
     #[command(subcommand)]
     pub command: Option<Command>,

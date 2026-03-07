@@ -377,6 +377,7 @@ fn test_merge_with_overlapping_fields() {
         warmup: WarmupConfig::default(),
         pool: ltmatrix::config::settings::PoolConfig::default(),
         mcp: None,
+        telemetry: ltmatrix::telemetry::TelemetryConfig::default(),
     };
 
     let override_config = Config {
@@ -400,6 +401,7 @@ fn test_merge_with_overlapping_fields() {
         warmup: WarmupConfig::default(),
         pool: ltmatrix::config::settings::PoolConfig::default(),
         mcp: None,
+        telemetry: ltmatrix::telemetry::TelemetryConfig::default(),
     };
 
     let merged = merge_configs(Some(base), Some(override_config));
@@ -444,6 +446,7 @@ fn test_merge_multiple_levels() {
         warmup: WarmupConfig::default(),
         pool: ltmatrix::config::settings::PoolConfig::default(),
         mcp: None,
+        telemetry: ltmatrix::telemetry::TelemetryConfig::default(),
     };
 
     let level2 = Config {
@@ -467,6 +470,7 @@ fn test_merge_multiple_levels() {
         warmup: WarmupConfig::default(),
         pool: ltmatrix::config::settings::PoolConfig::default(),
         mcp: None,
+        telemetry: ltmatrix::telemetry::TelemetryConfig::default(),
     };
 
     let merged = merge_configs(Some(level1), Some(level2));

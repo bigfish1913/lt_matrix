@@ -41,7 +41,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 
 /// Maximum memory file size before triggering summarization (in bytes)
 const MAX_MEMORY_SIZE: usize = 50 * 1024; // 50KB

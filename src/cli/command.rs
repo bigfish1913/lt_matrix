@@ -237,7 +237,7 @@ fn enhance_goal_with_clarifications(session: &ClarificationSession) -> String {
 }
 
 /// Execute the release command
-fn execute_release(_args: &Args, release_args: &super::args::ReleaseArgs) -> Result<()> {
+pub fn execute_release(_args: &Args, release_args: &super::args::ReleaseArgs) -> Result<()> {
     println!("ltmatrix - Release Build");
     println!();
 
@@ -264,7 +264,7 @@ fn execute_release(_args: &Args, release_args: &super::args::ReleaseArgs) -> Res
 }
 
 /// Execute the completions command
-fn execute_completions(completions_args: &super::args::CompletionsArgs) -> Result<()> {
+pub fn execute_completions(completions_args: &super::args::CompletionsArgs) -> Result<()> {
     use clap::CommandFactory;
 
     let shell = match completions_args.shell {
@@ -309,7 +309,7 @@ fn execute_completions(completions_args: &super::args::CompletionsArgs) -> Resul
 }
 
 /// Execute the man command
-fn execute_man(man_args: &super::args::ManArgs) -> Result<()> {
+pub fn execute_man(man_args: &super::args::ManArgs) -> Result<()> {
     use std::fs;
 
     println!("ltmatrix - Man Page Generation");
@@ -350,7 +350,7 @@ fn execute_man(man_args: &super::args::ManArgs) -> Result<()> {
 }
 
 /// Execute the cleanup command
-fn execute_cleanup(args: &CleanupArgs) -> Result<()> {
+pub fn execute_cleanup(args: &CleanupArgs) -> Result<()> {
     use std::env;
 
     println!("ltmatrix - Workspace Cleanup");
@@ -568,6 +568,7 @@ mod tests {
             on_blocked: None,
             mcp_config: None,
             no_color: false,
+            telemetry: false,
             command: Some(Command::Release(release_args)),
         };
 

@@ -422,14 +422,15 @@ fn test_pipeline_stage_expert_mode() {
         pipeline.contains(&PipelineStage::Test),
         "Expert mode should include Test stage"
     );
-    assert_eq!(pipeline.len(), 7, "Expert mode should have all 7 stages");
-
-    // Expert mode should have same pipeline as Standard
-    let standard_pipeline = PipelineStage::pipeline_for_mode(ExecutionMode::Standard);
-    assert_eq!(
-        pipeline, standard_pipeline,
-        "Expert and Standard modes should have same pipeline"
+    assert!(
+        pipeline.contains(&PipelineStage::Review),
+        "Expert mode should include Review stage"
     );
+    assert_eq!(pipeline.len(), 8, "Expert mode should have all 8 stages (Generate, Assess, Execute, Test, Review, Verify, Commit, Memory)");
+
+    // Expert mode has an extra Review stage compared to Standard
+    let standard_pipeline = PipelineStage::pipeline_for_mode(ExecutionMode::Standard);
+    assert_eq!(standard_pipeline.len(), 7, "Standard mode should have 7 stages");
 }
 
 #[test]

@@ -214,6 +214,7 @@ fn test_man_subcommand_execution() {
         on_blocked: None,
         mcp_config: None,
         no_color: false,
+        telemetry: false,
         command: Some(Command::Man(man_args)),
     };
 

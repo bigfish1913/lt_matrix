@@ -354,7 +354,7 @@ fn visualize_dependency_tree(
     task: &Task,
     task_map: &HashMap<&str, &Task>,
     prefix: &str,
-    is_last: bool,
+    _is_last: bool,
     config: &TopologyConfig,
     output: &mut String,
 ) {

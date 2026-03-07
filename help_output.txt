@@ -1,0 +1,248 @@
+warning: ltmatrix@0.1.0: Build configuration:
+warning: ltmatrix@0.1.0:   Target: x86_64-pc-windows-msvc
+warning: ltmatrix@0.1.0:   Profile: debug
+warning: ltmatrix@0.1.0:   Opt-level: 0
+warning: ltmatrix@0.1.0:   Static linking: no (dynamic)
+warning: unused import: `warn`
+  --> src\memory\memory.rs:44:28
+   |
+44 | use tracing::{debug, info, warn};
+   |                            ^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `Context`
+ --> src\memory\store.rs:7:14
+  |
+7 | use anyhow::{Context, Result};
+  |              ^^^^^^^
+
+warning: unused import: `uuid::Uuid`
+ --> src\telemetry\collector.rs:8:5
+  |
+8 | use uuid::Uuid;
+  |     ^^^^^^^^^^
+
+warning: unused import: `TaskStatus`
+  --> src\telemetry\collector.rs:10:42
+   |
+10 | use crate::models::{ExecutionMode, Task, TaskStatus};
+   |                                          ^^^^^^^^^^
+
+warning: unused variable: `is_last`
+   --> src\tasks\topology.rs:357:5
+    |
+357 |     is_last: bool,
+    |     ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_is_last`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `task_map`
+   --> src\tasks\topology.rs:549:9
+    |
+549 |     let task_map: HashMap<&str, &Task> = tasks
+    |         ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_task_map`
+
+warning: field `warmup_executor` is never read
+  --> src\agent\agent_pool.rs:42:5
+   |
+31 | struct AgentPoolInner {
+   |        -------------- field in this struct
+...
+42 |     warmup_executor: Option<WarmupExecutor>,
+   |     ^^^^^^^^^^^^^^^
+   |
+   = note: `AgentPoolInner` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `project_root` is never read
+   --> src\memory\memory.rs:109:5
+    |
+107 | pub struct MemoryStore {
+    |            ----------- field in this struct
+108 |     /// Project root directory
+109 |     project_root: PathBuf,
+    |     ^^^^^^^^^^^^
+    |
+    = note: `MemoryStore` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+
+warning: function `attempt_fix` is never used
+   --> src\pipeline\fix_cycle.rs:325:10
+    |
+325 | async fn attempt_fix(
+    |          ^^^^^^^^^^^
+
+warning: function `build_fix_prompt` is never used
+   --> src\pipeline\fix_cycle.rs:703:4
+    |
+703 | fn build_fix_prompt(issue: &dyn IssueDetail, strategy: FixStrategy) -> String {
+    |    ^^^^^^^^^^^^^^^^
+
+warning: function `verify_fix` is never used
+   --> src\pipeline\fix_cycle.rs:815:10
+    |
+815 | async fn verify_fix(issue: &dyn IssueDetail, strategy: FixStrategy) -> Result<bool> {
+    |          ^^^^^^^^^^
+
+warning: function `run_tests_for_issue` is never used
+   --> src\pipeline\fix_cycle.rs:831:10
+    |
+831 | async fn run_tests_for_issue(issue: &dyn IssueDetail) -> Result<bool> {
+    |          ^^^^^^^^^^^^^^^^^^^
+
+warning: `ltmatrix` (lib) generated 12 warnings (run `cargo fix --lib -p ltmatrix` to apply 6 suggestions)
+warning: unused import: `error::ErrorKind`
+  --> src\main.rs:10:20
+   |
+10 | use clap::{Parser, error::ErrorKind};
+   |                    ^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `app_state`
+   --> src\main.rs:470:5
+    |
+470 |     app_state: &mut AppState,
+    |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_app_state`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `app_state`
+   --> src\main.rs:487:5
+    |
+487 |     app_state: &mut AppState,
+    |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_app_state`
+
+warning: unused variable: `app_state`
+   --> src\main.rs:504:5
+    |
+504 |     app_state: &mut AppState,
+    |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_app_state`
+
+warning: static `SHUTDOWN_REQUESTED` is never used
+  --> src\main.rs:31:8
+   |
+31 | static SHUTDOWN_REQUESTED: AtomicBool = AtomicBool::new(false);
+   |        ^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `is_shutdown_requested` is never used
+   --> src\main.rs:340:4
+    |
+340 | fn is_shutdown_requested() -> bool {
+    |    ^^^^^^^^^^^^^^^^^^^^^
+
+warning: `ltmatrix` (bin "ltmatrix") generated 6 warnings (run `cargo fix --bin "ltmatrix" -p ltmatrix` to apply 4 suggestions)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.33s
+     Running `target\debug\ltmatrix.exe --help`
+ltmatrix is a long-time agent orchestrator that automates software development tasks using AI agents like Claude. It breaks down goals into tasks, executes them with full testing and verification, and commits changes to git.
+
+Usage: ltmatrix.exe [OPTIONS] [GOAL] [COMMAND]
+
+Commands:
+  release      Create a release build for distribution
+  completions  Generate shell completion scripts
+  man          Generate man pages
+  cleanup      Clean up workspace state
+  help         Print this message or the help of the given subcommand(s)
+
+Arguments:
+  [GOAL]
+          The goal/task to accomplish
+
+Options:
+      --agent <AGENT>
+          Agent backend to use
+
+      --mode <MODE>
+          Execution mode preset
+          
+          [possible values: fast, standard, expert]
+
+      --fast
+          Fast execution mode
+
+      --expert
+          Expert execution mode
+
+  -c, --config <FILE>
+          Configuration file path
+
+      --output <FORMAT>
+          Output format
+          
+          [possible values: text, json, json-compact]
+
+      --log-level <LEVEL>
+          Log level
+          
+          [possible values: trace, debug, info, warn, error]
+
+      --log-file <FILE>
+          Log file path
+
+      --max-retries <NUM>
+          Maximum number of retries per task
+
+      --timeout <SECONDS>
+          Timeout for operations (in seconds)
+
+      --dry-run
+          Generate plan without execution
+
+      --resume
+          Resume interrupted work
+
+      --ask
+          Ask for clarification before planning
+
+      --regenerate-plan
+          Regenerate the plan
+
+      --on-blocked <STRATEGY>
+          Strategy for blocked tasks
+          
+          [possible values: skip, ask, abort, retry]
+
+      --mcp-config <FILE>
+          MCP configuration file
+
+      --no-color
+          Disable colored output (respects NO_COLOR env var)
+
+      --telemetry
+          Enable anonymous usage telemetry (opt-in)
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+  -V, --version
+          Print version
+
+EXAMPLES:
+  # Run with standard mode
+  ltmatrix "build a REST API"
+
+  # Fast mode for quick iterations
+  ltmatrix --fast "add error handling"
+
+  # Expert mode for highest quality
+  ltmatrix --expert "implement authentication system"
+
+  # Resume interrupted work
+  ltmatrix --resume
+
+  # Generate plan without execution
+  ltmatrix --dry-run "refactor database layer"
+
+  # Use JSON output for parsing
+  ltmatrix --output json "write unit tests"
+
+  # Generate shell completions
+  ltmatrix completions bash
+
+  # Generate man pages
+  ltmatrix man --output ./man
+
+For more information, visit: https://github.com/bigfish/ltmatrix

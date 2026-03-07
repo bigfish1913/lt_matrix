@@ -157,15 +157,23 @@ fn test_pipeline_stages_standard_mode() {
 fn test_pipeline_stages_expert_mode() {
     let stages = PipelineStage::pipeline_for_mode(ExecutionMode::Expert);
 
-    // Expert mode should include all stages
-    assert_eq!(stages.len(), 7);
+    // Expert mode should include all stages plus Review
+    assert_eq!(stages.len(), 8);
     assert!(stages.contains(&PipelineStage::Generate));
     assert!(stages.contains(&PipelineStage::Assess));
     assert!(stages.contains(&PipelineStage::Execute));
     assert!(stages.contains(&PipelineStage::Test));
+    assert!(stages.contains(&PipelineStage::Review));
     assert!(stages.contains(&PipelineStage::Verify));
     assert!(stages.contains(&PipelineStage::Commit));
     assert!(stages.contains(&PipelineStage::Memory));
+
+    // Verify Review is positioned between Test and Verify
+    let test_idx = stages.iter().position(|s| s == &PipelineStage::Test).unwrap();
+    let review_idx = stages.iter().position(|s| s == &PipelineStage::Review).unwrap();
+    let verify_idx = stages.iter().position(|s| s == &PipelineStage::Verify).unwrap();
+    assert!(review_idx > test_idx, "Review should come after Test");
+    assert!(review_idx < verify_idx, "Review should come before Verify");
 }
 
 /// Test stage display names
@@ -175,6 +183,7 @@ fn test_pipeline_stage_display_names() {
     assert_eq!(PipelineStage::Assess.display_name(), "Assess");
     assert_eq!(PipelineStage::Execute.display_name(), "Execute");
     assert_eq!(PipelineStage::Test.display_name(), "Test");
+    assert_eq!(PipelineStage::Review.display_name(), "Code Review");
     assert_eq!(PipelineStage::Verify.display_name(), "Verify");
     assert_eq!(PipelineStage::Commit.display_name(), "Commit");
     assert_eq!(PipelineStage::Memory.display_name(), "Memory");
@@ -187,6 +196,7 @@ fn test_pipeline_stage_requires_agent() {
     assert!(PipelineStage::Assess.requires_agent());
     assert!(PipelineStage::Execute.requires_agent());
     assert!(PipelineStage::Test.requires_agent());
+    assert!(PipelineStage::Review.requires_agent());
     assert!(PipelineStage::Verify.requires_agent());
     assert!(!PipelineStage::Commit.requires_agent());
     assert!(!PipelineStage::Memory.requires_agent());
