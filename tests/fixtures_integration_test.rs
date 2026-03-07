@@ -7,11 +7,14 @@ use std::path::PathBuf;
 use std::fs;
 use ltmatrix::models::{Task, TaskStatus, TaskComplexity};
 use ltmatrix::agent::backend::{
-    AgentBackend, AgentConfig, AgentError, AgentResponse, ExecutionConfig,
+    AgentBackend, AgentConfig, AgentError, ExecutionConfig,
 };
-use ltmatrix::testing::mocks::{
-    MockAgent, MockResponse, MockAgentBuilder, FailingMockAgent, DelayedMockAgent,
-};
+
+// Include the local mocks module
+#[path = "fixtures/mocks/mod.rs"]
+mod mocks;
+
+use mocks::{MockAgent, MockResponse, MockAgentBuilder, FailingMockAgent, DelayedMockAgent};
 
 // =============================================================================
 // Fixture Loading Utilities
@@ -293,8 +296,8 @@ async fn test_mock_agent_builder_fluent_api() {
 // Mock Response Edge Cases
 // =============================================================================
 
-#[test]
-fn test_mock_response_sequence_progression() {
+#[tokio::test]
+async fn test_mock_response_sequence_progression() {
     let responses = vec![
         MockResponse::success("First response"),
         MockResponse::success("Second response"),
@@ -382,7 +385,7 @@ fn test_load_malformed_task_fixture() {
     };
 
     // Write malformed JSON
-    fs::write(&temp_file, b#"{ invalid json }"#).unwrap();
+    fs::write(&temp_file, "{ invalid json }").unwrap();
 
     let result = load_tasks_fixture("malformed");
 
@@ -430,9 +433,13 @@ fn test_python_project_has_pyproject() {
 #[tokio::test]
 async fn test_mock_agent_records_session_id() {
     use ltmatrix::agent::backend::AgentSession;
+    use chrono::{Utc, Duration};
 
     struct TestSession {
         id: String,
+        created_at: chrono::DateTime<Utc>,
+        last_accessed: chrono::DateTime<Utc>,
+        reuse_count: u32,
     }
 
     impl AgentSession for TestSession {
@@ -440,12 +447,33 @@ async fn test_mock_agent_records_session_id() {
             &self.id
         }
 
-        fn context(&self) -> &str {
-            "test context"
+        fn agent_name(&self) -> &str {
+            "test-agent"
         }
 
-        fn add_message(&mut self, _role: &str, _content: &str) {
-                // No-op for test
+        fn model(&self) -> &str {
+            "test-model"
+        }
+
+        fn created_at(&self) -> chrono::DateTime<Utc> {
+            self.created_at
+        }
+
+        fn last_accessed(&self) -> chrono::DateTime<Utc> {
+            self.last_accessed
+        }
+
+        fn reuse_count(&self) -> u32 {
+            self.reuse_count
+        }
+
+        fn mark_accessed(&mut self) {
+            self.last_accessed = Utc::now();
+            self.reuse_count += 1;
+        }
+
+        fn is_stale(&self) -> bool {
+            self.last_accessed < Utc::now() - Duration::hours(1)
         }
     }
 
@@ -453,7 +481,13 @@ async fn test_mock_agent_records_session_id() {
     mock.set_response("execute_with_session", MockResponse::success("Session response"));
 
     let config = ExecutionConfig::default();
-    let session = TestSession { id: "test-session-123".to_string() };
+    let now = Utc::now();
+    let session = TestSession {
+        id: "test-session-123".to_string(),
+        created_at: now,
+        last_accessed: now,
+        reuse_count: 0,
+    };
 
     let _ = mock.execute_with_session("test prompt", &config, &session).await;
 

@@ -32,7 +32,6 @@ use std::time::Duration;
 
 use ltmatrix::agent::backend::{
     AgentBackend, AgentConfig, AgentError, AgentResponse, AgentSession, ExecutionConfig,
-    MemorySession,
 };
 use ltmatrix::models::{Agent, Task};
 
@@ -118,7 +117,7 @@ impl MockResponse {
     }
 
     /// Convert to AgentResponse
-    pub fn to_agent_response(&self) -> Result<AgentResponse, AgentError> {
+    pub fn to_agent_response(&self) -> anyhow::Result<AgentResponse> {
         match self {
             MockResponse::Success {
                 output,
@@ -150,7 +149,7 @@ impl MockResponse {
                         message: error.clone(),
                     },
                 };
-                Err(agent_error.into())
+                Err(anyhow::anyhow!("{}", agent_error))
             }
             MockResponse::Delayed { .. } => {
                 // Delayed responses should be handled separately
@@ -201,9 +200,8 @@ impl MockAgent {
                 name: "mock".to_string(),
                 model: "mock-model".to_string(),
                 command: "mock-command".to_string(),
-                timeout_secs: 60,
-                max_retries: 3,
-                enable_session: false,
+                timeout: 60,
+                is_default: false,
             },
             responses: HashMap::new(),
             default_response: MockResponse::success("Default mock response"),
@@ -447,9 +445,8 @@ impl AgentBackend for FailingMockAgent {
             name: "failing-mock".to_string(),
             model: "none".to_string(),
             command: "none".to_string(),
-            timeout_secs: 0,
-            max_retries: 0,
-            enable_session: false,
+            timeout: 0,
+            is_default: false,
         })
     }
 }

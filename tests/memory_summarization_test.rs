@@ -1010,8 +1010,6 @@ mod size_detection_tests {
     /// Test that both thresholds are checked (file size OR entry count)
     #[test]
     fn test_either_threshold_triggers_summarization() {
-        let temp_dir = TempDir::new().unwrap();
-
         // Test 1: Trigger by entry count (not file size)
         {
             let temp_dir1 = TempDir::new().unwrap();
@@ -1852,7 +1850,6 @@ mod boundary_condition_tests {
 // ============================================================================
 
 mod store_helper_tests {
-    use super::*;
     use ltmatrix::memory::{format_memory_for_prompt, should_inject_memory,
                            calculate_max_memory_size, truncate_memory_context};
 
