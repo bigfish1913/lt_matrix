@@ -9,6 +9,7 @@
 //! with MCP servers (e.g., Playwright, browser automation tools) for end-to-end testing.
 
 pub mod protocol;
+pub mod transport;
 
 // Re-export JSON-RPC message types
 pub use protocol::{
@@ -118,5 +119,26 @@ pub use protocol::{
     LogMessageParams,
     // Method registry
     McpMethodKind,
+};
+
+// Re-export transport types
+pub use transport::{
+    // Core types
+    Transport,
+    TransportConfig,
+    TransportType,
+    TransportMessage,
+    OutgoingMessage,
+    TransportError,
+    TransportStats,
+    // Stdio transport
+    StdioTransport,
+    StdioConfig,
+    ChildProcess,
+    // Framing
+    MessageFramer,
+    FramingError,
+    LineDelimitedFramer,
+    ContentLengthFramer,
 };
 
