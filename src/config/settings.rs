@@ -349,6 +349,131 @@ impl PoolConfig {
     }
 }
 
+/// Memory summarization configuration
+///
+/// Controls how project memory (.claude/memory.md) is managed and summarized
+/// to prevent unbounded growth while preserving important context.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MemoryConfig {
+    /// Maximum memory file size in bytes before triggering summarization
+    /// Default: 50KB (52428 bytes)
+    #[serde(default = "default_max_memory_size")]
+    pub max_file_size: usize,
+
+    /// Maximum number of entries before triggering summarization
+    /// Default: 100 entries
+    #[serde(default = "default_max_entries")]
+    pub max_entries: usize,
+
+    /// Minimum number of entries required before summarization can occur
+    /// This prevents summarization on small memory files
+    /// Default: 10 entries
+    #[serde(default = "default_min_entries_for_summarization")]
+    pub min_entries_for_summarization: usize,
+
+    /// Fraction of entries to keep during summarization (0.0 to 1.0)
+    /// Default: 0.5 (keep half of the entries)
+    #[serde(default = "default_keep_fraction")]
+    pub keep_fraction: f64,
+
+    /// Maximum context size for memory injection into prompts (in bytes)
+    /// Default: 5KB (5120 bytes)
+    #[serde(default = "default_max_context_size")]
+    pub max_context_size: usize,
+
+    /// Whether to enable automatic memory summarization
+    /// Default: true
+    #[serde(default = "default_true")]
+    pub enable_summarization: bool,
+
+    /// Whether to preserve high-priority entries during summarization
+    /// High-priority entries are never summarized even if old
+    /// Default: true
+    #[serde(default = "default_true")]
+    pub preserve_high_priority: bool,
+
+    /// Age threshold in seconds for considering entries "old" for summarization
+    /// Entries newer than this are less likely to be summarized
+    /// Default: 86400 (24 hours)
+    #[serde(default = "default_old_entry_threshold")]
+    pub old_entry_threshold_seconds: u64,
+}
+
+impl Default for MemoryConfig {
+    fn default() -> Self {
+        MemoryConfig {
+            max_file_size: 50 * 1024, // 50KB
+            max_entries: 100,
+            min_entries_for_summarization: 10,
+            keep_fraction: 0.5,
+            max_context_size: 5 * 1024, // 5KB
+            enable_summarization: true,
+            preserve_high_priority: true,
+            old_entry_threshold_seconds: 86400, // 24 hours
+        }
+    }
+}
+
+impl MemoryConfig {
+    /// Validate the memory configuration
+    pub fn validate(&self) -> Result<(), String> {
+        if self.max_file_size == 0 {
+            return Err("max_file_size must be greater than 0".to_string());
+        }
+
+        if self.max_entries == 0 {
+            return Err("max_entries must be greater than 0".to_string());
+        }
+
+        if self.min_entries_for_summarization == 0 {
+            return Err("min_entries_for_summarization must be greater than 0".to_string());
+        }
+
+        if self.keep_fraction <= 0.0 || self.keep_fraction > 1.0 {
+            return Err("keep_fraction must be between 0.0 (exclusive) and 1.0 (inclusive)".to_string());
+        }
+
+        if self.max_context_size == 0 {
+            return Err("max_context_size must be greater than 0".to_string());
+        }
+
+        if self.old_entry_threshold_seconds == 0 {
+            return Err("old_entry_threshold_seconds must be greater than 0".to_string());
+        }
+
+        Ok(())
+    }
+
+    /// Get the old entry threshold as a chrono Duration
+    pub fn old_entry_threshold_duration(&self) -> chrono::Duration {
+        chrono::Duration::seconds(self.old_entry_threshold_seconds as i64)
+    }
+}
+
+fn default_max_memory_size() -> usize {
+    50 * 1024 // 50KB
+}
+
+fn default_max_entries() -> usize {
+    100
+}
+
+fn default_min_entries_for_summarization() -> usize {
+    10
+}
+
+fn default_keep_fraction() -> f64 {
+    0.5
+}
+
+fn default_max_context_size() -> usize {
+    5 * 1024 // 5KB
+}
+
+fn default_old_entry_threshold() -> u64 {
+    86400 // 24 hours
+}
+
 fn default_max_queries() -> u32 {
     3
 }
