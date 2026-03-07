@@ -76,6 +76,38 @@ ltmatrix/
 
 ## Installation
 
+### From Homebrew (Recommended for macOS/Linux)
+
+```bash
+# Add the tap
+brew tap bigfish/ltmatrix
+
+# Install
+brew install ltmatrix
+```
+
+Or install directly without adding the tap:
+
+```bash
+brew install bigfish/ltmatrix/ltmatrix
+```
+
+### From Scoop (Recommended for Windows)
+
+```powershell
+# Add the bucket
+scoop bucket add ltmatrix https://github.com/bigfish/ltmatrix
+
+# Install
+scoop install ltmatrix
+```
+
+Or install directly from the manifest:
+
+```powershell
+scoop install https://raw.githubusercontent.com/bigfish/ltmatrix/main/.github/scoop/ltmatrix.json
+```
+
 ### From Cargo
 
 ```bash
@@ -86,10 +118,26 @@ cargo install ltmatrix
 
 Pre-built binaries are available for:
 - **Windows** (x86_64, ARM64)
-- **Linux** (x86_64, aarch64) - requires glibc 2.17+
+- **Linux** (x86_64, aarch64) - statically linked, no glibc dependency
 - **macOS** (Intel, Apple Silicon)
 
 See [Releases](https://github.com/bigfish/ltmatrix/releases) for downloads.
+
+#### Manual Binary Installation
+
+```bash
+# Linux/macOS
+curl -sL https://github.com/bigfish/ltmatrix/releases/latest/download/ltmatrix-$(uname -m)-$(uname -s | tr '[:upper:]' '[:lower:]').tar.gz | tar xz
+sudo mv ltmatrix /usr/local/bin/
+
+# Windows (PowerShell)
+$arch = if ([Environment]::Is64BitOperatingSystem) { "x86_64" } else { "aarch64" }
+$version = (Invoke-RestMethod https://api.github.com/repos/bigfish/ltmatrix/releases/latest).tag_name.TrimStart('v')
+$url = "https://github.com/bigfish/ltmatrix/releases/download/v$version/ltmatrix-$version-$arch-pc-windows-msvc.zip"
+Invoke-WebRequest $url -OutFile ltmatrix.zip
+Expand-Archive ltmatrix.zip -DestinationPath .
+Move-Item ltmatrix.exe "$env:USERPROFILE\.local\bin\" -Force
+```
 
 ## Building from Source
 

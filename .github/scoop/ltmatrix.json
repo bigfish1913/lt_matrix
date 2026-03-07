@@ -1,0 +1,84 @@
+{
+    "$schema": "https://raw.githubusercontent.com/ScoopInstaller/Scoop/master/schema.json",
+    "version": "0.1.0",
+    "description": "A high-performance, cross-platform long-time agent orchestrator written in Rust",
+    "homepage": "https://github.com/bigfish/ltmatrix",
+    "license": "MIT",
+    "notes": [
+        "ltmatrix requires a code agent backend to be installed:",
+        "  - Claude Code CLI (recommended): https://claude.ai/code",
+        "  - OpenCode: https://github.com/opencode-ai/opencode",
+        "  - KimiCode: https://kimi.moonshot.cn",
+        "",
+        "Run 'ltmatrix --help' to get started."
+    ],
+    "suggest": {
+        "Git": "git",
+        "Claude Code": "claude-code"
+    },
+    "architecture": {
+        "64bit": {
+            "url": "https://github.com/bigfish/ltmatrix/releases/download/v0.1.0/ltmatrix-0.1.0-x86_64-pc-windows-msvc.zip",
+            "hash": "",
+            "bin": [
+                [
+                    "ltmatrix.exe",
+                    "ltmatrix"
+                ]
+            ]
+        },
+        "arm64": {
+            "url": "https://github.com/bigfish/ltmatrix/releases/download/v0.1.0/ltmatrix-0.1.0-aarch64-pc-windows-msvc.zip",
+            "hash": "",
+            "bin": [
+                [
+                    "ltmatrix.exe",
+                    "ltmatrix"
+                ]
+            ]
+        }
+    },
+    "checkver": {
+        "github": "https://github.com/bigfish/ltmatrix",
+        "regex": "tag/v([\\d.]+)"
+    },
+    "autoupdate": {
+        "architecture": {
+            "64bit": {
+                "url": "https://github.com/bigfish/ltmatrix/releases/download/v$version/ltmatrix-$version-x86_64-pc-windows-msvc.zip",
+                "hash": {
+                    "url": "$url.sha256",
+                    "regex": "$sha256"
+                }
+            },
+            "arm64": {
+                "url": "https://github.com/bigfish/ltmatrix/releases/download/v$version/ltmatrix-$version-aarch64-pc-windows-msvc.zip",
+                "hash": {
+                    "url": "$url.sha256",
+                    "regex": "$sha256"
+                }
+            }
+        }
+    },
+    "post_install": [
+        "# Add shell completions if supported",
+        "$completionsDir = \"$env:USERPROFILE\\.config\\ltmatrix\\completions\"",
+        "if (-not (Test-Path $completionsDir)) {",
+        "    New-Item -ItemType Directory -Path $completionsDir -Force | Out-Null",
+        "}",
+        "",
+        "# Generate PowerShell completions",
+        "try {",
+        "    & \"$dir\\ltmatrix.exe\" completions powershell 2>$null | Out-File -FilePath \"$completionsDir\\ltmatrix.ps1\" -Encoding utf8",
+        "} catch {",
+        "    # Completions command may not be available in all versions",
+        "}"
+    ],
+    "pre_uninstall": [
+        "# Clean up completions",
+        "$completionsDir = \"$env:USERPROFILE\\.config\\ltmatrix\\completions\"",
+        "if (Test-Path $completionsDir) {",
+        "    Remove-Item -Path $completionsDir -Recurse -Force",
+        "}"
+    ]
+}
