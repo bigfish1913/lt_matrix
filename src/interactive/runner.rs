@@ -283,7 +283,7 @@ impl ClarificationRunner {
     }
 
     /// Confirm before proceeding with plan generation
-    pub fn confirm_proceed(&self, session: &ClarificationSession) -> Result<bool> {
+    pub fn confirm_proceed(&self, _session: &ClarificationSession) -> Result<bool> {
         use dialoguer::theme::ColorfulTheme;
         let theme = ColorfulTheme::default();
 

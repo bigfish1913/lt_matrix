@@ -35,7 +35,6 @@ use tracing::{debug, info, warn, instrument};
 use crate::agent::backend::{AgentBackend, AgentSession, ExecutionConfig, MemorySession};
 use crate::agent::pool::SessionPool;
 use crate::config::settings::WarmupConfig;
-use crate::models::Agent;
 
 /// Default warmup prompt template
 const DEFAULT_WARMUP_PROMPT: &str = "Hello! Please respond with 'Ready' to confirm you're working.";
@@ -397,6 +396,7 @@ impl Default for WarmupExecutor {
 mod tests {
     use super::*;
     use crate::agent::backend::{AgentConfig, AgentResponse};
+    use crate::models::Agent;
 
     // Mock agent for testing
     struct MockWarmupAgent {

@@ -13,7 +13,7 @@
 
 use crate::models::{Task, TaskStatus};
 use crate::tasks::scheduler::ExecutionPlan;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::fs;
 use std::io::Write;
 use std::path::Path;
@@ -734,6 +734,7 @@ fn status_to_mermaid_text(status: &TaskStatus) -> &str {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashSet;
 
     #[test]
     fn test_visualize_dependency_graph_empty() {
