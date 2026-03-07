@@ -21,7 +21,16 @@ pub use messages::{
 };
 
 // Re-export error types from errors.rs
-pub use errors::{JsonRpcError, JsonRpcErrorCode};
+pub use errors::{
+    JsonRpcError,
+    JsonRpcErrorCode,
+    McpError,
+    McpErrorCode,
+    ErrorCategory,
+    ErrorBuilder,
+    McpResult,
+    JsonRpcResult,
+};
 
 // Re-export MCP method types from methods.rs
 pub use methods::{
