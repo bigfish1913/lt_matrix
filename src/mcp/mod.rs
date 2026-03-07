@@ -57,6 +57,7 @@ pub mod client;
 pub mod correlation;
 pub mod heartbeat;
 pub mod protocol;
+pub mod reconnect;
 pub mod transport;
 
 // Re-export JSON-RPC message types
@@ -221,5 +222,19 @@ pub use heartbeat::{
     ActivityTracker,
     ConnectionHealth,
     PingSender,
+};
+
+// Re-export reconnect types
+pub use reconnect::{
+    // Core types
+    ReconnectionManager,
+    ReconnectConfig,
+    ReconnectHandle,
+    ReconnectStats,
+    BackoffStrategy,
+    DegradationLevel,
+    RecoveryConfig,
+    RecoveryStrategy,
+    Reconnector,
 };
 
