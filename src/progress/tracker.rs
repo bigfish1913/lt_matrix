@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Progress tracking with color support
 //!
 //! This module provides progress tracking functionality with colorized output.
@@ -52,7 +51,6 @@ impl Default for TrackerColorConfig {
 pub struct ProgressTracker {
     /// Task statuses by ID
     tasks: Arc<Mutex<HashMap<String, TaskStatus>>>,
-
     /// Color configuration
     color_config: TrackerColorConfig,
 }
@@ -155,19 +153,16 @@ impl ProgressTracker {
             let count_colored = terminal::info(&format!("({})", in_progress.len()), config);
             summary.push_str(&format!("{} {} ", status_colored, count_colored));
         }
-
         if !pending.is_empty() {
             let status_colored = terminal::colorize_status("pending", config);
             let count_colored = terminal::warning(&format!("({})", pending.len()), config);
             summary.push_str(&format!("{} {} ", status_colored, count_colored));
         }
-
         if !failed.is_empty() {
             let status_colored = terminal::colorize_status("failed", config);
             let count_colored = terminal::error(&format!("({})", failed.len()), config);
             summary.push_str(&format!("{} {} ", status_colored, count_colored));
         }
-
         if !blocked.is_empty() {
             let status_colored = terminal::colorize_status("blocked", config);
             let count_colored = terminal::style_text(
@@ -175,6 +170,12 @@ impl ProgressTracker {
                 terminal::Color::BrightMagenta,
                 config,
             );
+            summary.push_str(&format!("{} {} ", status_colored, count_colored));
+        }
+
+        if !skipped.is_empty() {
+            let status_colored = terminal::colorize_status("skipped", config);
+            let count_colored = terminal::dim(&format!("({})", skipped.len()), config);
             summary.push_str(&format!("{} {} ", status_colored, count_colored));
         }
 
@@ -203,6 +204,7 @@ impl ProgressTracker {
                 TaskStatus::Completed => stats.completed += 1,
                 TaskStatus::Failed => stats.failed += 1,
                 TaskStatus::Blocked => stats.blocked += 1,
+                TaskStatus::SkippedModeDisabled => stats.skipped += 1,
             }
         }
 
@@ -217,21 +219,18 @@ impl ProgressTracker {
 pub struct TaskStats {
     /// Total number of tasks
     pub total: usize,
-
     /// Number of pending tasks
     pub pending: usize,
-
     /// Number of in-progress tasks
     pub in_progress: usize,
-
     /// Number of completed tasks
     pub completed: usize,
-
     /// Number of failed tasks
     pub failed: usize,
-
     /// Number of blocked tasks
     pub blocked: usize,
+    /// Number of skipped tasks (mode disabled)
+    pub skipped: usize,
 }
 
 impl TaskStats {
@@ -251,33 +250,39 @@ impl TaskStats {
         if self.completed > 0 {
             parts.push(terminal::success(
                 &format!("{} completed", self.completed),
-                config,
+                config
             ));
         }
 
         if self.in_progress > 0 {
             parts.push(terminal::info(
                 &format!("{} in progress", self.in_progress),
-                config,
+                config
             ));
         }
 
         if self.pending > 0 {
             parts.push(terminal::warning(
                 &format!("{} pending", self.pending),
-                config,
+                config
             ));
         }
 
         if self.failed > 0 {
             parts.push(terminal::error(&format!("{} failed", self.failed), config));
         }
-
         if self.blocked > 0 {
             parts.push(terminal::style_text(
                 &format!("{} blocked", self.blocked),
                 terminal::Color::BrightMagenta,
-                config,
+                config
+            ));
+        }
+
+        if self.skipped > 0 {
+            parts.push(terminal::dim(
+                &format!("{} skipped", self.skipped),
+                config
             ));
         }
 
@@ -310,7 +315,6 @@ mod tests {
         let tracker = ProgressTracker::new(None);
         tracker.add_task("task-1".to_string(), TaskStatus::Pending);
         tracker.update_task("task-1", TaskStatus::Completed);
-
         let status = tracker.get_status("task-1");
         assert_eq!(status, Some(TaskStatus::Completed));
     }
@@ -334,7 +338,6 @@ mod tests {
         let tracker = ProgressTracker::new(None);
         tracker.add_task("task-1".to_string(), TaskStatus::Completed);
         tracker.add_task("task-2".to_string(), TaskStatus::Pending);
-
         let summary = tracker.format_summary();
         assert!(!summary.is_empty());
         assert!(summary.contains("completed") || summary.contains("pending"));
@@ -350,12 +353,14 @@ mod tests {
             pending: 1,
             failed: 0,
             blocked: 0,
+            skipped: 0,
         };
 
         let formatted = stats.format_colored(config);
         assert!(formatted.contains("completed"));
         assert!(formatted.contains("in progress"));
         assert!(formatted.contains("pending"));
+        assert!(formatted.contains("skipped"));
     }
 
     #[test]
@@ -370,7 +375,6 @@ mod tests {
         let config = TrackerColorConfig::plain();
         assert!(!config.is_enabled());
     }
-
     #[test]
     fn test_tracker_color_config_default() {
         let config = TrackerColorConfig::default();
