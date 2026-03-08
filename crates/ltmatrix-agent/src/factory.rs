@@ -201,6 +201,7 @@ impl AgentFactory {
                     command: config.command.clone(),
                     model: config.model.clone(),
                     timeout: config.timeout_secs,
+                    api_key: None,
                     is_default: true,
                 };
 
@@ -220,6 +221,7 @@ impl AgentFactory {
                     command: config.command.clone(),
                     model: config.model.clone(),
                     timeout: config.timeout_secs,
+                    api_key: None,
                     is_default: false,
                 };
 
@@ -237,6 +239,7 @@ impl AgentFactory {
                     command: config.command.clone(),
                     model: config.model.clone(),
                     timeout: config.timeout_secs,
+                    api_key: None,
                     is_default: false,
                 };
 
@@ -254,6 +257,7 @@ impl AgentFactory {
                     command: config.command.clone(),
                     model: config.model.clone(),
                     timeout: config.timeout_secs,
+                    api_key: None,
                     is_default: false,
                 };
 

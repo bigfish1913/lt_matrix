@@ -311,6 +311,10 @@ pub struct Agent {
     /// Timeout in seconds for agent operations
     pub timeout: u64,
 
+    /// API key for the agent (optional, falls back to environment variable)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub api_key: Option<String>,
+
     /// Whether this agent is the default
     #[serde(default)]
     pub is_default: bool,
@@ -329,8 +333,15 @@ impl Agent {
             command: command.into(),
             model: model.into(),
             timeout,
+            api_key: None,
             is_default: false,
         }
+    }
+
+    /// Sets the API key for this agent
+    pub fn with_api_key(mut self, api_key: impl Into<String>) -> Self {
+        self.api_key = Some(api_key.into());
+        self
     }
 
     /// Creates the default Claude agent configuration

@@ -83,7 +83,8 @@ pub fn calculate_backoff_delay(attempt: u32, base_delay_secs: u64, max_delay_sec
     // Add small jitter (±10%) to avoid thundering herd
     let (jitter_min, jitter_max) = if delay > 0 {
         let jitter_range = delay / 10;
-        (delay.saturating_sub(jitter_range), delay.saturating_add(jitter_range))
+        let max_with_jitter = std::cmp::min(delay.saturating_add(jitter_range), max_delay_secs);
+        (delay.saturating_sub(jitter_range), max_with_jitter)
     } else {
         (0, 0)
     };

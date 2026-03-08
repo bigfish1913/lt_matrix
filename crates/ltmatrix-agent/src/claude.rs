@@ -159,13 +159,25 @@ impl ClaudeAgent {
             self.agent.command, config.model
         );
 
-        // Spawn the Claude process
-        let mut child = Command::new(&args[0])
+        // Build command with API key priority: config file > environment variable
+        let mut command = Command::new(&args[0]);
+        command
             .args(&args[1..])
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
-            .kill_on_drop(true)
+            .kill_on_drop(true);
+
+        // Set API key from config if available, otherwise use environment variable
+        if let Some(ref api_key) = self.agent.api_key {
+            debug!("Using API key from configuration file");
+            command.env("ANTHROPIC_API_KEY", api_key);
+        } else {
+            debug!("Using API key from environment variable (if set)");
+        }
+
+        // Spawn the Claude process
+        let mut child = command
             .spawn()
             .context("Failed to spawn Claude process")?;
 
