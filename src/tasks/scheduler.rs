@@ -76,8 +76,39 @@ pub struct GraphStatistics {
     pub parallelism_factor: f64,
 }
 
+/// Configuration for priority-based scheduling
+#[derive(Debug, Clone)]
+pub struct PriorityConfig {
+    /// Base priority boost per dependent task (blocking chain boost)
+    pub blocking_boost: u8,
+
+    /// Maximum priority boost cap
+    pub max_boost: u8,
+
+    /// Whether to sort tasks by priority within execution levels
+    pub enable_priority_sorting: bool,
+}
+
+impl Default for PriorityConfig {
+    fn default() -> Self {
+        Self {
+            blocking_boost: 1,
+            max_boost: 3,
+            enable_priority_sorting: true,
+        }
+    }
+}
+
 /// Builds a dependency graph and performs topological sorting
 pub fn schedule_tasks(tasks: Vec<Task>) -> Result<ExecutionPlan> {
+    schedule_tasks_with_priority(tasks, &PriorityConfig::default())
+}
+
+/// Builds a dependency graph and performs topological sorting with priority-based ordering
+pub fn schedule_tasks_with_priority(
+    tasks: Vec<Task>,
+    priority_config: &PriorityConfig,
+) -> Result<ExecutionPlan> {
     info!("Building execution plan for {} tasks", tasks.len());
 
     // Build task map for quick lookup
@@ -104,8 +135,13 @@ pub fn schedule_tasks(tasks: Vec<Task>) -> Result<ExecutionPlan> {
     // Perform topological sort
     let execution_order = topological_sort(&task_map, &graph)?;
 
-    // Calculate execution levels (tasks that can run in parallel)
-    let execution_levels = calculate_execution_levels(&task_map, &graph, &execution_order);
+    // Calculate execution levels with priority-based sorting
+    let execution_levels = calculate_execution_levels_with_priority(
+        &task_map,
+        &graph,
+        &execution_order,
+        priority_config,
+    );
 
     // Calculate critical path
     let critical_path = calculate_critical_path(&task_map, &graph);
@@ -295,11 +331,29 @@ fn topological_sort(
 }
 
 /// Groups tasks into execution levels where tasks in the same level can run in parallel
+/// Tasks within each level are sorted by priority (highest first)
 fn calculate_execution_levels(
     task_map: &HashMap<String, Task>,
     _graph: &HashMap<String, Vec<String>>,
     execution_order: &[String],
 ) -> Vec<Vec<Task>> {
+    calculate_execution_levels_with_priority(task_map, _graph, execution_order, &PriorityConfig::default())
+}
+
+/// Groups tasks into execution levels with priority-based sorting
+fn calculate_execution_levels_with_priority(
+    task_map: &HashMap<String, Task>,
+    graph: &HashMap<String, Vec<String>>,
+    execution_order: &[String],
+    priority_config: &PriorityConfig,
+) -> Vec<Vec<Task>> {
+    // Calculate priority boosts for blocking tasks
+    let priority_boosts = if priority_config.enable_priority_sorting {
+        calculate_priority_boosts(task_map, graph, priority_config)
+    } else {
+        HashMap::new()
+    };
+
     let mut levels: Vec<Vec<Task>> = Vec::new();
     let mut processed: HashSet<String> = HashSet::new();
     let mut remaining_tasks: HashSet<String> = execution_order.iter().cloned().collect();
@@ -320,6 +374,18 @@ fn calculate_execution_levels(
             if can_execute {
                 current_level.push(task.clone());
             }
+        }
+
+        // Sort tasks by priority within the level (highest priority first)
+        if priority_config.enable_priority_sorting && !current_level.is_empty() {
+            current_level.sort_by(|a, b| {
+                let boost_a = priority_boosts.get(&a.id).copied().unwrap_or(0);
+                let boost_b = priority_boosts.get(&b.id).copied().unwrap_or(0);
+                let effective_priority_a = a.priority.saturating_add(boost_a);
+                let effective_priority_b = b.priority.saturating_add(boost_b);
+                // Sort descending (higher priority first)
+                effective_priority_b.cmp(&effective_priority_a)
+            });
         }
 
         // Add current level to the plan
@@ -344,6 +410,58 @@ fn calculate_execution_levels(
     }
 
     levels
+}
+
+/// Calculates priority boosts for tasks based on how many downstream tasks they block
+fn calculate_priority_boosts(
+    task_map: &HashMap<String, Task>,
+    graph: &HashMap<String, Vec<String>>,
+    config: &PriorityConfig,
+) -> HashMap<String, u8> {
+    let mut boosts: HashMap<String, u8> = HashMap::new();
+
+    for task_id in task_map.keys() {
+        // Count all downstream tasks (transitive dependents)
+        let downstream_count = count_downstream_tasks(task_id, graph, &mut HashSet::new());
+
+        if downstream_count > 0 {
+            // Calculate boost: 1 point per dependent, capped at max_boost
+            let boost = std::cmp::min(
+                (downstream_count as u8) * config.blocking_boost,
+                config.max_boost,
+            );
+            boosts.insert(task_id.to_string(), boost);
+            debug!(
+                "Task {} blocks {} downstream tasks, priority boost: {}",
+                task_id, downstream_count, boost
+            );
+        }
+    }
+
+    boosts
+}
+
+/// Recursively counts all downstream tasks (transitive dependents)
+fn count_downstream_tasks(
+    task_id: &str,
+    graph: &HashMap<String, Vec<String>>,
+    visited: &mut HashSet<String>,
+) -> usize {
+    if visited.contains(task_id) {
+        return 0; // Avoid infinite loops (shouldn't happen with validated graph)
+    }
+    visited.insert(task_id.to_string());
+
+    let direct_dependents = graph.get(task_id).map(|v| v.len()).unwrap_or(0);
+    let mut total = direct_dependents;
+
+    if let Some(dependents) = graph.get(task_id) {
+        for dep_id in dependents {
+            total += count_downstream_tasks(dep_id, graph, visited);
+        }
+    }
+
+    total
 }
 
 /// Calculates the critical path (longest path through the dependency graph)
@@ -842,5 +960,109 @@ mod tests {
                 || plan.parallelizable_tasks.contains(&"task-3".to_string()),
             "Either task-2 or task-3 should be parallelizable"
         );
+    }
+
+    #[test]
+    fn test_priority_based_scheduling() {
+        // Create tasks with different priorities
+        let mut task1 = create_test_task("task-1", vec![]);
+        task1.priority = 3; // Lower priority
+
+        let mut task2 = create_test_task("task-2", vec![]);
+        task2.priority = 8; // Higher priority
+
+        let tasks = vec![task1, task2];
+
+        let config = PriorityConfig::default();
+        let plan = schedule_tasks_with_priority(tasks.clone(), &config).unwrap();
+
+        // Both tasks should be in level 0 (no dependencies)
+        assert_eq!(plan.execution_levels[0].len(), 2);
+
+        // Higher priority task (task-2) should come first
+        assert_eq!(plan.execution_levels[0][0].id, "task-2");
+        assert_eq!(plan.execution_levels[0][1].id, "task-1");
+    }
+
+    #[test]
+    fn test_priority_boost_for_blocking_tasks() {
+        // Create a task that blocks many downstream tasks
+        let mut blocking_task = create_test_task("blocking", vec![]);
+        blocking_task.priority = 1; // Low base priority
+
+        let mut task2 = create_test_task("task-2", vec!["blocking"]);
+        task2.priority = 5;
+
+        let mut task3 = create_test_task("task-3", vec!["blocking"]);
+        task3.priority = 5;
+
+        let task4 = create_test_task("task-4", vec!["task-2"]);
+        let task5 = create_test_task("task-5", vec!["task-3"]);
+
+        let tasks = vec![blocking_task, task2, task3, task4, task5];
+
+        let config = PriorityConfig::default();
+        let plan = schedule_tasks_with_priority(tasks.clone(), &config).unwrap();
+
+        // First level should only have the blocking task
+        assert_eq!(plan.execution_levels[0].len(), 1);
+        assert_eq!(plan.execution_levels[0][0].id, "blocking");
+    }
+
+    #[test]
+    fn test_priority_config_disabled() {
+        let mut task1 = create_test_task("task-1", vec![]);
+        task1.priority = 3;
+
+        let mut task2 = create_test_task("task-2", vec![]);
+        task2.priority = 8;
+
+        let tasks = vec![task1, task2];
+
+        // Disable priority sorting
+        let config = PriorityConfig {
+            blocking_boost: 1,
+            max_boost: 3,
+            enable_priority_sorting: false,
+        };
+
+        let plan = schedule_tasks_with_priority(tasks.clone(), &config).unwrap();
+
+        // Both tasks should be in level 0
+        assert_eq!(plan.execution_levels[0].len(), 2);
+
+        // Without priority sorting, order is based on topological sort (may vary)
+        // Just verify both tasks are present
+        let ids: Vec<&str> = plan.execution_levels[0].iter().map(|t| t.id.as_str()).collect();
+        assert!(ids.contains(&"task-1"));
+        assert!(ids.contains(&"task-2"));
+    }
+
+    #[test]
+    fn test_downstream_task_counting() {
+        let tasks = vec![
+            create_test_task("root", vec![]),
+            create_test_task("child1", vec!["root"]),
+            create_test_task("child2", vec!["root"]),
+            create_test_task("grandchild1", vec!["child1"]),
+            create_test_task("grandchild2", vec!["child1"]),
+        ];
+
+        let task_map: HashMap<String, Task> =
+            tasks.into_iter().map(|t| (t.id.clone(), t)).collect();
+
+        let graph = build_dependency_graph(&task_map);
+
+        // Root should have 4 downstream tasks (child1, child2, grandchild1, grandchild2)
+        let root_count = count_downstream_tasks("root", &graph, &mut HashSet::new());
+        assert_eq!(root_count, 4);
+
+        // child1 should have 2 downstream tasks (grandchild1, grandchild2)
+        let child1_count = count_downstream_tasks("child1", &graph, &mut HashSet::new());
+        assert_eq!(child1_count, 2);
+
+        // grandchild1 should have 0 downstream tasks
+        let gc1_count = count_downstream_tasks("grandchild1", &graph, &mut HashSet::new());
+        assert_eq!(gc1_count, 0);
     }
 }

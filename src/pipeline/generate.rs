@@ -1351,6 +1351,7 @@ Some text after."#;
             task_count: 3,
             dependency_depth: 2,
             validation_errors: vec![],
+            generation_log: None,
         };
 
         let stats = calculate_generation_stats(&result);
