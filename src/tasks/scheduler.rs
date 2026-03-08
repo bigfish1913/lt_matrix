@@ -17,7 +17,7 @@ use anyhow::{bail, Result};
 use std::collections::{HashMap, HashSet, VecDeque};
 use tracing::{debug, info, warn};
 
-use ltmatrix_core::Task;
+use ltmatrix_core::{AgentType, Task, TaskStatus};
 
 /// Execution plan with optimized task ordering
 #[derive(Debug, Clone)]
@@ -471,13 +471,131 @@ pub fn calculate_graph_statistics(task_map: &HashMap<String, Task>) -> Result<Gr
     })
 }
 
+/// Options for generating Mermaid diagrams
+#[derive(Debug, Clone)]
+pub struct MermaidDiagramOptions {
+    /// Include task status in nodes
+    pub include_status: bool,
+    /// Include agent type in nodes
+    pub include_agent_type: bool,
+    /// Include priority in nodes
+    pub include_priority: bool,
+    /// Highlight critical path tasks
+    pub highlight_critical_path: bool,
+}
+
+impl Default for MermaidDiagramOptions {
+    fn default() -> Self {
+        Self {
+            include_status: true,
+            include_agent_type: true,
+            include_priority: false,
+            highlight_critical_path: false,
+        }
+    }
+}
+
+impl MermaidDiagramOptions {
+    /// Create options for minimal diagram (just dependencies)
+    pub fn minimal() -> Self {
+        Self {
+            include_status: false,
+            include_agent_type: false,
+            include_priority: false,
+            highlight_critical_path: false,
+        }
+    }
+
+    /// Create options for detailed diagram with all information
+    pub fn detailed() -> Self {
+        Self {
+            include_status: true,
+            include_agent_type: true,
+            include_priority: true,
+            highlight_critical_path: true,
+        }
+    }
+}
+
 /// Generates a Mermaid diagram of the task dependency graph
 pub fn generate_mermaid_diagram(task_map: &HashMap<String, Task>) -> String {
+    generate_mermaid_diagram_with_options(task_map, &MermaidDiagramOptions::default())
+}
+
+/// Generates an enhanced Mermaid diagram with customizable options
+pub fn generate_mermaid_diagram_with_options(
+    task_map: &HashMap<String, Task>,
+    options: &MermaidDiagramOptions,
+) -> String {
     let mut diagram = String::from("graph TD\n");
 
+    // Define CSS classes for different statuses
+    if options.include_status {
+        diagram.push_str("  classDef pending fill:#ffeb3b,stroke:#333\n");
+        diagram.push_str("  classDef inProgress fill:#2196f3,stroke:#333,color:#fff\n");
+        diagram.push_str("  classDef completed fill:#4caf50,stroke:#333,color:#fff\n");
+        diagram.push_str("  classDef failed fill:#f44336,stroke:#333,color:#fff\n");
+        diagram.push_str("  classDef blocked fill:#ff9800,stroke:#333\n");
+    }
+
+    // Define classes for agent types
+    if options.include_agent_type {
+        diagram.push_str("  classDef plan fill:#e1bee7,stroke:#333\n");
+        diagram.push_str("  classDef dev fill:#bbdefb,stroke:#333\n");
+        diagram.push_str("  classDef test fill:#c8e6c9,stroke:#333\n");
+        diagram.push_str("  classDef review fill:#ffe0b2,stroke:#333\n");
+    }
+
+    // Generate node labels with task info
     for (task_id, task) in task_map.iter() {
+        let mut label_parts = vec![task.title.clone()];
+
+        if options.include_status {
+            let status_str = match task.status {
+                TaskStatus::Pending => "Pending",
+                TaskStatus::InProgress => "In Progress",
+                TaskStatus::Completed => "Completed",
+                TaskStatus::Failed => "Failed",
+                TaskStatus::Blocked => "Blocked",
+                TaskStatus::SkippedModeDisabled => "Skipped",
+            };
+            label_parts.push(format!("Status: {}", status_str));
+        }
+
+        if options.include_agent_type {
+            let type_str = match task.agent_type {
+                AgentType::Plan => "Plan",
+                AgentType::Dev => "Dev",
+                AgentType::Test => "Test",
+                AgentType::Review => "Review",
+            };
+            label_parts.push(format!("Type: {}", type_str));
+        }
+
+        if options.include_priority {
+            label_parts.push(format!("Priority: {}", task.priority));
+        }
+
+        // Create node with label
+        let label = label_parts.join("<br/>");
+        diagram.push_str(&format!("  {}[\"{}\"]\n", task_id, label));
+
+        // Add dependency edges
         for dep_id in &task.depends_on {
             diagram.push_str(&format!("  {} --> {}\n", dep_id, task_id));
+        }
+
+        // Apply status class
+        if options.include_status {
+            let class_name = match task.status {
+                TaskStatus::Pending => "pending",
+                TaskStatus::InProgress => "inProgress",
+                TaskStatus::Completed => "completed",
+                TaskStatus::Failed => "failed",
+                TaskStatus::Blocked => "blocked",
+                TaskStatus::SkippedModeDisabled => "skipped",
+            };
+            diagram.push_str(&format!("  class {} {}\n", task_id, class_name));
         }
     }
 

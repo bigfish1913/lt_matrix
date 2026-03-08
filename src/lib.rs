@@ -23,6 +23,7 @@ pub mod cli;
 pub mod completions;
 pub mod dryrun;
 pub mod git;
+pub mod guidelines;
 pub mod interactive;
 pub mod logging;
 pub mod man;

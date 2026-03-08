@@ -20,6 +20,7 @@ use crate::backend::{AgentBackend, AgentSession, ExecutionConfig};
 use crate::pool::SessionPool;
 use crate::warmup::{WarmupExecutor, WarmupResult};
 use ltmatrix_config::settings::{Config, PoolConfig, WarmupConfig};
+use ltmatrix_core::{AgentType, Mode};
 
 /// Unified agent pool that manages sessions and warmup
 ///
@@ -45,6 +46,12 @@ struct AgentPoolInner {
 
     /// Warmup executor (created when needed)
     warmup_executor: Option<WarmupExecutor>,
+
+    /// Execution mode for mode-aware agent selection
+    mode: Option<Mode>,
+
+    /// Enabled agent types for this pool (based on mode)
+    enabled_agent_types: Vec<AgentType>,
 }
 
 impl AgentPool {
@@ -55,7 +62,51 @@ impl AgentPool {
             config: config.pool.clone(),
             warmup_config: config.warmup.clone(),
             warmup_executor: None,
+            mode: None,
+            enabled_agent_types: AgentType::all().to_vec(),
         };
+
+        Self {
+            inner: Arc::new(Mutex::new(inner)),
+        }
+    }
+
+    /// Create a new agent pool for a specific execution mode
+    ///
+    /// This creates a mode-aware pool that only initializes sessions
+    /// for agent types enabled in the given mode.
+    ///
+    /// # Arguments
+    ///
+    /// * `config` - Configuration for the pool
+    /// * `mode` - Execution mode (Fast, Standard, Expert)
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use ltmatrix_agent::AgentPool;
+    /// use ltmatrix_config::settings::Config;
+    /// use ltmatrix_core::Mode;
+    ///
+    /// let config = Config::default();
+    /// let pool = AgentPool::new_for_mode(&config, Mode::Fast);
+    /// ```
+    pub fn new_for_mode(config: &Config, mode: Mode) -> Self {
+        let enabled_agent_types = mode.enabled_agents();
+        let inner = AgentPoolInner {
+            sessions: SessionPool::new(),
+            config: config.pool.clone(),
+            warmup_config: config.warmup.clone(),
+            warmup_executor: None,
+            mode: Some(mode),
+            enabled_agent_types: enabled_agent_types.clone(),
+        };
+
+        tracing::info!(
+            "Created agent pool for {:?} mode with enabled agent types: {:?}",
+            mode,
+            enabled_agent_types
+        );
 
         Self {
             inner: Arc::new(Mutex::new(inner)),
@@ -392,6 +443,58 @@ impl AgentPool {
             }
         })
     }
+
+    /// Check if an agent type is enabled in this pool
+    ///
+    /// Returns true if the agent type is enabled based on the mode
+    /// configured for this pool.
+    pub fn is_agent_type_enabled(&self, agent_type: AgentType) -> bool {
+        // For synchronous access, we need to use try_lock
+        if let Ok(inner) = self.inner.try_lock() {
+            inner.enabled_agent_types.contains(&agent_type)
+        } else {
+            // If lock is contended, default to true (safe fallback)
+            tracing::warn!("Could not check agent type enabled status, defaulting to true");
+            true
+        }
+    }
+
+    /// Check if an agent type is enabled in this pool (async version)
+    pub async fn is_agent_type_enabled_async(&self, agent_type: AgentType) -> bool {
+        let inner = self.inner.lock().await;
+        inner.enabled_agent_types.contains(&agent_type)
+    }
+
+    /// Get the current execution mode
+    pub async fn get_mode(&self) -> Option<Mode> {
+        let inner = self.inner.lock().await;
+        inner.mode
+    }
+
+    /// Get enabled agent types for this pool
+    pub async fn get_enabled_agent_types(&self) -> Vec<AgentType> {
+        let inner = self.inner.lock().await;
+        inner.enabled_agent_types.clone()
+    }
+
+    /// Get the appropriate model for an agent type based on mode
+    ///
+    /// Returns the model name to use for the given agent type,
+    /// considering the mode configured for this pool.
+    pub fn get_model_for_agent_type(&self, agent_type: AgentType) -> &'static str {
+        if let Ok(inner) = self.inner.try_lock() {
+            if let Some(mode) = inner.mode {
+                return match agent_type {
+                    AgentType::Plan => mode.plan_model(),
+                    AgentType::Dev => mode.exec_model(),
+                    AgentType::Test => mode.exec_model(),
+                    AgentType::Review => mode.review_model(),
+                };
+            }
+        }
+        // Default to exec_model if mode not set
+        "claude-sonnet-4-6"
+    }
 }
 
 /// Statistics about the agent pool
@@ -538,5 +641,73 @@ mod tests {
         // Cleanup won't remove fresh sessions
         let removed = pool.cleanup_stale_sessions().await;
         assert_eq!(removed, 0);
+    }
+
+    #[test]
+    fn test_new_for_mode_fast() {
+        let config = Config::default();
+        let pool = AgentPool::new_for_mode(&config, Mode::Fast);
+
+        // Fast mode should only have Plan and Dev agents enabled
+        assert!(pool.is_agent_type_enabled(AgentType::Plan));
+        assert!(pool.is_agent_type_enabled(AgentType::Dev));
+        assert!(!pool.is_agent_type_enabled(AgentType::Test));
+        assert!(!pool.is_agent_type_enabled(AgentType::Review));
+    }
+
+    #[test]
+    fn test_new_for_mode_standard() {
+        let config = Config::default();
+        let pool = AgentPool::new_for_mode(&config, Mode::Standard);
+
+        // Standard mode should have Plan, Dev, and Test agents enabled
+        assert!(pool.is_agent_type_enabled(AgentType::Plan));
+        assert!(pool.is_agent_type_enabled(AgentType::Dev));
+        assert!(pool.is_agent_type_enabled(AgentType::Test));
+        assert!(!pool.is_agent_type_enabled(AgentType::Review));
+    }
+
+    #[test]
+    fn test_new_for_mode_expert() {
+        let config = Config::default();
+        let pool = AgentPool::new_for_mode(&config, Mode::Expert);
+
+        // Expert mode should have all agent types enabled
+        assert!(pool.is_agent_type_enabled(AgentType::Plan));
+        assert!(pool.is_agent_type_enabled(AgentType::Dev));
+        assert!(pool.is_agent_type_enabled(AgentType::Test));
+        assert!(pool.is_agent_type_enabled(AgentType::Review));
+    }
+
+    #[test]
+    fn test_get_model_for_agent_type() {
+        let config = Config::default();
+        let pool = AgentPool::new_for_mode(&config, Mode::Expert);
+
+        // Check models for each agent type
+        assert_eq!(pool.get_model_for_agent_type(AgentType::Plan), "claude-opus-4-6");
+        assert_eq!(pool.get_model_for_agent_type(AgentType::Dev), "claude-sonnet-4-6");
+        assert_eq!(pool.get_model_for_agent_type(AgentType::Test), "claude-sonnet-4-6");
+        assert_eq!(pool.get_model_for_agent_type(AgentType::Review), "claude-opus-4-6");
+    }
+
+    #[tokio::test]
+    async fn test_get_mode() {
+        let config = Config::default();
+        let pool = AgentPool::new_for_mode(&config, Mode::Fast);
+
+        let mode = pool.get_mode().await;
+        assert_eq!(mode, Some(Mode::Fast));
+    }
+
+    #[tokio::test]
+    async fn test_get_enabled_agent_types() {
+        let config = Config::default();
+        let pool = AgentPool::new_for_mode(&config, Mode::Fast);
+
+        let enabled = pool.get_enabled_agent_types().await;
+        assert_eq!(enabled.len(), 2);
+        assert!(enabled.contains(&AgentType::Plan));
+        assert!(enabled.contains(&AgentType::Dev));
     }
 }

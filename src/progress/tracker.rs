@@ -130,6 +130,7 @@ impl ProgressTracker {
         let mut completed = Vec::new();
         let mut failed = Vec::new();
         let mut blocked = Vec::new();
+        let mut skipped = Vec::new();
 
         for (task_id, status) in tasks.iter() {
             match status {
@@ -138,6 +139,7 @@ impl ProgressTracker {
                 TaskStatus::Completed => completed.push(task_id),
                 TaskStatus::Failed => failed.push(task_id),
                 TaskStatus::Blocked => blocked.push(task_id),
+                TaskStatus::SkippedModeDisabled => skipped.push(task_id),
             }
         }
 

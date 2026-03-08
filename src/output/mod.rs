@@ -111,6 +111,7 @@ impl TerminalFormatter {
             TaskStatus::Completed => console::style("Completed").green().to_string(),
             TaskStatus::Failed => console::style("Failed").red().to_string(),
             TaskStatus::Blocked => console::style("Blocked").bright().red().to_string(),
+            TaskStatus::SkippedModeDisabled => console::style("Skipped").dim().italic().to_string(),
         }
     }
 

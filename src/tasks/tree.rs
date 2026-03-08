@@ -129,6 +129,7 @@ fn status_to_symbol(status: &TaskStatus) -> &'static str {
         TaskStatus::Completed => "✓",
         TaskStatus::Failed => "✗",
         TaskStatus::Blocked => "⚠",
+        TaskStatus::SkippedModeDisabled => "⏭",
     }
 }
 

@@ -62,6 +62,7 @@ use crate::pipeline::memory::{MemoryConfig, update_memory};
 use crate::pipeline::review::{review_tasks, ReviewConfig};
 use crate::pipeline::test::{TestConfig, test_tasks};
 use crate::pipeline::verify::{VerifyConfig, verify_tasks};
+use crate::workspace::{WorkspaceState, RecoverySummary};
 
 /// Configuration for the pipeline orchestrator
 #[derive(Debug, Clone)]
@@ -746,6 +747,229 @@ impl PipelineOrchestrator {
 
         let state = self.state.try_read().ok()?;
         state.create_progress_bar(&format!("Stage {}: {}", stage_index + 1, stage_name))
+    }
+
+    /// Check for recovery opportunity at startup
+    ///
+    /// This method checks if there are incomplete tasks from a previous run
+    /// that could be resumed.
+    ///
+    /// # Returns
+    ///
+    /// Returns `Some(RecoverySummary)` if there are incomplete tasks, `None` otherwise.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use ltmatrix::pipeline::orchestrator::{PipelineOrchestrator, OrchestratorConfig};
+    /// use std::path::PathBuf;
+    ///
+    /// # async fn example() -> anyhow::Result<()> {
+    /// let config = OrchestratorConfig::default()
+    ///     .with_work_dir("/path/to/project");
+    /// let orchestrator = PipelineOrchestrator::new(config)?;
+    ///
+    /// if let Some(recovery) = orchestrator.check_recovery().await? {
+    ///     println!("Found {} incomplete tasks. Resume?", recovery.total_incomplete);
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn check_recovery(&self) -> Result<Option<RecoverySummary>> {
+        if !WorkspaceState::exists(&self.config.work_dir) {
+            debug!("No existing workspace state found, starting fresh");
+            return Ok(None);
+        }
+
+        // Load the existing workspace state
+        match WorkspaceState::load_with_transform(self.config.work_dir.clone()) {
+            Ok(state) => {
+                let summary = state.get_recovery_summary();
+                if summary.can_resume {
+                    info!(
+                        "Found {} incomplete tasks from previous run ({} pending, {} in-progress, {} failed, {} blocked)",
+                        summary.total_incomplete,
+                        summary.pending_count,
+                        summary.in_progress_count,
+                        summary.failed_count,
+                        summary.blocked_count
+                    );
+                    return Ok(Some(summary));
+                }
+                Ok(None)
+            }
+            Err(e) => {
+                warn!("Failed to load workspace state for recovery check: {}", e);
+                Ok(None)
+            }
+        }
+    }
+
+    /// Resume pipeline execution from a previous interrupted run
+    ///
+    /// This method loads the existing workspace state and continues execution
+    /// from where it left off. In-progress tasks are reset to Pending.
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(PipelineResult)` with the results of the resumed pipeline execution.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - No existing workspace state exists
+    /// - The workspace state cannot be loaded
+    /// - Pipeline execution fails
+    pub async fn resume_pipeline(&self) -> Result<PipelineResult> {
+        info!("Resuming pipeline from previous run");
+
+        // Load the workspace state with transformation (resets InProgress to Pending)
+        let state = WorkspaceState::load_with_transform(self.config.work_dir.clone())?;
+
+        let recovery = state.get_recovery_summary();
+        if !recovery.can_resume {
+            info!("No incomplete tasks found, nothing to resume");
+            return Ok(PipelineResult::new());
+        }
+
+        info!(
+            "Resuming {} incomplete tasks",
+            recovery.total_incomplete
+        );
+
+        // Initialize state with loaded tasks
+        {
+            let mut pipeline_state = self.state.write().await;
+            pipeline_state.tasks = state.tasks.clone();
+            pipeline_state.start_time = std::time::Instant::now();
+        }
+
+        // Get the pipeline stages for this mode
+        let stages = PipelineStage::pipeline_for_mode(self.config.execution_mode);
+
+        // Start from Assess stage (tasks already generated)
+        let result = self.execute_from_stage(stages[1]).await?;
+
+        Ok(result)
+    }
+
+    /// Execute pipeline starting from a specific stage
+    ///
+    /// This is used for resuming execution after recovery.
+    async fn execute_from_stage(&self, start_stage: PipelineStage) -> Result<PipelineResult> {
+        let mut result = PipelineResult::new();
+        let start_time = std::time::Instant::now();
+
+        // Get the pipeline stages for this mode
+        let stages = PipelineStage::pipeline_for_mode(self.config.execution_mode);
+
+        // Find the starting stage index
+        let start_index = stages
+            .iter()
+            .position(|&s| s == start_stage)
+            .unwrap_or(0);
+
+        // Execute stages starting from the specified stage
+        for (stage_index, stage) in stages.iter().enumerate().skip(start_index) {
+            self.set_current_stage(*stage).await;
+
+            match self.execute_stage_from_state(*stage, stage_index).await {
+                Ok(stage_result) => {
+                    result.stages_completed = stage_index + 1;
+                    result.total_tasks = stage_result.len();
+
+                    // Update task results
+                    for task in &stage_result {
+                        if task.is_completed() {
+                            result.tasks_completed += 1;
+                            result.completed_tasks.push(task.clone());
+                        } else if task.is_failed() {
+                            result.tasks_failed += 1;
+                            result.failed_tasks.push(task.clone());
+                        }
+                    }
+
+                    info!(
+                        "Stage {:?} completed: {} tasks",
+                        stage,
+                        stage_result.len()
+                    );
+                }
+                Err(e) => {
+                    error!("Stage {:?} failed: {}", stage, e);
+                    result.total_time = start_time.elapsed();
+                    result.success = false;
+                    return Ok(result);
+                }
+            }
+        }
+
+        result.total_time = start_time.elapsed();
+        result.success = result.tasks_failed == 0;
+
+        info!(
+            "Pipeline completed: {} tasks completed, {} failed in {:.2}s",
+            result.tasks_completed,
+            result.tasks_failed,
+            result.total_time.as_secs_f64()
+        );
+
+        Ok(result)
+    }
+
+    /// Execute a stage using the current state
+    async fn execute_stage_from_state(
+        &self,
+        stage: PipelineStage,
+        stage_index: usize,
+    ) -> Result<Vec<Task>> {
+        info!("Executing stage: {:?}", stage);
+
+        let stage_name = stage.display_name();
+        let pb = self.create_stage_progress_bar(stage_name, stage_index);
+
+        let tasks = self.get_current_tasks().await?;
+        let result = match stage {
+            PipelineStage::Generate => {
+                // For resume, we skip generation and use existing tasks
+                return Ok(tasks);
+            }
+            PipelineStage::Assess => {
+                self.execute_assess_stage(tasks, pb.as_ref()).await?
+            }
+            PipelineStage::Execute => {
+                self.execute_execute_stage(tasks, pb.as_ref()).await?
+            }
+            PipelineStage::Test => {
+                let completed = self.get_completed_tasks().await?;
+                self.execute_test_stage(completed, pb.as_ref()).await?
+            }
+            PipelineStage::Review => {
+                let completed = self.get_completed_tasks().await?;
+                self.execute_review_stage(completed, pb.as_ref()).await?
+            }
+            PipelineStage::Verify => {
+                let completed = self.get_completed_tasks().await?;
+                self.execute_verify_stage(completed, pb.as_ref()).await?
+            }
+            PipelineStage::Commit => {
+                let completed = self.get_completed_tasks().await?;
+                self.execute_commit_stage(completed, pb.as_ref()).await?
+            }
+            PipelineStage::Memory => {
+                let completed = self.get_completed_tasks().await?;
+                self.execute_memory_stage(completed, pb.as_ref()).await?
+            }
+        };
+
+        // Update state with new tasks
+        self.update_tasks(result.clone()).await?;
+
+        if let Some(pb) = pb {
+            pb.finish_with_message(format!("{} completed", stage_name));
+        }
+
+        Ok(result)
     }
 }
 

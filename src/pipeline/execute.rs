@@ -23,7 +23,7 @@ use ltmatrix_agent::backend::{AgentBackend, ExecutionConfig};
 use ltmatrix_agent::claude::ClaudeAgent;
 use ltmatrix_agent::session::SessionManager;
 use ltmatrix_agent::AgentPool;
-use ltmatrix_core::{ModeConfig, Task, TaskComplexity, TaskStatus};
+use ltmatrix_core::{AgentType, Mode, ModeConfig, Task, TaskComplexity, TaskStatus};
 use crate::workspace::WorkspaceState;
 
 /// Configuration for the execution stage
@@ -139,6 +139,9 @@ pub struct ExecutionStatistics {
     /// Failed tasks
     pub failed_tasks: usize,
 
+    /// Tasks skipped due to mode disabled
+    pub skipped_tasks: usize,
+
     /// Total retries attempted
     pub total_retries: u32,
 
@@ -203,6 +206,14 @@ pub async fn execute_tasks(
         moderate_tasks: 0,
         complex_tasks: 0,
         sessions_reused: 0,
+        skipped_tasks: 0,
+    };
+
+    // Get mode from agent pool if available
+    let mode = if let Some(pool) = &config.agent_pool {
+        pool.get_mode().await
+    } else {
+        None
     };
 
     // Execute tasks in dependency order
@@ -217,6 +228,24 @@ pub async fn execute_tasks(
             TaskComplexity::Simple => stats.simple_tasks += 1,
             TaskComplexity::Moderate => stats.moderate_tasks += 1,
             TaskComplexity::Complex => stats.complex_tasks += 1,
+        }
+
+        // Check if task's agent type is enabled in current mode
+        if let Some(m) = mode {
+            if !m.is_agent_enabled(task.agent_type) {
+                info!(
+                    "Skipping task {} - agent type {:?} not enabled in {:?} mode",
+                    task.id, task.agent_type, m
+                );
+                task.status = TaskStatus::SkippedModeDisabled;
+                task.error = Some(format!(
+                    "Agent type {:?} not enabled in {:?} mode",
+                    task.agent_type, m
+                ));
+                stats.skipped_tasks += 1;
+                results.push(task);
+                continue;
+            }
         }
 
         // Check if dependencies are satisfied
@@ -675,6 +704,9 @@ pub fn display_execution_statistics(stats: &ExecutionStatistics) {
     println!("Total tasks: {}", stats.total_tasks);
     println!("Completed: {}", stats.completed_tasks);
     println!("Failed: {}", stats.failed_tasks);
+    if stats.skipped_tasks > 0 {
+        println!("Skipped (mode disabled): {}", stats.skipped_tasks);
+    }
     println!("Total retries: {}", stats.total_retries);
     println!("Total time: {}s", stats.total_time);
     println!("\nComplexity breakdown:");
@@ -682,6 +714,36 @@ pub fn display_execution_statistics(stats: &ExecutionStatistics) {
     println!("  Moderate: {}", stats.moderate_tasks);
     println!("  Complex: {}", stats.complex_tasks);
     println!("Sessions reused: {}", stats.sessions_reused);
+}
+
+/// Select model for task based on agent type and mode
+///
+/// Returns the appropriate model for the task's agent type,
+/// considering the execution mode.
+pub fn select_model_for_task(task: &Task, mode: Option<Mode>, config: &ExecuteConfig) -> String {
+    // If mode is available, use mode-specific model selection
+    if let Some(m) = mode {
+        let model = match task.agent_type {
+            AgentType::Plan => m.plan_model(),
+            AgentType::Dev => m.exec_model(),
+            AgentType::Test => m.exec_model(),
+            AgentType::Review => m.review_model(),
+        };
+        return model.to_string();
+    }
+
+    // Fallback to complexity-based model selection
+    config.mode_config.model_for_complexity(&task.complexity).to_string()
+}
+
+/// Check if a task should be executed based on its agent type and the current mode
+///
+/// Returns true if the task's agent type is enabled in the given mode.
+pub fn should_execute_task(task: &Task, mode: Option<Mode>) -> bool {
+    match mode {
+        Some(m) => m.is_agent_enabled(task.agent_type),
+        None => true, // No mode specified, execute all tasks
+    }
 }
 
 /// Save workspace state for all tasks in the task map

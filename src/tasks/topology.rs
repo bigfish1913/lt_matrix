@@ -478,6 +478,7 @@ fn status_to_symbol(status: &TaskStatus) -> &'static str {
         TaskStatus::Completed => "✓",
         TaskStatus::Failed => "✗",
         TaskStatus::Blocked => "⚠",
+        TaskStatus::SkippedModeDisabled => "⏭",
     }
 }
 
@@ -598,6 +599,7 @@ pub fn generate_mermaid_flowchart(tasks: &[Task], show_status: Option<bool>) -> 
                 TaskStatus::Completed => format!("    classDef {}Style fill:#e6f7e6,stroke:#00cc00,stroke-width:2px;\n", node_id),
                 TaskStatus::Failed => format!("    classDef {}Style fill:#ffe6e6,stroke:#cc0000,stroke-width:2px;\n", node_id),
                 TaskStatus::Blocked => format!("    classDef {}Style fill:#f0f0f0,stroke:#666666,stroke-width:2px,stroke-dasharray: 5 5;\n", node_id),
+                TaskStatus::SkippedModeDisabled => format!("    classDef {}Style fill:#f5f5f5,stroke:#999999,stroke-width:1px,stroke-dasharray: 3 3;\n", node_id),
             };
             result.push_str(&style);
         }
@@ -733,6 +735,7 @@ fn status_to_mermaid_text(status: &TaskStatus) -> &str {
         TaskStatus::Completed => "✓ Completed",
         TaskStatus::Failed => "✗ Failed",
         TaskStatus::Blocked => "⚠ Blocked",
+        TaskStatus::SkippedModeDisabled => "⏭ Skipped",
     }
 }
 

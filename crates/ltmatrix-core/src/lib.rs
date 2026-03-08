@@ -265,12 +265,20 @@ pub enum TaskStatus {
 
     /// Task is blocked by an external issue
     Blocked,
+
+    /// Task was skipped because its agent type is disabled in current mode
+    SkippedModeDisabled,
 }
 
 impl TaskStatus {
-    /// Returns true if the status is a terminal state (completed or failed)
+    /// Returns true if the status is a terminal state (completed, failed, or skipped)
     pub fn is_terminal(&self) -> bool {
-        matches!(self, TaskStatus::Completed | TaskStatus::Failed)
+        matches!(self, TaskStatus::Completed | TaskStatus::Failed | TaskStatus::SkippedModeDisabled)
+    }
+
+    /// Returns true if the task was skipped
+    pub fn is_skipped(&self) -> bool {
+        matches!(self, TaskStatus::SkippedModeDisabled)
     }
 }
 

@@ -393,6 +393,7 @@ impl ProgressManager {
                     TaskStatus::Completed => "Completed",
                     TaskStatus::Failed => "Failed",
                     TaskStatus::Blocked => "Blocked",
+                    TaskStatus::SkippedModeDisabled => "Skipped",
                 };
 
                 bar.set_message(format!("{} - {}", name, status_text));

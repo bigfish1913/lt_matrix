@@ -251,7 +251,7 @@ impl WorkspaceState {
                 // Clear timestamps when resetting
                 task.started_at = None;
             }
-            TaskStatus::Pending | TaskStatus::Completed | TaskStatus::Failed => {
+            TaskStatus::Pending | TaskStatus::Completed | TaskStatus::Failed | TaskStatus::SkippedModeDisabled => {
                 // Preserve these states
             }
         }
@@ -674,6 +674,152 @@ impl WorkspaceState {
         summary
     }
 
+    /// Checks if there are any incomplete tasks in the workspace
+    ///
+    /// Incomplete tasks are those with status: Pending, InProgress, Blocked, or Failed.
+    ///
+    /// # Returns
+    ///
+    /// Returns `true` if there are any incomplete tasks.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use ltmatrix::workspace::WorkspaceState;
+    /// use std::path::PathBuf;
+    ///
+    /// let project_root = PathBuf::from("/path/to/project");
+    /// if let Ok(state) = WorkspaceState::load(project_root.clone()) {
+    ///     if state.has_incomplete_tasks() {
+    ///         println!("Found incomplete tasks from previous run");
+    ///     }
+    /// }
+    /// ```
+    pub fn has_incomplete_tasks(&self) -> bool {
+        for task in &self.tasks {
+            if Self::is_task_incomplete_recursive(task) {
+                return true;
+            }
+        }
+        false
+    }
+
+    /// Recursively checks if a task or its subtasks are incomplete
+    fn is_task_incomplete_recursive(task: &Task) -> bool {
+        let is_incomplete = matches!(
+            task.status,
+            TaskStatus::Pending | TaskStatus::InProgress | TaskStatus::Blocked | TaskStatus::Failed
+        );
+
+        if is_incomplete {
+            return true;
+        }
+
+        // Check subtasks
+        for subtask in &task.subtasks {
+            if Self::is_task_incomplete_recursive(subtask) {
+                return true;
+            }
+        }
+
+        false
+    }
+
+    /// Gets all incomplete tasks from the workspace
+    ///
+    /// # Returns
+    ///
+    /// Returns a vector of references to incomplete tasks.
+    pub fn get_incomplete_tasks(&self) -> Vec<&Task> {
+        let mut incomplete = Vec::new();
+        for task in &self.tasks {
+            Self::collect_incomplete_recursive(task, &mut incomplete);
+        }
+        incomplete
+    }
+
+    /// Recursively collects incomplete tasks
+    fn collect_incomplete_recursive<'a>(task: &'a Task, incomplete: &mut Vec<&'a Task>) {
+        let is_incomplete = matches!(
+            task.status,
+            TaskStatus::Pending | TaskStatus::InProgress | TaskStatus::Blocked | TaskStatus::Failed
+        );
+
+        if is_incomplete {
+            incomplete.push(task);
+        }
+
+        // Also check subtasks
+        for subtask in &task.subtasks {
+            Self::collect_incomplete_recursive(subtask, incomplete);
+        }
+    }
+
+    /// Gets a recovery summary for startup detection
+    ///
+    /// This method provides a summary of the workspace state that can be used
+    /// to determine if recovery from a previous interrupted run is possible.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `RecoverySummary` with counts of incomplete tasks and whether
+    /// recovery is possible.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use ltmatrix::workspace::WorkspaceState;
+    /// use std::path::PathBuf;
+    ///
+    /// let project_root = PathBuf::from("/path/to/project");
+    /// if let Ok(state) = WorkspaceState::load(project_root.clone()) {
+    ///     let recovery = state.get_recovery_summary();
+    ///     if recovery.can_resume {
+    ///         println!("Found {} incomplete tasks. Resume?", recovery.total_incomplete);
+    ///     }
+    /// }
+    /// ```
+    pub fn get_recovery_summary(&self) -> RecoverySummary {
+        let mut summary = RecoverySummary {
+            pending_count: 0,
+            in_progress_count: 0,
+            failed_count: 0,
+            blocked_count: 0,
+            can_resume: false,
+            total_incomplete: 0,
+        };
+
+        for task in &self.tasks {
+            Self::summarize_recovery_recursive(task, &mut summary);
+        }
+
+        summary.total_incomplete = summary.pending_count
+            + summary.in_progress_count
+            + summary.failed_count
+            + summary.blocked_count;
+
+        // Can resume if there are any incomplete tasks
+        summary.can_resume = summary.total_incomplete > 0;
+
+        summary
+    }
+
+    /// Recursively summarizes task statuses for recovery
+    fn summarize_recovery_recursive(task: &Task, summary: &mut RecoverySummary) {
+        match task.status {
+            TaskStatus::Pending => summary.pending_count += 1,
+            TaskStatus::InProgress => summary.in_progress_count += 1,
+            TaskStatus::Failed => summary.failed_count += 1,
+            TaskStatus::Blocked => summary.blocked_count += 1,
+            TaskStatus::Completed | TaskStatus::SkippedModeDisabled => {}
+        }
+
+        // Recursively process subtasks
+        for subtask in &task.subtasks {
+            Self::summarize_recovery_recursive(subtask, summary);
+        }
+    }
+
     /// Recursively summarizes task statuses
     fn summarize_task_recursive(task: &Task, summary: &mut TaskStatusSummary) {
         match task.status {
@@ -682,6 +828,7 @@ impl WorkspaceState {
             TaskStatus::Completed => summary.completed += 1,
             TaskStatus::Failed => summary.failed += 1,
             TaskStatus::Blocked => summary.blocked += 1,
+            TaskStatus::SkippedModeDisabled => summary.skipped += 1,
         }
 
         // Recursively count subtasks
@@ -709,8 +856,33 @@ pub struct TaskStatusSummary {
     /// Number of blocked tasks
     pub blocked: usize,
 
+    /// Number of skipped tasks (mode disabled)
+    pub skipped: usize,
+
     /// Total number of tasks
     pub total: usize,
+}
+
+/// Summary for recovery detection at startup
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RecoverySummary {
+    /// Number of pending tasks
+    pub pending_count: usize,
+
+    /// Number of in-progress tasks (interrupted)
+    pub in_progress_count: usize,
+
+    /// Number of failed tasks
+    pub failed_count: usize,
+
+    /// Number of blocked tasks
+    pub blocked_count: usize,
+
+    /// Whether recovery is possible
+    pub can_resume: bool,
+
+    /// Total number of incomplete tasks
+    pub total_incomplete: usize,
 }
 
 impl TaskStatusSummary {
@@ -739,5 +911,139 @@ mod tests {
         let metadata = StateMetadata::default();
         assert_eq!(metadata.version, "1.0");
         assert_eq!(metadata.created_at, metadata.modified_at);
+    }
+
+    #[test]
+    fn test_has_incomplete_tasks_empty() {
+        let state = WorkspaceState::new(std::path::PathBuf::from("/tmp"), vec![]);
+        assert!(!state.has_incomplete_tasks());
+    }
+
+    #[test]
+    fn test_has_incomplete_tasks_all_completed() {
+        let mut task1 = Task::new("task-1", "Test", "Description");
+        task1.status = TaskStatus::Completed;
+        let mut task2 = Task::new("task-2", "Test 2", "Description 2");
+        task2.status = TaskStatus::Completed;
+
+        let state = WorkspaceState::new(std::path::PathBuf::from("/tmp"), vec![task1, task2]);
+        assert!(!state.has_incomplete_tasks());
+    }
+
+    #[test]
+    fn test_has_incomplete_tasks_with_pending() {
+        let task1 = Task::new("task-1", "Test", "Description");
+        let mut task2 = Task::new("task-2", "Test 2", "Description 2");
+        task2.status = TaskStatus::Completed;
+
+        let state = WorkspaceState::new(std::path::PathBuf::from("/tmp"), vec![task1, task2]);
+        assert!(state.has_incomplete_tasks());
+    }
+
+    #[test]
+    fn test_has_incomplete_tasks_with_in_progress() {
+        let mut task1 = Task::new("task-1", "Test", "Description");
+        task1.status = TaskStatus::InProgress;
+        let mut task2 = Task::new("task-2", "Test 2", "Description 2");
+        task2.status = TaskStatus::Completed;
+
+        let state = WorkspaceState::new(std::path::PathBuf::from("/tmp"), vec![task1, task2]);
+        assert!(state.has_incomplete_tasks());
+    }
+
+    #[test]
+    fn test_has_incomplete_tasks_with_subtasks() {
+        let mut task = Task::new("task-1", "Test", "Description");
+        task.status = TaskStatus::Completed;
+        let mut subtask = Task::new("subtask-1", "Subtask", "Description");
+        subtask.status = TaskStatus::Pending;
+        task.subtasks.push(subtask);
+
+        let state = WorkspaceState::new(std::path::PathBuf::from("/tmp"), vec![task]);
+        assert!(state.has_incomplete_tasks());
+    }
+
+    #[test]
+    fn test_get_incomplete_tasks() {
+        let task1 = Task::new("task-1", "Pending Task", "Description");
+        let mut task2 = Task::new("task-2", "Completed Task", "Description");
+        task2.status = TaskStatus::Completed;
+        let mut task3 = Task::new("task-3", "Failed Task", "Description");
+        task3.status = TaskStatus::Failed;
+
+        let state = WorkspaceState::new(
+            std::path::PathBuf::from("/tmp"),
+            vec![task1, task2, task3],
+        );
+        let incomplete = state.get_incomplete_tasks();
+        assert_eq!(incomplete.len(), 2);
+    }
+
+    #[test]
+    fn test_get_recovery_summary() {
+        let task1 = Task::new("task-1", "Pending Task", "Description"); // Pending
+        let mut task2 = Task::new("task-2", "Completed Task", "Description");
+        task2.status = TaskStatus::Completed;
+        let mut task3 = Task::new("task-3", "Failed Task", "Description");
+        task3.status = TaskStatus::Failed;
+        let mut task4 = Task::new("task-4", "Blocked Task", "Description");
+        task4.status = TaskStatus::Blocked;
+        let mut task5 = Task::new("task-5", "In Progress Task", "Description");
+        task5.status = TaskStatus::InProgress;
+
+        let state = WorkspaceState::new(
+            std::path::PathBuf::from("/tmp"),
+            vec![task1, task2, task3, task4, task5],
+        );
+
+        let summary = state.get_recovery_summary();
+        assert_eq!(summary.pending_count, 1);
+        assert_eq!(summary.failed_count, 1);
+        assert_eq!(summary.blocked_count, 1);
+        assert_eq!(summary.in_progress_count, 1);
+        assert_eq!(summary.total_incomplete, 4);
+        assert!(summary.can_resume);
+    }
+
+    #[test]
+    fn test_recovery_summary_empty_workspace() {
+        let state = WorkspaceState::new(std::path::PathBuf::from("/tmp"), vec![]);
+        let summary = state.get_recovery_summary();
+        assert_eq!(summary.total_incomplete, 0);
+        assert!(!summary.can_resume);
+    }
+
+    #[test]
+    fn test_recovery_summary_all_completed() {
+        let mut task1 = Task::new("task-1", "Test", "Description");
+        task1.status = TaskStatus::Completed;
+        let mut task2 = Task::new("task-2", "Test 2", "Description 2");
+        task2.status = TaskStatus::Completed;
+
+        let state = WorkspaceState::new(std::path::PathBuf::from("/tmp"), vec![task1, task2]);
+        let summary = state.get_recovery_summary();
+        assert_eq!(summary.total_incomplete, 0);
+        assert!(!summary.can_resume);
+    }
+
+    #[test]
+    fn test_recovery_summary_with_subtasks() {
+        let mut task = Task::new("task-1", "Test", "Description");
+        task.status = TaskStatus::Completed;
+
+        let mut subtask1 = Task::new("subtask-1", "Subtask 1", "Description");
+        subtask1.status = TaskStatus::Pending;
+        let mut subtask2 = Task::new("subtask-2", "Subtask 2", "Description");
+        subtask2.status = TaskStatus::Failed;
+
+        task.subtasks = vec![subtask1, subtask2];
+
+        let state = WorkspaceState::new(std::path::PathBuf::from("/tmp"), vec![task]);
+        let summary = state.get_recovery_summary();
+
+        assert_eq!(summary.pending_count, 1);
+        assert_eq!(summary.failed_count, 1);
+        assert_eq!(summary.total_incomplete, 2);
+        assert!(summary.can_resume);
     }
 }

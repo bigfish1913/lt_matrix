@@ -19,7 +19,7 @@ use tracing::{debug, info, warn};
 
 use ltmatrix_agent::backend::{AgentBackend, ExecutionConfig};
 use ltmatrix_agent::ClaudeAgent;
-use ltmatrix_core::{Task, TaskComplexity, TaskStatus};
+use ltmatrix_core::{AgentType, Task, TaskComplexity, TaskStatus};
 
 /// Configuration for the generation stage
 #[derive(Debug, Clone)]
@@ -107,6 +107,205 @@ pub struct GenerationResult {
 
     /// Validation errors (if any)
     pub validation_errors: Vec<ValidationError>,
+
+    /// Generation log with detailed analysis
+    pub generation_log: Option<GenerationLog>,
+}
+
+/// Log of task generation with detailed analysis
+#[derive(Debug, Clone)]
+pub struct GenerationLog {
+    /// Timestamp when generation started
+    pub timestamp: chrono::DateTime<chrono::Utc>,
+
+    /// Original goal
+    pub goal: String,
+
+    /// Number of tasks generated
+    pub tasks_generated: usize,
+
+    /// Breakdown by complexity
+    pub complexity_breakdown: HashMap<String, usize>,
+
+    /// Breakdown by agent type
+    pub agent_type_breakdown: HashMap<String, usize>,
+
+    /// Dependency analysis
+    pub dependency_analysis: DependencyAnalysis,
+
+    /// Split strategy used
+    pub split_strategy: SplitStrategy,
+}
+
+/// Dependency analysis results
+#[derive(Debug, Clone)]
+pub struct DependencyAnalysis {
+    /// Maximum depth of the dependency tree
+    pub max_depth: usize,
+
+    /// Number of root tasks (no dependencies)
+    pub root_count: usize,
+
+    /// Number of leaf tasks (no dependents)
+    pub leaf_count: usize,
+
+    /// Total number of dependency edges
+    pub total_edges: usize,
+
+    /// Critical path length
+    pub critical_path_length: usize,
+
+    /// Number of parallelizable tasks
+    pub parallelizable_count: usize,
+}
+
+/// Strategy used for task splitting
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SplitStrategy {
+    /// Granular: Small tasks, 1-2 hours each
+    Granular,
+    /// Moderate: Medium tasks, 2-4 hours each
+    Moderate,
+    /// Coarse: Large tasks, 4-8 hours each
+    Coarse,
+}
+
+impl GenerationLog {
+    /// Creates a new generation log
+    pub fn new(goal: &str, tasks: &[Task]) -> Self {
+        let mut complexity_breakdown = HashMap::new();
+        let mut agent_type_breakdown = HashMap::new();
+
+        for task in tasks {
+            let complexity_key = match task.complexity {
+                TaskComplexity::Simple => "simple",
+                TaskComplexity::Moderate => "moderate",
+                TaskComplexity::Complex => "complex",
+            };
+            *complexity_breakdown.entry(complexity_key.to_string()).or_insert(0) += 1;
+
+            let agent_type_key = match task.agent_type {
+                AgentType::Plan => "plan",
+                AgentType::Dev => "dev",
+                AgentType::Test => "test",
+                AgentType::Review => "review",
+            };
+            *agent_type_breakdown.entry(agent_type_key.to_string()).or_insert(0) += 1;
+        }
+
+        let dependency_analysis = analyze_dependencies(tasks);
+
+        let split_strategy = determine_split_strategy(tasks);
+
+        GenerationLog {
+            timestamp: chrono::Utc::now(),
+            goal: goal.to_string(),
+            tasks_generated: tasks.len(),
+            complexity_breakdown,
+            agent_type_breakdown,
+            dependency_analysis,
+            split_strategy,
+        }
+    }
+
+    /// Formats the log as a human-readable string
+    pub fn to_readable_string(&self) -> String {
+        let mut output = String::new();
+        output.push_str(&format!("=== Task Generation Log ===\n"));
+        output.push_str(&format!("Timestamp: {}\n", self.timestamp));
+        output.push_str(&format!("Goal: {}\n", self.goal));
+        output.push_str(&format!("Tasks Generated: {}\n\n", self.tasks_generated));
+
+        output.push_str("Complexity Breakdown:\n");
+        for (complexity, count) in &self.complexity_breakdown {
+            output.push_str(&format!("  - {}: {}\n", complexity, count));
+        }
+
+        output.push_str("\nAgent Type Breakdown:\n");
+        for (agent_type, count) in &self.agent_type_breakdown {
+            output.push_str(&format!("  - {}: {}\n", agent_type, count));
+        }
+
+        output.push_str("\nDependency Analysis:\n");
+        output.push_str(&format!("  - Max Depth: {}\n", self.dependency_analysis.max_depth));
+        output.push_str(&format!("  - Root Tasks: {}\n", self.dependency_analysis.root_count));
+        output.push_str(&format!("  - Leaf Tasks: {}\n", self.dependency_analysis.leaf_count));
+        output.push_str(&format!("  - Total Edges: {}\n", self.dependency_analysis.total_edges));
+        output.push_str(&format!("  - Critical Path: {}\n", self.dependency_analysis.critical_path_length));
+        output.push_str(&format!("  - Parallelizable: {}\n", self.dependency_analysis.parallelizable_count));
+
+        output.push_str(&format!("\nSplit Strategy: {:?}\n", self.split_strategy));
+
+        output
+    }
+}
+
+/// Analyzes task dependencies
+fn analyze_dependencies(tasks: &[Task]) -> DependencyAnalysis {
+    use std::collections::{HashSet, HashMap};
+
+    let task_ids: HashSet<&str> = tasks.iter().map(|t| t.id.as_str()).collect();
+
+    // Count edges and roots
+    let mut total_edges = 0;
+    let mut root_count = 0;
+    let mut dependent_count: HashMap<&str, usize> = HashMap::new();
+
+    for task in tasks {
+        total_edges += task.depends_on.len();
+        if task.depends_on.is_empty() {
+            root_count += 1;
+        }
+
+        // Track how many tasks depend on each task
+        for dep in &task.depends_on {
+            *dependent_count.entry(dep.as_str()).or_insert(0) += 1;
+        }
+    }
+
+    // Leaf tasks are those that have no dependents
+    let leaf_count = tasks.iter()
+        .filter(|t| dependent_count.get(t.id.as_str()).unwrap_or(&0) == &0)
+        .count();
+
+    // Calculate max depth using BFS
+    let max_depth = calculate_dependency_depth(tasks);
+
+    // Estimate critical path (simplified)
+    let critical_path_length = max_depth;
+
+    // Count parallelizable tasks (tasks at the same level)
+    let parallelizable_count = root_count; // Simplified: root tasks can run in parallel
+
+    DependencyAnalysis {
+        max_depth,
+        root_count,
+        leaf_count,
+        total_edges,
+        critical_path_length,
+        parallelizable_count,
+    }
+}
+
+/// Determines the split strategy based on task characteristics
+fn determine_split_strategy(tasks: &[Task]) -> SplitStrategy {
+    if tasks.is_empty() {
+        return SplitStrategy::Moderate;
+    }
+
+    // Calculate average task description length as a heuristic
+    let avg_desc_len: f64 = tasks.iter()
+        .map(|t| t.description.len())
+        .sum::<usize>() as f64 / tasks.len() as f64;
+
+    // Shorter descriptions typically indicate smaller, more granular tasks
+    if avg_desc_len < 100.0 {
+        SplitStrategy::Granular
+    } else if avg_desc_len < 300.0 {
+        SplitStrategy::Moderate
+    } else {
+        SplitStrategy::Coarse
+    }
 }
 
 /// Validation errors that can occur during generation
@@ -269,17 +468,31 @@ pub async fn generate_tasks(goal: &str, config: &GenerateConfig) -> Result<Gener
     // Calculate dependency depth
     let dependency_depth = calculate_dependency_depth(&tasks);
 
+    // Create generation log with detailed analysis
+    let generation_log = GenerationLog::new(goal, &tasks);
+
+    // Log detailed generation information
     info!(
         "Generation completed: {} tasks created (depth: {})",
         task_count,
         dependency_depth
     );
+    debug!("Generation log:\n{}", generation_log.to_readable_string());
+
+    // Log complexity and agent type breakdown
+    for (complexity, count) in &generation_log.complexity_breakdown {
+        debug!("  Complexity {}: {}", complexity, count);
+    }
+    for (agent_type, count) in &generation_log.agent_type_breakdown {
+        debug!("  Agent type {}: {}", agent_type, count);
+    }
 
     Ok(GenerationResult {
         tasks,
         task_count,
         dependency_depth,
         validation_errors,
+        generation_log: Some(generation_log),
     })
 }
 
@@ -427,6 +640,11 @@ fn parse_generation_response(response: &str) -> Result<Vec<Task>> {
         task.depends_on = depends_on;
         task.complexity = complexity;
         task.status = TaskStatus::Pending;
+
+        // Auto-assign agent_type based on task content
+        // Combine title and description for better keyword matching
+        let combined_text = format!("{} {}", title, description);
+        task.agent_type = AgentType::from_keywords(&combined_text);
 
         tasks.push(task);
     }
