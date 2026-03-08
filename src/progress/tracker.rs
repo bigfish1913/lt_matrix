@@ -347,13 +347,13 @@ mod tests {
     fn test_task_stats_format_colored() {
         let config = ColorConfig::plain();
         let stats = TaskStats {
-            total: 3,
+            total: 4,
             completed: 1,
             in_progress: 1,
             pending: 1,
             failed: 0,
             blocked: 0,
-            skipped: 0,
+            skipped: 1,
         };
 
         let formatted = stats.format_colored(config);

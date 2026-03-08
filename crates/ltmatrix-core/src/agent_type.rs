@@ -9,23 +9,18 @@
 use serde::{Deserialize, Serialize};
 
 /// Agent type enum representing different agent roles
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum AgentType {
     /// Planning agent - responsible for task breakdown and complexity assessment
     Plan,
     /// Development agent - responsible for code implementation
+    #[default]
     Dev,
     /// Testing agent - responsible for writing and running tests
     Test,
     /// Review agent - responsible for code review (Expert mode only)
     Review,
-}
-
-impl Default for AgentType {
-    fn default() -> Self {
-        AgentType::Dev
-    }
 }
 
 impl AgentType {

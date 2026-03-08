@@ -361,23 +361,18 @@ impl Agent {
 }
 
 /// Execution mode determining the pipeline strategy
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum ExecutionMode {
     /// Fast mode: skip tests, use fast models, minimal verification
     Fast,
 
     /// Standard mode: full 6-stage pipeline with complete testing
+    #[default]
     Standard,
 
     /// Expert mode: highest quality with code review and thorough testing
     Expert,
-}
-
-impl Default for ExecutionMode {
-    fn default() -> Self {
-        ExecutionMode::Standard
-    }
 }
 
 impl std::fmt::Display for ExecutionMode {

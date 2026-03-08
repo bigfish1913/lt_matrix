@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 
 /// Resources required for task execution
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TaskResources {
     /// Reference documentation paths (detailed business logic)
     #[serde(default)]
@@ -26,16 +26,6 @@ pub struct TaskResources {
     /// MCP tools to use for execution
     #[serde(default)]
     pub mcp_tools: Vec<String>,
-}
-
-impl Default for TaskResources {
-    fn default() -> Self {
-        TaskResources {
-            docs: Vec::new(),
-            skills: Vec::new(),
-            mcp_tools: Vec::new(),
-        }
-    }
 }
 
 impl TaskResources {

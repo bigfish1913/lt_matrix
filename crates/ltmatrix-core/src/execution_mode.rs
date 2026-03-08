@@ -15,21 +15,16 @@ use std::fmt;
 use super::AgentType;
 
 /// Execution mode determining the pipeline strategy
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "lowercase")]
 pub enum Mode {
     /// Fast mode: skip tests, use fast models, minimal verification
     Fast,
     /// Standard mode: full 6-stage pipeline with complete testing
+    #[default]
     Standard,
     /// Expert mode: highest quality with code review and thorough testing
     Expert,
-}
-
-impl Default for Mode {
-    fn default() -> Self {
-        Mode::Standard
-    }
 }
 
 impl fmt::Display for Mode {
