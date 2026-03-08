@@ -10,7 +10,7 @@
 use clap::Parser;
 use ltmatrix::cli::Args;
 use ltmatrix::config::settings::{
-    load_config_file, load_config_from_args, merge_configs, validate_config, AgentConfig,
+    load_config_file, merge_configs, validate_config, AgentConfig,
     CliOverrides, Config, LogLevel, LoggingConfig, ModeConfig, OutputConfig, OutputFormat,
 };
 use std::fs;
@@ -642,7 +642,7 @@ timeout = 3600
     ])
     .expect("Failed to parse args");
 
-    let config = load_config_from_args(args);
+    let config = ltmatrix::config::settings::load_config();
 
     std::env::set_current_dir(current_dir).unwrap();
 

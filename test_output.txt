@@ -1,0 +1,553 @@
+warning: unexpected `cfg` condition value: `serde`
+   --> crates\ltmatrix-mcp\src\client.rs:109:12
+    |
+109 | #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    |            ^^^^^^^^^^^^^^^^^ help: remove the condition
+    |
+    = note: no expected values for `feature`
+    = help: consider adding `serde` as a feature in `Cargo.toml`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+    = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: unused import: `PromptMessage`
+  --> crates\ltmatrix-mcp\src\client.rs:68:28
+   |
+68 |     Prompt, PromptContent, PromptMessage, PromptsGetParams, PromptsGetResult,
+   |                            ^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `McpErrorCode`
+  --> crates\ltmatrix-mcp\src\transport\mod.rs:56:41
+   |
+56 | use crate::protocol::errors::{McpError, McpErrorCode, McpResult};
+   |                                         ^^^^^^^^^^^^
+
+warning: unused variable: `self_attempt`
+   --> crates\ltmatrix-mcp\src\reconnect.rs:670:13
+    |
+670 |         let self_attempt = Arc::new(AtomicU32::new(0));
+    |             ^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_self_attempt`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `shutdown_rx_send`
+   --> crates\ltmatrix-mcp\src\transport\stdio.rs:545:27
+    |
+545 |         let (shutdown_tx, shutdown_rx_send) = mpsc::channel::<()>(1);
+    |                           ^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_shutdown_rx_send`
+
+warning: unused variable: `shutdown_rx_recv`
+   --> crates\ltmatrix-mcp\src\transport\stdio.rs:546:33
+    |
+546 |         let (_shutdown_tx_recv, shutdown_rx_recv) = mpsc::channel::<()>(1);
+    |                                 ^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_shutdown_rx_recv`
+
+warning: unused variable: `outgoing_rx`
+   --> crates\ltmatrix-mcp\src\transport\stdio.rs:550:27
+    |
+550 |         let (outgoing_tx, outgoing_rx) = mpsc::channel(self.config.channel_buffer_size);
+    |                           ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_outgoing_rx`
+
+warning: field `task_handle` is never read
+   --> crates\ltmatrix-mcp\src\reconnect.rs:486:5
+    |
+472 | pub struct ReconnectionManager {
+    |            ------------------- field in this struct
+...
+486 |     task_handle: Mutex<Option<JoinHandle<()>>>,
+    |     ^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: fields `stdin` and `stdout` are never read
+   --> crates\ltmatrix-mcp\src\transport\stdio.rs:150:5
+    |
+145 | pub struct ChildProcess {
+    |            ------------ fields in this struct
+...
+150 |     stdin: ChildStdin,
+    |     ^^^^^
+...
+153 |     stdout: BufReader<ChildStdout>,
+    |     ^^^^^^
+
+warning: fields `incoming_tx` and `framer` are never read
+   --> crates\ltmatrix-mcp\src\transport\stdio.rs:285:5
+    |
+265 | pub struct StdioTransport {
+    |            -------------- fields in this struct
+...
+285 |     incoming_tx: mpsc::Sender<TransportMessage>,
+    |     ^^^^^^^^^^^
+...
+291 |     framer: Arc<Mutex<LineDelimitedFramer>>,
+    |     ^^^^^^
+
+warning: associated items `start_send_task`, `start_receive_task`, and `parse_message` are never used
+   --> crates\ltmatrix-mcp\src\transport\stdio.rs:323:14
+    |
+297 | impl StdioTransport {
+    | ------------------- associated items in this implementation
+...
+323 |     async fn start_send_task(
+    |              ^^^^^^^^^^^^^^^
+...
+404 |     async fn start_receive_task(
+    |              ^^^^^^^^^^^^^^^^^^
+...
+490 |     fn parse_message(data: &[u8]) -> McpResult<TransportMessage> {
+    |        ^^^^^^^^^^^^^
+
+warning: ltmatrix@0.1.0: Build configuration:
+warning: ltmatrix@0.1.0:   Target: x86_64-pc-windows-msvc
+warning: ltmatrix@0.1.0:   Profile: debug
+warning: ltmatrix@0.1.0:   Opt-level: 0
+warning: ltmatrix@0.1.0:   Static linking: no (dynamic)
+warning: `ltmatrix-mcp` (lib) generated 11 warnings (run `cargo fix --lib -p ltmatrix-mcp` to apply 6 suggestions)
+warning: field `warmup_executor` is never read
+  --> crates\ltmatrix-agent\src\agent_pool.rs:48:5
+   |
+37 | struct AgentPoolInner {
+   |        -------------- field in this struct
+...
+48 |     warmup_executor: Option<WarmupExecutor>,
+   |     ^^^^^^^^^^^^^^^
+   |
+   = note: `AgentPoolInner` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `ltmatrix-agent` (lib) generated 1 warning
+warning: unused import: `CliOverrides`
+  --> src\cli\command.rs:11:39
+   |
+11 | use ltmatrix_config::settings::{self, CliOverrides};
+   |                                       ^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `bail`
+ --> src\guidelines\loader.rs:9:22
+  |
+9 | use anyhow::{Result, bail};
+  |                      ^^^^
+
+warning: unused import: `ltmatrix_core::AgentType`
+  --> src\guidelines\mod.rs:42:5
+   |
+42 | use ltmatrix_core::AgentType;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `warn`
+  --> src\memory\project.rs:21:28
+   |
+21 | use tracing::{debug, info, warn};
+   |                            ^^^^
+
+warning: unused import: `warn`
+  --> src\memory\run_memory.rs:21:28
+   |
+21 | use tracing::{debug, info, warn};
+   |                            ^^^^
+
+warning: unexpected `cfg` condition value: `dynamic-plugins`
+  --> src\plugin\loader.rs:29:11
+   |
+29 |     #[cfg(feature = "dynamic-plugins")]
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `feature` are: `default`, `full`, `minimal`, `ssh`, and `static`
+   = help: consider adding `dynamic-plugins` as a feature in `Cargo.toml`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: unused variable: `task_ids`
+   --> src\pipeline\generate.rs:247:9
+    |
+247 |     let task_ids: HashSet<&str> = tasks.iter().map(|t| t.id.as_str()).collect();
+    |         ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_task_ids`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `id`
+   --> src\plugin\manager.rs:283:36
+    |
+283 |     pub async fn get_plugin(&self, id: &str) -> Option<Arc<dyn Plugin>> {
+    |                                    ^^ help: if this is intentional, prefix it with an underscore: `_id`
+
+warning: unused variable: `plugins`
+   --> src\plugin\manager.rs:284:13
+    |
+284 |         let plugins = self.plugins.read().await;
+    |             ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_plugins`
+
+warning: unused variable: `in_package`
+   --> src\release\version.rs:160:13
+    |
+160 |         let in_package = false;
+    |             ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_in_package`
+
+warning: unused variable: `root_ids`
+   --> src\tasks\dependency.rs:242:13
+    |
+242 |         let root_ids: HashSet<&str> = tasks
+    |             ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_root_ids`
+
+warning: unused variable: `leaf_ids`
+   --> src\tasks\dependency.rs:248:13
+    |
+248 |         let leaf_ids: HashSet<&str> = tasks
+    |             ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_leaf_ids`
+
+warning: unused variable: `task_map`
+   --> src\tasks\topology.rs:555:9
+    |
+555 |     let task_map: HashMap<&str, &Task> = tasks
+    |         ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_task_map`
+
+warning: constant `MAX_MEMORY_SIZE` is never used
+  --> src\memory\memory.rs:77:7
+   |
+77 | const MAX_MEMORY_SIZE: usize = 50 * 1024; // 50KB
+   |       ^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: constant `MAX_ENTRIES` is never used
+  --> src\memory\memory.rs:80:7
+   |
+80 | const MAX_ENTRIES: usize = 100;
+   |       ^^^^^^^^^^^
+
+warning: field `project_root` is never read
+   --> src\memory\memory.rs:586:5
+    |
+584 | pub struct MemoryStore {
+    |            ----------- field in this struct
+585 |     /// Project root directory
+586 |     project_root: PathBuf,
+    |     ^^^^^^^^^^^^
+    |
+    = note: `MemoryStore` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+
+warning: function `attempt_fix` is never used
+   --> src\pipeline\fix_cycle.rs:330:10
+    |
+330 | async fn attempt_fix(
+    |          ^^^^^^^^^^^
+
+warning: function `build_fix_prompt` is never used
+   --> src\pipeline\fix_cycle.rs:708:4
+    |
+708 | fn build_fix_prompt(issue: &dyn IssueDetail, strategy: FixStrategy) -> String {
+    |    ^^^^^^^^^^^^^^^^
+
+warning: function `verify_fix` is never used
+   --> src\pipeline\fix_cycle.rs:820:10
+    |
+820 | async fn verify_fix(issue: &dyn IssueDetail, strategy: FixStrategy) -> Result<bool> {
+    |          ^^^^^^^^^^
+
+warning: function `run_tests_for_issue` is never used
+   --> src\pipeline\fix_cycle.rs:836:10
+    |
+836 | async fn run_tests_for_issue(issue: &dyn IssueDetail) -> Result<bool> {
+    |          ^^^^^^^^^^^^^^^^^^^
+
+warning: field `stage_plugins` is never read
+  --> src\plugin\manager.rs:28:5
+   |
+23 | pub struct PluginManager {
+   |            ------------- field in this struct
+...
+28 |     stage_plugins: Arc<RwLock<HashMap<String, Arc<dyn PipelineStagePlugin>>>>,
+   |     ^^^^^^^^^^^^^
+
+warning: function `calculate_execution_levels` is never used
+   --> src\tasks\scheduler.rs:339:4
+    |
+339 | fn calculate_execution_levels(
+    |    ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused variable: `summary`
+    --> src\pipeline\review.rs:1855:34
+     |
+1855 |         let (issues, assessment, summary, strengths) = parse_json_review(&json, &config)
+     |                                  ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_summary`
+
+warning: unused variable: `strengths`
+    --> src\pipeline\review.rs:1957:43
+     |
+1957 |         let (issues, assessment, summary, strengths) = parse_text_review(response, &config)
+     |                                           ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_strengths`
+
+warning: unused variable: `last`
+   --> src\plugin\traits.rs:513:13
+    |
+513 |         let last = StagePosition::Last;
+    |             ^^^^
+    |
+help: you might have meant to pattern match on the similarly named variant `Last`
+    |
+513 -         let last = StagePosition::Last;
+513 +         let plugin::traits::StagePosition::Last = StagePosition::Last;
+    |
+help: if this is intentional, prefix it with an underscore
+    |
+513 |         let _last = StagePosition::Last;
+    |             +
+
+warning: unused variable: `replace`
+   --> src\plugin\traits.rs:514:13
+    |
+514 |         let replace = StagePosition::Replace(StandardStage::Review);
+    |             ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_replace`
+
+warning: `ltmatrix` (lib) generated 22 warnings (run `cargo fix --lib -p ltmatrix` to apply 12 suggestions)
+warning: `ltmatrix` (lib test) generated 26 warnings (22 duplicates) (run `cargo fix --lib -p ltmatrix --tests` to apply 4 suggestions)
+   Compiling ltmatrix v0.1.0 (C:\Users\bigfish\Projects\github.com\bigfish1913\lt_matrix)
+warning: unused imports: `PromptMessage`, `PromptsGetParams`, `PromptsGetResult`, `PromptsListParams`, `ResourceContents`, `ResourceReadResult`, `ResourcesListParams`, `Root`, `RootsListResult`, and `Tool`
+  --> tests\mcp_protocol_wrappers_test.rs:18:15
+   |
+18 |     LogLevel, PromptMessage, PromptsGetParams, PromptsGetResult, PromptsListParams,
+   |               ^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^
+19 |     PromptsListResult, RequestId, ResourceContents, ResourceReadParams, ResourceReadResult,
+   |                                   ^^^^^^^^^^^^^^^^                      ^^^^^^^^^^^^^^^^^^
+20 |     ResourcesListParams, ResourcesListResult, Root, RootsListParams, RootsListResult,
+   |     ^^^^^^^^^^^^^^^^^^^                       ^^^^                   ^^^^^^^^^^^^^^^
+21 |     ServerCapabilities, Tool, ToolCallParams, ToolCallResult, ToolContent, ToolsListParams,
+   |                         ^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused imports: `JsonRpcNotification` and `LoggingSetLevelParams`
+  --> tests\mcp_protocol_wrappers_test.rs:26:38
+   |
+26 |     CompletionReference, Initialize, JsonRpcNotification,
+   |                                      ^^^^^^^^^^^^^^^^^^^
+27 |     LogMessageParams, LoggingSetLevel, LoggingSetLevelParams,
+   |                                        ^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `McpError`
+  --> tests\mcp_protocol_wrappers_test.rs:39:31
+   |
+39 | use ltmatrix::mcp::protocol::{McpError, McpResult};
+   |                               ^^^^^^^^
+
+warning: unused variable: `list_request`
+    --> tests\mcp_protocol_wrappers_test.rs:1418:13
+     |
+1418 |         let list_request = ToolsList::build_request(RequestId::Number(1), list_params);
+     |             ^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_list_request`
+     |
+     = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `call_request`
+    --> tests\mcp_protocol_wrappers_test.rs:1450:13
+     |
+1450 |         let call_request = ToolsCall::build_request(RequestId::Number(2), call_params);
+     |             ^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_call_request`
+
+warning: unused variable: `request`
+    --> tests\mcp_protocol_wrappers_test.rs:1477:13
+     |
+1477 |         let request = ResourcesRead::build_request(RequestId::Number(1), params);
+     |             ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_request`
+
+warning: unused variable: `response`
+   --> tests\mock_server_integration_test.rs:237:14
+    |
+237 |         let (response, error) = receive_error_response(&transport).await;
+    |              ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_response`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: method `with_prompt` is never used
+   --> tests\mock_mcp_server.rs:221:12
+    |
+196 | impl MockServerConfig {
+    | --------------------- method in this implementation
+...
+221 |     pub fn with_prompt(mut self, prompt: Prompt, messages: Vec<PromptMessage>) -> Self {
+    |            ^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `timestamp` is never read
+   --> tests\mock_mcp_server.rs:258:9
+    |
+247 | pub struct RequestRecord {
+    |            ------------- field in this struct
+...
+258 |     pub timestamp: std::time::Instant,
+    |         ^^^^^^^^^
+    |
+    = note: `RequestRecord` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: method `last` is never used
+   --> tests\mock_mcp_server.rs:290:12
+    |
+268 | impl RequestLog {
+    | --------------- method in this implementation
+...
+290 |     pub fn last(&self) -> Option<&RequestRecord> {
+    |            ^^^^
+
+warning: fields `outgoing_rx` and `stats` are never read
+   --> tests\mock_mcp_server.rs:325:5
+    |
+305 | pub struct MockMcpServer {
+    |            ------------- fields in this struct
+...
+325 |     outgoing_rx: Mutex<mpsc::Receiver<OutgoingMessage>>,
+    |     ^^^^^^^^^^^
+...
+328 |     stats: Arc<Mutex<TransportStats>>,
+    |     ^^^^^
+
+warning: method `process_outgoing` is never used
+   --> tests\mock_mcp_server.rs:547:18
+    |
+331 | impl MockMcpServer {
+    | ------------------ method in this implementation
+...
+547 |     pub async fn process_outgoing(&self, message: OutgoingMessage) -> Option<TransportMessage> {
+    |                  ^^^^^^^^^^^^^^^^
+
+warning: associated items `default_transport` and `server` are never used
+   --> tests\mock_mcp_server.rs:593:12
+    |
+581 | impl MockTransport {
+    | ------------------ associated items in this implementation
+...
+593 |     pub fn default_transport() -> Self {
+    |            ^^^^^^^^^^^^^^^^^
+...
+598 |     pub fn server(&self) -> Arc<MockMcpServer> {
+    |            ^^^^^^
+
+warning: function `create_test_server` is never used
+   --> tests\mock_mcp_server.rs:721:8
+    |
+721 | pub fn create_test_server() -> Arc<MockMcpServer> {
+    |        ^^^^^^^^^^^^^^^^^^
+
+warning: function `create_server_with_tools` is never used
+   --> tests\mock_mcp_server.rs:726:8
+    |
+726 | pub fn create_server_with_tools(tools: Vec<Tool>) -> Arc<MockMcpServer> {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `create_delayed_server` is never used
+   --> tests\mock_mcp_server.rs:743:8
+    |
+743 | pub fn create_delayed_server(delay: Duration) -> Arc<MockMcpServer> {
+    |        ^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `ltmatrix::tasks::scheduler::schedule_tasks`
+ --> tests\dryrun_edge_cases_test.rs:9:5
+  |
+9 | use ltmatrix::tasks::scheduler::schedule_tasks;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+  --> tests\dryrun_edge_cases_test.rs:91:9
+   |
+91 |     let mut tasks = vec![
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+   |
+   = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `goal`
+  --> tests\dryrun_edge_cases_test.rs:88:9
+   |
+88 |     let goal = "build a web application";
+   |         ^^^^ help: if this is intentional, prefix it with an underscore: `_goal`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: `ltmatrix` (test "mcp_protocol_wrappers_test") generated 6 warnings (run `cargo fix --test "mcp_protocol_wrappers_test" -p ltmatrix` to apply 6 suggestions)
+warning: `ltmatrix` (test "mock_server_integration_test") generated 10 warnings (run `cargo fix --test "mock_server_integration_test" -p ltmatrix` to apply 1 suggestion)
+warning: `ltmatrix` (test "dryrun_edge_cases_test") generated 3 warnings (run `cargo fix --test "dryrun_edge_cases_test" -p ltmatrix` to apply 3 suggestions)
+error[E0432]: unresolved import `ltmatrix::config::settings::load_config_from_args`
+  --> tests\config_integration_scenarios_test.rs:15:36
+   |
+15 |     load_config, load_config_file, load_config_from_args, load_config_with_overrides,
+   |                                    ^^^^^^^^^^^^^^^^^^^^^ no `load_config_from_args` in `settings`
+
+warning: unused variable: `config`
+   --> tests\errors_integration_test.rs:305:9
+    |
+305 |     let config = VerifyConfig {
+    |         ^^^^^^ help: if this is intentional, prefix it with an underscore: `_config`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `session_d`
+   --> tests\session_inheritance_qa_test.rs:230:9
+    |
+230 |     let session_d = pool.get_or_create_for_task(&mut task_d);
+    |         ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_session_d`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+error[E0277]: the trait bound `CliOverrides: From<ltmatrix::cli::Args>` is not satisfied
+   --> tests\config_integration_scenarios_test.rs:276:40
+    |
+276 |     let overrides: CliOverrides = args.into();
+    |                                        ^^^^ the trait `From<ltmatrix::cli::Args>` is not implemented for `CliOverrides`
+    |
+    = note: required for `ltmatrix::cli::Args` to implement `Into<CliOverrides>`
+
+error[E0063]: missing field `skipped_tasks` in initializer of `ExecutionStatistics`
+   --> tests\execute_stage_test.rs:145:17
+    |
+145 |     let stats = ExecutionStatistics {
+    |                 ^^^^^^^^^^^^^^^^^^^ missing `skipped_tasks`
+
+warning: unused import: `SessionId`
+ --> tests\telemetry_edge_cases_test.rs:9:28
+  |
+9 |     event::{ErrorCategory, SessionId, TelemetryEvent},
+  |                            ^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `TaskStatus`
+  --> tests\telemetry_edge_cases_test.rs:12:45
+   |
+12 | use ltmatrix::models::{ExecutionMode, Task, TaskStatus};
+   |                                             ^^^^^^^^^^
+
+For more information about this error, try `rustc --explain E0063`.
+warning: ltmatrix@0.1.0: Build configuration:
+warning: ltmatrix@0.1.0:   Target: x86_64-pc-windows-msvc
+warning: ltmatrix@0.1.0:   Profile: debug
+warning: ltmatrix@0.1.0:   Opt-level: 0
+warning: ltmatrix@0.1.0:   Static linking: no (dynamic)
+error: could not compile `ltmatrix` (test "execute_stage_test") due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+Some errors have detailed explanations: E0277, E0432.
+For more information about an error, try `rustc --explain E0277`.
+warning: function `create_task_with_retries` is never used
+  --> tests\integration_errors_test.rs:50:4
+   |
+50 | fn create_task_with_retries(id: &str, title: &str, retry_count: u32, _max_retries: u32) -> Task {
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: ltmatrix@0.1.0: Build configuration:
+warning: ltmatrix@0.1.0:   Target: x86_64-pc-windows-msvc
+warning: ltmatrix@0.1.0:   Profile: debug
+warning: ltmatrix@0.1.0:   Opt-level: 0
+warning: ltmatrix@0.1.0:   Static linking: no (dynamic)
+error: could not compile `ltmatrix` (test "config_integration_scenarios_test") due to 2 previous errors
+warning: `ltmatrix` (test "errors_integration_test") generated 1 warning (run `cargo fix --test "errors_integration_test" -p ltmatrix` to apply 1 suggestion)
+warning: `ltmatrix` (test "session_inheritance_qa_test") generated 1 warning (run `cargo fix --test "session_inheritance_qa_test" -p ltmatrix` to apply 1 suggestion)
+warning: `ltmatrix` (test "integration_errors_test") generated 1 warning
+warning: `ltmatrix` (test "telemetry_edge_cases_test") generated 2 warnings (run `cargo fix --test "telemetry_edge_cases_test" -p ltmatrix` to apply 2 suggestions)

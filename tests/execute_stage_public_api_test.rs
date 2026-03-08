@@ -82,6 +82,7 @@ fn test_execution_statistics_structure() {
     let stats = ExecutionStatistics {
         total_tasks: 100,
         completed_tasks: 85,
+        skipped_tasks: 0,
         failed_tasks: 10,
         total_retries: 25,
         total_time: 7200,
@@ -115,6 +116,7 @@ fn test_execution_statistics_default_values() {
     let stats = ExecutionStatistics {
         total_tasks: 0,
         completed_tasks: 0,
+        skipped_tasks: 0,
         failed_tasks: 0,
         total_retries: 0,
         total_time: 0,
@@ -134,6 +136,7 @@ fn test_display_execution_statistics_does_not_panic() {
     let stats = ExecutionStatistics {
         total_tasks: 10,
         completed_tasks: 8,
+        skipped_tasks: 0,
         failed_tasks: 1,
         total_retries: 3,
         total_time: 300,
@@ -152,6 +155,7 @@ fn test_display_execution_statistics_with_zeros() {
     let stats = ExecutionStatistics {
         total_tasks: 0,
         completed_tasks: 0,
+        skipped_tasks: 0,
         failed_tasks: 0,
         total_retries: 0,
         total_time: 0,

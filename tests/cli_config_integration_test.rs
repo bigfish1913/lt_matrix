@@ -54,6 +54,46 @@ impl Drop for DirGuard {
     }
 }
 
+// Helper function to convert Args to CliOverrides
+fn args_to_overrides(args: &Args) -> CliOverrides {
+    use ltmatrix::config::settings::{OutputFormat as ConfigOutputFormat, LogLevel as ConfigLogLevel};
+
+    let mode = if args.fast {
+        Some("fast".to_string())
+    } else if args.expert {
+        Some("expert".to_string())
+    } else {
+        args.mode.as_ref().map(|m| format!("{:?}", m).to_lowercase())
+    };
+
+    let output_format = args.output.as_ref().map(|f| match f {
+        ltmatrix::cli::args::OutputFormat::Text => ConfigOutputFormat::Text,
+        ltmatrix::cli::args::OutputFormat::Json | ltmatrix::cli::args::OutputFormat::JsonCompact => ConfigOutputFormat::Json,
+    });
+
+    let log_level = args.log_level.as_ref().map(|l| match l {
+        ltmatrix::cli::args::LogLevel::Trace => ConfigLogLevel::Trace,
+        ltmatrix::cli::args::LogLevel::Debug => ConfigLogLevel::Debug,
+        ltmatrix::cli::args::LogLevel::Info => ConfigLogLevel::Info,
+        ltmatrix::cli::args::LogLevel::Warn => ConfigLogLevel::Warn,
+        ltmatrix::cli::args::LogLevel::Error => ConfigLogLevel::Error,
+    });
+
+    CliOverrides {
+        config_file: args.config.clone(),
+        agent: args.agent.clone(),
+        mode,
+        output_format,
+        log_level,
+        log_file: args.log_file.clone(),
+        max_retries: args.max_retries,
+        timeout: args.timeout,
+        no_color: Some(args.no_color),
+        dry_run: args.dry_run,
+        ..Default::default()
+    }
+}
+
 // ============================================================================
 // CLI Args to CliOverrides Conversion Tests
 // ============================================================================
@@ -64,7 +104,7 @@ fn test_cli_args_to_overrides_agent_mapping() {
     let args = Args::try_parse_from(["ltmatrix", "--agent", "custom-agent", "goal"])
         .expect("Failed to parse args");
 
-    let overrides: CliOverrides = args.into();
+    let overrides = args_to_overrides(&args);
 
     assert_eq!(overrides.agent, Some("custom-agent".to_string()));
 }
@@ -75,7 +115,7 @@ fn test_cli_args_to_overrides_mode_mapping() {
     let args =
         Args::try_parse_from(["ltmatrix", "--mode", "fast", "goal"]).expect("Failed to parse args");
 
-    let overrides: CliOverrides = args.into();
+    let overrides = args_to_overrides(&args);
 
     assert_eq!(overrides.mode, Some("fast".to_string()));
 }
@@ -85,7 +125,7 @@ fn test_cli_args_to_overrides_fast_flag() {
     // Test that --fast flag maps to CliOverrides::mode with "fast"
     let args = Args::try_parse_from(["ltmatrix", "--fast", "goal"]).expect("Failed to parse args");
 
-    let overrides: CliOverrides = args.into();
+    let overrides = args_to_overrides(&args);
 
     assert_eq!(overrides.mode, Some("fast".to_string()));
 }
@@ -96,7 +136,7 @@ fn test_cli_args_to_overrides_expert_flag() {
     let args =
         Args::try_parse_from(["ltmatrix", "--expert", "goal"]).expect("Failed to parse args");
 
-    let overrides: CliOverrides = args.into();
+    let overrides = args_to_overrides(&args);
 
     assert_eq!(overrides.mode, Some("expert".to_string()));
 }
@@ -107,7 +147,7 @@ fn test_cli_args_to_overrides_output_format_text() {
     let args = Args::try_parse_from(["ltmatrix", "--output", "text", "goal"])
         .expect("Failed to parse args");
 
-    let overrides: CliOverrides = args.into();
+    let overrides = args_to_overrides(&args);
 
     assert_eq!(overrides.output_format, Some(OutputFormat::Text));
 }
@@ -118,7 +158,7 @@ fn test_cli_args_to_overrides_output_format_json() {
     let args = Args::try_parse_from(["ltmatrix", "--output", "json", "goal"])
         .expect("Failed to parse args");
 
-    let overrides: CliOverrides = args.into();
+    let overrides = args_to_overrides(&args);
 
     assert_eq!(overrides.output_format, Some(OutputFormat::Json));
 }
@@ -138,7 +178,7 @@ fn test_cli_args_to_overrides_log_level() {
         let args = Args::try_parse_from(["ltmatrix", "--log-level", cli_value, "goal"])
             .expect("Failed to parse args");
 
-        let overrides: CliOverrides = args.into();
+        let overrides = args_to_overrides(&args);
 
         assert_eq!(
             overrides.log_level,
@@ -156,7 +196,7 @@ fn test_cli_args_to_overrides_log_file() {
     let args = Args::try_parse_from(["ltmatrix", "--log-file", "/var/log/ltmatrix.log", "goal"])
         .expect("Failed to parse args");
 
-    let overrides: CliOverrides = args.into();
+    let overrides = args_to_overrides(&args);
 
     assert_eq!(
         overrides.log_file,
@@ -170,7 +210,7 @@ fn test_cli_args_to_overrides_max_retries() {
     let args = Args::try_parse_from(["ltmatrix", "--max-retries", "10", "goal"])
         .expect("Failed to parse args");
 
-    let overrides: CliOverrides = args.into();
+    let overrides = args_to_overrides(&args);
 
     assert_eq!(overrides.max_retries, Some(10));
 }
@@ -181,7 +221,7 @@ fn test_cli_args_to_overrides_timeout() {
     let args = Args::try_parse_from(["ltmatrix", "--timeout", "3600", "goal"])
         .expect("Failed to parse args");
 
-    let overrides: CliOverrides = args.into();
+    let overrides = args_to_overrides(&args);
 
     assert_eq!(overrides.timeout, Some(3600));
 }
@@ -192,7 +232,7 @@ fn test_cli_args_to_overrides_no_color_flag() {
     let args =
         Args::try_parse_from(["ltmatrix", "--no-color", "goal"]).expect("Failed to parse args");
 
-    let overrides: CliOverrides = args.into();
+    let overrides = args_to_overrides(&args);
 
     assert_eq!(overrides.no_color, Some(true));
 }
@@ -202,7 +242,7 @@ fn test_cli_args_to_overrides_none_values() {
     // Test that unspecified CLI args result in None values in CliOverrides
     let args = Args::try_parse_from(["ltmatrix", "goal"]).expect("Failed to parse args");
 
-    let overrides: CliOverrides = args.into();
+    let overrides = args_to_overrides(&args);
 
     // All optional fields should be None when not specified
     assert!(overrides.agent.is_none());
@@ -262,7 +302,7 @@ level = "info"
     ])
     .expect("Failed to parse args");
 
-    let overrides: CliOverrides = args.into();
+    let overrides = args_to_overrides(&args);
     let result = load_config_with_overrides(Some(overrides));
 
     if let Err(ref e) = result {
@@ -315,7 +355,7 @@ level = "warn"
     ])
     .expect("Failed to parse args");
 
-    let overrides: CliOverrides = args.into();
+    let overrides = args_to_overrides(&args);
     let result = load_config_with_overrides(Some(overrides));
 
     assert!(result.is_ok());
@@ -349,7 +389,7 @@ fn test_multiple_cli_overrides_simultaneously() {
     ])
     .expect("Failed to parse args");
 
-    let overrides: CliOverrides = args.into();
+    let overrides = args_to_overrides(&args);
 
     assert_eq!(overrides.agent, Some("test-agent".to_string()));
     assert_eq!(overrides.mode, Some("fast".to_string()));
@@ -371,7 +411,7 @@ fn test_output_format_type_conversion() {
     let args = Args::try_parse_from(["ltmatrix", "--output", "json", "goal"])
         .expect("Failed to parse args");
 
-    let overrides: CliOverrides = args.into();
+    let overrides = args_to_overrides(&args);
 
     assert_eq!(overrides.output_format, Some(OutputFormat::Json));
 }
@@ -382,7 +422,7 @@ fn test_log_level_type_conversion() {
     let args = Args::try_parse_from(["ltmatrix", "--log-level", "debug", "goal"])
         .expect("Failed to parse args");
 
-    let overrides: CliOverrides = args.into();
+    let overrides = args_to_overrides(&args);
 
     assert_eq!(overrides.log_level, Some(LogLevel::Debug));
 }
@@ -392,19 +432,19 @@ fn test_mode_string_conversion() {
     // Verify mode flags convert to correct string values
     // Test with --fast flag
     let args = Args::try_parse_from(["ltmatrix", "--fast", "goal"]).expect("Failed to parse args");
-    let overrides: CliOverrides = args.into();
+    let overrides = args_to_overrides(&args);
     assert_eq!(overrides.mode, Some("fast".to_string()));
 
     // Test with --expert flag
     let args =
         Args::try_parse_from(["ltmatrix", "--expert", "goal"]).expect("Failed to parse args");
-    let overrides: CliOverrides = args.into();
+    let overrides = args_to_overrides(&args);
     assert_eq!(overrides.mode, Some("expert".to_string()));
 
     // Test with --mode standard
     let args = Args::try_parse_from(["ltmatrix", "--mode", "standard", "goal"])
         .expect("Failed to parse args");
-    let overrides: CliOverrides = args.into();
+    let overrides = args_to_overrides(&args);
     assert_eq!(overrides.mode, Some("standard".to_string()));
 }
 
@@ -418,7 +458,7 @@ fn test_cli_override_with_subcommand() {
     let args = Args::try_parse_from(["ltmatrix", "--agent", "test-agent", "completions", "bash"])
         .expect("Failed to parse args");
 
-    let overrides: CliOverrides = args.into();
+    let overrides = args_to_overrides(&args);
 
     // Should still parse the agent override even with subcommand
     assert_eq!(overrides.agent, Some("test-agent".to_string()));
@@ -429,7 +469,7 @@ fn test_cli_args_default_mode() {
     // When no mode flag is specified, mode should be None (not "standard")
     let args = Args::try_parse_from(["ltmatrix", "goal"]).expect("Failed to parse args");
 
-    let overrides: CliOverrides = args.into();
+    let overrides = args_to_overrides(&args);
 
     // Standard mode is the default when not specified, but in overrides it should be None
     // to avoid overriding config file defaults
@@ -442,13 +482,13 @@ fn test_cli_override_max_retries_boundary() {
     let args = Args::try_parse_from(["ltmatrix", "--max-retries", "0", "goal"])
         .expect("Failed to parse args");
 
-    let overrides: CliOverrides = args.into();
+    let overrides = args_to_overrides(&args);
     assert_eq!(overrides.max_retries, Some(0));
 
     let args = Args::try_parse_from(["ltmatrix", "--max-retries", "999", "goal"])
         .expect("Failed to parse args");
 
-    let overrides: CliOverrides = args.into();
+    let overrides = args_to_overrides(&args);
     assert_eq!(overrides.max_retries, Some(999));
 }
 
@@ -458,13 +498,13 @@ fn test_cli_override_timeout_boundary() {
     let args =
         Args::try_parse_from(["ltmatrix", "--timeout", "1", "goal"]).expect("Failed to parse args");
 
-    let overrides: CliOverrides = args.into();
+    let overrides = args_to_overrides(&args);
     assert_eq!(overrides.timeout, Some(1));
 
     let args = Args::try_parse_from(["ltmatrix", "--timeout", "86400", "goal"])
         .expect("Failed to parse args");
 
-    let overrides: CliOverrides = args.into();
+    let overrides = args_to_overrides(&args);
     assert_eq!(overrides.timeout, Some(86400));
 }
 
@@ -531,7 +571,7 @@ level = "debug"
     ])
     .expect("Failed to parse args");
 
-    let overrides: CliOverrides = args.into();
+    let overrides = args_to_overrides(&args);
     let result = load_config_with_overrides(Some(overrides));
 
     assert!(
@@ -578,7 +618,7 @@ fn test_custom_config_file_fails_on_invalid_path() {
     ])
     .expect("Failed to parse args");
 
-    let overrides: CliOverrides = args.into();
+    let overrides = args_to_overrides(&args);
     let result = load_config_with_overrides(Some(overrides));
 
     // Should fail because custom config doesn't exist
@@ -615,7 +655,7 @@ this is not valid toml at all [[[
     ])
     .expect("Failed to parse args");
 
-    let overrides: CliOverrides = args.into();
+    let overrides = args_to_overrides(&args);
     let result = load_config_with_overrides(Some(overrides));
 
     // Should fail because custom config is invalid
@@ -672,7 +712,7 @@ level = "info"
     ])
     .expect("Failed to parse args");
 
-    let overrides: CliOverrides = args.into();
+    let overrides = args_to_overrides(&args);
     let result = load_config_with_overrides(Some(overrides));
 
     assert!(
@@ -734,7 +774,7 @@ level = "debug"
     // No --config flag, should use standard paths
     let args = Args::try_parse_from(["ltmatrix", "goal"]).expect("Failed to parse args");
 
-    let overrides: CliOverrides = args.into();
+    let overrides = args_to_overrides(&args);
     let result = load_config_with_overrides(Some(overrides));
 
     assert!(
@@ -825,7 +865,7 @@ level = "info"
     .expect("Failed to parse args");
 
     // Convert to overrides
-    let overrides: CliOverrides = args.into();
+    let overrides = args_to_overrides(&args);
 
     // Load and merge config
     let result = load_config_with_overrides(Some(overrides));

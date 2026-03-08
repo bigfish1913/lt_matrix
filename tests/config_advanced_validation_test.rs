@@ -13,7 +13,7 @@
 use clap::Parser;
 use ltmatrix::cli::Args;
 use ltmatrix::config::settings::{
-    load_config_from_args, AgentConfig, CliOverrides, Config, LogLevel, ModeConfig, OutputFormat, WarmupConfig,
+    AgentConfig, CliOverrides, Config, LogLevel, ModeConfig, OutputFormat, WarmupConfig,
 };
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -49,6 +49,46 @@ impl Drop for DirGuard {
     }
 }
 
+// Helper function to convert Args to CliOverrides
+fn args_to_overrides(args: &Args) -> CliOverrides {
+    use ltmatrix::config::settings::{OutputFormat as ConfigOutputFormat, LogLevel as ConfigLogLevel};
+
+    let mode = if args.fast {
+        Some("fast".to_string())
+    } else if args.expert {
+        Some("expert".to_string())
+    } else {
+        args.mode.as_ref().map(|m| format!("{:?}", m).to_lowercase())
+    };
+
+    let output_format = args.output.as_ref().map(|f| match f {
+        ltmatrix::cli::args::OutputFormat::Text => ConfigOutputFormat::Text,
+        ltmatrix::cli::args::OutputFormat::Json | ltmatrix::cli::args::OutputFormat::JsonCompact => ConfigOutputFormat::Json,
+    });
+
+    let log_level = args.log_level.as_ref().map(|l| match l {
+        ltmatrix::cli::args::LogLevel::Trace => ConfigLogLevel::Trace,
+        ltmatrix::cli::args::LogLevel::Debug => ConfigLogLevel::Debug,
+        ltmatrix::cli::args::LogLevel::Info => ConfigLogLevel::Info,
+        ltmatrix::cli::args::LogLevel::Warn => ConfigLogLevel::Warn,
+        ltmatrix::cli::args::LogLevel::Error => ConfigLogLevel::Error,
+    });
+
+    CliOverrides {
+        config_file: args.config.clone(),
+        agent: args.agent.clone(),
+        mode,
+        output_format,
+        log_level,
+        log_file: args.log_file.clone(),
+        max_retries: args.max_retries,
+        timeout: args.timeout,
+        no_color: Some(args.no_color),
+        dry_run: args.dry_run,
+        ..Default::default()
+    }
+}
+
 // ============================================================================
 // Advanced CLI Override Tests
 // ============================================================================
@@ -59,7 +99,7 @@ fn test_cli_override_dry_run_flag() {
     let args =
         Args::try_parse_from(["ltmatrix", "--dry-run", "goal"]).expect("Failed to parse args");
 
-    let overrides: CliOverrides = args.into();
+    let overrides = args_to_overrides(&args);
 
     assert_eq!(
         overrides.dry_run, true,
@@ -73,7 +113,7 @@ fn test_cli_override_resume_flag() {
     let args =
         Args::try_parse_from(["ltmatrix", "--resume", "goal"]).expect("Failed to parse args");
 
-    let overrides: CliOverrides = args.into();
+    let overrides = args_to_overrides(&args);
 
     assert_eq!(overrides.resume, true, "resume flag should be set to true");
 }
@@ -83,7 +123,7 @@ fn test_cli_override_ask_flag() {
     // Test that --ask flag is properly captured in CliOverrides
     let args = Args::try_parse_from(["ltmatrix", "--ask", "goal"]).expect("Failed to parse args");
 
-    let overrides: CliOverrides = args.into();
+    let overrides = args_to_overrides(&args);
 
     assert_eq!(overrides.ask, true, "ask flag should be set to true");
 }
@@ -94,7 +134,7 @@ fn test_cli_override_regenerate_plan_flag() {
     let args = Args::try_parse_from(["ltmatrix", "--regenerate-plan", "goal"])
         .expect("Failed to parse args");
 
-    let overrides: CliOverrides = args.into();
+    let overrides = args_to_overrides(&args);
 
     assert_eq!(
         overrides.regenerate_plan, true,
@@ -108,7 +148,7 @@ fn test_cli_override_on_blocked() {
     let args = Args::try_parse_from(["ltmatrix", "--on-blocked", "skip", "goal"])
         .expect("Failed to parse args");
 
-    let overrides: CliOverrides = args.into();
+    let overrides = args_to_overrides(&args);
 
     assert_eq!(
         overrides.on_blocked,
@@ -130,7 +170,7 @@ fn test_cli_override_multiple_boolean_flags() {
     ])
     .expect("Failed to parse args");
 
-    let overrides: CliOverrides = args.into();
+    let overrides = args_to_overrides(&args);
 
     assert_eq!(overrides.dry_run, true);
     assert_eq!(overrides.resume, true);
@@ -153,7 +193,7 @@ fn test_cli_override_mcp_config() {
     ])
     .expect("Failed to parse args");
 
-    let overrides: CliOverrides = args.into();
+    let overrides = args_to_overrides(&args);
 
     assert_eq!(overrides.mcp_config, Some(mcp_config_path));
 }
@@ -594,7 +634,8 @@ timeout = 3600
     ])
     .expect("Failed to parse args");
 
-    let result = load_config_from_args(args);
+    let overrides = args_to_overrides(&args);
+    let result = ltmatrix::config::settings::load_config_with_overrides(Some(overrides));
     assert!(
         result.is_ok(),
         "Should successfully load config with all overrides"
@@ -639,7 +680,7 @@ fn test_cli_overrides_with_boolean_combinations() {
         args_vec.push("goal");
 
         let args = Args::try_parse_from(args_vec).expect("Failed to parse args");
-        let overrides: CliOverrides = args.into();
+        let overrides = args_to_overrides(&args);
 
         assert_eq!(
             overrides.dry_run, *expected_dry_run,
@@ -674,7 +715,7 @@ fn test_on_blocked_strategy_values() {
         let args = Args::try_parse_from(["ltmatrix", "--on-blocked", strategy, "goal"])
             .expect("Failed to parse args");
 
-        let overrides: CliOverrides = args.into();
+        let overrides = args_to_overrides(&args);
 
         assert_eq!(
             overrides.on_blocked,

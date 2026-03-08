@@ -311,6 +311,7 @@ fn test_edge_case_all_complexity_combinations() {
         task_count: 3,
         dependency_depth: 0,
         validation_errors: vec![],
+        generation_log: None,
     };
 
     let stats = calculate_generation_stats(&result);
@@ -328,6 +329,7 @@ fn test_edge_case_statistics_with_empty_result() {
         task_count: 0,
         dependency_depth: 0,
         validation_errors: vec![],
+        generation_log: None,
     };
 
     let stats = calculate_generation_stats(&result);
@@ -446,6 +448,7 @@ fn test_edge_case_all_tasks_with_dependencies() {
         task_count: 3,
         dependency_depth: 2,
         validation_errors: vec![],
+        generation_log: None,
     };
 
     let stats = calculate_generation_stats(&result);
@@ -471,6 +474,7 @@ fn test_edge_case_deep_dependency_in_statistics() {
         task_count: 100,
         dependency_depth: 99,
         validation_errors: vec![],
+        generation_log: None,
     };
 
     let stats = calculate_generation_stats(&result);
@@ -522,6 +526,7 @@ fn test_edge_case_all_complexity_types_in_result() {
         task_count: 3,
         dependency_depth: 0,
         validation_errors: vec![],
+        generation_log: None,
     };
 
     let stats = calculate_generation_stats(&result);
@@ -554,6 +559,7 @@ fn test_edge_case_all_validation_errors_in_result() {
                 reason: "empty".to_string(),
             },
         ],
+        generation_log: None,
     };
 
     assert_eq!(result.validation_errors.len(), 4);

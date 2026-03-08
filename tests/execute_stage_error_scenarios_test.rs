@@ -412,8 +412,8 @@ async fn test_execution_statistics_edge_cases() {
     let stats = ExecutionStatistics {
         total_tasks: 10,
         completed_tasks: 0,
-        failed_tasks: 10,
         skipped_tasks: 0,
+        failed_tasks: 10,
         total_retries: 30,
         total_time: 3600,
         simple_tasks: 3,
@@ -429,8 +429,8 @@ async fn test_execution_statistics_edge_cases() {
     let stats = ExecutionStatistics {
         total_tasks: 5,
         completed_tasks: 5,
-        failed_tasks: 0,
         skipped_tasks: 0,
+        failed_tasks: 0,
         total_retries: 0,
         total_time: 600,
         simple_tasks: 2,

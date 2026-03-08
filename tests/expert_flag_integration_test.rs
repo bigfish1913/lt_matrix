@@ -20,6 +20,46 @@ use ltmatrix::config::settings::{CliOverrides, Config, load_config_with_override
 use std::fs;
 use tempfile::TempDir;
 
+// Helper function to convert Args to CliOverrides
+fn args_to_overrides(args: &Args) -> CliOverrides {
+    use ltmatrix::config::settings::{OutputFormat as ConfigOutputFormat, LogLevel as ConfigLogLevel};
+
+    let mode = if args.fast {
+        Some("fast".to_string())
+    } else if args.expert {
+        Some("expert".to_string())
+    } else {
+        args.mode.as_ref().map(|m| format!("{:?}", m).to_lowercase())
+    };
+
+    let output_format = args.output.as_ref().map(|f| match f {
+        ltmatrix::cli::args::OutputFormat::Text => ConfigOutputFormat::Text,
+        ltmatrix::cli::args::OutputFormat::Json | ltmatrix::cli::args::OutputFormat::JsonCompact => ConfigOutputFormat::Json,
+    });
+
+    let log_level = args.log_level.as_ref().map(|l| match l {
+        ltmatrix::cli::args::LogLevel::Trace => ConfigLogLevel::Trace,
+        ltmatrix::cli::args::LogLevel::Debug => ConfigLogLevel::Debug,
+        ltmatrix::cli::args::LogLevel::Info => ConfigLogLevel::Info,
+        ltmatrix::cli::args::LogLevel::Warn => ConfigLogLevel::Warn,
+        ltmatrix::cli::args::LogLevel::Error => ConfigLogLevel::Error,
+    });
+
+    CliOverrides {
+        config_file: args.config.clone(),
+        agent: args.agent.clone(),
+        mode,
+        output_format,
+        log_level,
+        log_file: args.log_file.clone(),
+        max_retries: args.max_retries,
+        timeout: args.timeout,
+        no_color: Some(args.no_color),
+        dry_run: args.dry_run,
+        ..Default::default()
+    }
+}
+
 // ============================================================================
 // CLI Argument Parsing Tests
 // ============================================================================
@@ -96,7 +136,7 @@ fn test_expert_flag_maps_to_expert_mode_in_overrides() {
     let args = Args::try_parse_from(["ltmatrix", "--expert", "test goal"])
         .expect("Should parse --expert flag successfully");
 
-    let overrides: CliOverrides = args.into();
+    let overrides = args_to_overrides(&args);
 
     assert_eq!(
         overrides.mode,
@@ -111,7 +151,7 @@ fn test_no_mode_flag_maps_to_none_in_overrides() {
     let args = Args::try_parse_from(["ltmatrix", "test goal"])
         .expect("Should parse without mode flag successfully");
 
-    let overrides: CliOverrides = args.into();
+    let overrides = args_to_overrides(&args);
 
     assert_eq!(
         overrides.mode,
@@ -126,7 +166,7 @@ fn test_fast_flag_maps_to_fast_mode_in_overrides() {
     let args = Args::try_parse_from(["ltmatrix", "--fast", "test goal"])
         .expect("Should parse --fast flag successfully");
 
-    let overrides: CliOverrides = args.into();
+    let overrides = args_to_overrides(&args);
 
     assert_eq!(
         overrides.mode,
@@ -151,7 +191,7 @@ fn test_expert_overrides_other_overrides_fields() {
     ])
     .expect("Should parse multiple flags with --expert successfully");
 
-    let overrides: CliOverrides = args.into();
+    let overrides = args_to_overrides(&args);
 
     assert_eq!(overrides.mode, Some("expert".to_string()));
     assert_eq!(overrides.agent, Some("test-agent".to_string()));
@@ -194,7 +234,7 @@ verify = true
     let args = Args::try_parse_from(["ltmatrix", "--expert", "test goal"])
         .expect("Should parse --expert flag successfully");
 
-    let overrides: CliOverrides = args.into();
+    let overrides = args_to_overrides(&args);
 
     // Restore original directory (ignore errors - cleanup is best-effort on Windows)
     let _ = std::env::set_current_dir(&original_dir);
@@ -243,7 +283,7 @@ timeout_exec = 3600
     ])
     .expect("Should parse flags successfully");
 
-    let overrides: CliOverrides = args.into();
+    let overrides = args_to_overrides(&args);
 
     // Capture values before moving
     let max_retries = overrides.max_retries;
@@ -298,7 +338,7 @@ max_retries = 1
     let args = Args::try_parse_from(["ltmatrix", "--expert", "test goal"])
         .expect("Should parse successfully");
 
-    let overrides: CliOverrides = args.into();
+    let overrides = args_to_overrides(&args);
 
     // Restore original directory (ignore errors - cleanup is best-effort on Windows)
     let _ = std::env::set_current_dir(&original_dir);
@@ -479,7 +519,7 @@ level = "info"
     .expect("Should parse successfully");
 
     // Convert to overrides
-    let overrides: CliOverrides = args.clone().into();
+    let overrides = args_to_overrides(&args);
 
     // Load and merge config
     let result = load_config_with_overrides(Some(overrides));

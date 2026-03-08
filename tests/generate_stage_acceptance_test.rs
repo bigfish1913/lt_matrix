@@ -23,6 +23,7 @@ fn test_acceptance_basic_structure_exists() {
         task_count: 0,
         dependency_depth: 0,
         validation_errors: vec![],
+        generation_log: None,
     };
     let _error = ValidationError::MissingDependency {
         task: "test".to_string(),
@@ -102,6 +103,7 @@ fn test_acceptance_task_breakdown_structure() {
         task_count: 3,
         dependency_depth: 2,
         validation_errors: vec![],
+        generation_log: None,
     };
 
     // Verify task breakdown structure
@@ -163,6 +165,7 @@ fn test_acceptance_result_structure_supports_json_output() {
         task_count: 2,
         dependency_depth: 1,
         validation_errors: vec![],
+        generation_log: None,
     };
 
     // Verify the result structure supports all necessary fields
@@ -210,6 +213,7 @@ fn test_acceptance_validation_errors_exposed_in_result() {
                 id: "dup".to_string(),
             },
         ],
+        generation_log: None,
     };
 
     // Verify all validation error types are exposed in the result
@@ -244,6 +248,7 @@ fn test_acceptance_valid_result_has_no_errors() {
         task_count: 2,
         dependency_depth: 1,
         validation_errors: vec![],
+        generation_log: None,
     };
 
     assert!(
@@ -277,6 +282,7 @@ fn test_acceptance_dependency_depth_exposed_in_result() {
         task_count: 3,
         dependency_depth: 2, // Calculated by the generate stage
         validation_errors: vec![],
+        generation_log: None,
     };
 
     assert_eq!(result.dependency_depth, 2, "Should expose correct dependency depth");
@@ -309,6 +315,7 @@ fn test_acceptance_statistics_calculation() {
         task_count: 3,
         dependency_depth: 2,
         validation_errors: vec![],
+        generation_log: None,
     };
 
     let stats = calculate_generation_stats(&result);
@@ -387,7 +394,7 @@ fn test_acceptance_public_api() {
     let _ = GenerateConfig::default;
     let _ = generate_tasks;
     let _ = calculate_generation_stats;
-    let _ = GenerationResult { tasks: vec![], task_count: 0, dependency_depth: 0, validation_errors: vec![] };
+    let _ = GenerationResult { tasks: vec![], task_count: 0, dependency_depth: 0, validation_errors: vec![], generation_log: None };
     let _ = ValidationError::MissingDependency {
         task: String::new(),
         dependency: String::new(),
@@ -439,6 +446,7 @@ fn test_acceptance_empty_task_list() {
         task_count: 0,
         dependency_depth: 0,
         validation_errors: vec![],
+        generation_log: None,
     };
 
     assert_eq!(result.tasks.len(), 0);
@@ -520,6 +528,7 @@ fn test_acceptance_result_ready_for_next_stage() {
         task_count: 1,
         dependency_depth: 0,
         validation_errors: vec![],
+        generation_log: None,
     };
 
     // Next stage needs:

@@ -91,6 +91,7 @@ async fn test_generate_result_structure() {
         task_count: 2,
         dependency_depth: 1,
         validation_errors: vec![],
+        generation_log: None,
     };
 
     assert_eq!(result.task_count, 2);
@@ -169,6 +170,7 @@ async fn test_generate_result_with_validation_errors() {
                 dependency: "missing".to_string(),
             },
         ],
+        generation_log: None,
     };
 
     assert_eq!(result.validation_errors.len(), 1);
@@ -189,6 +191,7 @@ async fn test_task_count_matches_tasks_length() {
         task_count: tasks.len(),
         dependency_depth: 0,
         validation_errors: vec![],
+        generation_log: None,
     };
 
     assert_eq!(result.task_count, result.tasks.len());
@@ -313,6 +316,7 @@ mod statistics_tests {
             task_count: 3,
             dependency_depth: 1,
             validation_errors: vec![],
+        generation_log: None,
         };
 
         let stats = calculate_generation_stats(&result);
@@ -341,6 +345,7 @@ mod statistics_tests {
             task_count: 5,
             dependency_depth: 0,
             validation_errors: vec![],
+        generation_log: None,
         };
 
         let stats = calculate_generation_stats(&result);
@@ -367,6 +372,7 @@ mod statistics_tests {
                     dependency: "missing".to_string(),
                 },
             ],
+            generation_log: None,
         };
 
         let stats = calculate_generation_stats(&result);

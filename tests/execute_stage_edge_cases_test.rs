@@ -203,6 +203,7 @@ async fn test_execution_statistics_zero_tasks() {
     let stats = ExecutionStatistics {
         total_tasks: 0,
         completed_tasks: 0,
+        skipped_tasks: 0,
         failed_tasks: 0,
         total_retries: 0,
         total_time: 0,
@@ -222,6 +223,7 @@ async fn test_execution_statistics_all_failed() {
     let stats = ExecutionStatistics {
         total_tasks: 5,
         completed_tasks: 0,
+        skipped_tasks: 0,
         failed_tasks: 5,
         total_retries: 15,
         total_time: 300,
@@ -445,6 +447,7 @@ async fn test_execution_statistics_with_all_complexity_zero() {
     let stats = ExecutionStatistics {
         total_tasks: 10,
         completed_tasks: 10,
+        skipped_tasks: 0,
         failed_tasks: 0,
         total_retries: 0,
         total_time: 600,

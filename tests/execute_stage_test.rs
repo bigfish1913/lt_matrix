@@ -146,6 +146,7 @@ fn test_execution_statistics_initialization() {
         total_tasks: 10,
         completed_tasks: 8,
         failed_tasks: 1,
+        skipped_tasks: 1,
         total_retries: 3,
         total_time: 300,
         simple_tasks: 4,

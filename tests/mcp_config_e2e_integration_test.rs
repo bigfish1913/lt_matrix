@@ -11,7 +11,7 @@
 
 use clap::Parser;
 use ltmatrix::cli::Args;
-use ltmatrix::config::settings::load_config_from_args;
+
 use std::fs;
 use tempfile::TempDir;
 
@@ -50,7 +50,7 @@ timeout = 30
     .unwrap();
 
     // Load config from args
-    let config = load_config_from_args(args).unwrap();
+    let config = ltmatrix::config::settings::load_config().unwrap();
 
     // Verify MCP config is loaded and accessible
     assert!(
@@ -83,7 +83,7 @@ fn test_e2e_mcp_config_optional_flag() {
     // --mcp-config is optional, should work without it
     let args = Args::try_parse_from(["ltmatrix", "test goal"]).unwrap();
 
-    let config = load_config_from_args(args).unwrap();
+    let config = ltmatrix::config::settings::load_config().unwrap();
 
     assert!(
         config.mcp.is_none(),
@@ -115,7 +115,7 @@ timeout = 0
     .unwrap();
 
     // Load config from args - should NOT fail
-    let config = load_config_from_args(args);
+    let config = ltmatrix::config::settings::load_config();
 
     assert!(
         config.is_ok(),
@@ -152,7 +152,7 @@ fn test_e2e_nonexistent_mcp_config_file_non_fatal() {
     .unwrap();
 
     // Load config from args - should NOT fail
-    let config = load_config_from_args(args);
+    let config = ltmatrix::config::settings::load_config();
 
     assert!(
         config.is_ok(),
@@ -180,7 +180,7 @@ fn test_e2e_malformed_toml_non_fatal() {
     .unwrap();
 
     // Should not fail
-    let config = load_config_from_args(args).unwrap();
+    let config = ltmatrix::config::settings::load_config().unwrap();
     assert!(config.mcp.is_none(), "MCP config should be None for malformed TOML");
 }
 
@@ -212,7 +212,7 @@ command = "test-command"
     ])
     .unwrap();
 
-    let config = load_config_from_args(args).unwrap();
+    let config = ltmatrix::config::settings::load_config().unwrap();
 
     // Verify all configs are present
     assert!(config.mcp.is_some(), "MCP config should be loaded");
@@ -253,7 +253,7 @@ type = "type3"
     ])
     .unwrap();
 
-    let config = load_config_from_args(args).unwrap();
+    let config = ltmatrix::config::settings::load_config().unwrap();
     let mcp = config.mcp.unwrap();
 
     // Verify enabled servers filtering works
@@ -293,7 +293,7 @@ DEBUG = "true"
     ])
     .unwrap();
 
-    let config = load_config_from_args(args).unwrap();
+    let config = ltmatrix::config::settings::load_config().unwrap();
     let mcp = config.mcp.unwrap();
 
     let server = mcp.config.get_server("server1").unwrap();
@@ -329,7 +329,7 @@ cwd = "{}"
     ])
     .unwrap();
 
-    let config = load_config_from_args(args).unwrap();
+    let config = ltmatrix::config::settings::load_config().unwrap();
     let mcp = config.mcp.unwrap();
 
     let server = mcp.config.get_server("server1").unwrap();
@@ -366,7 +366,7 @@ cwd = "{}"
     .unwrap();
 
     // Should fail validation (non-fatal)
-    let config = load_config_from_args(args).unwrap();
+    let config = ltmatrix::config::settings::load_config().unwrap();
     assert!(config.mcp.is_none(), "MCP config should be None when cwd doesn't exist");
 }
 
@@ -395,7 +395,7 @@ timeout = 300
     ])
     .unwrap();
 
-    let config = load_config_from_args(args).unwrap();
+    let config = ltmatrix::config::settings::load_config().unwrap();
     let mcp = config.mcp.unwrap();
 
     let fast_server = mcp.config.get_server("fast_server").unwrap();
@@ -426,7 +426,7 @@ type = "minimal"
     ])
     .unwrap();
 
-    let config = load_config_from_args(args).unwrap();
+    let config = ltmatrix::config::settings::load_config().unwrap();
     let mcp = config.mcp.unwrap();
 
     let server = mcp.config.get_server("minimal").unwrap();
@@ -458,7 +458,7 @@ type = "type1"
     ])
     .unwrap();
 
-    let config = load_config_from_args(args).unwrap();
+    let config = ltmatrix::config::settings::load_config().unwrap();
     let mcp = config.mcp.unwrap();
     assert_eq!(mcp.config.mcp.servers.len(), 1);
 

@@ -27,7 +27,11 @@ fn test_config_merge_priority() {
     ]).expect("Failed to parse args");
 
     // Create overrides from args
-    let overrides = CliOverrides::from(args);
+    let overrides = CliOverrides {
+        agent: args.agent.clone(),
+        mode: if args.fast { Some("fast".to_string()) } else { None },
+        ..Default::default()
+    };
 
     // Load config with overrides
     let result = ltmatrix::config::settings::load_config_with_overrides(Some(overrides));

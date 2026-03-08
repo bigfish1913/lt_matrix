@@ -6,7 +6,6 @@
 //! - MCP config doesn't interfere with other config loading
 
 use ltmatrix::config::mcp::McpConfig;
-use ltmatrix::config::settings::load_config_from_args;
 use serial_test::serial;
 use std::fs;
 use tempfile::TempDir;
@@ -164,7 +163,7 @@ type = "test"
     ])
     .unwrap();
 
-    let config = load_config_from_args(args).unwrap();
+    let config = ltmatrix::config::settings::load_config().unwrap();
 
     // Verify all config settings are present and correct
     assert!(config.mcp.is_some(), "MCP config should be loaded");
@@ -181,7 +180,7 @@ fn test_config_without_mcp_still_has_defaults() {
 
     let args = ltmatrix::cli::Args::try_parse_from(["ltmatrix", "test goal"]).unwrap();
 
-    let config = load_config_from_args(args).unwrap();
+    let config = ltmatrix::config::settings::load_config().unwrap();
 
     // Should have all default settings
     assert!(config.mcp.is_none(), "MCP config should be None");
@@ -238,7 +237,7 @@ command = "test-command"
     ])
     .unwrap();
 
-    let config = load_config_from_args(args).unwrap();
+    let config = ltmatrix::config::settings::load_config().unwrap();
 
     // Explicitly restore (guard will also restore on drop)
     std::env::set_current_dir(&*_guard).unwrap();
@@ -304,7 +303,7 @@ type = "type2"
     ])
     .unwrap();
 
-    let config = load_config_from_args(args).unwrap();
+    let config = ltmatrix::config::settings::load_config().unwrap();
 
     // Explicitly restore (guard will also restore on drop)
     std::env::set_current_dir(&*_guard).unwrap();
@@ -353,7 +352,7 @@ type = ""
     .unwrap();
 
     // Should not fail overall config loading
-    let config = load_config_from_args(args);
+    let config = ltmatrix::config::settings::load_config();
 
     assert!(
         config.is_ok(),
@@ -398,7 +397,7 @@ timeout = 0
     ])
     .unwrap();
 
-    let config = load_config_from_args(args).unwrap();
+    let config = ltmatrix::config::settings::load_config().unwrap();
 
     // Entire MCP config should be rejected due to validation error
     assert!(
@@ -442,7 +441,7 @@ enabled = false
     ])
     .unwrap();
 
-    let config = load_config_from_args(args).unwrap();
+    let config = ltmatrix::config::settings::load_config().unwrap();
 
     assert!(config.mcp.is_some());
     let mcp = config.mcp.unwrap();

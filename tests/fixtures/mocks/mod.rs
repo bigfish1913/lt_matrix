@@ -202,6 +202,7 @@ impl MockAgent {
                 command: "mock-command".to_string(),
                 timeout: 60,
                 is_default: false,
+                api_key: None,
             },
             responses: HashMap::new(),
             default_response: MockResponse::success("Default mock response"),
@@ -447,6 +448,7 @@ impl AgentBackend for FailingMockAgent {
             command: "none".to_string(),
             timeout: 0,
             is_default: false,
+            api_key: None,
         })
     }
 }

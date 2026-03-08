@@ -399,6 +399,7 @@ async fn test_execution_statistics_tracking() {
     let stats = ExecutionStatistics {
         total_tasks: 10,
         completed_tasks: 7,
+        skipped_tasks: 0,
         failed_tasks: 2,
         total_retries: 5,
         total_time: 1800,

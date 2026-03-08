@@ -16,6 +16,46 @@ use std::sync::atomic::{AtomicBool, Ordering};
 // Note: We can't directly test main() since it calls std::process::exit()
 // However, we can test the individual functions that make up the main logic
 
+// Helper function to convert Args to CliOverrides
+fn args_to_overrides(args: &ltmatrix::cli::Args) -> ltmatrix::config::settings::CliOverrides {
+    use ltmatrix::config::settings::{OutputFormat as ConfigOutputFormat, LogLevel as ConfigLogLevel};
+
+    let mode = if args.fast {
+        Some("fast".to_string())
+    } else if args.expert {
+        Some("expert".to_string())
+    } else {
+        args.mode.as_ref().map(|m| format!("{:?}", m).to_lowercase())
+    };
+
+    let output_format = args.output.as_ref().map(|f| match f {
+        ltmatrix::cli::args::OutputFormat::Text => ConfigOutputFormat::Text,
+        ltmatrix::cli::args::OutputFormat::Json | ltmatrix::cli::args::OutputFormat::JsonCompact => ConfigOutputFormat::Json,
+    });
+
+    let log_level = args.log_level.as_ref().map(|l| match l {
+        ltmatrix::cli::args::LogLevel::Trace => ConfigLogLevel::Trace,
+        ltmatrix::cli::args::LogLevel::Debug => ConfigLogLevel::Debug,
+        ltmatrix::cli::args::LogLevel::Info => ConfigLogLevel::Info,
+        ltmatrix::cli::args::LogLevel::Warn => ConfigLogLevel::Warn,
+        ltmatrix::cli::args::LogLevel::Error => ConfigLogLevel::Error,
+    });
+
+    ltmatrix::config::settings::CliOverrides {
+        config_file: args.config.clone(),
+        agent: args.agent.clone(),
+        mode,
+        output_format,
+        log_level,
+        log_file: args.log_file.clone(),
+        max_retries: args.max_retries,
+        timeout: args.timeout,
+        no_color: Some(args.no_color),
+        dry_run: args.dry_run,
+        ..Default::default()
+    }
+}
+
 // =============================================================================
 // Logging Initialization Tests
 // =============================================================================
@@ -94,7 +134,7 @@ fn test_cli_overrides_creation() {
         "--agent", "claude"
     ]);
 
-    let overrides = CliOverrides::from(args);
+    let overrides = args_to_overrides(&args);
 
     // Verify overrides were created successfully
     // The exact structure depends on the CliOverrides implementation
@@ -112,7 +152,7 @@ fn test_config_loading_with_overrides() {
         "test goal"
     ]);
 
-    let overrides = CliOverrides::from(args);
+    let overrides = args_to_overrides(&args);
 
     // Load config with overrides
     let result = ltmatrix::config::settings::load_config_with_overrides(Some(overrides));

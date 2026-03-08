@@ -12,7 +12,7 @@
 use clap::Parser;
 use ltmatrix::cli::Args;
 use ltmatrix::config::settings::{
-    load_config, load_config_file, load_config_from_args, load_config_with_overrides,
+    load_config, load_config_file, load_config_with_overrides,
     merge_configs, CliOverrides, Config, LogLevel, OutputFormat, WarmupConfig,
 };
 use std::fs;
@@ -273,7 +273,14 @@ file = "/var/log/ci/ltmatrix.log"
     let args = Args::try_parse_from(["ltmatrix", "--no-color", "--output", "json", "goal"])
         .expect("Failed to parse args");
 
-    let overrides: CliOverrides = args.into();
+    let overrides = CliOverrides {
+        output_format: args.output.as_ref().map(|f| match f {
+            ltmatrix::cli::args::OutputFormat::Text => OutputFormat::Text,
+            ltmatrix::cli::args::OutputFormat::Json | ltmatrix::cli::args::OutputFormat::JsonCompact => OutputFormat::Json,
+        }),
+        no_color: Some(args.no_color),
+        ..Default::default()
+    };
     let result = load_config_with_overrides(Some(overrides));
 
     assert!(result.is_ok());
@@ -622,7 +629,7 @@ level = "info"
     ])
     .expect("Failed to parse args");
 
-    let result = load_config_from_args(args);
+    let result = ltmatrix::config::settings::load_config();
     assert!(result.is_ok());
 
     let config = result.unwrap();
