@@ -87,6 +87,9 @@ pub struct PriorityConfig {
 
     /// Whether to sort tasks by priority within execution levels
     pub enable_priority_sorting: bool,
+
+    /// Whether to group related tasks together for context reuse
+    pub enable_related_grouping: bool,
 }
 
 impl Default for PriorityConfig {
@@ -95,6 +98,7 @@ impl Default for PriorityConfig {
             blocking_boost: 1,
             max_boost: 3,
             enable_priority_sorting: true,
+            enable_related_grouping: true,
         }
     }
 }
@@ -388,6 +392,11 @@ fn calculate_execution_levels_with_priority(
             });
         }
 
+        // Group related tasks together for context reuse
+        if priority_config.enable_related_grouping && !current_level.is_empty() {
+            group_related_tasks(&mut current_level);
+        }
+
         // Add current level to the plan
         if !current_level.is_empty() {
             for task in &current_level {
@@ -462,6 +471,72 @@ fn count_downstream_tasks(
     }
 
     total
+}
+
+/// Groups related tasks together within an execution level for context reuse
+///
+/// Tasks are considered related if they share entries in their `related_tasks` field.
+/// Related tasks are grouped together to maximize context/session reuse.
+fn group_related_tasks(tasks: &mut [Task]) {
+    if tasks.is_empty() {
+        return;
+    }
+
+    // Build a map of related_task -> list of task indices that reference it
+    let mut related_to_tasks: HashMap<String, Vec<usize>> = HashMap::new();
+    for (idx, task) in tasks.iter().enumerate() {
+        for related in &task.related_tasks {
+            related_to_tasks
+                .entry(related.clone())
+                .or_insert_with(Vec::new)
+                .push(idx);
+        }
+    }
+
+    // Find groups of tasks that share related tasks
+    let mut task_groups: HashMap<usize, usize> = HashMap::new(); // task_idx -> group_id
+    let mut current_group = 0;
+
+    for (_, indices) in &related_to_tasks {
+        if indices.len() > 1 {
+            // These tasks share a related task, group them together
+            let min_group = indices
+                .iter()
+                .filter_map(|idx| task_groups.get(idx).copied())
+                .min();
+
+            let group_id = min_group.unwrap_or_else(|| {
+                current_group += 1;
+                current_group
+            });
+
+            for idx in indices {
+                task_groups.insert(*idx, group_id);
+            }
+        }
+    }
+
+    // Build task_id -> group_id mapping for sorting
+    let mut task_id_to_group: HashMap<String, usize> = HashMap::new();
+    for (idx, task) in tasks.iter().enumerate() {
+        if let Some(&group_id) = task_groups.get(&idx) {
+            task_id_to_group.insert(task.id.clone(), group_id);
+        }
+    }
+
+    // Sort tasks by group to keep related tasks together
+    // Tasks without groups keep their relative order
+    tasks.sort_by(|a, b| {
+        let group_a = task_id_to_group.get(&a.id).copied().unwrap_or(usize::MAX);
+        let group_b = task_id_to_group.get(&b.id).copied().unwrap_or(usize::MAX);
+        group_a.cmp(&group_b)
+    });
+
+    debug!(
+        "Grouped {} tasks into {} relation groups",
+        tasks.len(),
+        current_group
+    );
 }
 
 /// Calculates the critical path (longest path through the dependency graph)
@@ -1024,6 +1099,7 @@ mod tests {
             blocking_boost: 1,
             max_boost: 3,
             enable_priority_sorting: false,
+            enable_related_grouping: false,
         };
 
         let plan = schedule_tasks_with_priority(tasks.clone(), &config).unwrap();
@@ -1064,5 +1140,95 @@ mod tests {
         // grandchild1 should have 0 downstream tasks
         let gc1_count = count_downstream_tasks("grandchild1", &graph, &mut HashSet::new());
         assert_eq!(gc1_count, 0);
+    }
+
+    #[test]
+    fn test_related_task_grouping() {
+        // Create tasks with related_tasks references
+        let mut task1 = create_test_task("task-1", vec![]);
+        task1.related_tasks = vec!["context-a".to_string()];
+
+        let mut task2 = create_test_task("task-2", vec![]);
+        task2.related_tasks = vec!["context-a".to_string()]; // Same context as task-1
+
+        let mut task3 = create_test_task("task-3", vec![]);
+        task3.related_tasks = vec!["context-b".to_string()]; // Different context
+
+        let task4 = create_test_task("task-4", vec![]); // No related tasks
+
+        let tasks = vec![task1, task2, task3, task4];
+
+        let config = PriorityConfig {
+            enable_related_grouping: true,
+            ..PriorityConfig::default()
+        };
+
+        let plan = schedule_tasks_with_priority(tasks.clone(), &config).unwrap();
+
+        // All tasks should be in level 0 (no dependencies)
+        assert_eq!(plan.execution_levels[0].len(), 4);
+
+        // task-1 and task-2 should be adjacent (they share context-a)
+        let ids: Vec<&str> = plan.execution_levels[0].iter().map(|t| t.id.as_str()).collect();
+        let pos1 = ids.iter().position(|&id| id == "task-1").unwrap();
+        let pos2 = ids.iter().position(|&id| id == "task-2").unwrap();
+        assert!(
+            (pos1 as i32 - pos2 as i32).abs() == 1,
+            "task-1 and task-2 should be adjacent: positions {} and {}",
+            pos1,
+            pos2
+        );
+    }
+
+    #[test]
+    fn test_related_task_grouping_disabled() {
+        let mut task1 = create_test_task("task-1", vec![]);
+        task1.related_tasks = vec!["context-a".to_string()];
+
+        let mut task2 = create_test_task("task-2", vec![]);
+        task2.related_tasks = vec!["context-b".to_string()];
+
+        let tasks = vec![task1, task2];
+
+        // Disable related grouping
+        let config = PriorityConfig {
+            enable_related_grouping: false,
+            ..PriorityConfig::default()
+        };
+
+        let plan = schedule_tasks_with_priority(tasks.clone(), &config).unwrap();
+
+        // Both tasks should be present
+        assert_eq!(plan.execution_levels[0].len(), 2);
+        let ids: Vec<&str> = plan.execution_levels[0].iter().map(|t| t.id.as_str()).collect();
+        assert!(ids.contains(&"task-1"));
+        assert!(ids.contains(&"task-2"));
+    }
+
+    #[test]
+    fn test_group_related_tasks_function() {
+        // Test the group_related_tasks function directly
+        let mut task1 = create_test_task("task-1", vec![]);
+        task1.related_tasks = vec!["shared-context".to_string()];
+
+        let mut task2 = create_test_task("task-2", vec![]);
+        task2.related_tasks = vec!["shared-context".to_string()];
+
+        let mut task3 = create_test_task("task-3", vec![]);
+        task3.related_tasks = vec!["other-context".to_string()];
+
+        let task4 = create_test_task("task-4", vec![]);
+
+        let mut tasks = vec![task1, task2, task3, task4];
+        group_related_tasks(&mut tasks);
+
+        // task-1 and task-2 should be adjacent after grouping
+        let ids: Vec<&str> = tasks.iter().map(|t| t.id.as_str()).collect();
+        let pos1 = ids.iter().position(|&id| id == "task-1").unwrap();
+        let pos2 = ids.iter().position(|&id| id == "task-2").unwrap();
+        assert!(
+            (pos1 as i32 - pos2 as i32).abs() == 1,
+            "task-1 and task-2 should be adjacent after grouping"
+        );
     }
 }
