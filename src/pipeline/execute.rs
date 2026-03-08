@@ -12,11 +12,15 @@
 //! - Handles different models based on task complexity
 //! - Captures agent output and updates task status
 //! - Implements retry with max_retries limit from config
+//! - Uses exponential backoff for retry delays
+//! - Classifies errors as retryable or non-retryable
 
 use anyhow::{Context, Result};
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 use tokio::fs;
+use tokio::time::sleep;
 use tracing::{debug, error, info, warn};
 
 use ltmatrix_agent::backend::{AgentBackend, ExecutionConfig};
@@ -25,6 +29,216 @@ use ltmatrix_agent::session::SessionManager;
 use ltmatrix_agent::AgentPool;
 use ltmatrix_core::{AgentType, Mode, ModeConfig, Task, TaskComplexity, TaskStatus};
 use crate::workspace::WorkspaceState;
+
+/// Classification of execution errors for retry decisions
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ErrorClass {
+    /// Transient errors that can be retried (timeout, rate limit, network)
+    Retryable,
+    /// Permanent errors that should not be retried (syntax, permission, not found)
+    NonRetryable,
+    /// Unknown errors - default to retryable with caution
+    Unknown,
+}
+
+/// Report of a failed task and its impact
+#[derive(Debug, Clone)]
+pub struct FailureReport {
+    /// ID of the failed task
+    pub task_id: String,
+
+    /// Error message from the failure
+    pub error_message: String,
+
+    /// Number of retry attempts made
+    pub retry_count: u32,
+
+    /// Tasks that depend on this failed task (directly or transitively)
+    pub blocked_downstream: Vec<String>,
+
+    /// Suggested action to take
+    pub suggested_action: FailureAction,
+}
+
+/// Suggested action for handling a failure
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum FailureAction {
+    /// Retry the task (for transient errors)
+    Retry,
+    /// Skip the task and continue with others
+    Skip,
+    /// Abort the entire execution
+    Abort,
+}
+
+/// Calculate exponential backoff delay for retry attempts
+///
+/// Uses formula: base_delay * 2^attempt with optional jitter
+/// Maximum delay is capped to prevent excessive waits
+pub fn calculate_backoff_delay(attempt: u32, base_delay_secs: u64, max_delay_secs: u64) -> Duration {
+    // Exponential backoff: 1s, 2s, 4s, 8s, 16s, etc.
+    let multiplier = 2u64.pow(attempt);
+    let delay = std::cmp::min(base_delay_secs * multiplier, max_delay_secs);
+
+    // Add small jitter (±10%) to avoid thundering herd
+    let (jitter_min, jitter_max) = if delay > 0 {
+        let jitter_range = delay / 10;
+        (delay.saturating_sub(jitter_range), delay.saturating_add(jitter_range))
+    } else {
+        (0, 0)
+    };
+
+    Duration::from_secs(rand::random_in_range(jitter_min..=jitter_max))
+}
+
+/// Internal helper for random jitter (simple implementation)
+mod rand {
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    pub fn random_in_range(range: std::ops::RangeInclusive<u64>) -> u64 {
+        // Simple LCG random for jitter (doesn't need to be cryptographically secure)
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos() as u64;
+        let range_size = range.end() - range.start() + 1;
+        if range_size == 0 {
+            return *range.start();
+        }
+        (now.wrapping_mul(1103515245).wrapping_add(12345) % range_size) + *range.start()
+    }
+}
+
+/// Classify an error message to determine if it's retryable
+pub fn classify_error(error_message: &str) -> ErrorClass {
+    let lower = error_message.to_lowercase();
+
+    // Retryable errors - transient conditions
+    let retryable_patterns = [
+        "timeout",
+        "timed out",
+        "rate limit",
+        "too many requests",
+        "service unavailable",
+        "temporarily unavailable",
+        "connection reset",
+        "connection refused",
+        "network error",
+        "dns error",
+        "socket error",
+        "internal server error",
+        "503",
+        "502",
+        "504",
+        "429",
+    ];
+
+    // Non-retryable errors - permanent conditions
+    let non_retryable_patterns = [
+        "syntax error",
+        "parse error",
+        "invalid syntax",
+        "permission denied",
+        "access denied",
+        "unauthorized",
+        "forbidden",
+        "not found",
+        "does not exist",
+        "no such file",
+        "invalid argument",
+        "invalid parameter",
+        "out of memory",
+        "stack overflow",
+        "unsupported",
+        "not implemented",
+    ];
+
+    // Check for retryable patterns
+    for pattern in &retryable_patterns {
+        if lower.contains(pattern) {
+            return ErrorClass::Retryable;
+        }
+    }
+
+    // Check for non-retryable patterns
+    for pattern in &non_retryable_patterns {
+        if lower.contains(pattern) {
+            return ErrorClass::NonRetryable;
+        }
+    }
+
+    // Default to unknown (treated as retryable with caution)
+    ErrorClass::Unknown
+}
+
+/// Generate a failure report for a failed task
+pub fn generate_failure_report(
+    task: &Task,
+    task_map: &HashMap<String, Task>,
+) -> FailureReport {
+    let error_message = task.error.clone().unwrap_or_else(|| "Unknown error".to_string());
+    let error_class = classify_error(&error_message);
+
+    // Find all downstream tasks that depend on this task
+    let blocked_downstream = find_downstream_tasks(&task.id, task_map);
+
+    // Determine suggested action based on error class and retry count
+    let suggested_action = match error_class {
+        ErrorClass::Retryable if task.retry_count < 3 => FailureAction::Retry,
+        ErrorClass::NonRetryable => {
+            if blocked_downstream.is_empty() {
+                FailureAction::Skip
+            } else {
+                FailureAction::Abort
+            }
+        }
+        ErrorClass::Retryable | ErrorClass::Unknown => {
+            if blocked_downstream.len() > 3 {
+                FailureAction::Abort // Too many downstream tasks affected
+            } else {
+                FailureAction::Retry
+            }
+        }
+    };
+
+    FailureReport {
+        task_id: task.id.clone(),
+        error_message,
+        retry_count: task.retry_count,
+        blocked_downstream,
+        suggested_action,
+    }
+}
+
+/// Find all tasks that transitively depend on a given task
+fn find_downstream_tasks(task_id: &str, task_map: &HashMap<String, Task>) -> Vec<String> {
+    let mut downstream = Vec::new();
+    let mut visited = HashSet::new();
+
+    fn find_recursive(
+        id: &str,
+        task_map: &HashMap<String, Task>,
+        downstream: &mut Vec<String>,
+        visited: &mut HashSet<String>,
+    ) {
+        if visited.contains(id) {
+            return;
+        }
+        visited.insert(id.to_string());
+
+        for (other_id, task) in task_map {
+            if task.depends_on.iter().any(|dep| dep == id) {
+                if !downstream.contains(other_id) {
+                    downstream.push(other_id.clone());
+                }
+                find_recursive(other_id, task_map, downstream, visited);
+            }
+        }
+    }
+
+    find_recursive(task_id, task_map, &mut downstream, &mut visited);
+    downstream
+}
 
 /// Configuration for the execution stage
 #[derive(Debug, Clone)]
@@ -443,7 +657,7 @@ pub fn build_task_context(
     Ok(context)
 }
 
-/// Execute a task with retry logic
+/// Execute a task with retry logic and exponential backoff
 async fn execute_task_with_retry(
     task: &Task,
     context: &str,
@@ -456,14 +670,18 @@ async fn execute_task_with_retry(
     let start_time = std::time::Instant::now();
     let current_session = session_id;
     let mut last_output = String::new();
+    let mut last_error: Option<String> = None;
     let mut retries = 0;
 
     for attempt in 0..=config.max_retries {
         if attempt > 0 {
+            // Apply exponential backoff before retry
+            let backoff = calculate_backoff_delay(attempt - 1, 1, 60);
             info!(
-                "Retrying task {} (attempt {}/{})",
-                task.id, attempt, config.max_retries
+                "Retrying task {} (attempt {}/{}) after {:?} backoff",
+                task.id, attempt, config.max_retries, backoff
             );
+            sleep(backoff).await;
             retries += 1;
         }
 
@@ -515,16 +733,46 @@ async fn execute_task_with_retry(
             });
         }
 
-        // Check if we should retry
-        if attempt < config.max_retries && task.can_retry(config.max_retries) {
-            warn!("Task {} failed, will retry: {:?}", task.id, task.error);
-            continue;
+        // Store the error for classification
+        last_error = task.error.clone();
+
+        // Classify the error to decide if we should retry
+        if let Some(ref error_msg) = task.error {
+            let error_class = classify_error(error_msg);
+
+            match error_class {
+                ErrorClass::NonRetryable => {
+                    warn!(
+                        "Task {} failed with non-retryable error: {}",
+                        task.id, error_msg
+                    );
+                    break; // Don't retry non-retryable errors
+                }
+                ErrorClass::Retryable | ErrorClass::Unknown => {
+                    // Check if we should retry
+                    if attempt < config.max_retries && task.can_retry(config.max_retries) {
+                        warn!(
+                            "Task {} failed with retryable error, will retry: {}",
+                            task.id, error_msg
+                        );
+                        continue;
+                    } else {
+                        break;
+                    }
+                }
+            }
         } else {
             break;
         }
     }
 
-    // All retries exhausted
+    // All retries exhausted or non-retryable error
+    let final_error = last_error.unwrap_or_else(|| "Unknown error".to_string());
+    warn!(
+        "Task {} failed after {} retries: {}",
+        task.id, retries, final_error
+    );
+
     Ok(TaskExecutionResult {
         task: task.clone(),
         output: last_output,
@@ -884,5 +1132,164 @@ mod tests {
         assert!(context.contains("Project Memory"));
         assert!(context.contains("Previous decisions"));
         assert!(context.contains("Task: Test Task"));
+    }
+
+    #[test]
+    fn test_classify_error_retryable() {
+        // Test retryable error patterns
+        assert_eq!(
+            classify_error("Connection timeout while fetching data"),
+            ErrorClass::Retryable
+        );
+        assert_eq!(
+            classify_error("Rate limit exceeded, please retry later"),
+            ErrorClass::Retryable
+        );
+        assert_eq!(
+            classify_error("Service temporarily unavailable (503)"),
+            ErrorClass::Retryable
+        );
+        assert_eq!(
+            classify_error("Network error: connection reset"),
+            ErrorClass::Retryable
+        );
+        assert_eq!(
+            classify_error("429 Too Many Requests"),
+            ErrorClass::Retryable
+        );
+    }
+
+    #[test]
+    fn test_classify_error_non_retryable() {
+        // Test non-retryable error patterns
+        assert_eq!(
+            classify_error("Syntax error in configuration file"),
+            ErrorClass::NonRetryable
+        );
+        assert_eq!(
+            classify_error("Permission denied: cannot access file"),
+            ErrorClass::NonRetryable
+        );
+        assert_eq!(
+            classify_error("File not found: config.toml"),
+            ErrorClass::NonRetryable
+        );
+        assert_eq!(
+            classify_error("Invalid argument provided"),
+            ErrorClass::NonRetryable
+        );
+        assert_eq!(
+            classify_error("Feature not implemented"),
+            ErrorClass::NonRetryable
+        );
+    }
+
+    #[test]
+    fn test_classify_error_unknown() {
+        // Test unknown error patterns
+        assert_eq!(
+            classify_error("Something went wrong"),
+            ErrorClass::Unknown
+        );
+        assert_eq!(
+            classify_error("An unexpected error occurred"),
+            ErrorClass::Unknown
+        );
+    }
+
+    #[test]
+    fn test_calculate_backoff_delay() {
+        // Test exponential backoff progression
+        let base = 1u64;
+        let max = 60u64;
+
+        // Attempt 0: 1s base
+        let d0 = calculate_backoff_delay(0, base, max);
+        assert!(d0.as_secs() >= 1 && d0.as_secs() <= 2); // With jitter
+
+        // Attempt 1: 2s base
+        let d1 = calculate_backoff_delay(1, base, max);
+        assert!(d1.as_secs() >= 1 && d1.as_secs() <= 3); // With jitter
+
+        // Attempt 2: 4s base
+        let d2 = calculate_backoff_delay(2, base, max);
+        assert!(d2.as_secs() >= 3 && d2.as_secs() <= 5); // With jitter
+
+        // Test max cap
+        let d10 = calculate_backoff_delay(10, base, max);
+        assert!(d10.as_secs() <= max);
+    }
+
+    #[test]
+    fn test_generate_failure_report() {
+        let mut task = Task::new("task-1", "Test", "Test task");
+        task.error = Some("Connection timeout".to_string());
+        task.retry_count = 2;
+
+        let mut task2 = Task::new("task-2", "Dependent", "Dependent task");
+        task2.depends_on = vec!["task-1".to_string()];
+
+        let mut task3 = Task::new("task-3", "Indirect", "Indirect dependent");
+        task3.depends_on = vec!["task-2".to_string()];
+
+        let task_map: HashMap<String, Task> = [
+            (task.id.clone(), task.clone()),
+            (task2.id.clone(), task2),
+            (task3.id.clone(), task3),
+        ]
+        .into_iter()
+        .collect();
+
+        let report = generate_failure_report(&task, &task_map);
+
+        assert_eq!(report.task_id, "task-1");
+        assert!(report.error_message.contains("timeout"));
+        assert_eq!(report.retry_count, 2);
+        assert!(report.blocked_downstream.contains(&"task-2".to_string()));
+        assert!(report.blocked_downstream.contains(&"task-3".to_string()));
+        // Should suggest retry for retryable errors
+        assert_eq!(report.suggested_action, FailureAction::Retry);
+    }
+
+    #[test]
+    fn test_generate_failure_report_non_retryable() {
+        let mut task = Task::new("task-1", "Test", "Test task");
+        task.error = Some("Syntax error in code".to_string());
+
+        let task_map: HashMap<String, Task> = [(task.id.clone(), task.clone())]
+            .into_iter()
+            .collect();
+
+        let report = generate_failure_report(&task, &task_map);
+
+        // Non-retryable with no downstream should suggest skip
+        assert_eq!(report.suggested_action, FailureAction::Skip);
+    }
+
+    #[test]
+    fn test_find_downstream_tasks() {
+        let task1 = Task::new("task-1", "Root", "Root task");
+        let mut task2 = Task::new("task-2", "Child1", "Child task 1");
+        task2.depends_on = vec!["task-1".to_string()];
+        let mut task3 = Task::new("task-3", "Child2", "Child task 2");
+        task3.depends_on = vec!["task-1".to_string()];
+        let mut task4 = Task::new("task-4", "Grandchild", "Grandchild task");
+        task4.depends_on = vec!["task-2".to_string()];
+
+        let task_map: HashMap<String, Task> = [
+            (task1.id.clone(), task1),
+            (task2.id.clone(), task2),
+            (task3.id.clone(), task3),
+            (task4.id.clone(), task4),
+        ]
+        .into_iter()
+        .collect();
+
+        let downstream = find_downstream_tasks("task-1", &task_map);
+
+        assert_eq!(downstream.len(), 3);
+        assert!(downstream.contains(&"task-2".to_string()));
+        assert!(downstream.contains(&"task-3".to_string()));
+        assert!(downstream.contains(&"task-4".to_string()));
     }
 }
