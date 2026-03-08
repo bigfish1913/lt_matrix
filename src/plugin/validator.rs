@@ -11,7 +11,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 
 use super::Plugin;
-use crate::models::Task;
+use ltmatrix_core::Task;
 
 /// Result of a validation check
 #[derive(Debug, Clone)]

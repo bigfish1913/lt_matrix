@@ -4,7 +4,7 @@
 
 use clap::Parser;
 use ltmatrix::cli::Args;
-use ltmatrix::config::settings::load_config_from_args;
+use ltmatrix::config::settings;
 
 fn main() -> anyhow::Result<()> {
     // Example 1: Parse CLI arguments and load config
@@ -23,7 +23,8 @@ fn main() -> anyhow::Result<()> {
         "goal: build a REST API",
     ])?;
 
-    let config = load_config_from_args(args)?;
+    let overrides = args.to_overrides();
+    let config = settings::load_config_with_overrides(Some(overrides))?;
 
     println!("Default agent: {:?}", config.default);
     println!("Output format: {:?}", config.output.format);

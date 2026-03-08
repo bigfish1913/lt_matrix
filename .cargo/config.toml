@@ -6,107 +6,97 @@
 # - macOS (Intel x86_64, Apple Silicon aarch64)
 
 [build]
-# Use D: drive for target directory (E: drive is full)
-target-dir = "D:/Project/lt_matrix/target"
-# Default target is the host platform
-# Override with: cargo build --release --target <triple>
+# Use all available CPU cores for compilation
+jobs = -1
+
+# =============================================================================
+# Compilation Speed Optimizations
+# =============================================================================
+
+# Windows x86_64 (MSVC)
+[target.x86_64-pc-windows-msvc]
+# Increase stack size to prevent stack overflow in tests
+rustflags = ["-C", "link-arg=/STACK:4194304"]
+
+# Windows ARM64 (MSVC)
+[target.aarch64-pc-windows-msvc]
 
 [term]
-# Enable colored output for better readability
 verbose = false
 color = "auto"
 
 [net]
-# Git checkout fetch timeout in seconds
 git-fetch-with-cli = true
 
 # =============================================================================
 # Linux Target Configurations
 # =============================================================================
 
-# Note: When using cargo-zigbuild, these linker settings are overridden by Zig
-# The zig toolchain provides its own cross-compilation linker
-
-# Linux x86_64 with musl (static binary)
 [target.x86_64-unknown-linux-musl]
-# cargo-zigbuild will handle linker and static linking via Zig
-# No manual rustflags needed - zigbuild handles it
 
-# Linux ARM64 with musl (static binary)
 [target.aarch64-unknown-linux-musl]
-# cargo-zigbuild will handle linker and static linking via Zig
-# No manual rustflags needed - zigbuild handles it
 
-# Linux x86_64 with GNU libc (dynamic binary)
 [target.x86_64-unknown-linux-gnu]
-# Standard system linker will be used
 linker = "x86_64-linux-gnu-gcc"
 
-# Linux ARM64 with GNU libc (dynamic binary)
 [target.aarch64-unknown-linux-gnu]
-# Standard system linker will be used
 linker = "aarch64-linux-gnu-gcc"
-
-# =============================================================================
-# Windows Target Configurations
-# =============================================================================
-
-# Windows x86_64 (MSVC)
-[target.x86_64-pc-windows-msvc]
-linker = "rust-lld.exe"
-ar = "rust-lld.exe"
-# Increase stack size to prevent stack overflow in tests (especially completions_test)
-# Default is 1MB, increasing to 4MB to handle large clap command generation
-rustflags = ["-C", "link-args=/STACK:4194304"]
-
-# Windows ARM64 (MSVC)
-[target.aarch64-pc-windows-msvc]
-linker = "rust-lld.exe"
-ar = "rust-lld.exe"
 
 # =============================================================================
 # macOS Target Configurations
 # =============================================================================
 
-# macOS Intel (x86_64)
 [target.x86_64-apple-darwin]
-# Set minimum macOS version for broader compatibility
 rustflags = ["-C", "link-arg=-mmacosx-version-min=10.13"]
 
-# macOS Apple Silicon (aarch64/ARM64)
 [target.aarch64-apple-darwin]
-# Set minimum macOS version for Apple Silicon (11.0 is first release)
 rustflags = ["-C", "link-arg=-mmacosx-version-min=11.0"]
 
 # =============================================================================
-# General Compilation Optimizations
+# Compilation Profiles
 # =============================================================================
 
 # Profile for release builds (optimized for size and performance)
 [profile.release]
-# Optimize for binary size while maintaining good performance
-opt-level = "z"     # Optimize for size
-lto = true          # Link-time optimization
-codegen-units = 1   # Better optimization at cost of compilation time
-strip = true        # Remove debug symbols
-panic = "abort"     # Reduce binary size by aborting on panic
+opt-level = "z"      # Optimize for size
+lto = "thin"         # Thin LTO: faster than full LTO, good optimization
+codegen-units = 16   # Parallel codegen (16 is default)
+strip = true         # Remove debug symbols
+panic = "abort"      # Reduce binary size
 
 # Profile for development builds (fast compilation)
 [profile.dev]
-# Split debug information for faster compilation
 split-debuginfo = "unpacked"
+opt-level = 0        # No optimization for fastest compilation
+debug = 1            # Minimal debug info (line tables only)
+incremental = true   # Enable incremental compilation
 
-# Profile for testing (balance speed and accuracy)
+# Profile for testing
 [profile.test]
-# Optimize tests but keep debug info for better error messages
 opt-level = 0
+debug = 1
+incremental = true
+
+# Fast release profile for development iterations
+# Use: cargo build --profile fast-release
+[profile.fast-release]
+inherits = "release"
+lto = false          # Disable LTO for fast linking
+codegen-units = 256  # Maximum parallelism
+opt-level = 2        # Good performance, fast compilation
+strip = false        # Keep symbols for debugging
+
+# Optimize dependencies even in dev/test mode
+[profile.dev.package."*"]
+opt-level = 2
+
+[profile.test.package."*"]
+opt-level = 2
 
 # =============================================================================
-# Alias Definitions for Common Commands
+# Alias Definitions
 # =============================================================================
 
-# Build for specific targets
-# Usage: cargo build --alias linux-release
 [alias]
 linux-release = ["build", "--release", "--target", "x86_64-unknown-linux-musl"]
 linux-arm-release = ["build", "--release", "--target", "aarch64-unknown-linux-musl"]
@@ -114,21 +104,13 @@ windows-release = ["build", "--release", "--target", "x86_64-pc-windows-msvc"]
 windows-arm-release = ["build", "--release", "--target", "aarch64-pc-windows-msvc"]
 macos-release = ["build", "--release", "--target", "x86_64-apple-darwin"]
 macos-arm-release = ["build", "--release", "--target", "aarch64-apple-darwin"]
-
-# =============================================================================
-# Source Configuration
-# =============================================================================
-
-# Note: Rust 1.68+ uses sparse registry by default, no configuration needed
-# For older versions, use: cargo +stable build
+fast = ["build", "--profile", "fast-release"]
+fast-test = ["test", "--profile", "fast-release"]
 
 # =============================================================================
 # HTTP Configuration
 # =============================================================================
 
 [http]
-# Check for new crate versions
 check-revoke = true
-
-# Multiplexing for HTTP/2
 multiplexing = true

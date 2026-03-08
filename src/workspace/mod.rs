@@ -8,7 +8,7 @@
 //! Provides functionality for saving and loading workspace state,
 //! including task manifests and metadata.
 
-use crate::models::{Task, TaskStatus};
+use ltmatrix_core::{Task, TaskStatus};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;

@@ -71,7 +71,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 use tracing::{debug, info};
 
-use crate::config::settings::MemoryConfig;
+use ltmatrix_config::settings::MemoryConfig;
 
 /// Maximum memory file size before triggering summarization (in bytes)
 const MAX_MEMORY_SIZE: usize = 50 * 1024; // 50KB

@@ -13,7 +13,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use tracing::{debug, info, warn};
 
-use crate::models::{ModeConfig, Task};
+use ltmatrix_core::{ModeConfig, Task};
 
 /// Configuration for the test stage
 #[derive(Debug, Clone)]

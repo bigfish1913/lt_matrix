@@ -16,7 +16,7 @@ use serde_json::json;
 use std::io::Write;
 
 use crate::cli::args::OutputFormat;
-use crate::models::{Task, TaskComplexity, TaskStatus};
+use ltmatrix_core::{Task, TaskComplexity, TaskStatus};
 
 /// Result data that can be formatted
 #[derive(Debug, Clone)]
@@ -688,7 +688,7 @@ impl ReportGenerator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::TaskComplexity;
+    use ltmatrix_core::TaskComplexity;
 
     #[test]
     fn test_terminal_formatter_basic() {

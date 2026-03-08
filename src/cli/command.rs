@@ -8,7 +8,7 @@
 //! This module handles the execution of different CLI commands and subcommands.
 
 use super::args::{Args, Command, CleanupArgs, MemoryArgs};
-use crate::config::settings::{self, CliOverrides};
+use ltmatrix_config::settings::{self, CliOverrides};
 use crate::interactive::{ClarificationRunner, ClarificationSession, NonInteractiveRunner};
 use crate::workspace::WorkspaceState;
 use anyhow::{Context, Result};
@@ -46,7 +46,7 @@ fn execute_run(args: &Args) -> Result<()> {
     // Regular execution requires a goal
     if let Some(goal) = &args.goal {
         // Load configuration with CLI overrides
-        let overrides = CliOverrides::from(args.clone());
+        let overrides = args.to_overrides();
         let config = settings::load_config_with_overrides(Some(overrides))
             .context("Failed to load configuration")?;
 
@@ -150,7 +150,7 @@ fn execute_resume(args: &Args) -> Result<()> {
     println!();
 
     // Load configuration
-    let overrides = CliOverrides::from(args.clone());
+    let overrides = args.to_overrides();
     let config = settings::load_config_with_overrides(Some(overrides))
         .context("Failed to load configuration")?;
 
@@ -532,7 +532,7 @@ pub fn execute_memory(args: &MemoryArgs) -> Result<()> {
 /// Execute memory summarize subcommand
 fn execute_memory_summarize(args: &super::args::MemorySummarizeArgs) -> Result<()> {
     use crate::memory::MemoryStore;
-    use crate::config::settings::MemoryConfig;
+    use ltmatrix_config::settings::MemoryConfig;
     use std::env;
 
     println!("ltmatrix - Memory Summarization");
@@ -626,7 +626,7 @@ fn execute_memory_summarize(args: &super::args::MemorySummarizeArgs) -> Result<(
 /// Execute memory status subcommand
 fn execute_memory_status(args: &super::args::MemoryStatusArgs) -> Result<()> {
     use crate::memory::MemoryStore;
-    use crate::config::settings::MemoryConfig;
+    use ltmatrix_config::settings::MemoryConfig;
     use std::env;
 
     println!("ltmatrix - Memory Status");

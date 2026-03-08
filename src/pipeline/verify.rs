@@ -14,9 +14,9 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tracing::{info, warn};
 
-use crate::agent::backend::{AgentBackend, ExecutionConfig};
-use crate::agent::claude::ClaudeAgent;
-use crate::models::{ModeConfig, Task, TaskStatus};
+use ltmatrix_agent::backend::{AgentBackend, ExecutionConfig};
+use ltmatrix_agent::claude::ClaudeAgent;
+use ltmatrix_core::{ModeConfig, Task, TaskStatus};
 
 /// Configuration for the verify stage
 #[derive(Debug, Clone)]

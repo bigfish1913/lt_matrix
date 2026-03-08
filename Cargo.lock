@@ -928,6 +928,10 @@ dependencies = [
  "git2",
  "glob",
  "indicatif",
+ "ltmatrix-agent",
+ "ltmatrix-config",
+ "ltmatrix-core",
+ "ltmatrix-mcp",
  "regex",
  "reqwest",
  "scopeguard",
@@ -946,6 +950,71 @@ dependencies = [
  "tracing-subscriber",
  "uuid",
  "which",
+]
+
+[[package]]
+name = "ltmatrix-agent"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "chrono",
+ "ltmatrix-config",
+ "ltmatrix-core",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 1.0.69",
+ "tokio",
+ "tracing",
+ "uuid",
+ "which",
+]
+
+[[package]]
+name = "ltmatrix-config"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "dirs",
+ "ltmatrix-core",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 1.0.69",
+ "tokio",
+ "toml",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "ltmatrix-core"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "serde",
+ "serde_json",
+ "thiserror 1.0.69",
+ "uuid",
+]
+
+[[package]]
+name = "ltmatrix-mcp"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "chrono",
+ "ltmatrix-core",
+ "serde",
+ "serde_json",
+ "thiserror 1.0.69",
+ "tokio",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]
@@ -1802,7 +1871,6 @@ dependencies = [
  "bytes",
  "libc",
  "mio",
- "parking_lot",
  "pin-project-lite",
  "signal-hook-registry",
  "socket2",

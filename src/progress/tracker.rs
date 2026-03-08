@@ -7,7 +7,7 @@
 //!
 //! This module provides progress tracking functionality with colorized output.
 
-use crate::models::TaskStatus;
+use ltmatrix_core::TaskStatus;
 use crate::terminal::{self, ColorConfig};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};

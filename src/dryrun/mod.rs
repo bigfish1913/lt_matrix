@@ -14,7 +14,7 @@
 use anyhow::{Context, Result};
 use tracing::info;
 
-use crate::models::{ExecutionMode, Task, TaskComplexity};
+use ltmatrix_core::{ExecutionMode, Task, TaskComplexity};
 use crate::pipeline::assess::{assess_tasks, AssessConfig};
 use crate::tasks::scheduler::{schedule_tasks, ExecutionPlan};
 

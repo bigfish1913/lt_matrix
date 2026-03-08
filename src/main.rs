@@ -247,7 +247,7 @@ fn load_configuration(args: &Args) -> Result<Config> {
     debug!("Loading configuration");
 
     // Create CLI overrides from command-line arguments
-    let overrides = CliOverrides::from(args.clone());
+    let overrides = args.to_overrides();
 
     // Load config with overrides
     let config = settings::load_config_with_overrides(Some(overrides))

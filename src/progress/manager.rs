@@ -8,7 +8,7 @@
 //! This module provides the ProgressManager for coordinating multiple progress bars,
 //! tracking task progress, and displaying real-time updates.
 
-use crate::models::{Task, TaskStatus};
+use ltmatrix_core::{Task, TaskStatus};
 use crate::terminal::ColorConfig;
 use crate::progress::tracker::{ProgressTracker, TrackerColorConfig};
 use crate::progress::eta::{EtaCalculator, HistoricalData, MetricsCollector, format_eta};

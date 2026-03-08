@@ -8,7 +8,7 @@
 //! This module provides ETA calculation based on historical task performance
 //! and enhanced metrics collection for progress tracking.
 
-use crate::models::{Task, TaskComplexity};
+use ltmatrix_core::{Task, TaskComplexity};
 use std::collections::HashMap;
 use std::time::Duration;
 

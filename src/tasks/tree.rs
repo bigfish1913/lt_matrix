@@ -8,7 +8,7 @@
 //! This module provides ASCII tree visualization for task hierarchies,
 //! showing parent-child relationships using Unicode tree-drawing characters.
 
-use crate::models::{Task, TaskStatus};
+use ltmatrix_core::{Task, TaskStatus};
 
 /// Formats a task and its subtasks as an ASCII tree
 ///

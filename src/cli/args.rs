@@ -147,6 +147,63 @@ impl Args {
     pub fn is_run_command(&self) -> bool {
         self.command.is_none()
     }
+
+    /// Convert to CLI overrides for configuration
+    pub fn to_overrides(&self) -> ltmatrix_config::settings::CliOverrides {
+        // Determine mode string from flags
+        let mode = if self.fast {
+            Some("fast".to_string())
+        } else if self.expert {
+            Some("expert".to_string())
+        } else if self.mode.is_some() {
+            self.mode.map(|m| m.to_string())
+        } else {
+            None
+        };
+
+        // Convert CLI log level to config log level
+        let log_level = self.log_level.map(|cli_level| {
+            use ltmatrix_config::settings::LogLevel as ConfigLogLevel;
+            match cli_level {
+                LogLevel::Trace => ConfigLogLevel::Trace,
+                LogLevel::Debug => ConfigLogLevel::Debug,
+                LogLevel::Info => ConfigLogLevel::Info,
+                LogLevel::Warn => ConfigLogLevel::Warn,
+                LogLevel::Error => ConfigLogLevel::Error,
+            }
+        });
+
+        // Convert CLI output format to config output format
+        let output_format = self.output.map(|cli_format| {
+            use ltmatrix_config::settings::OutputFormat as ConfigOutputFormat;
+            match cli_format {
+                OutputFormat::Text => ConfigOutputFormat::Text,
+                OutputFormat::Json => ConfigOutputFormat::Json,
+                OutputFormat::JsonCompact => ConfigOutputFormat::Json,
+            }
+        });
+
+        ltmatrix_config::settings::CliOverrides {
+            config_file: self.config.clone(),
+            agent: self.agent.clone(),
+            mode,
+            output_format,
+            log_level,
+            log_file: self.log_file.clone(),
+            max_retries: self.max_retries,
+            timeout: self.timeout,
+            no_color: if self.no_color { Some(true) } else { None },
+            dry_run: self.dry_run,
+            resume: self.resume,
+            ask: self.ask,
+            regenerate_plan: self.regenerate_plan,
+            on_blocked: self.on_blocked.map(|s| s.to_string()),
+            mcp_config: self.mcp_config.clone(),
+            progress: None,
+            run_tests: None,
+            verify: None,
+        }
+    }
 }
 
 /// Subcommands available in ltmatrix

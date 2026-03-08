@@ -40,22 +40,7 @@ impl MockAgent {
     }
 
     fn create_mock_task(&self) -> Task {
-        Task {
-            id: "mock-task-1".to_string(),
-            title: "Mock Task".to_string(),
-            description: "A mock task for testing".to_string(),
-            status: ltmatrix::models::TaskStatus::Pending,
-            complexity: ltmatrix::models::TaskComplexity::Moderate,
-            depends_on: vec![],
-            subtasks: vec![],
-            retry_count: 0,
-            session_id: None,
-            parent_session_id: None,
-            error: None,
-            created_at: chrono::Utc::now(),
-            started_at: None,
-            completed_at: None,
-        }
+        Task::new("mock-task-1", "Mock Task", "A mock task for testing")
     }
 }
 
@@ -602,6 +587,10 @@ async fn test_claude_agent_implements_trait_contract() {
         description: "Test task".to_string(),
         status: ltmatrix::models::TaskStatus::Pending,
         complexity: ltmatrix::models::TaskComplexity::Moderate,
+        agent_type: ltmatrix::models::AgentType::default(),
+        priority: 5,
+        related_tasks: vec![],
+        resources: None,
         depends_on: vec![],
         subtasks: vec![],
         retry_count: 0,

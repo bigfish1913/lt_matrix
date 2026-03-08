@@ -10,7 +10,7 @@
 use anyhow::Result;
 
 use super::Plugin;
-use crate::models::Task;
+use ltmatrix_core::Task;
 
 /// Trait for output formatter plugins
 pub trait FormatterPlugin: Plugin {

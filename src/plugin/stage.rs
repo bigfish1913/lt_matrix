@@ -12,7 +12,7 @@ use async_trait::async_trait;
 use indicatif::ProgressBar;
 
 use super::{CustomStageConfig, Plugin, StageResult};
-use crate::models::Task;
+use ltmatrix_core::Task;
 
 /// Trait for custom pipeline stages
 #[async_trait]

@@ -50,8 +50,8 @@ use std::time::Duration;
 use tokio::sync::RwLock;
 use tracing::{debug, error, info, instrument, warn};
 
-use crate::agent::AgentPool;
-use crate::models::{
+use ltmatrix_agent::AgentPool;
+use ltmatrix_core::{
     ExecutionMode, ModeConfig, PipelineStage, Task,
 };
 use crate::pipeline::assess::{AssessConfig, assess_tasks};

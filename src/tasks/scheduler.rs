@@ -17,7 +17,7 @@ use anyhow::{bail, Result};
 use std::collections::{HashMap, HashSet, VecDeque};
 use tracing::{debug, info, warn};
 
-use crate::models::Task;
+use ltmatrix_core::Task;
 
 /// Execution plan with optimized task ordering
 #[derive(Debug, Clone)]

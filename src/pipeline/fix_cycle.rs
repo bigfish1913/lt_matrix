@@ -16,8 +16,8 @@ use std::time::Duration;
 use tokio::time::timeout;
 use tracing::{debug, error, info, warn};
 
-use crate::agent::backend::{AgentBackend, ExecutionConfig};
-use crate::agent::claude::ClaudeAgent;
+use ltmatrix_agent::backend::{AgentBackend, ExecutionConfig};
+use ltmatrix_agent::claude::ClaudeAgent;
 use crate::pipeline::coverage::{
     AggregatedFindings, IssueDetail, IssueSeverity, SecurityIssue, TestFailure,
 };

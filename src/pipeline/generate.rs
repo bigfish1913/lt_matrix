@@ -17,9 +17,9 @@ use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use tracing::{debug, info, warn};
 
-use crate::agent::backend::{AgentBackend, ExecutionConfig};
-use crate::agent::ClaudeAgent;
-use crate::models::{Task, TaskComplexity, TaskStatus};
+use ltmatrix_agent::backend::{AgentBackend, ExecutionConfig};
+use ltmatrix_agent::ClaudeAgent;
+use ltmatrix_core::{Task, TaskComplexity, TaskStatus};
 
 /// Configuration for the generation stage
 #[derive(Debug, Clone)]

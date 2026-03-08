@@ -16,7 +16,7 @@
 //! - Graph visualization of execution plans
 //! - Export to .mmd files
 
-use crate::models::{Task, TaskStatus};
+use ltmatrix_core::{Task, TaskStatus};
 use crate::tasks::scheduler::ExecutionPlan;
 use std::collections::HashMap;
 use std::fs;

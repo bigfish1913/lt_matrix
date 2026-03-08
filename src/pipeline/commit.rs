@@ -24,7 +24,7 @@ use crate::git::{
     checkout, commit_changes, create_branch, delete_branch, get_current_branch, merge_with_squash,
     stage_all,
 };
-use crate::models::Task;
+use ltmatrix_core::Task;
 
 /// Configuration for the commit stage
 #[derive(Debug, Clone)]

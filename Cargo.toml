@@ -1,28 +1,31 @@
-[package]
-name = "ltmatrix"
+[workspace]
+resolver = "2"
+members = [
+    "crates/ltmatrix-core",
+    "crates/ltmatrix-config",
+    "crates/ltmatrix-mcp",
+    "crates/ltmatrix-agent",
+    ".",
+]
+
+[workspace.package]
 version = "0.1.0"
 edition = "2021"
 authors = ["bigfish <bigfish@example.com>"]
-description = "A high-performance, cross-platform long-time agent orchestrator rewritten in Rust from Python"
 license = "MIT"
 repository = "https://github.com/bigfish/ltmatrix"
 readme = "README.md"
 keywords = ["agent", "orchestrator", "automation", "claude", "development"]
 categories = ["development-tools", "command-line-utilities"]
 
-[dependencies]
-# CLI parsing
-clap = { version = "4.5", features = ["derive"] }
-clap_complete = "4.5"
-clap_mangen = "0.2"
-
+[workspace.dependencies]
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 toml = "0.8"
 
 # Async runtime
-tokio = { version = "1.40", features = ["full"] }
+tokio = { version = "1.40", features = ["rt-multi-thread", "macros", "process", "io-util", "fs", "time", "signal", "sync"] }
 async-trait = "0.1"
 
 # Error handling
@@ -34,20 +37,28 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing-appender = "0.2"
 
+# Datetime handling
+chrono = { version = "0.4", features = ["serde"] }
+
+# UUID generation
+uuid = { version = "1.11", features = ["v4", "serde"] }
+
+# Directory resolution
+dirs = "5.0"
+
+# CLI parsing
+clap = { version = "4.5", features = ["derive"] }
+clap_complete = "4.5"
+clap_mangen = "0.2"
+
 # Progress bars
 indicatif = "0.17"
 
 # Git operations
-# Use vendored libgit2 for static linking on musl targets
-# SSH support removed for static builds (requires OpenSSL)
 git2 = { version = "0.19", default-features = false, features = ["vendored-libgit2"] }
 
 # HTTP client
-# Use rustls-tls for pure Rust TLS (statically linkable)
 reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
-
-# Datetime handling
-chrono = { version = "0.4", features = ["serde"] }
 
 # Terminal handling
 console = "0.15"
@@ -58,14 +69,8 @@ dialoguer = "0.11"
 # Temporary file handling
 tempfile = "3.12"
 
-# UUID generation
-uuid = { version = "1.11", features = ["v4", "serde"] }
-
 # Command detection
 which = "6.0"
-
-# Directory resolution
-dirs = "5.0"
 
 # Regular expressions
 regex = "1.10"
@@ -73,41 +78,108 @@ regex = "1.10"
 # Glob pattern matching
 glob = "0.3"
 
+# Internal crates
+ltmatrix-core = { path = "crates/ltmatrix-core" }
+ltmatrix-config = { path = "crates/ltmatrix-config" }
+ltmatrix-mcp = { path = "crates/ltmatrix-mcp" }
+ltmatrix-agent = { path = "crates/ltmatrix-agent" }
+
+# Main package configuration
+[package]
+name = "ltmatrix"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+description = "A high-performance, cross-platform long-time agent orchestrator rewritten in Rust from Python"
+license.workspace = true
+repository.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+# Internal crates
+ltmatrix-core = { workspace = true }
+ltmatrix-config = { workspace = true }
+ltmatrix-mcp = { workspace = true }
+ltmatrix-agent = { workspace = true }
+
+# CLI parsing
+clap = { workspace = true }
+clap_complete = { workspace = true }
+clap_mangen = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+toml = { workspace = true }
+
+# Async runtime
+tokio = { workspace = true }
+async-trait = { workspace = true }
+
+# Error handling
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+
+# Logging
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+tracing-appender = { workspace = true }
+
+# Progress bars
+indicatif = { workspace = true }
+
+# Git operations
+git2 = { workspace = true }
+
+# HTTP client
+reqwest = { workspace = true }
+
+# Datetime handling
+chrono = { workspace = true }
+
+# Terminal handling
+console = { workspace = true }
+
+# Interactive prompts
+dialoguer = { workspace = true }
+
+# Temporary file handling
+tempfile = { workspace = true }
+
+# UUID generation
+uuid = { workspace = true }
+
+# Command detection
+which = { workspace = true }
+
+# Directory resolution
+dirs = { workspace = true }
+
+# Regular expressions
+regex = { workspace = true }
+
+# Glob pattern matching
+glob = { workspace = true }
+
 # Signal handling (Unix only)
 [target.'cfg(unix)'.dependencies]
 signal-hook = "0.3"
 signal-hook-tokio = { version = "0.3", features = ["futures-v0_3"] }
 
 [features]
-# Default features - balanced for development and production
 default = []
-
-# SSH support for git operations (requires OpenSSL, not suitable for static builds)
 ssh = ["git2/ssh"]
-
-# Static linking feature for musl targets
-# Note: Cannot use SSH feature with static builds due to OpenSSL
-static = [
-    "git2/vendored-libgit2",
-]
-
-# Minimal build - reduces dependencies
+static = ["git2/vendored-libgit2"]
 minimal = []
-
-# Full feature set - all optional features
-# Note: SSH and static are mutually exclusive due to OpenSSL
 full = ["ssh"]
 
 [package.metadata.docs.rs]
-# Features to enable when building docs on docs.rs
 features = ["full"]
-# Target to build docs for
 targets = ["x86_64-unknown-linux-gnu", "x86_64-apple-darwin", "x86_64-pc-windows-msvc"]
 
 [dev-dependencies]
-# YAML parsing for CI/CD workflow tests
 serde_yaml = "0.9"
-# Serial test execution for tests that modify global state
 serial_test = "3.0"
-# Guard pattern for ensuring cleanup in tests
 scopeguard = "1.2"

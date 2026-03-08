@@ -41,9 +41,9 @@ use std::path::PathBuf;
 use thiserror::Error;
 use tracing::info;
 
-use crate::agent::backend::{AgentBackend, ExecutionConfig};
-use crate::agent::claude::ClaudeAgent;
-use crate::models::{ModeConfig, Task, TaskStatus};
+use ltmatrix_agent::backend::{AgentBackend, ExecutionConfig};
+use ltmatrix_agent::claude::ClaudeAgent;
+use ltmatrix_core::{ModeConfig, Task, TaskStatus};
 
 // =============================================================================
 // Error Types for Pipeline Integration

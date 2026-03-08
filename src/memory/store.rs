@@ -13,7 +13,7 @@ use anyhow::Result;
 use std::path::Path;
 use tracing::{debug, info};
 
-use crate::models::Task;
+use ltmatrix_core::Task;
 use super::memory::{MemoryEntry, MemoryStore};
 use super::extractor::{extract_memory_from_task, extract_task_summary};
 
@@ -147,7 +147,7 @@ pub fn truncate_memory_context(context: &str, max_size: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::{Task, TaskStatus, TaskComplexity};
+    use ltmatrix_core::{Task, TaskStatus, TaskComplexity};
     use tempfile::TempDir;
 
     fn create_test_task() -> Task {

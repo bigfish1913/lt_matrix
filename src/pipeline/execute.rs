@@ -19,11 +19,11 @@ use std::path::{Path, PathBuf};
 use tokio::fs;
 use tracing::{debug, error, info, warn};
 
-use crate::agent::backend::{AgentBackend, ExecutionConfig};
-use crate::agent::claude::ClaudeAgent;
-use crate::agent::session::SessionManager;
-use crate::agent::AgentPool;
-use crate::models::{ModeConfig, Task, TaskComplexity, TaskStatus};
+use ltmatrix_agent::backend::{AgentBackend, ExecutionConfig};
+use ltmatrix_agent::claude::ClaudeAgent;
+use ltmatrix_agent::session::SessionManager;
+use ltmatrix_agent::AgentPool;
+use ltmatrix_core::{ModeConfig, Task, TaskComplexity, TaskStatus};
 use crate::workspace::WorkspaceState;
 
 /// Configuration for the execution stage
@@ -724,7 +724,7 @@ fn save_workspace_state(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::TaskComplexity;
+    use ltmatrix_core::TaskComplexity;
 
     #[test]
     fn test_execute_config_default() {

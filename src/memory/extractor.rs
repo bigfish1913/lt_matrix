@@ -42,7 +42,7 @@ use anyhow::Result;
 use regex::Regex;
 use tracing::debug;
 
-use crate::models::Task;
+use ltmatrix_core::Task;
 use super::memory::{MemoryEntry, MemoryCategory};
 
 /// Extract memory entries from a completed task
@@ -422,7 +422,7 @@ pub fn extract_files_affected(result: &str) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::{Task, TaskStatus, TaskComplexity};
+    use ltmatrix_core::{Task, TaskStatus, TaskComplexity};
 
     fn create_test_task() -> Task {
         let mut task = Task::new("task-001", "Test Task", "Test description");

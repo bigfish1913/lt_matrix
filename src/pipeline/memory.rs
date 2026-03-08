@@ -12,7 +12,7 @@ use anyhow::Result;
 use std::path::PathBuf;
 use tracing::{debug, info};
 
-use crate::models::Task;
+use ltmatrix_core::Task;
 
 /// Configuration for the memory stage
 #[derive(Debug, Clone)]
@@ -117,7 +117,7 @@ pub async fn update_memory(tasks: &[Task], config: &MemoryConfig) -> Result<()> 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::{Task, TaskStatus};
+    use ltmatrix_core::{Task, TaskStatus};
 
     #[test]
     fn test_memory_config_default() {

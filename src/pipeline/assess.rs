@@ -16,9 +16,9 @@ use anyhow::{Context, Result};
 use serde_json::Value;
 use tracing::{debug, info, warn};
 
-use crate::agent::backend::{AgentBackend, ExecutionConfig};
-use crate::agent::ClaudeAgent;
-use crate::models::{ModeConfig, Task, TaskComplexity, TaskStatus};
+use ltmatrix_agent::backend::{AgentBackend, ExecutionConfig};
+use ltmatrix_agent::ClaudeAgent;
+use ltmatrix_core::{ModeConfig, Task, TaskComplexity, TaskStatus};
 
 /// Configuration for the assessment stage
 #[derive(Debug, Clone)]
