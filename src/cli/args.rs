@@ -52,6 +52,10 @@ pub struct Args {
     #[arg(value_name = "GOAL")]
     pub goal: Option<String>,
 
+    /// Read goal from file
+    #[arg(short = 'f', long, value_name = "FILE")]
+    pub file: Option<PathBuf>,
+
     /// Agent backend to use
     #[arg(long, value_name = "AGENT")]
     pub agent: Option<String>,

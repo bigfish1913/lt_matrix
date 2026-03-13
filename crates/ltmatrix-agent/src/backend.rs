@@ -271,6 +271,12 @@ pub struct AgentConfig {
 
     /// Whether to enable session reuse
     pub enable_session: bool,
+
+    /// API key for authentication (optional)
+    pub api_key: Option<String>,
+
+    /// Base URL for API endpoint (optional, for custom/proxy endpoints)
+    pub base_url: Option<String>,
 }
 
 impl Default for AgentConfig {
@@ -282,6 +288,8 @@ impl Default for AgentConfig {
             timeout_secs: 3600,
             max_retries: 3,
             enable_session: true,
+            api_key: None,
+            base_url: None,
         }
     }
 }
@@ -360,6 +368,16 @@ impl AgentConfigBuilder {
 
     pub fn enable_session(mut self, enable_session: bool) -> Self {
         self.config.enable_session = enable_session;
+        self
+    }
+
+    pub fn api_key(mut self, api_key: impl Into<String>) -> Self {
+        self.config.api_key = Some(api_key.into());
+        self
+    }
+
+    pub fn base_url(mut self, base_url: impl Into<String>) -> Self {
+        self.config.base_url = Some(base_url.into());
         self
     }
 

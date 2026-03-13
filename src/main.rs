@@ -364,8 +364,12 @@ fn is_shutdown_requested() -> bool {
 fn execute_run_command(app_state: &mut AppState) -> Result<i32> {
     let args = &app_state.args;
 
-    // Ensure we have a goal
-    let goal = if let Some(ref goal) = args.goal {
+    // Ensure we have a goal (from CLI arg or file)
+    let goal = if let Some(ref file_path) = args.file {
+        // Read goal from file
+        std::fs::read_to_string(file_path)
+            .with_context(|| format!("Failed to read goal from file: {}", file_path.display()))?
+    } else if let Some(ref goal) = args.goal {
         goal.clone()
     } else {
         print_help();

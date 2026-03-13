@@ -176,6 +176,12 @@ impl ClaudeAgent {
             debug!("Using API key from environment variable (if set)");
         }
 
+        // Set base URL from config if available (for custom/proxy endpoints)
+        if let Some(ref base_url) = self.agent.base_url {
+            debug!("Using base URL from configuration: {}", base_url);
+            command.env("ANTHROPIC_BASE_URL", base_url);
+        }
+
         // Spawn the Claude process
         let mut child = command
             .spawn()

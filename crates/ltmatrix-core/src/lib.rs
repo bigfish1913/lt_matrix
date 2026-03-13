@@ -315,6 +315,10 @@ pub struct Agent {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub api_key: Option<String>,
 
+    /// Base URL for API endpoint (optional, for custom/proxy endpoints)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub base_url: Option<String>,
+
     /// Whether this agent is the default
     #[serde(default)]
     pub is_default: bool,
@@ -334,6 +338,7 @@ impl Agent {
             model: model.into(),
             timeout,
             api_key: None,
+            base_url: None,
             is_default: false,
         }
     }
@@ -341,6 +346,12 @@ impl Agent {
     /// Sets the API key for this agent
     pub fn with_api_key(mut self, api_key: impl Into<String>) -> Self {
         self.api_key = Some(api_key.into());
+        self
+    }
+
+    /// Sets the base URL for this agent
+    pub fn with_base_url(mut self, base_url: impl Into<String>) -> Self {
+        self.base_url = Some(base_url.into());
         self
     }
 

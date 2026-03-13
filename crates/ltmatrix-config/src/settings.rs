@@ -99,6 +99,12 @@ pub struct AgentConfig {
 
     /// Timeout in seconds
     pub timeout: Option<u64>,
+
+    /// API key for authentication
+    pub api_key: Option<String>,
+
+    /// Base URL for API endpoint (for custom/proxy endpoints)
+    pub base_url: Option<String>,
 }
 
 /// Mode-specific configurations
@@ -620,6 +626,8 @@ fn merge_agent_configs(
                 command: override_agent.command.or(base_agent.command),
                 model: override_agent.model.or(base_agent.model),
                 timeout: override_agent.timeout.or(base_agent.timeout),
+                api_key: override_agent.api_key.or(base_agent.api_key),
+                base_url: override_agent.base_url.or(base_agent.base_url),
             };
             base.insert(key, merged);
         } else {
@@ -1096,7 +1104,19 @@ pub fn agent_config_to_agent(name: &str, config: &AgentConfig) -> Result<Agent> 
 
     let timeout = config.timeout.unwrap_or(3600);
 
-    Ok(Agent::new(name, command, model, timeout))
+    let mut agent = Agent::new(name, command, model, timeout);
+
+    // Set api_key if configured
+    if let Some(ref api_key) = config.api_key {
+        agent.api_key = Some(api_key.clone());
+    }
+
+    // Set base_url if configured
+    if let Some(ref base_url) = config.base_url {
+        agent.base_url = Some(base_url.clone());
+    }
+
+    Ok(agent)
 }
 
 /// Gets the default agent from configuration

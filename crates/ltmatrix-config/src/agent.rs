@@ -67,6 +67,14 @@ pub struct AgentConfig {
     /// Enable verbose logging for this agent
     #[serde(default)]
     pub verbose: bool,
+
+    /// API key for authentication
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub api_key: Option<String>,
+
+    /// Base URL for API endpoint (for custom/proxy endpoints)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub base_url: Option<String>,
 }
 
 impl Default for AgentConfig {
@@ -79,6 +87,8 @@ impl Default for AgentConfig {
             env: HashMap::new(),
             max_retries: default_max_retries(),
             verbose: false,
+            api_key: None,
+            base_url: None,
         }
     }
 }
@@ -125,6 +135,18 @@ impl AgentConfig {
     /// Enable verbose logging
     pub fn with_verbose(mut self, verbose: bool) -> Self {
         self.verbose = verbose;
+        self
+    }
+
+    /// Set API key
+    pub fn with_api_key(mut self, api_key: impl Into<String>) -> Self {
+        self.api_key = Some(api_key.into());
+        self
+    }
+
+    /// Set base URL
+    pub fn with_base_url(mut self, base_url: impl Into<String>) -> Self {
+        self.base_url = Some(base_url.into());
         self
     }
 

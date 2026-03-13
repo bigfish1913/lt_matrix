@@ -442,6 +442,10 @@ pub async fn generate_tasks(goal: &str, config: &GenerateConfig) -> Result<Gener
         .context("Failed to execute generation prompt")?;
 
     // Parse response into tasks
+    // Debug: print the response to see what we got
+    debug!("Raw response from agent: {}", response.output);
+    debug!("Response length: {} characters", response.output.len());
+
     let mut tasks = parse_generation_response(&response.output)
         .context("Failed to parse generation response")?;
 
@@ -586,6 +590,11 @@ Respond ONLY with valid JSON in this exact format:
 
 /// Parses Claude's response and extracts tasks
 fn parse_generation_response(response: &str) -> Result<Vec<Task>> {
+    // Debug: print response to help debugging
+    eprintln!("=== DEBUG: Raw Agent Response ===");
+    eprintln!("{}", response);
+    eprintln!("=== End of Response ===");
+
     // Extract JSON from response
     let json_str =
         extract_json_block(response).context("No JSON block found in generation response")?;
@@ -655,10 +664,40 @@ fn parse_generation_response(response: &str) -> Result<Vec<Task>> {
 
 /// Extracts JSON block from markdown response
 fn extract_json_block(text: &str) -> Option<&str> {
-    // Look for ```json block
-    let json_start = text.find("```json")? + 7; // Skip past ```json
-    let json_end = text[json_start..].find("```")?;
-    Some(text[json_start..json_start + json_end].trim())
+    // First try to find ```json block
+    if let Some(json_start) = text.find("```json") {
+        let start = json_start + 7; // Skip past ```json
+        if let Some(json_end) = text[start..].find("```") {
+            return Some(text[start..start + json_end].trim());
+        }
+    }
+
+    // Fallback: try to find direct JSON (look for { })
+    if let Some(bracket_start) = text.find('{') {
+        // Try to find matching closing bracket
+        let mut bracket_count = 0;
+        let mut end = bracket_start;
+
+        for c in text[bracket_start..].chars() {
+            match c {
+                '{' => bracket_count += 1,
+                '}' => {
+                    bracket_count -= 1;
+                    if bracket_count == 0 {
+                        end = text[bracket_start..].find(c).unwrap() + 1;
+                        break;
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        if end > bracket_start {
+            return Some(text[bracket_start..end].trim());
+        }
+    }
+
+    None
 }
 
 /// Validates a list of tasks for common issues
