@@ -1,0 +1,62 @@
+name: Test
+
+on:
+  push:
+    branches:
+      - fix_features
+      - dev
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          components: rustfmt, clippy
+      
+      - name: Cache Cargo dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+      
+      - name: Check formatting
+        run: cargo fmt -- --check
+      
+      - name: Run clippy
+        run: cargo clippy -- -D warnings
+      
+      - name: Run tests
+        run: cargo test --verbose
+      
+      - name: Build
+        run: cargo build --release
+      
+      - name: Notify on success
+        if: success()
+        run: |
+          echo "✅ All tests passed!"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Commit: ${{ github.sha }}"
+      
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "❌ Tests failed!"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Commit: ${{ github.sha }}"
