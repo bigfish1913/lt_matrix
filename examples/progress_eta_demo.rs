@@ -15,7 +15,10 @@ fn main() {
     // First, run a session to build up historical data
     println!("Building historical data...");
     let mut historical_data = build_historical_data();
-    println!("Historical data: {} tasks completed\n", historical_data.total_completed());
+    println!(
+        "Historical data: {} tasks completed\n",
+        historical_data.total_completed()
+    );
 
     // Demo 1: Progress Manager with ETA
     demo_eta_enabled_manager(&historical_data);
@@ -94,7 +97,12 @@ fn demo_eta_enabled_manager(historical_data: &HistoricalData) {
                 } else {
                     String::new()
                 };
-                println!("  Progress: {}% | Elapsed: {}s{}", percent, elapsed.as_secs(), eta_str);
+                println!(
+                    "  Progress: {}% | Elapsed: {}s{}",
+                    percent,
+                    elapsed.as_secs(),
+                    eta_str
+                );
             }
         }
 
@@ -183,7 +191,10 @@ fn demo_metrics_collection() {
     println!("\nMetrics Summary:");
     println!("  Total tracked: {}", metrics.total_tracked);
     println!("  Total completed: {}", metrics.total_completed);
-    println!("  Average duration: {}ms", metrics.average_duration.as_millis());
+    println!(
+        "  Average duration: {}ms",
+        metrics.average_duration.as_millis()
+    );
 
     println!("\nBy Complexity:");
     for (complexity, complexity_metrics) in &metrics.by_complexity {

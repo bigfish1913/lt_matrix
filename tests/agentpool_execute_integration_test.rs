@@ -6,7 +6,7 @@
 use ltmatrix::agent::AgentPool;
 use ltmatrix::config::settings::{Config, PoolConfig, WarmupConfig};
 use ltmatrix::models::{ModeConfig, Task, TaskComplexity};
-use ltmatrix::pipeline::execute::{ExecuteConfig, execute_tasks, ExecutionStatistics};
+use ltmatrix::pipeline::execute::{execute_tasks, ExecuteConfig, ExecutionStatistics};
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -48,7 +48,10 @@ async fn test_session_reuse_across_tasks() {
         .await;
 
     // Sessions should be the same for same agent/model
-    assert_eq!(session1, session2, "Sessions should be reused for same agent/model");
+    assert_eq!(
+        session1, session2,
+        "Sessions should be reused for same agent/model"
+    );
 }
 
 /// Test session inheritance in dependency chains

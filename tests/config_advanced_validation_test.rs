@@ -13,7 +13,8 @@
 use clap::Parser;
 use ltmatrix::cli::Args;
 use ltmatrix::config::settings::{
-    load_config_from_args, AgentConfig, CliOverrides, Config, LogLevel, ModeConfig, OutputFormat, WarmupConfig,
+    load_config_from_args, AgentConfig, CliOverrides, Config, LogLevel, ModeConfig, OutputFormat,
+    WarmupConfig,
 };
 use std::fs;
 use std::path::{Path, PathBuf};

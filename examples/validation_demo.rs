@@ -18,14 +18,18 @@ fn main() {
     let long_goal = "a".repeat(11_000);
     let goals = vec![
         "Build a REST API with authentication",
-        "", // Invalid: empty
-        "!!!", // Invalid: no alphanumeric
+        "",         // Invalid: empty
+        "!!!",      // Invalid: no alphanumeric
         &long_goal, // Invalid: too long
     ];
 
     for goal in goals {
         match validate_goal(goal) {
-            Ok(()) => println!("✓ Valid goal: '{}{}'", goal.chars().take(50).collect::<String>(), if goal.len() > 50 { "..." } else { "" }),
+            Ok(()) => println!(
+                "✓ Valid goal: '{}{}'",
+                goal.chars().take(50).collect::<String>(),
+                if goal.len() > 50 { "..." } else { "" }
+            ),
             Err(e) => println!("✗ Invalid goal: {}", e),
         }
     }
@@ -38,11 +42,11 @@ fn main() {
     let task_ids = vec![
         "task-1",
         "task-42",
-        "task-1-1", // Subtask
+        "task-1-1",   // Subtask
         "task-1-2-3", // Nested subtask
-        "invalid", // Invalid format
-        "Task-1", // Invalid: wrong case
-        "task_", // Invalid: wrong separator
+        "invalid",    // Invalid format
+        "Task-1",     // Invalid: wrong case
+        "task_",      // Invalid: wrong separator
     ];
 
     for task_id in task_ids {
@@ -57,13 +61,21 @@ fn main() {
     println!("3. Task ID Uniqueness");
     println!("----------------------");
 
-    let unique_ids = vec!["task-1".to_string(), "task-2".to_string(), "task-3".to_string()];
+    let unique_ids = vec![
+        "task-1".to_string(),
+        "task-2".to_string(),
+        "task-3".to_string(),
+    ];
     match validate_task_ids_unique(&unique_ids) {
         Ok(()) => println!("✓ All task IDs are unique: {:?}", unique_ids),
         Err(e) => println!("✗ Duplicate IDs: {}", e),
     }
 
-    let duplicate_ids = vec!["task-1".to_string(), "task-2".to_string(), "task-1".to_string()];
+    let duplicate_ids = vec![
+        "task-1".to_string(),
+        "task-2".to_string(),
+        "task-1".to_string(),
+    ];
     match validate_task_ids_unique(&duplicate_ids) {
         Ok(()) => println!("✓ All task IDs are unique: {:?}", duplicate_ids),
         Err(e) => println!("✗ Duplicate IDs: {}", e),
@@ -149,7 +161,11 @@ fn main() {
     }
 
     // Step 2: Validate task IDs
-    let tasks = vec!["task-1".to_string(), "task-2".to_string(), "task-3".to_string()];
+    let tasks = vec![
+        "task-1".to_string(),
+        "task-2".to_string(),
+        "task-3".to_string(),
+    ];
     match validate_task_ids_unique(&tasks) {
         Ok(()) => println!("  ✓ Validating task IDs: Task IDs validated"),
         Err(e) => println!("  ✗ Validating task IDs: {}", e),

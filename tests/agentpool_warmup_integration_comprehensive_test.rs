@@ -3,9 +3,11 @@
 //! These tests verify the complete integration between SessionPool and WarmupExecutor,
 //! including initialization, execution, failure handling, and session management.
 
+use ltmatrix::agent::backend::{
+    AgentBackend, AgentConfig, AgentResponse, AgentSession, ExecutionConfig,
+};
 use ltmatrix::agent::pool::SessionPool;
 use ltmatrix::agent::warmup::WarmupExecutor;
-use ltmatrix::agent::backend::{AgentBackend, AgentConfig, ExecutionConfig, AgentResponse, AgentSession};
 use ltmatrix::config::settings::WarmupConfig;
 use ltmatrix::models::Agent;
 
@@ -51,7 +53,11 @@ impl MockWarmupBackend {
 
 #[async_trait::async_trait]
 impl AgentBackend for MockWarmupBackend {
-    async fn execute(&self, _prompt: &str, _config: &ExecutionConfig) -> anyhow::Result<AgentResponse> {
+    async fn execute(
+        &self,
+        _prompt: &str,
+        _config: &ExecutionConfig,
+    ) -> anyhow::Result<AgentResponse> {
         match &self.behavior {
             MockBehavior::Success => Ok(AgentResponse {
                 output: "Ready".to_string(),
@@ -109,7 +115,10 @@ impl AgentBackend for MockWarmupBackend {
         }
     }
 
-    async fn validate_config(&self, _config: &AgentConfig) -> Result<(), ltmatrix::agent::backend::AgentError> {
+    async fn validate_config(
+        &self,
+        _config: &AgentConfig,
+    ) -> Result<(), ltmatrix::agent::backend::AgentError> {
         Ok(())
     }
 
@@ -134,7 +143,10 @@ fn sessionpool_with_warmup_stores_executor() {
     let executor = WarmupExecutor::new(config);
     let pool = SessionPool::with_warmup(executor);
 
-    assert!(pool.has_warmup(), "Pool should report having warmup capability");
+    assert!(
+        pool.has_warmup(),
+        "Pool should report having warmup capability"
+    );
 }
 
 #[test]
@@ -172,10 +184,15 @@ async fn warmup_executor_succeeds_with_healthy_backend() {
 
     let backend = MockWarmupBackend::success("claude", "claude-sonnet-4-6");
 
-    let result = executor.warmup_agent(&backend, &mut pool).await
+    let result = executor
+        .warmup_agent(&backend, &mut pool)
+        .await
         .expect("Warmup should complete without panicking");
 
-    assert!(result.is_success(), "Warmup should succeed with healthy backend");
+    assert!(
+        result.is_success(),
+        "Warmup should succeed with healthy backend"
+    );
     assert_eq!(result.queries_executed(), Some(1), "Should execute 1 query");
 
     // Pool should have a session for the agent
@@ -194,11 +211,20 @@ async fn warmup_executor_skips_when_disabled() {
 
     let backend = MockWarmupBackend::success("claude", "claude-sonnet-4-6");
 
-    let result = executor.warmup_agent(&backend, &mut pool).await
+    let result = executor
+        .warmup_agent(&backend, &mut pool)
+        .await
         .expect("Warmup should complete without panicking");
 
-    assert!(result.is_skipped(), "Warmup should be skipped when disabled");
-    assert_eq!(result.queries_executed(), None, "No queries should be executed");
+    assert!(
+        result.is_skipped(),
+        "Warmup should be skipped when disabled"
+    );
+    assert_eq!(
+        result.queries_executed(),
+        None,
+        "No queries should be executed"
+    );
 }
 
 #[tokio::test]
@@ -215,11 +241,17 @@ async fn warmup_executor_handles_timeout_gracefully() {
 
     let backend = MockWarmupBackend::timeout("claude", "claude-sonnet-4-6");
 
-    let result = executor.warmup_agent(&backend, &mut pool).await
+    let result = executor
+        .warmup_agent(&backend, &mut pool)
+        .await
         .expect("Warmup should complete without panicking");
 
     assert!(result.is_failed(), "Warmup should fail on timeout");
-    assert_eq!(result.queries_executed(), Some(0), "No queries should complete");
+    assert_eq!(
+        result.queries_executed(),
+        Some(0),
+        "No queries should complete"
+    );
 }
 
 #[tokio::test]
@@ -236,11 +268,17 @@ async fn warmup_executor_handles_backend_failure() {
 
     let backend = MockWarmupBackend::failing("claude", "claude-sonnet-4-6");
 
-    let result = executor.warmup_agent(&backend, &mut pool).await
+    let result = executor
+        .warmup_agent(&backend, &mut pool)
+        .await
         .expect("Warmup should complete without panicking");
 
     assert!(result.is_failed(), "Warmup should fail when backend fails");
-    assert_eq!(result.queries_executed(), Some(0), "No queries should succeed");
+    assert_eq!(
+        result.queries_executed(),
+        Some(0),
+        "No queries should succeed"
+    );
 }
 
 #[tokio::test]
@@ -257,7 +295,9 @@ async fn warmup_executor_respects_max_queries() {
 
     let backend = MockWarmupBackend::success("claude", "claude-sonnet-4-6");
 
-    let result = executor.warmup_agent(&backend, &mut pool).await
+    let result = executor
+        .warmup_agent(&backend, &mut pool)
+        .await
         .expect("Warmup should complete");
 
     // Should stop after first successful query
@@ -285,7 +325,9 @@ async fn warmup_creates_reusable_session() {
     let backend = MockWarmupBackend::success("claude", "claude-sonnet-4-6");
 
     // Warm up the agent
-    executor.warmup_agent(&backend, &mut pool).await
+    executor
+        .warmup_agent(&backend, &mut pool)
+        .await
         .expect("Warmup should succeed");
 
     // Check that a session was created
@@ -312,17 +354,25 @@ async fn warmup_reuses_existing_session() {
     let backend = MockWarmupBackend::success("claude", "claude-sonnet-4-6");
 
     // First warmup
-    executor.warmup_agent(&backend, &mut pool).await
+    executor
+        .warmup_agent(&backend, &mut pool)
+        .await
         .expect("First warmup should succeed");
 
     let session_count_after_first = pool.len();
 
     // Second warmup for same agent
-    executor.warmup_agent(&backend, &mut pool).await
+    executor
+        .warmup_agent(&backend, &mut pool)
+        .await
         .expect("Second warmup should succeed");
 
     // Should reuse the same session
-    assert_eq!(pool.len(), session_count_after_first, "Should not create additional session");
+    assert_eq!(
+        pool.len(),
+        session_count_after_first,
+        "Should not create additional session"
+    );
 
     let sessions = pool.list_by_agent("claude");
     assert_eq!(sessions.len(), 1, "Should still have only one session");
@@ -410,9 +460,14 @@ async fn sessionpool_get_or_create_warmup_without_executor() {
     let mut pool = SessionPool::new();
 
     // Should work even without warmup executor
-    let result = pool.get_or_create_warmup("claude", "claude-sonnet-4-6").await;
+    let result = pool
+        .get_or_create_warmup("claude", "claude-sonnet-4-6")
+        .await;
 
-    assert!(result.is_ok(), "Should succeed even without warmup executor");
+    assert!(
+        result.is_ok(),
+        "Should succeed even without warmup executor"
+    );
 
     let session_id = result.unwrap();
     assert!(pool.get(&session_id).is_some(), "Session should be created");
@@ -431,7 +486,9 @@ async fn sessionpool_get_or_create_warmup_with_executor_skips_actual_warmup() {
     let mut pool = SessionPool::with_warmup(executor);
 
     // Current implementation skips actual warmup (test mode)
-    let result = pool.get_or_create_warmup("claude", "claude-sonnet-4-6").await;
+    let result = pool
+        .get_or_create_warmup("claude", "claude-sonnet-4-6")
+        .await;
 
     assert!(result.is_ok(), "Should succeed");
 
@@ -439,7 +496,10 @@ async fn sessionpool_get_or_create_warmup_with_executor_skips_actual_warmup() {
     assert!(pool.get(&session_id).is_some(), "Session should be created");
 
     // Agent should be marked as warmed
-    assert!(pool.is_warmed_up("claude", "claude-sonnet-4-6"), "Agent should be marked as warmed");
+    assert!(
+        pool.is_warmed_up("claude", "claude-sonnet-4-6"),
+        "Agent should be marked as warmed"
+    );
 }
 
 #[tokio::test]
@@ -455,11 +515,15 @@ async fn sessionpool_get_or_create_warmup_reuses_warmed_session() {
     let mut pool = SessionPool::with_warmup(executor);
 
     // First call
-    let session_id1 = pool.get_or_create_warmup("claude", "claude-sonnet-4-6").await
+    let session_id1 = pool
+        .get_or_create_warmup("claude", "claude-sonnet-4-6")
+        .await
         .expect("First call should succeed");
 
     // Second call
-    let session_id2 = pool.get_or_create_warmup("claude", "claude-sonnet-4-6").await
+    let session_id2 = pool
+        .get_or_create_warmup("claude", "claude-sonnet-4-6")
+        .await
         .expect("Second call should succeed");
 
     // Should return the same session
@@ -531,12 +595,17 @@ async fn warmup_with_empty_prompt_template() {
     let backend = MockWarmupBackend::success("claude", "claude-sonnet-4-6");
 
     // Should use default prompt when empty template is provided
-    let result = executor.warmup_agent(&backend, &mut pool).await
+    let result = executor
+        .warmup_agent(&backend, &mut pool)
+        .await
         .expect("Warmup should complete");
 
     // Empty template should fall back to default prompt
     // The warmup should still succeed
-    assert!(result.is_success() || result.is_failed(), "Should handle empty template");
+    assert!(
+        result.is_success() || result.is_failed(),
+        "Should handle empty template"
+    );
 }
 
 #[tokio::test]
@@ -572,7 +641,9 @@ async fn check_agent_available_returns_true_for_healthy_backend() {
     let executor = WarmupExecutor::default();
     let backend = MockWarmupBackend::success("claude", "claude-sonnet-4-6");
 
-    let available = executor.check_agent_available(&backend).await
+    let available = executor
+        .check_agent_available(&backend)
+        .await
         .expect("Check should complete");
 
     assert!(available, "Healthy backend should be available");
@@ -583,7 +654,9 @@ async fn check_agent_available_returns_false_for_failing_backend() {
     let executor = WarmupExecutor::default();
     let backend = MockWarmupBackend::failing("claude", "claude-sonnet-4-6");
 
-    let available = executor.check_agent_available(&backend).await
+    let available = executor
+        .check_agent_available(&backend)
+        .await
         .expect("Check should complete");
 
     assert!(!available, "Failing backend should not be available");
@@ -608,7 +681,9 @@ async fn full_warmup_workflow_from_pool_creation_to_session_reuse() {
 
     // Step 2: Warm up an agent using the executor
     let backend = MockWarmupBackend::success("claude", "claude-sonnet-4-6");
-    let warmup_result = executor.warmup_agent(&backend, &mut pool).await
+    let warmup_result = executor
+        .warmup_agent(&backend, &mut pool)
+        .await
         .expect("Warmup should complete");
 
     assert!(warmup_result.is_success(), "Warmup should succeed");
@@ -623,7 +698,9 @@ async fn full_warmup_workflow_from_pool_creation_to_session_reuse() {
     assert_eq!(session.model(), "claude-sonnet-4-6");
 
     // Step 5: Warmup the same agent again (should reuse)
-    let warmup_result2 = executor.warmup_agent(&backend, &mut pool).await
+    let warmup_result2 = executor
+        .warmup_agent(&backend, &mut pool)
+        .await
         .expect("Second warmup should complete");
 
     assert!(warmup_result2.is_success(), "Second warmup should succeed");

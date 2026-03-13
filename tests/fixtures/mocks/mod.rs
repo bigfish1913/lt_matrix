@@ -497,7 +497,9 @@ impl AgentBackend for DelayedMockAgent {
         session: &dyn AgentSession,
     ) -> anyhow::Result<AgentResponse> {
         tokio::time::sleep(self.delay).await;
-        self.inner.execute_with_session(prompt, config, session).await
+        self.inner
+            .execute_with_session(prompt, config, session)
+            .await
     }
 
     async fn execute_task(

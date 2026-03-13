@@ -2,14 +2,13 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Telemetry event definitions
 //!
 //! This module defines the types of events that can be collected.
 
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use chrono::{DateTime, Utc};
 
 use ltmatrix_core::ExecutionMode;
 
@@ -239,7 +238,11 @@ mod tests {
         let json = serde_json::to_string(&event).unwrap();
         let parsed: TelemetryEvent = serde_json::from_str(&json).unwrap();
 
-        if let TelemetryEvent::SessionStart { session_id: parsed_id, .. } = parsed {
+        if let TelemetryEvent::SessionStart {
+            session_id: parsed_id,
+            ..
+        } = parsed
+        {
             assert_eq!(parsed_id, session_id);
         } else {
             panic!("Expected SessionStart event");
@@ -288,7 +291,11 @@ mod tests {
         };
 
         let cloned = event.clone();
-        if let (TelemetryEvent::SessionStart { os: os1, .. }, TelemetryEvent::SessionStart { os: os2, .. }) = (&event, &cloned) {
+        if let (
+            TelemetryEvent::SessionStart { os: os1, .. },
+            TelemetryEvent::SessionStart { os: os2, .. },
+        ) = (&event, &cloned)
+        {
             assert_eq!(os1, os2);
         } else {
             panic!("Expected SessionStart events");
@@ -313,7 +320,8 @@ mod tests {
 
     #[test]
     fn test_error_category_test_failure() {
-        let category = ErrorCategory::from_error_message("Test execution failed: 2 tests passed, 1 failed");
+        let category =
+            ErrorCategory::from_error_message("Test execution failed: 2 tests passed, 1 failed");
         assert_eq!(category, ErrorCategory::TestFailure);
     }
 

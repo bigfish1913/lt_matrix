@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Task execution stage
 //!
 //! This module implements the Execute stage of the pipeline, which:
@@ -23,12 +22,12 @@ use tokio::fs;
 use tokio::time::sleep;
 use tracing::{debug, error, info, warn};
 
+use crate::workspace::WorkspaceState;
 use ltmatrix_agent::backend::{AgentBackend, ExecutionConfig};
 use ltmatrix_agent::claude::ClaudeAgent;
 use ltmatrix_agent::session::SessionManager;
 use ltmatrix_agent::AgentPool;
 use ltmatrix_core::{AgentType, Mode, ModeConfig, Task, TaskComplexity, TaskStatus};
-use crate::workspace::WorkspaceState;
 
 /// Classification of execution errors for retry decisions
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -75,7 +74,11 @@ pub enum FailureAction {
 ///
 /// Uses formula: base_delay * 2^attempt with optional jitter
 /// Maximum delay is capped to prevent excessive waits
-pub fn calculate_backoff_delay(attempt: u32, base_delay_secs: u64, max_delay_secs: u64) -> Duration {
+pub fn calculate_backoff_delay(
+    attempt: u32,
+    base_delay_secs: u64,
+    max_delay_secs: u64,
+) -> Duration {
     // Exponential backoff: 1s, 2s, 4s, 8s, 16s, etc.
     let multiplier = 2u64.pow(attempt);
     let delay = std::cmp::min(base_delay_secs * multiplier, max_delay_secs);
@@ -173,11 +176,11 @@ pub fn classify_error(error_message: &str) -> ErrorClass {
 }
 
 /// Generate a failure report for a failed task
-pub fn generate_failure_report(
-    task: &Task,
-    task_map: &HashMap<String, Task>,
-) -> FailureReport {
-    let error_message = task.error.clone().unwrap_or_else(|| "Unknown error".to_string());
+pub fn generate_failure_report(task: &Task, task_map: &HashMap<String, Task>) -> FailureReport {
+    let error_message = task
+        .error
+        .clone()
+        .unwrap_or_else(|| "Unknown error".to_string());
     let error_class = classify_error(&error_message);
 
     // Find all downstream tasks that depend on this task
@@ -488,13 +491,7 @@ pub async fn execute_tasks(
         // Execute task with retry logic - use AgentPool if available
         let execution_result = if let Some(pool) = &config.agent_pool {
             execute_task_with_agent_pool(
-                &mut task,
-                &context,
-                model,
-                session_id,
-                pool,
-                &agent,
-                config,
+                &mut task, &context, model, session_id, pool, &agent, config,
             )
             .await?
         } else {
@@ -537,7 +534,10 @@ pub async fn execute_tasks(
         if config.enable_workspace_persistence {
             if let Some(project_root) = &config.project_root {
                 if let Err(e) = save_workspace_state(project_root, &task_map) {
-                    warn!("Failed to save workspace state after task {}: {}", task.id, e);
+                    warn!(
+                        "Failed to save workspace state after task {}: {}",
+                        task.id, e
+                    );
                 }
             }
         }
@@ -982,7 +982,10 @@ pub fn select_model_for_task(task: &Task, mode: Option<Mode>, config: &ExecuteCo
     }
 
     // Fallback to complexity-based model selection
-    config.mode_config.model_for_complexity(&task.complexity).to_string()
+    config
+        .mode_config
+        .model_for_complexity(&task.complexity)
+        .to_string()
 }
 
 /// Check if a task should be executed based on its agent type and the current mode
@@ -1008,10 +1011,7 @@ pub fn should_execute_task(task: &Task, mode: Option<Mode>) -> bool {
 /// # Returns
 ///
 /// Returns `Ok(())` if the state was saved successfully, or an error otherwise.
-fn save_workspace_state(
-    project_root: &Path,
-    task_map: &HashMap<String, Task>,
-) -> Result<()> {
+fn save_workspace_state(project_root: &Path, task_map: &HashMap<String, Task>) -> Result<()> {
     // Load or create workspace state
     let state = if let Ok(loaded) = WorkspaceState::load(project_root.to_path_buf()) {
         loaded
@@ -1188,10 +1188,7 @@ mod tests {
     #[test]
     fn test_classify_error_unknown() {
         // Test unknown error patterns
-        assert_eq!(
-            classify_error("Something went wrong"),
-            ErrorClass::Unknown
-        );
+        assert_eq!(classify_error("Something went wrong"), ErrorClass::Unknown);
         assert_eq!(
             classify_error("An unexpected error occurred"),
             ErrorClass::Unknown
@@ -1257,9 +1254,8 @@ mod tests {
         let mut task = Task::new("task-1", "Test", "Test task");
         task.error = Some("Syntax error in code".to_string());
 
-        let task_map: HashMap<String, Task> = [(task.id.clone(), task.clone())]
-            .into_iter()
-            .collect();
+        let task_map: HashMap<String, Task> =
+            [(task.id.clone(), task.clone())].into_iter().collect();
 
         let report = generate_failure_report(&task, &task_map);
 

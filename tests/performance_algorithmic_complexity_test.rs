@@ -6,9 +6,9 @@
 //! - String allocations are minimized
 //! - No O(n²) algorithms in hot paths
 
+use ltmatrix::agent::agent_pool::AgentPool;
 use ltmatrix::agent::backend::AgentSession;
 use ltmatrix::agent::pool::SessionPool;
-use ltmatrix::agent::agent_pool::AgentPool;
 use ltmatrix::models::Task;
 use std::time::{Duration, Instant};
 
@@ -251,7 +251,10 @@ async fn test_no_quadratic_growth() {
 
         for i in 0..size {
             // Create
-            let id = pool.get_or_create(&format!("agent_{}", i), "model").session_id().to_string();
+            let id = pool
+                .get_or_create(&format!("agent_{}", i), "model")
+                .session_id()
+                .to_string();
 
             // Lookup
             let _ = pool.get(&id);

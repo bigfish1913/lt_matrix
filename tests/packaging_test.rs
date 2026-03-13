@@ -21,7 +21,10 @@ mod scoop_tests {
 
     fn load_scoop_manifest() -> serde_json::Value {
         let path = packaging_path("scoop", "ltmatrix.json");
-        assert!(path.exists(), "Scoop manifest should exist at .github/scoop/ltmatrix.json");
+        assert!(
+            path.exists(),
+            "Scoop manifest should exist at .github/scoop/ltmatrix.json"
+        );
 
         let content = fs::read_to_string(&path)
             .unwrap_or_else(|e| panic!("Failed to read Scoop manifest: {}", e));
@@ -38,7 +41,10 @@ mod scoop_tests {
     #[test]
     fn scoop_manifest_is_valid_json() {
         let manifest = load_scoop_manifest();
-        assert!(manifest.is_object(), "Scoop manifest should be a JSON object");
+        assert!(
+            manifest.is_object(),
+            "Scoop manifest should be a JSON object"
+        );
     }
 
     #[test]
@@ -46,18 +52,37 @@ mod scoop_tests {
         let manifest = load_scoop_manifest();
 
         // Required fields for Scoop manifest
-        assert!(manifest.get("version").is_some(), "Scoop manifest should have 'version'");
-        assert!(manifest.get("description").is_some(), "Scoop manifest should have 'description'");
-        assert!(manifest.get("homepage").is_some(), "Scoop manifest should have 'homepage'");
-        assert!(manifest.get("license").is_some(), "Scoop manifest should have 'license'");
-        assert!(manifest.get("architecture").is_some(), "Scoop manifest should have 'architecture'");
+        assert!(
+            manifest.get("version").is_some(),
+            "Scoop manifest should have 'version'"
+        );
+        assert!(
+            manifest.get("description").is_some(),
+            "Scoop manifest should have 'description'"
+        );
+        assert!(
+            manifest.get("homepage").is_some(),
+            "Scoop manifest should have 'homepage'"
+        );
+        assert!(
+            manifest.get("license").is_some(),
+            "Scoop manifest should have 'license'"
+        );
+        assert!(
+            manifest.get("architecture").is_some(),
+            "Scoop manifest should have 'architecture'"
+        );
     }
 
     #[test]
     fn scoop_manifest_has_correct_license() {
         let manifest = load_scoop_manifest();
         let license = manifest.get("license").and_then(|l| l.as_str());
-        assert_eq!(license, Some("MIT"), "Scoop manifest should specify MIT license");
+        assert_eq!(
+            license,
+            Some("MIT"),
+            "Scoop manifest should specify MIT license"
+        );
     }
 
     #[test]
@@ -65,7 +90,9 @@ mod scoop_tests {
         let manifest = load_scoop_manifest();
         let homepage = manifest.get("homepage").and_then(|h| h.as_str());
         assert!(
-            homepage.map(|h| h.contains("github.com/bigfish/ltmatrix")).unwrap_or(false),
+            homepage
+                .map(|h| h.contains("github.com/bigfish/ltmatrix"))
+                .unwrap_or(false),
             "Scoop manifest homepage should point to GitHub repository"
         );
     }
@@ -73,11 +100,16 @@ mod scoop_tests {
     #[test]
     fn scoop_manifest_has_64bit_architecture() {
         let manifest = load_scoop_manifest();
-        let arch = manifest.get("architecture").expect("Should have architecture");
+        let arch = manifest
+            .get("architecture")
+            .expect("Should have architecture");
         let bit64 = arch.get("64bit").expect("Should have 64bit architecture");
 
         // Check URL pattern
-        let url = bit64.get("url").and_then(|u| u.as_str()).expect("64bit should have URL");
+        let url = bit64
+            .get("url")
+            .and_then(|u| u.as_str())
+            .expect("64bit should have URL");
         assert!(
             url.contains("x86_64-pc-windows-msvc"),
             "64bit URL should target x86_64-pc-windows-msvc"
@@ -88,18 +120,25 @@ mod scoop_tests {
         );
 
         // Check bin configuration
-        let bin = bit64.get("bin").expect("64bit should have bin configuration");
+        let bin = bit64
+            .get("bin")
+            .expect("64bit should have bin configuration");
         assert!(bin.is_array(), "bin should be an array");
     }
 
     #[test]
     fn scoop_manifest_has_arm64_architecture() {
         let manifest = load_scoop_manifest();
-        let arch = manifest.get("architecture").expect("Should have architecture");
+        let arch = manifest
+            .get("architecture")
+            .expect("Should have architecture");
         let arm64 = arch.get("arm64").expect("Should have arm64 architecture");
 
         // Check URL pattern
-        let url = arm64.get("url").and_then(|u| u.as_str()).expect("arm64 should have URL");
+        let url = arm64
+            .get("url")
+            .and_then(|u| u.as_str())
+            .expect("arm64 should have URL");
         assert!(
             url.contains("aarch64-pc-windows-msvc"),
             "arm64 URL should target aarch64-pc-windows-msvc"
@@ -114,10 +153,15 @@ mod scoop_tests {
     fn scoop_manifest_has_autoupdate() {
         let manifest = load_scoop_manifest();
         let autoupdate = manifest.get("autoupdate");
-        assert!(autoupdate.is_some(), "Scoop manifest should have autoupdate configuration");
+        assert!(
+            autoupdate.is_some(),
+            "Scoop manifest should have autoupdate configuration"
+        );
 
         if let Some(au) = autoupdate {
-            let arch = au.get("architecture").expect("autoupdate should have architecture");
+            let arch = au
+                .get("architecture")
+                .expect("autoupdate should have architecture");
             assert!(
                 arch.get("64bit").is_some(),
                 "autoupdate should have 64bit configuration"
@@ -133,13 +177,13 @@ mod scoop_tests {
     fn scoop_manifest_has_checkver() {
         let manifest = load_scoop_manifest();
         let checkver = manifest.get("checkver");
-        assert!(checkver.is_some(), "Scoop manifest should have checkver configuration");
+        assert!(
+            checkver.is_some(),
+            "Scoop manifest should have checkver configuration"
+        );
 
         if let Some(cv) = checkver {
-            assert!(
-                cv.get("github").is_some(),
-                "checkver should use GitHub"
-            );
+            assert!(cv.get("github").is_some(), "checkver should use GitHub");
         }
     }
 
@@ -147,11 +191,16 @@ mod scoop_tests {
     fn scoop_manifest_autoupdate_uses_version_variable() {
         let manifest = load_scoop_manifest();
         let autoupdate = manifest.get("autoupdate").expect("Should have autoupdate");
-        let arch = autoupdate.get("architecture").expect("autoupdate should have architecture");
+        let arch = autoupdate
+            .get("architecture")
+            .expect("autoupdate should have architecture");
 
         // Check 64bit URL uses $version
         let bit64 = arch.get("64bit").expect("Should have 64bit");
-        let url = bit64.get("url").and_then(|u| u.as_str()).expect("Should have URL");
+        let url = bit64
+            .get("url")
+            .and_then(|u| u.as_str())
+            .expect("Should have URL");
         assert!(
             url.contains("$version"),
             "autoupdate URL should use $version variable"
@@ -159,7 +208,10 @@ mod scoop_tests {
 
         // Check arm64 URL uses $version
         let arm64 = arch.get("arm64").expect("Should have arm64");
-        let url = arm64.get("url").and_then(|u| u.as_str()).expect("Should have URL");
+        let url = arm64
+            .get("url")
+            .and_then(|u| u.as_str())
+            .expect("Should have URL");
         assert!(
             url.contains("$version"),
             "autoupdate URL should use $version variable"
@@ -170,14 +222,20 @@ mod scoop_tests {
     fn scoop_manifest_has_notes() {
         let manifest = load_scoop_manifest();
         let notes = manifest.get("notes");
-        assert!(notes.is_some(), "Scoop manifest should have notes about dependencies");
+        assert!(
+            notes.is_some(),
+            "Scoop manifest should have notes about dependencies"
+        );
     }
 
     #[test]
     fn scoop_manifest_has_suggests() {
         let manifest = load_scoop_manifest();
         let suggest = manifest.get("suggest");
-        assert!(suggest.is_some(), "Scoop manifest should have suggest field for dependencies");
+        assert!(
+            suggest.is_some(),
+            "Scoop manifest should have suggest field for dependencies"
+        );
     }
 }
 
@@ -190,7 +248,10 @@ mod homebrew_tests {
 
     fn load_homebrew_formula() -> String {
         let path = packaging_path("homebrew", "ltmatrix.rb");
-        assert!(path.exists(), "Homebrew formula should exist at .github/homebrew/ltmatrix.rb");
+        assert!(
+            path.exists(),
+            "Homebrew formula should exist at .github/homebrew/ltmatrix.rb"
+        );
 
         fs::read_to_string(&path)
             .unwrap_or_else(|e| panic!("Failed to read Homebrew formula: {}", e))
@@ -348,8 +409,7 @@ mod readme_tests {
         let path = Path::new("README.md");
         assert!(path.exists(), "README.md should exist");
 
-        fs::read_to_string(path)
-            .unwrap_or_else(|e| panic!("Failed to read README.md: {}", e))
+        fs::read_to_string(path).unwrap_or_else(|e| panic!("Failed to read README.md: {}", e))
     }
 
     #[test]
@@ -405,7 +465,9 @@ mod readme_tests {
             "README should mention x86_64/64-bit support"
         );
         assert!(
-            readme.contains("ARM64") || readme.contains("aarch64") || readme.contains("Apple Silicon"),
+            readme.contains("ARM64")
+                || readme.contains("aarch64")
+                || readme.contains("Apple Silicon"),
             "README should mention ARM64 support"
         );
     }

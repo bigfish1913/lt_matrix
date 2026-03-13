@@ -13,11 +13,11 @@
 //! - Statistics tracking
 //! - Error scenarios and edge cases
 
-use ltmatrix::mcp::{
-    CorrelationError, JsonRpcResponse, PendingRequest, PendingRequestHandle,
-    PendingRequestInfo, RequestId, RequestTracker, TrackerStats,
-};
 use ltmatrix::mcp::protocol::errors::{McpError, McpErrorCode};
+use ltmatrix::mcp::{
+    CorrelationError, JsonRpcResponse, PendingRequest, PendingRequestHandle, PendingRequestInfo,
+    RequestId, RequestTracker, TrackerStats,
+};
 use serde_json::json;
 use std::time::Duration;
 
@@ -181,11 +181,8 @@ mod pending_request_tracking_tests {
         let tracker = RequestTracker::new(Duration::from_secs(30));
 
         let custom_id = RequestId::String("custom-request-123".to_string());
-        let result = tracker.register_with_id(
-            custom_id.clone(),
-            "custom_method",
-            Duration::from_secs(30),
-        );
+        let result =
+            tracker.register_with_id(custom_id.clone(), "custom_method", Duration::from_secs(30));
 
         assert!(result.is_ok());
         assert!(tracker.is_pending(&custom_id));
@@ -199,7 +196,8 @@ mod pending_request_tracking_tests {
         let _ = tracker.register_with_id(custom_id.clone(), "method1", Duration::from_secs(30));
 
         // Attempt to register with same ID should fail
-        let result = tracker.register_with_id(custom_id.clone(), "method2", Duration::from_secs(30));
+        let result =
+            tracker.register_with_id(custom_id.clone(), "method2", Duration::from_secs(30));
 
         assert!(result.is_err());
         let error = result.unwrap_err();
@@ -774,7 +772,9 @@ mod async_operation_tests {
         for i in 0..20 {
             let tracker_clone = tracker.clone();
             handles.push(tokio::spawn(async move {
-                let (id, _) = tracker_clone.register_request_async(&format!("method_{}", i)).await;
+                let (id, _) = tracker_clone
+                    .register_request_async(&format!("method_{}", i))
+                    .await;
                 id
             }));
         }
@@ -807,12 +807,10 @@ mod async_operation_tests {
         });
 
         let tracker2 = tracker.clone();
-        let register_handle = tokio::spawn(async move {
-            tracker2.register_request_async("method3").await
-        });
+        let register_handle =
+            tokio::spawn(async move { tracker2.register_request_async("method3").await });
 
-        let (complete_result, register_result) =
-            tokio::join!(complete_handle, register_handle);
+        let (complete_result, register_result) = tokio::join!(complete_handle, register_handle);
 
         assert!(complete_result.unwrap()); // Complete succeeded
         let (_, handle) = register_result.unwrap();

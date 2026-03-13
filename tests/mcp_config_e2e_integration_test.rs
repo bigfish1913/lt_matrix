@@ -53,18 +53,11 @@ timeout = 30
     let config = load_config_from_args(args).unwrap();
 
     // Verify MCP config is loaded and accessible
-    assert!(
-        config.mcp.is_some(),
-        "Config should have MCP config loaded"
-    );
+    assert!(config.mcp.is_some(), "Config should have MCP config loaded");
 
     let mcp = config.mcp.unwrap();
     assert_eq!(mcp.path, mcp_config_path);
-    assert_eq!(
-        mcp.config.mcp.servers.len(),
-        2,
-        "Should have 2 MCP servers"
-    );
+    assert_eq!(mcp.config.mcp.servers.len(), 2, "Should have 2 MCP servers");
 
     // Verify server configurations
     let playwright = mcp.config.get_server("playwright").unwrap();
@@ -160,7 +153,10 @@ fn test_e2e_nonexistent_mcp_config_file_non_fatal() {
     );
 
     let config = config.unwrap();
-    assert!(config.mcp.is_none(), "MCP config should be None when file doesn't exist");
+    assert!(
+        config.mcp.is_none(),
+        "MCP config should be None when file doesn't exist"
+    );
 }
 
 #[test]
@@ -181,7 +177,10 @@ fn test_e2e_malformed_toml_non_fatal() {
 
     // Should not fail
     let config = load_config_from_args(args).unwrap();
-    assert!(config.mcp.is_none(), "MCP config should be None for malformed TOML");
+    assert!(
+        config.mcp.is_none(),
+        "MCP config should be None for malformed TOML"
+    );
 }
 
 #[test]
@@ -217,7 +216,10 @@ command = "test-command"
     // Verify all configs are present
     assert!(config.mcp.is_some(), "MCP config should be loaded");
     assert_eq!(config.default, Some("claude".to_string()));
-    assert_eq!(config.logging.level, ltmatrix::config::settings::LogLevel::Debug);
+    assert_eq!(
+        config.logging.level,
+        ltmatrix::config::settings::LogLevel::Debug
+    );
 
     // Verify MCP config integrity
     let mcp = config.mcp.unwrap();
@@ -367,7 +369,10 @@ cwd = "{}"
 
     // Should fail validation (non-fatal)
     let config = load_config_from_args(args).unwrap();
-    assert!(config.mcp.is_none(), "MCP config should be None when cwd doesn't exist");
+    assert!(
+        config.mcp.is_none(),
+        "MCP config should be None when cwd doesn't exist"
+    );
 }
 
 #[test]

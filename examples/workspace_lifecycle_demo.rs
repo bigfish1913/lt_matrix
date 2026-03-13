@@ -3,8 +3,8 @@
 //! This example demonstrates workspace state persistence integration
 //! with task lifecycle, including auto-reset of in_progress tasks.
 
-use ltmatrix::workspace::WorkspaceState;
 use ltmatrix::models::{Task, TaskStatus};
+use ltmatrix::workspace::WorkspaceState;
 use tempfile::TempDir;
 
 fn main() {
@@ -83,10 +83,8 @@ fn main() {
     let mut task6 = Task::new("task-6", "Completed Task", "Already done");
     task6.status = TaskStatus::Completed;
 
-    let state_with_issues = WorkspaceState::new(
-        project_root.to_path_buf(),
-        vec![task4, task5, task6]
-    );
+    let state_with_issues =
+        WorkspaceState::new(project_root.to_path_buf(), vec![task4, task5, task6]);
     state_with_issues.save().unwrap();
 
     println!("Saved state with:");
@@ -99,7 +97,8 @@ fn main() {
     println!("6. Loading with Transform (Auto-Reset)");
     println!("{}", "=".repeat(50));
 
-    let transformed_state = WorkspaceState::load_with_transform(project_root.to_path_buf()).unwrap();
+    let transformed_state =
+        WorkspaceState::load_with_transform(project_root.to_path_buf()).unwrap();
 
     println!("After transformation:");
     for task in &transformed_state.tasks {
@@ -127,12 +126,17 @@ fn main() {
     println!();
 
     // Load with transform - should reset both parent and child
-    let transformed_nested = WorkspaceState::load_with_transform(project_root.to_path_buf()).unwrap();
+    let transformed_nested =
+        WorkspaceState::load_with_transform(project_root.to_path_buf()).unwrap();
 
     println!("After transformation:");
-    println!("  - {} (parent): {:?}", transformed_nested.tasks[0].id, transformed_nested.tasks[0].status);
+    println!(
+        "  - {} (parent): {:?}",
+        transformed_nested.tasks[0].id, transformed_nested.tasks[0].status
+    );
     if !transformed_nested.tasks[0].subtasks.is_empty() {
-        println!("  - {} (subtask): {:?}",
+        println!(
+            "  - {} (subtask): {:?}",
             transformed_nested.tasks[0].subtasks[0].id,
             transformed_nested.tasks[0].subtasks[0].status
         );
@@ -152,7 +156,8 @@ fn main() {
     println!("Attempting to load (should fail gracefully)...");
 
     // Try to load a non-existent file
-    let result = WorkspaceState::load_with_transform(project_root.join("nonexistent").to_path_buf());
+    let result =
+        WorkspaceState::load_with_transform(project_root.join("nonexistent").to_path_buf());
     match result {
         Ok(_) => println!("Unexpectedly succeeded"),
         Err(e) => println!("Error handled correctly: {}", e),
@@ -179,16 +184,14 @@ fn main() {
     // Create tasks with broken dependencies
     let mut task_broken = Task::new("task-broken", "Broken Dependencies", "Has missing deps");
     task_broken.depends_on = vec![
-        "task-1".to_string(),        // Valid
-        "missing-task".to_string(),  // Invalid
+        "task-1".to_string(),       // Valid
+        "missing-task".to_string(), // Invalid
     ];
 
     let mut task_valid = Task::new("task-1", "Valid Task", "No dependencies");
 
-    let state_with_orphans = WorkspaceState::new(
-        project_root.to_path_buf(),
-        vec![task_valid, task_broken]
-    );
+    let state_with_orphans =
+        WorkspaceState::new(project_root.to_path_buf(), vec![task_valid, task_broken]);
 
     println!("Detecting orphaned tasks...");
     let orphaned = state_with_orphans.detect_orphaned_tasks();
@@ -196,7 +199,10 @@ fn main() {
     if orphaned.is_empty() {
         println!("  No orphaned tasks detected");
     } else {
-        println!("  Found {} task(s) with orphaned dependencies:", orphaned.len());
+        println!(
+            "  Found {} task(s) with orphaned dependencies:",
+            orphaned.len()
+        );
         for (task_id, missing_deps) in &orphaned {
             println!("    - Task '{}' depends on: {:?}", task_id, missing_deps);
         }
@@ -207,7 +213,10 @@ fn main() {
     println!("Cleaning up orphaned dependencies...");
     let mut state_cleanup = state_with_orphans;
     let cleaned_count = state_cleanup.cleanup_orphaned_dependencies();
-    println!("  Cleaned up {} invalid dependency reference(s)", cleaned_count);
+    println!(
+        "  Cleaned up {} invalid dependency reference(s)",
+        cleaned_count
+    );
 
     // Verify cleanup
     let orphaned_after = state_cleanup.detect_orphaned_tasks();
@@ -237,7 +246,7 @@ fn main() {
 
     let circular_state = WorkspaceState::new(
         project_root.to_path_buf(),
-        vec![task_circular1, task_circular2]
+        vec![task_circular1, task_circular2],
     );
 
     println!("Detecting circular dependencies...");
@@ -266,6 +275,9 @@ fn main() {
     println!();
 
     println!("=== Demo Complete ===");
-    println!("\nNote: The workspace state is saved in: {:?}", project_root.join(".ltmatrix"));
+    println!(
+        "\nNote: The workspace state is saved in: {:?}",
+        project_root.join(".ltmatrix")
+    );
     println!("This directory will be cleaned up automatically when the temp dir is dropped.");
 }

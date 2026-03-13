@@ -3,10 +3,10 @@
 //! This test suite covers advanced scenarios, edge cases, and integration
 //! testing for src/main.rs functionality that goes beyond basic validation.
 
+use clap::Parser;
 use std::path::PathBuf;
 use std::time::Duration;
 use tempfile::TempDir;
-use clap::Parser;
 
 // =============================================================================
 // Advanced Configuration Tests
@@ -19,19 +19,18 @@ fn test_config_merge_priority() {
     use ltmatrix::config::settings::{CliOverrides, Config};
 
     // Parse CLI args with explicit overrides
-    let args = Args::try_parse_from([
-        "ltmatrix",
-        "test goal",
-        "--fast",
-        "--agent", "claude"
-    ]).expect("Failed to parse args");
+    let args = Args::try_parse_from(["ltmatrix", "test goal", "--fast", "--agent", "claude"])
+        .expect("Failed to parse args");
 
     // Create overrides from args
     let overrides = CliOverrides::from(args);
 
     // Load config with overrides
     let result = ltmatrix::config::settings::load_config_with_overrides(Some(overrides));
-    assert!(result.is_ok(), "Config with overrides should load successfully");
+    assert!(
+        result.is_ok(),
+        "Config with overrides should load successfully"
+    );
 
     if let Ok(config) = result {
         // Verify config structure is valid
@@ -58,7 +57,10 @@ fn test_config_with_invalid_toml() {
     let result = ltmatrix::config::settings::load_config_with_overrides(None);
 
     // Should fall back to defaults even with invalid config file
-    assert!(result.is_ok(), "Should fall back to defaults with invalid config");
+    assert!(
+        result.is_ok(),
+        "Should fall back to defaults with invalid config"
+    );
 }
 
 #[test]
@@ -102,7 +104,7 @@ fn test_log_rotation_handling() {
     // Initialize logging with management
     let result = logger::init_logging_with_management(
         ltmatrix::logging::level::LogLevel::Info,
-        Some(log_dir.clone())
+        Some(log_dir.clone()),
     );
 
     assert!(result.is_ok(), "Logging with rotation should succeed");
@@ -126,18 +128,24 @@ fn test_concurrent_logging() {
     // Initialize first logger
     let result1 = logger::init_logging(
         ltmatrix::logging::level::LogLevel::Info,
-        Some(&temp_dir.path().join("test1.log"))
+        Some(&temp_dir.path().join("test1.log")),
     );
 
-    assert!(result1.is_ok(), "First logger initialization should succeed");
+    assert!(
+        result1.is_ok(),
+        "First logger initialization should succeed"
+    );
 
     // Initialize second logger (different file)
     let result2 = logger::init_logging(
         ltmatrix::logging::level::LogLevel::Debug,
-        Some(&temp_dir.path().join("test2.log"))
+        Some(&temp_dir.path().join("test2.log")),
     );
 
-    assert!(result2.is_ok(), "Second logger initialization should succeed");
+    assert!(
+        result2.is_ok(),
+        "Second logger initialization should succeed"
+    );
 }
 
 #[test]
@@ -166,12 +174,15 @@ fn test_agent_backend_fallback_chain() {
     let config = Config::default();
 
     // Test default fallback
-    let agent_name = config.default
+    let agent_name = config
+        .default
         .or_else(|| Some("claude".to_string()))
         .unwrap();
 
-    assert!(factory.is_supported(&agent_name),
-            "Default agent should be supported");
+    assert!(
+        factory.is_supported(&agent_name),
+        "Default agent should be supported"
+    );
 }
 
 #[test]
@@ -218,11 +229,16 @@ fn test_command_with_all_flags() {
         "--dry-run",
         "--ask",
         "--resume",
-        "--log-level", "trace",
-        "--log-file", "/tmp/test.log",
-        "--agent", "claude",
-        "--output", "json"
-    ]).expect("Failed to parse args");
+        "--log-level",
+        "trace",
+        "--log-file",
+        "/tmp/test.log",
+        "--agent",
+        "claude",
+        "--output",
+        "json",
+    ])
+    .expect("Failed to parse args");
 
     assert!(args.fast);
     assert!(args.dry_run);
@@ -241,11 +257,8 @@ fn test_mutually_exclusive_modes() {
 
     // Only one mode flag should be used at a time in practice
     // But we test parsing with both to verify clap handles it
-    let args = Args::try_parse_from([
-        "ltmatrix",
-        "test goal",
-        "--fast"
-    ]).expect("Failed to parse args");
+    let args =
+        Args::try_parse_from(["ltmatrix", "test goal", "--fast"]).expect("Failed to parse args");
 
     assert!(args.fast);
     assert!(!args.expert);
@@ -256,11 +269,8 @@ fn test_subcommand_with_extraneous_flags() {
     // Test that subcommands ignore run-specific flags
     use ltmatrix::cli::args::{Args, Command};
 
-    let args = Args::try_parse_from([
-        "ltmatrix",
-        "completions",
-        "bash"
-    ]).expect("Failed to parse args");
+    let args =
+        Args::try_parse_from(["ltmatrix", "completions", "bash"]).expect("Failed to parse args");
 
     // Subcommand should be parsed, flags ignored
     assert!(matches!(args.command, Some(Command::Completions(_))));
@@ -321,8 +331,10 @@ fn test_execution_mode_round_trip() {
 
     for (cli_mode, expected_model_mode) in test_cases {
         let model_mode = cli_mode.to_model();
-        assert_eq!(model_mode, expected_model_mode,
-                   "Mode conversion should preserve value");
+        assert_eq!(
+            model_mode, expected_model_mode,
+            "Mode conversion should preserve value"
+        );
     }
 }
 
@@ -341,11 +353,13 @@ fn test_nested_error_context() {
     let level3 = level2.context("Level 3 context");
 
     let error_string = level3.to_string();
-    assert!(error_string.contains("Level 1") ||
-            error_string.contains("Level 2") ||
-            error_string.contains("Level 3") ||
-            error_string.contains("Base error"),
-            "Nested error should preserve context");
+    assert!(
+        error_string.contains("Level 1")
+            || error_string.contains("Level 2")
+            || error_string.contains("Level 3")
+            || error_string.contains("Base error"),
+        "Nested error should preserve context"
+    );
 }
 
 #[test]
@@ -362,8 +376,10 @@ fn test_error_hint_keywords() {
 
     for (error_msg, expected_keyword) in test_cases {
         let lower_msg = error_msg.to_lowercase();
-        assert!(lower_msg.contains(expected_keyword),
-                "Error message should contain expected keyword");
+        assert!(
+            lower_msg.contains(expected_keyword),
+            "Error message should contain expected keyword"
+        );
     }
 }
 
@@ -477,8 +493,8 @@ fn test_path_handling_edge_cases() {
         "./logs/test.log",
         "/absolute/path/test.log",
         "../relative/path/test.log",
-        "C:\\Windows\\path\\test.log",  // Windows path
-        "~/home/user/test.log",         // Home directory
+        "C:\\Windows\\path\\test.log", // Windows path
+        "~/home/user/test.log",        // Home directory
     ];
 
     for path_str in test_cases {
@@ -510,16 +526,18 @@ fn test_config_loading_performance() {
     let duration = start.elapsed();
 
     // 10 config loads should complete in less than 1 second
-    assert!(duration < Duration::from_secs(1),
-            "Config loading should be fast");
+    assert!(
+        duration < Duration::from_secs(1),
+        "Config loading should be fast"
+    );
 }
 
 #[test]
 fn test_agent_pool_creation_performance() {
     // Test that agent pool creation is reasonably fast
-    use std::time::Instant;
     use ltmatrix::agent::AgentPool;
     use ltmatrix::config::settings::Config;
+    use std::time::Instant;
 
     let start = Instant::now();
 
@@ -531,8 +549,10 @@ fn test_agent_pool_creation_performance() {
     let duration = start.elapsed();
 
     // 5 pool creations should complete in less than 1 second
-    assert!(duration < Duration::from_secs(1),
-            "Agent pool creation should be fast");
+    assert!(
+        duration < Duration::from_secs(1),
+        "Agent pool creation should be fast"
+    );
 }
 
 // =============================================================================
@@ -544,10 +564,7 @@ fn test_empty_goal_handling() {
     // Test handling of empty goal string
     use ltmatrix::cli::args::Args;
 
-    let args = Args::try_parse_from([
-        "ltmatrix",
-        ""
-    ]).expect("Failed to parse args");
+    let args = Args::try_parse_from(["ltmatrix", ""]).expect("Failed to parse args");
 
     // Empty string should still be parsed as Some("")
     assert_eq!(args.goal, Some("".to_string()));
@@ -559,10 +576,7 @@ fn test_very_long_goal() {
     use ltmatrix::cli::args::Args;
 
     let long_goal = "a".repeat(10000);
-    let args = Args::try_parse_from([
-        "ltmatrix",
-        &long_goal
-    ]).expect("Failed to parse args");
+    let args = Args::try_parse_from(["ltmatrix", &long_goal]).expect("Failed to parse args");
 
     assert_eq!(args.goal, Some(long_goal));
 }
@@ -581,10 +595,7 @@ fn test_special_characters_in_goal() {
     ];
 
     for goal in special_goals {
-        let args = Args::try_parse_from([
-            "ltmatrix",
-            goal
-        ]).expect("Failed to parse args");
+        let args = Args::try_parse_from(["ltmatrix", goal]).expect("Failed to parse args");
 
         assert_eq!(args.goal, Some(goal.to_string()));
     }
@@ -599,10 +610,7 @@ fn test_banner_content_verification() {
     // Test that banner contains expected content
     use ltmatrix::cli::args::Args;
 
-    let args = Args::try_parse_from([
-        "ltmatrix",
-        "test goal"
-    ]).expect("Failed to parse args");
+    let args = Args::try_parse_from(["ltmatrix", "test goal"]).expect("Failed to parse args");
 
     // Banner should be printed for run commands
     assert!(args.command.is_none());
@@ -678,10 +686,7 @@ fn test_app_state_immutability() {
     use ltmatrix::cli::args::Args;
     use ltmatrix::config::settings::Config;
 
-    let args = Args::try_parse_from([
-        "ltmatrix",
-        "test goal"
-    ]).expect("Failed to parse args");
+    let args = Args::try_parse_from(["ltmatrix", "test goal"]).expect("Failed to parse args");
 
     let config = Config::default();
 

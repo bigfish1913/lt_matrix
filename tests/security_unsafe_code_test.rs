@@ -5,7 +5,7 @@
 //! - Unsafe code doesn't introduce data races or undefined behavior
 //! - Mutable static access is thread-safe
 
-use ltmatrix::logging::formatter::{init_color_config, format_level};
+use ltmatrix::logging::formatter::{format_level, init_color_config};
 use ltmatrix::terminal::ColorConfig;
 use std::thread;
 use tracing::Level;

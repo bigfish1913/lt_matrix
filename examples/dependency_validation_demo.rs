@@ -18,7 +18,14 @@ fn main() -> anyhow::Result<()> {
     print_task_graph(&valid_tasks);
 
     let errors = validate_dependencies(&valid_tasks);
-    println!("\nValidation result: {}", if errors.is_empty() { "✅ VALID" } else { "❌ INVALID" });
+    println!(
+        "\nValidation result: {}",
+        if errors.is_empty() {
+            "✅ VALID"
+        } else {
+            "❌ INVALID"
+        }
+    );
     if errors.is_empty() {
         println!("No dependency errors found!\n");
     }
@@ -30,7 +37,14 @@ fn main() -> anyhow::Result<()> {
     print_task_graph(&missing_tasks);
 
     let errors = validate_dependencies(&missing_tasks);
-    println!("\nValidation result: {}", if errors.is_empty() { "✅ VALID" } else { "❌ INVALID" });
+    println!(
+        "\nValidation result: {}",
+        if errors.is_empty() {
+            "✅ VALID"
+        } else {
+            "❌ INVALID"
+        }
+    );
     for error in &errors {
         println!("  ❌ {}", error);
     }
@@ -43,7 +57,14 @@ fn main() -> anyhow::Result<()> {
     print_task_graph(&circular_tasks);
 
     let errors = validate_dependencies(&circular_tasks);
-    println!("\nValidation result: {}", if errors.is_empty() { "✅ VALID" } else { "❌ INVALID" });
+    println!(
+        "\nValidation result: {}",
+        if errors.is_empty() {
+            "✅ VALID"
+        } else {
+            "❌ INVALID"
+        }
+    );
     for error in &errors {
         println!("  ❌ {}", error);
     }
@@ -56,7 +77,14 @@ fn main() -> anyhow::Result<()> {
     print_task_graph(&complex_tasks);
 
     let result = validate_dependencies_with_stats(&complex_tasks);
-    println!("\nValidation result: {}", if result.is_valid { "✅ VALID" } else { "❌ INVALID" });
+    println!(
+        "\nValidation result: {}",
+        if result.is_valid {
+            "✅ VALID"
+        } else {
+            "❌ INVALID"
+        }
+    );
     print_dependency_stats(&result.stats);
 
     Ok(())
@@ -174,14 +202,20 @@ fn print_task_graph(tasks: &[Task]) {
 fn print_dependency_stats(stats: &DependencyGraphStats) {
     println!("📊 Dependency Graph Statistics:");
     println!("  Total tasks: {}", stats.total_tasks);
-    println!("  Tasks with dependencies: {}", stats.tasks_with_dependencies);
+    println!(
+        "  Tasks with dependencies: {}",
+        stats.tasks_with_dependencies
+    );
     println!("  Total dependencies: {}", stats.total_dependencies);
     println!("  Max depth: {}", stats.max_depth);
     println!("  Root tasks (no deps): {}", stats.root_tasks);
     println!("  Leaf tasks (no dependents): {}", stats.leaf_tasks);
     println!("  Missing dependencies: {}", stats.missing_dependencies);
     println!("  Circular dependencies: {}", stats.circular_dependencies);
-    println!("  Is DAG: {}", if stats.is_dag { "✅ Yes" } else { "❌ No" });
+    println!(
+        "  Is DAG: {}",
+        if stats.is_dag { "✅ Yes" } else { "❌ No" }
+    );
 }
 
 #[cfg(test)]

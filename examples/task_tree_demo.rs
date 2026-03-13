@@ -2,7 +2,7 @@
 //!
 //! This example demonstrates the ASCII tree visualization for task hierarchies
 
-use ltmatrix::models::{Task, TaskStatus, TaskComplexity};
+use ltmatrix::models::{Task, TaskComplexity, TaskStatus};
 
 fn main() {
     println!("=== Task Hierarchy Tree Visualization Demo ===\n");
@@ -18,12 +18,20 @@ fn main() {
     // Example 2: Task with subtasks
     println!("2. Task with Subtasks:");
     println!("{}", "=".repeat(50));
-    let mut task2 = Task::new("task-2", "Build Authentication System", "Full auth implementation");
+    let mut task2 = Task::new(
+        "task-2",
+        "Build Authentication System",
+        "Full auth implementation",
+    );
     task2.complexity = TaskComplexity::Complex;
     task2.subtasks = vec![
         Task::new("task-3", "Design Database Schema", "Create users table"),
         Task::new("task-4", "Implement Login API", "POST /login endpoint"),
-        Task::new("task-5", "Add JWT Token Support", "Token generation and validation"),
+        Task::new(
+            "task-5",
+            "Add JWT Token Support",
+            "Token generation and validation",
+        ),
     ];
     let tree2 = ltmatrix::tasks::tree::format_tree(&task2);
     println!("{}", tree2);

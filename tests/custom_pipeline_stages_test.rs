@@ -13,11 +13,11 @@ use std::collections::HashMap;
 use std::str::FromStr;
 
 use ltmatrix::models::{ExecutionMode, Task};
+use ltmatrix::plugin::stage::{DelayStage, LoggingStage};
 use ltmatrix::plugin::{
     CustomStageConfig, PipelineStagePlugin, Plugin, PluginManager, StagePosition, StageResult,
     StandardStage,
 };
-use ltmatrix::plugin::stage::{DelayStage, LoggingStage};
 
 // =============================================================================
 // CustomStageConfig Tests
@@ -54,12 +54,8 @@ fn test_custom_stage_config_with_description() {
 
 #[test]
 fn test_custom_stage_config_with_enabled() {
-    let config = CustomStageConfig::new(
-        "disabled-stage",
-        "Disabled Stage",
-        StagePosition::Last,
-    )
-    .with_enabled(false);
+    let config = CustomStageConfig::new("disabled-stage", "Disabled Stage", StagePosition::Last)
+        .with_enabled(false);
 
     assert!(!config.enabled);
 }
@@ -79,11 +75,7 @@ fn test_custom_stage_config_with_modes() {
 
 #[test]
 fn test_custom_stage_config_should_run_for_mode_empty_modes() {
-    let config = CustomStageConfig::new(
-        "all-modes-stage",
-        "All Modes Stage",
-        StagePosition::First,
-    );
+    let config = CustomStageConfig::new("all-modes-stage", "All Modes Stage", StagePosition::First);
 
     // Should run for all modes when modes is empty
     assert!(config.should_run_for_mode(&ExecutionMode::Fast));
@@ -93,12 +85,8 @@ fn test_custom_stage_config_should_run_for_mode_empty_modes() {
 
 #[test]
 fn test_custom_stage_config_should_run_for_mode_specific_modes() {
-    let config = CustomStageConfig::new(
-        "fast-only-stage",
-        "Fast Only Stage",
-        StagePosition::Last,
-    )
-    .with_modes(vec!["fast".to_string()]);
+    let config = CustomStageConfig::new("fast-only-stage", "Fast Only Stage", StagePosition::Last)
+        .with_modes(vec!["fast".to_string()]);
 
     assert!(config.should_run_for_mode(&ExecutionMode::Fast));
     assert!(!config.should_run_for_mode(&ExecutionMode::Standard));
@@ -113,12 +101,21 @@ fn test_custom_stage_config_with_config_values() {
         StagePosition::After(StandardStage::Generate),
     );
 
-    config.config.insert("timeout_ms".to_string(), serde_json::json!(5000));
-    config.config.insert("retries".to_string(), serde_json::json!(3));
-    config.config.insert("verbose".to_string(), serde_json::json!(true));
+    config
+        .config
+        .insert("timeout_ms".to_string(), serde_json::json!(5000));
+    config
+        .config
+        .insert("retries".to_string(), serde_json::json!(3));
+    config
+        .config
+        .insert("verbose".to_string(), serde_json::json!(true));
 
     assert_eq!(config.config.len(), 3);
-    assert_eq!(config.config.get("timeout_ms").unwrap(), &serde_json::json!(5000));
+    assert_eq!(
+        config.config.get("timeout_ms").unwrap(),
+        &serde_json::json!(5000)
+    );
     assert_eq!(config.config.get("retries").unwrap(), &serde_json::json!(3));
 }
 
@@ -129,13 +126,19 @@ fn test_custom_stage_config_with_config_values() {
 #[test]
 fn test_stage_position_before() {
     let position = StagePosition::Before(StandardStage::Test);
-    assert!(matches!(position, StagePosition::Before(StandardStage::Test)));
+    assert!(matches!(
+        position,
+        StagePosition::Before(StandardStage::Test)
+    ));
 }
 
 #[test]
 fn test_stage_position_after() {
     let position = StagePosition::After(StandardStage::Execute);
-    assert!(matches!(position, StagePosition::After(StandardStage::Execute)));
+    assert!(matches!(
+        position,
+        StagePosition::After(StandardStage::Execute)
+    ));
 }
 
 #[test]
@@ -153,7 +156,10 @@ fn test_stage_position_last() {
 #[test]
 fn test_stage_position_replace() {
     let position = StagePosition::Replace(StandardStage::Review);
-    assert!(matches!(position, StagePosition::Replace(StandardStage::Review)));
+    assert!(matches!(
+        position,
+        StagePosition::Replace(StandardStage::Review)
+    ));
 }
 
 #[test]
@@ -168,7 +174,10 @@ fn test_stage_position_serialization() {
 fn test_stage_position_deserialization() {
     let json = r#"{"before": "test"}"#;
     let position: StagePosition = serde_json::from_str(json).unwrap();
-    assert!(matches!(position, StagePosition::Before(StandardStage::Test)));
+    assert!(matches!(
+        position,
+        StagePosition::Before(StandardStage::Test)
+    ));
 }
 
 // =============================================================================
@@ -177,21 +186,54 @@ fn test_stage_position_deserialization() {
 
 #[test]
 fn test_standard_stage_from_str() {
-    assert_eq!(StandardStage::from_str("generate").unwrap(), StandardStage::Generate);
-    assert_eq!(StandardStage::from_str("assess").unwrap(), StandardStage::Assess);
-    assert_eq!(StandardStage::from_str("execute").unwrap(), StandardStage::Execute);
-    assert_eq!(StandardStage::from_str("test").unwrap(), StandardStage::Test);
-    assert_eq!(StandardStage::from_str("review").unwrap(), StandardStage::Review);
-    assert_eq!(StandardStage::from_str("verify").unwrap(), StandardStage::Verify);
-    assert_eq!(StandardStage::from_str("commit").unwrap(), StandardStage::Commit);
-    assert_eq!(StandardStage::from_str("memory").unwrap(), StandardStage::Memory);
+    assert_eq!(
+        StandardStage::from_str("generate").unwrap(),
+        StandardStage::Generate
+    );
+    assert_eq!(
+        StandardStage::from_str("assess").unwrap(),
+        StandardStage::Assess
+    );
+    assert_eq!(
+        StandardStage::from_str("execute").unwrap(),
+        StandardStage::Execute
+    );
+    assert_eq!(
+        StandardStage::from_str("test").unwrap(),
+        StandardStage::Test
+    );
+    assert_eq!(
+        StandardStage::from_str("review").unwrap(),
+        StandardStage::Review
+    );
+    assert_eq!(
+        StandardStage::from_str("verify").unwrap(),
+        StandardStage::Verify
+    );
+    assert_eq!(
+        StandardStage::from_str("commit").unwrap(),
+        StandardStage::Commit
+    );
+    assert_eq!(
+        StandardStage::from_str("memory").unwrap(),
+        StandardStage::Memory
+    );
 }
 
 #[test]
 fn test_standard_stage_from_str_case_insensitive() {
-    assert_eq!(StandardStage::from_str("GENERATE").unwrap(), StandardStage::Generate);
-    assert_eq!(StandardStage::from_str("Execute").unwrap(), StandardStage::Execute);
-    assert_eq!(StandardStage::from_str("TEST").unwrap(), StandardStage::Test);
+    assert_eq!(
+        StandardStage::from_str("GENERATE").unwrap(),
+        StandardStage::Generate
+    );
+    assert_eq!(
+        StandardStage::from_str("Execute").unwrap(),
+        StandardStage::Execute
+    );
+    assert_eq!(
+        StandardStage::from_str("TEST").unwrap(),
+        StandardStage::Test
+    );
 }
 
 #[test]
@@ -301,8 +343,14 @@ fn test_stage_result_with_metric() {
         .with_metric("time_ms", serde_json::json!(1500));
 
     assert_eq!(result.metrics.len(), 2);
-    assert_eq!(result.metrics.get("items_processed").unwrap(), &serde_json::json!(42));
-    assert_eq!(result.metrics.get("time_ms").unwrap(), &serde_json::json!(1500));
+    assert_eq!(
+        result.metrics.get("items_processed").unwrap(),
+        &serde_json::json!(42)
+    );
+    assert_eq!(
+        result.metrics.get("time_ms").unwrap(),
+        &serde_json::json!(1500)
+    );
 }
 
 #[test]
@@ -312,9 +360,18 @@ fn test_stage_result_with_multiple_metrics() {
         .with_metric("tests_run", serde_json::json!(100))
         .with_metric("tests_passed", serde_json::json!(98));
 
-    assert_eq!(result.metrics.get("files_modified").unwrap(), &serde_json::json!(5));
-    assert_eq!(result.metrics.get("tests_run").unwrap(), &serde_json::json!(100));
-    assert_eq!(result.metrics.get("tests_passed").unwrap(), &serde_json::json!(98));
+    assert_eq!(
+        result.metrics.get("files_modified").unwrap(),
+        &serde_json::json!(5)
+    );
+    assert_eq!(
+        result.metrics.get("tests_run").unwrap(),
+        &serde_json::json!(100)
+    );
+    assert_eq!(
+        result.metrics.get("tests_passed").unwrap(),
+        &serde_json::json!(98)
+    );
 }
 
 // =============================================================================
@@ -379,11 +436,7 @@ async fn test_plugin_manager_register_multiple_stages() {
         StagePosition::Before(StandardStage::Test),
     );
 
-    let config3 = CustomStageConfig::new(
-        "stage-3",
-        "Third Stage",
-        StagePosition::Last,
-    );
+    let config3 = CustomStageConfig::new("stage-3", "Third Stage", StagePosition::Last);
 
     manager.register_custom_stage(config1).await.unwrap();
     manager.register_custom_stage(config2).await.unwrap();
@@ -397,20 +450,12 @@ async fn test_plugin_manager_register_multiple_stages() {
 async fn test_plugin_manager_update_existing_stage() {
     let manager = PluginManager::new();
 
-    let config1 = CustomStageConfig::new(
-        "updatable-stage",
-        "Original Name",
-        StagePosition::First,
-    );
+    let config1 = CustomStageConfig::new("updatable-stage", "Original Name", StagePosition::First);
 
     manager.register_custom_stage(config1).await.unwrap();
 
-    let config2 = CustomStageConfig::new(
-        "updatable-stage",
-        "Updated Name",
-        StagePosition::Last,
-    )
-    .with_enabled(false);
+    let config2 = CustomStageConfig::new("updatable-stage", "Updated Name", StagePosition::Last)
+        .with_enabled(false);
 
     manager.register_custom_stage(config2).await.unwrap();
 
@@ -592,7 +637,10 @@ async fn test_plugin_manager_default_paths() {
     assert!(!paths.is_empty());
 
     // Check that paths contain expected directories
-    let path_strings: Vec<String> = paths.iter().map(|p| p.to_string_lossy().to_string()).collect();
+    let path_strings: Vec<String> = paths
+        .iter()
+        .map(|p| p.to_string_lossy().to_string())
+        .collect();
 
     // Should contain user plugins path (~/.ltmatrix/plugins)
     let has_user_path = path_strings.iter().any(|p| p.contains(".ltmatrix"));
@@ -672,11 +720,7 @@ async fn test_stage_execution_with_multiple_stages() {
         StagePosition::After(StandardStage::Execute),
     );
 
-    let first_stage = CustomStageConfig::new(
-        "first-stage",
-        "First Stage",
-        StagePosition::First,
-    );
+    let first_stage = CustomStageConfig::new("first-stage", "First Stage", StagePosition::First);
 
     manager.register_custom_stage(before_test).await.unwrap();
     manager.register_custom_stage(after_execute).await.unwrap();
@@ -717,7 +761,10 @@ async fn test_stage_result_preserves_task_state() {
     let result = StageResult::success(tasks);
 
     assert!(result.success);
-    assert_eq!(result.tasks[0].status, ltmatrix::models::TaskStatus::Completed);
+    assert_eq!(
+        result.tasks[0].status,
+        ltmatrix::models::TaskStatus::Completed
+    );
     assert_eq!(result.tasks[0].title, "Original Title");
 }
 
@@ -873,11 +920,17 @@ fn test_custom_stage_config_toml_deserialization() {
     assert_eq!(config.id, "toml-stage");
     assert_eq!(config.name, "TOML Configured Stage");
     assert_eq!(config.description, "Stage from TOML config");
-    assert!(matches!(config.position, StagePosition::After(StandardStage::Execute)));
+    assert!(matches!(
+        config.position,
+        StagePosition::After(StandardStage::Execute)
+    ));
     assert!(config.enabled);
     assert!(!config.skip_on_failure);
     assert_eq!(config.timeout_seconds, 1800);
-    assert_eq!(config.config.get("custom_option").unwrap(), &serde_json::json!("value"));
+    assert_eq!(
+        config.config.get("custom_option").unwrap(),
+        &serde_json::json!("value")
+    );
 }
 
 #[test]
@@ -890,7 +943,10 @@ fn test_custom_stage_config_toml_before_position() {
 
     let config: CustomStageConfig = toml::from_str(toml_str).unwrap();
 
-    assert!(matches!(config.position, StagePosition::Before(StandardStage::Test)));
+    assert!(matches!(
+        config.position,
+        StagePosition::Before(StandardStage::Test)
+    ));
 }
 
 #[test]
@@ -903,7 +959,10 @@ fn test_custom_stage_config_toml_replace_position() {
 
     let config: CustomStageConfig = toml::from_str(toml_str).unwrap();
 
-    assert!(matches!(config.position, StagePosition::Replace(StandardStage::Review)));
+    assert!(matches!(
+        config.position,
+        StagePosition::Replace(StandardStage::Review)
+    ));
 }
 
 #[test]

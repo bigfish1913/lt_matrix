@@ -62,7 +62,11 @@ async fn test_session_reuse_no_leak() {
     }
 
     // Should still have only one session
-    assert_eq!(pool.len(), 1, "Reusing sessions should not create duplicates");
+    assert_eq!(
+        pool.len(),
+        1,
+        "Reusing sessions should not create duplicates"
+    );
 }
 
 /// Test Arc cleanup
@@ -162,8 +166,7 @@ async fn test_concurrent_access_memory_growth() {
         let pool_clone = Arc::clone(&pool);
         let handle = tokio::spawn(async move {
             for j in 0..20 {
-                let mut task =
-                    Task::new(&format!("task-{}-{}", i, j), "Test", "Description");
+                let mut task = Task::new(&format!("task-{}-{}", i, j), "Test", "Description");
                 let _ = pool_clone
                     .get_or_create_session_for_task(&mut task, "claude", "claude-sonnet-4-6")
                     .await;
@@ -225,8 +228,8 @@ async fn test_session_file_handle_cleanup() {
 /// Ensures that warmup operations don't leak memory.
 #[tokio::test]
 async fn test_warmup_no_memory_leak() {
-    use ltmatrix::agent::warmup::WarmupExecutor;
     use ltmatrix::agent::pool::SessionPool;
+    use ltmatrix::agent::warmup::WarmupExecutor;
     use ltmatrix::config::settings::WarmupConfig;
 
     let mut pool = SessionPool::new();
@@ -265,7 +268,10 @@ async fn test_reuse_count_no_overflow() {
     let session = pool.get(session_id).unwrap();
 
     // Reuse count should be reasonable
-    assert!(session.reuse_count() < u32::MAX, "Reuse count should not overflow");
+    assert!(
+        session.reuse_count() < u32::MAX,
+        "Reuse count should not overflow"
+    );
 }
 
 /// Test cleanup doesn't cause double-free

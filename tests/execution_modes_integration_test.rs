@@ -8,13 +8,13 @@
 //! - Mode-specific configuration application
 //! - CLI flag to mode mapping
 
+use clap::Parser;
+use ltmatrix::cli::args::ExecutionModeArg;
+use ltmatrix::cli::Args;
 use ltmatrix::models::{
     ExecutionMode, ModeConfig, PipelineStage, Task, TaskComplexity, TaskStatus,
 };
 use ltmatrix::pipeline::orchestrator::{OrchestratorConfig, PipelineOrchestrator};
-use ltmatrix::cli::args::ExecutionModeArg;
-use clap::Parser;
-use ltmatrix::cli::Args;
 use tempfile::TempDir;
 
 // =============================================================================
@@ -58,12 +58,30 @@ fn test_fast_mode_pipeline_stages() {
     );
 
     // Verify all expected stages are present
-    assert!(stages.contains(&PipelineStage::Generate), "Should include Generate");
-    assert!(stages.contains(&PipelineStage::Assess), "Should include Assess");
-    assert!(stages.contains(&PipelineStage::Execute), "Should include Execute");
-    assert!(stages.contains(&PipelineStage::Verify), "Should include Verify");
-    assert!(stages.contains(&PipelineStage::Commit), "Should include Commit");
-    assert!(stages.contains(&PipelineStage::Memory), "Should include Memory");
+    assert!(
+        stages.contains(&PipelineStage::Generate),
+        "Should include Generate"
+    );
+    assert!(
+        stages.contains(&PipelineStage::Assess),
+        "Should include Assess"
+    );
+    assert!(
+        stages.contains(&PipelineStage::Execute),
+        "Should include Execute"
+    );
+    assert!(
+        stages.contains(&PipelineStage::Verify),
+        "Should include Verify"
+    );
+    assert!(
+        stages.contains(&PipelineStage::Commit),
+        "Should include Commit"
+    );
+    assert!(
+        stages.contains(&PipelineStage::Memory),
+        "Should include Memory"
+    );
 }
 
 /// Test Standard mode pipeline stages
@@ -92,12 +110,30 @@ fn test_standard_mode_pipeline_stages() {
     );
 
     // Verify all expected stages are present
-    assert!(stages.contains(&PipelineStage::Generate), "Should include Generate");
-    assert!(stages.contains(&PipelineStage::Assess), "Should include Assess");
-    assert!(stages.contains(&PipelineStage::Execute), "Should include Execute");
-    assert!(stages.contains(&PipelineStage::Verify), "Should include Verify");
-    assert!(stages.contains(&PipelineStage::Commit), "Should include Commit");
-    assert!(stages.contains(&PipelineStage::Memory), "Should include Memory");
+    assert!(
+        stages.contains(&PipelineStage::Generate),
+        "Should include Generate"
+    );
+    assert!(
+        stages.contains(&PipelineStage::Assess),
+        "Should include Assess"
+    );
+    assert!(
+        stages.contains(&PipelineStage::Execute),
+        "Should include Execute"
+    );
+    assert!(
+        stages.contains(&PipelineStage::Verify),
+        "Should include Verify"
+    );
+    assert!(
+        stages.contains(&PipelineStage::Commit),
+        "Should include Commit"
+    );
+    assert!(
+        stages.contains(&PipelineStage::Memory),
+        "Should include Memory"
+    );
 }
 
 /// Test Expert mode pipeline stages
@@ -126,12 +162,30 @@ fn test_expert_mode_pipeline_stages() {
     );
 
     // Verify all expected stages are present
-    assert!(stages.contains(&PipelineStage::Generate), "Should include Generate");
-    assert!(stages.contains(&PipelineStage::Assess), "Should include Assess");
-    assert!(stages.contains(&PipelineStage::Execute), "Should include Execute");
-    assert!(stages.contains(&PipelineStage::Verify), "Should include Verify");
-    assert!(stages.contains(&PipelineStage::Commit), "Should include Commit");
-    assert!(stages.contains(&PipelineStage::Memory), "Should include Memory");
+    assert!(
+        stages.contains(&PipelineStage::Generate),
+        "Should include Generate"
+    );
+    assert!(
+        stages.contains(&PipelineStage::Assess),
+        "Should include Assess"
+    );
+    assert!(
+        stages.contains(&PipelineStage::Execute),
+        "Should include Execute"
+    );
+    assert!(
+        stages.contains(&PipelineStage::Verify),
+        "Should include Verify"
+    );
+    assert!(
+        stages.contains(&PipelineStage::Commit),
+        "Should include Commit"
+    );
+    assert!(
+        stages.contains(&PipelineStage::Memory),
+        "Should include Memory"
+    );
 }
 
 /// Test that Review stage is positioned between Test and Verify in Expert mode
@@ -139,9 +193,18 @@ fn test_expert_mode_pipeline_stages() {
 fn test_expert_mode_review_stage_position() {
     let stages = PipelineStage::pipeline_for_mode(ExecutionMode::Expert);
 
-    let test_idx = stages.iter().position(|s| *s == PipelineStage::Test).unwrap();
-    let review_idx = stages.iter().position(|s| *s == PipelineStage::Review).unwrap();
-    let verify_idx = stages.iter().position(|s| *s == PipelineStage::Verify).unwrap();
+    let test_idx = stages
+        .iter()
+        .position(|s| *s == PipelineStage::Test)
+        .unwrap();
+    let review_idx = stages
+        .iter()
+        .position(|s| *s == PipelineStage::Review)
+        .unwrap();
+    let verify_idx = stages
+        .iter()
+        .position(|s| *s == PipelineStage::Verify)
+        .unwrap();
 
     assert!(
         review_idx > test_idx,
@@ -172,22 +235,40 @@ fn test_consistent_stage_order_across_modes() {
 
     // Generate should always be first
     assert_eq!(get_position(&fast_stages, PipelineStage::Generate), Some(0));
-    assert_eq!(get_position(&standard_stages, PipelineStage::Generate), Some(0));
-    assert_eq!(get_position(&expert_stages, PipelineStage::Generate), Some(0));
+    assert_eq!(
+        get_position(&standard_stages, PipelineStage::Generate),
+        Some(0)
+    );
+    assert_eq!(
+        get_position(&expert_stages, PipelineStage::Generate),
+        Some(0)
+    );
 
     // Assess should always be second
     assert_eq!(get_position(&fast_stages, PipelineStage::Assess), Some(1));
-    assert_eq!(get_position(&standard_stages, PipelineStage::Assess), Some(1));
+    assert_eq!(
+        get_position(&standard_stages, PipelineStage::Assess),
+        Some(1)
+    );
     assert_eq!(get_position(&expert_stages, PipelineStage::Assess), Some(1));
 
     // Execute should always be third
     assert_eq!(get_position(&fast_stages, PipelineStage::Execute), Some(2));
-    assert_eq!(get_position(&standard_stages, PipelineStage::Execute), Some(2));
-    assert_eq!(get_position(&expert_stages, PipelineStage::Execute), Some(2));
+    assert_eq!(
+        get_position(&standard_stages, PipelineStage::Execute),
+        Some(2)
+    );
+    assert_eq!(
+        get_position(&expert_stages, PipelineStage::Execute),
+        Some(2)
+    );
 
     // Memory should always be last
     assert_eq!(get_position(&fast_stages, PipelineStage::Memory), Some(5));
-    assert_eq!(get_position(&standard_stages, PipelineStage::Memory), Some(6));
+    assert_eq!(
+        get_position(&standard_stages, PipelineStage::Memory),
+        Some(6)
+    );
     assert_eq!(get_position(&expert_stages, PipelineStage::Memory), Some(7));
 }
 
@@ -525,8 +606,8 @@ fn test_expert_flag_maps_to_expert_mode() {
 /// Test default mode (no flags) is Standard
 #[test]
 fn test_default_mode_is_standard() {
-    let args = Args::try_parse_from(["ltmatrix", "test goal"])
-        .expect("Should parse without mode flags");
+    let args =
+        Args::try_parse_from(["ltmatrix", "test goal"]).expect("Should parse without mode flags");
 
     assert_eq!(
         args.get_execution_mode(),
@@ -540,10 +621,7 @@ fn test_default_mode_is_standard() {
 fn test_fast_and_expert_conflict() {
     let result = Args::try_parse_from(["ltmatrix", "--fast", "--expert", "test goal"]);
 
-    assert!(
-        result.is_err(),
-        "--fast and --expert should conflict"
-    );
+    assert!(result.is_err(), "--fast and --expert should conflict");
 }
 
 // =============================================================================
@@ -614,8 +692,7 @@ async fn test_orchestrator_fast_mode() {
         .with_work_dir(temp_dir.path())
         .with_progress(false);
 
-    let orchestrator = PipelineOrchestrator::new(config)
-        .expect("Failed to create orchestrator");
+    let orchestrator = PipelineOrchestrator::new(config).expect("Failed to create orchestrator");
 
     let result = orchestrator
         .execute_pipeline("Test goal", ExecutionMode::Fast)
@@ -636,8 +713,7 @@ async fn test_orchestrator_standard_mode() {
         .with_work_dir(temp_dir.path())
         .with_progress(false);
 
-    let orchestrator = PipelineOrchestrator::new(config)
-        .expect("Failed to create orchestrator");
+    let orchestrator = PipelineOrchestrator::new(config).expect("Failed to create orchestrator");
 
     let result = orchestrator
         .execute_pipeline("Test goal", ExecutionMode::Standard)
@@ -658,8 +734,7 @@ async fn test_orchestrator_expert_mode() {
         .with_work_dir(temp_dir.path())
         .with_progress(false);
 
-    let orchestrator = PipelineOrchestrator::new(config)
-        .expect("Failed to create orchestrator");
+    let orchestrator = PipelineOrchestrator::new(config).expect("Failed to create orchestrator");
 
     let result = orchestrator
         .execute_pipeline("Test goal", ExecutionMode::Expert)
@@ -698,8 +773,12 @@ fn test_mode_serialization() {
 
     for mode in modes {
         let serialized = serde_json::to_string(&mode).expect("Should serialize");
-        let deserialized: ExecutionMode = serde_json::from_str(&serialized).expect("Should deserialize");
-        assert_eq!(mode, deserialized, "Mode should round-trip through serialization");
+        let deserialized: ExecutionMode =
+            serde_json::from_str(&serialized).expect("Should deserialize");
+        assert_eq!(
+            mode, deserialized,
+            "Mode should round-trip through serialization"
+        );
     }
 }
 
@@ -741,19 +820,37 @@ fn test_complexity_model_selection_integration() {
     let expert_config = ModeConfig::expert_mode();
 
     // Fast mode: simple/moderate -> Haiku, complex -> Sonnet
-    assert!(fast_config.model_for_complexity(&simple_task.complexity).contains("haiku"));
-    assert!(fast_config.model_for_complexity(&moderate_task.complexity).contains("haiku"));
-    assert!(fast_config.model_for_complexity(&complex_task.complexity).contains("sonnet"));
+    assert!(fast_config
+        .model_for_complexity(&simple_task.complexity)
+        .contains("haiku"));
+    assert!(fast_config
+        .model_for_complexity(&moderate_task.complexity)
+        .contains("haiku"));
+    assert!(fast_config
+        .model_for_complexity(&complex_task.complexity)
+        .contains("sonnet"));
 
     // Standard mode: simple/moderate -> Sonnet, complex -> Opus
-    assert!(standard_config.model_for_complexity(&simple_task.complexity).contains("sonnet"));
-    assert!(standard_config.model_for_complexity(&moderate_task.complexity).contains("sonnet"));
-    assert!(standard_config.model_for_complexity(&complex_task.complexity).contains("opus"));
+    assert!(standard_config
+        .model_for_complexity(&simple_task.complexity)
+        .contains("sonnet"));
+    assert!(standard_config
+        .model_for_complexity(&moderate_task.complexity)
+        .contains("sonnet"));
+    assert!(standard_config
+        .model_for_complexity(&complex_task.complexity)
+        .contains("opus"));
 
     // Expert mode: all -> Opus
-    assert!(expert_config.model_for_complexity(&simple_task.complexity).contains("opus"));
-    assert!(expert_config.model_for_complexity(&moderate_task.complexity).contains("opus"));
-    assert!(expert_config.model_for_complexity(&complex_task.complexity).contains("opus"));
+    assert!(expert_config
+        .model_for_complexity(&simple_task.complexity)
+        .contains("opus"));
+    assert!(expert_config
+        .model_for_complexity(&moderate_task.complexity)
+        .contains("opus"));
+    assert!(expert_config
+        .model_for_complexity(&complex_task.complexity)
+        .contains("opus"));
 }
 
 // =============================================================================
@@ -807,8 +904,7 @@ fn test_fast_mode_fewer_retries() {
     );
 
     assert_eq!(
-        standard_config.max_retries,
-        expert_config.max_retries,
+        standard_config.max_retries, expert_config.max_retries,
         "Standard and Expert should have same retry count"
     );
 }
@@ -841,9 +937,17 @@ fn test_mode_config_serialization() {
 fn test_fast_mode_stage_order() {
     let stages = PipelineStage::pipeline_for_mode(ExecutionMode::Fast);
 
-    assert_eq!(stages[0], PipelineStage::Generate, "Stage 0 should be Generate");
+    assert_eq!(
+        stages[0],
+        PipelineStage::Generate,
+        "Stage 0 should be Generate"
+    );
     assert_eq!(stages[1], PipelineStage::Assess, "Stage 1 should be Assess");
-    assert_eq!(stages[2], PipelineStage::Execute, "Stage 2 should be Execute");
+    assert_eq!(
+        stages[2],
+        PipelineStage::Execute,
+        "Stage 2 should be Execute"
+    );
     assert_eq!(stages[3], PipelineStage::Verify, "Stage 3 should be Verify");
     assert_eq!(stages[4], PipelineStage::Commit, "Stage 4 should be Commit");
     assert_eq!(stages[5], PipelineStage::Memory, "Stage 5 should be Memory");
@@ -854,9 +958,17 @@ fn test_fast_mode_stage_order() {
 fn test_standard_mode_stage_order() {
     let stages = PipelineStage::pipeline_for_mode(ExecutionMode::Standard);
 
-    assert_eq!(stages[0], PipelineStage::Generate, "Stage 0 should be Generate");
+    assert_eq!(
+        stages[0],
+        PipelineStage::Generate,
+        "Stage 0 should be Generate"
+    );
     assert_eq!(stages[1], PipelineStage::Assess, "Stage 1 should be Assess");
-    assert_eq!(stages[2], PipelineStage::Execute, "Stage 2 should be Execute");
+    assert_eq!(
+        stages[2],
+        PipelineStage::Execute,
+        "Stage 2 should be Execute"
+    );
     assert_eq!(stages[3], PipelineStage::Test, "Stage 3 should be Test");
     assert_eq!(stages[4], PipelineStage::Verify, "Stage 4 should be Verify");
     assert_eq!(stages[5], PipelineStage::Commit, "Stage 5 should be Commit");
@@ -868,9 +980,17 @@ fn test_standard_mode_stage_order() {
 fn test_expert_mode_stage_order() {
     let stages = PipelineStage::pipeline_for_mode(ExecutionMode::Expert);
 
-    assert_eq!(stages[0], PipelineStage::Generate, "Stage 0 should be Generate");
+    assert_eq!(
+        stages[0],
+        PipelineStage::Generate,
+        "Stage 0 should be Generate"
+    );
     assert_eq!(stages[1], PipelineStage::Assess, "Stage 1 should be Assess");
-    assert_eq!(stages[2], PipelineStage::Execute, "Stage 2 should be Execute");
+    assert_eq!(
+        stages[2],
+        PipelineStage::Execute,
+        "Stage 2 should be Execute"
+    );
     assert_eq!(stages[3], PipelineStage::Test, "Stage 3 should be Test");
     assert_eq!(stages[4], PipelineStage::Review, "Stage 4 should be Review");
     assert_eq!(stages[5], PipelineStage::Verify, "Stage 5 should be Verify");

@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Logger initialization and management
 //!
 //! This module provides the main logger setup with support for:

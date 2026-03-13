@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Memory extraction from task results
 //!
 //! This module provides functionality to extract key decisions, patterns,
@@ -42,8 +41,8 @@ use anyhow::Result;
 use regex::Regex;
 use tracing::debug;
 
+use super::memory::{MemoryCategory, MemoryEntry};
 use ltmatrix_core::Task;
-use super::memory::{MemoryEntry, MemoryCategory};
 
 /// Extract memory entries from a completed task
 ///
@@ -83,7 +82,11 @@ pub fn extract_memory_from_task(task: &Task, task_result: &str) -> Result<Vec<Me
     // Extract error handling patterns
     entries.extend(extract_error_handling_patterns(task, task_result)?);
 
-    debug!("Extracted {} memory entries from task {}", entries.len(), task.id);
+    debug!(
+        "Extracted {} memory entries from task {}",
+        entries.len(),
+        task.id
+    );
 
     Ok(entries)
 }
@@ -119,7 +122,7 @@ fn extract_architectural_decisions(task: &Task, result: &str) -> Result<Vec<Memo
                                 decision.to_string(),
                             )
                             .with_category_enum(MemoryCategory::ArchitectureDecision)
-                            .with_tags(vec!["architecture".to_string()])
+                            .with_tags(vec!["architecture".to_string()]),
                         );
                     }
                 }
@@ -156,7 +159,7 @@ fn extract_patterns(task: &Task, result: &str) -> Result<Vec<MemoryEntry>> {
                                 pattern_text.to_string(),
                             )
                             .with_category_enum(MemoryCategory::Pattern)
-                            .with_tags(vec!["pattern".to_string()])
+                            .with_tags(vec!["pattern".to_string()]),
                         );
                     }
                 }
@@ -195,7 +198,7 @@ fn extract_important_notes(task: &Task, result: &str) -> Result<Vec<MemoryEntry>
                                 note.to_string(),
                             )
                             .with_category_enum(MemoryCategory::ImportantNote)
-                            .with_tags(vec!["important".to_string()])
+                            .with_tags(vec!["important".to_string()]),
                         );
                     }
                 }
@@ -230,7 +233,7 @@ fn extract_api_decisions(task: &Task, result: &str) -> Result<Vec<MemoryEntry>> 
                                 api_decision.to_string(),
                             )
                             .with_category_enum(MemoryCategory::ApiDesign)
-                            .with_tags(vec!["api".to_string()])
+                            .with_tags(vec!["api".to_string()]),
                         );
                     }
                 }
@@ -266,7 +269,7 @@ fn extract_performance_decisions(task: &Task, result: &str) -> Result<Vec<Memory
                                 perf_decision.to_string(),
                             )
                             .with_category_enum(MemoryCategory::Performance)
-                            .with_tags(vec!["performance".to_string()])
+                            .with_tags(vec!["performance".to_string()]),
                         );
                     }
                 }
@@ -303,7 +306,7 @@ fn extract_security_decisions(task: &Task, result: &str) -> Result<Vec<MemoryEnt
                                 security_decision.to_string(),
                             )
                             .with_category_enum(MemoryCategory::Security)
-                            .with_tags(vec!["security".to_string()])
+                            .with_tags(vec!["security".to_string()]),
                         );
                     }
                 }
@@ -338,7 +341,7 @@ fn extract_error_handling_patterns(task: &Task, result: &str) -> Result<Vec<Memo
                                 error_pattern.to_string(),
                             )
                             .with_category_enum(MemoryCategory::ErrorHandling)
-                            .with_tags(vec!["error-handling".to_string()])
+                            .with_tags(vec!["error-handling".to_string()]),
                         );
                     }
                 }
@@ -376,13 +379,9 @@ pub fn extract_task_summary(task: &Task, files_changed: &[String]) -> Result<Mem
     }
 
     Ok(
-        MemoryEntry::new(
-            &task.id,
-            format!("Completed: {}", task.title),
-            content,
-        )
-        .with_category_enum(MemoryCategory::TaskCompletion)
-        .with_files(files_changed.to_vec())
+        MemoryEntry::new(&task.id, format!("Completed: {}", task.title), content)
+            .with_category_enum(MemoryCategory::TaskCompletion)
+            .with_files(files_changed.to_vec()),
     )
 }
 
@@ -422,7 +421,7 @@ pub fn extract_files_affected(result: &str) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ltmatrix_core::{Task, TaskStatus, TaskComplexity};
+    use ltmatrix_core::{Task, TaskComplexity, TaskStatus};
 
     fn create_test_task() -> Task {
         let mut task = Task::new("task-001", "Test Task", "Test description");
@@ -484,10 +483,7 @@ mod tests {
     #[test]
     fn test_extract_task_summary() {
         let task = create_test_task();
-        let files = vec![
-            "src/main.rs".to_string(),
-            "src/lib.rs".to_string(),
-        ];
+        let files = vec!["src/main.rs".to_string(), "src/lib.rs".to_string()];
 
         let entry = extract_task_summary(&task, &files).unwrap();
 

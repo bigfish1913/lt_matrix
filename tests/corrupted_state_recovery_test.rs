@@ -3,8 +3,8 @@
 //! Tests that corrupted state files are handled gracefully with proper
 //! fallback to empty state and detailed error logging.
 
-use ltmatrix::workspace::WorkspaceState;
 use ltmatrix::models::Task;
+use ltmatrix::workspace::WorkspaceState;
 use std::fs;
 use tempfile::TempDir;
 

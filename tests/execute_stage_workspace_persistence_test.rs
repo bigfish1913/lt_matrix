@@ -4,7 +4,7 @@
 //! after each task completion with proper error handling.
 
 use ltmatrix::models::{Task, TaskStatus};
-use ltmatrix::pipeline::execute::{ExecuteConfig, execute_tasks};
+use ltmatrix::pipeline::execute::{execute_tasks, ExecuteConfig};
 use ltmatrix::workspace::WorkspaceState;
 use tempfile::TempDir;
 

@@ -45,8 +45,14 @@ fn test_multiple_tasks_share_same_session_for_same_agent() {
     let mut task2 = Task::new("task-2", "Task 2", "Second task");
 
     // Both tasks use the same agent/model, so they share a session
-    let session1_id = pool.get_or_create_for_task(&mut task1).session_id().to_string();
-    let session2_id = pool.get_or_create_for_task(&mut task2).session_id().to_string();
+    let session1_id = pool
+        .get_or_create_for_task(&mut task1)
+        .session_id()
+        .to_string();
+    let session2_id = pool
+        .get_or_create_for_task(&mut task2)
+        .session_id()
+        .to_string();
 
     // Sessions are shared for the same (agent_name, model) pair
     assert_eq!(session1_id, session2_id);

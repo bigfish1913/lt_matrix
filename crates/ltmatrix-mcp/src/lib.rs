@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! MCP (Model Context Protocol) implementation
 //!
 //! This module provides a complete MCP client implementation for communicating
@@ -64,68 +63,59 @@ pub mod transport;
 
 // Re-export JSON-RPC message types
 pub use protocol::{
-    JsonRpcMessage,
-    JsonRpcRequest,
-    JsonRpcResponse,
-    JsonRpcNotification,
-    RequestId,
-    JsonRpcError,
-    JsonRpcErrorCode,
+    JsonRpcError, JsonRpcErrorCode, JsonRpcMessage, JsonRpcNotification, JsonRpcRequest,
+    JsonRpcResponse, RequestId,
 };
 
 // Re-export MCP method types
 pub use protocol::{
-    MCP_PROTOCOL_VERSION,
-    ImplementationInfo,
-    ClientCapabilities,
-    ServerCapabilities,
-    RootsCapability,
-    PromptsCapability,
-    ResourcesCapability,
-    ToolsCapability,
-    InitializeParams,
-    InitializeResult,
-    Tool,
-    ToolsListParams,
-    ToolsListResult,
-    ToolCallParams,
-    ToolCallResult,
-    ToolContent,
-    Resource,
-    ResourcesListParams,
-    ResourcesListResult,
-    ResourceReadParams,
-    ResourceReadResult,
-    ResourceContents,
-    Prompt,
-    PromptArgument,
-    PromptsListParams,
-    PromptsListResult,
-    PromptsGetParams,
-    PromptsGetResult,
-    PromptContent,
-    PromptMessage,
-    Root,
-    RootsListParams,
-    RootsListResult,
-    LogLevel,
-    LoggingSetLevelParams,
+    ClientCapabilities, ImplementationInfo, InitializeParams, InitializeResult, LogLevel,
+    LoggingSetLevelParams, Prompt, PromptArgument, PromptContent, PromptMessage, PromptsCapability,
+    PromptsGetParams, PromptsGetResult, PromptsListParams, PromptsListResult, Resource,
+    ResourceContents, ResourceReadParams, ResourceReadResult, ResourcesCapability,
+    ResourcesListParams, ResourcesListResult, Root, RootsCapability, RootsListParams,
+    RootsListResult, ServerCapabilities, Tool, ToolCallParams, ToolCallResult, ToolContent,
+    ToolsCapability, ToolsListParams, ToolsListResult, MCP_PROTOCOL_VERSION,
 };
 
 // Re-export type-safe wrappers
 pub use protocol::{
-    // Core traits
-    McpMethod,
-    PaginatedMethod,
-    McpNotification,
+    CompletionArgument,
+    // Completion methods
+    CompletionComplete,
+    CompletionCompleteParams,
+    CompletionCompleteResult,
+    CompletionInfo,
+    CompletionReference,
     // Lifecycle methods
     Initialize,
+    LogMessageParams,
+    // Logging methods
+    LoggingSetLevel,
+    LoggingSetLevelResult,
+    // Core traits
+    McpMethod,
+    // Method registry
+    McpMethodKind,
+    McpNotification,
+    ModelHint,
+    ModelPreferences,
+    // Notifications
+    NotificationsInitialized,
+    NotificationsMessage,
+    NotificationsProgress,
+    NotificationsPromptsListChanged,
+    NotificationsResourcesListChanged,
+    NotificationsRootsListChanged,
+    NotificationsToolsListChanged,
+    PaginatedMethod,
     Ping,
     PingParams,
     PingResult,
-    // Tools methods
-    ToolsList,
-    ToolsCall,
+    ProgressParams,
+    PromptsGet,
+    // Prompts methods
+    PromptsList,
     // Resources methods
     ResourcesList,
     ResourcesRead,
@@ -135,130 +125,103 @@ pub use protocol::{
     ResourcesUnsubscribe,
     ResourcesUnsubscribeParams,
     ResourcesUnsubscribeResult,
-    // Prompts methods
-    PromptsList,
-    PromptsGet,
     // Roots methods
     RootsList,
-    // Logging methods
-    LoggingSetLevel,
-    LoggingSetLevelResult,
-    // Completion methods
-    CompletionComplete,
-    CompletionReference,
-    CompletionArgument,
-    CompletionCompleteParams,
-    CompletionCompleteResult,
-    CompletionInfo,
+    SamplingContent,
     // Sampling methods
     SamplingCreateMessage,
-    SamplingMessage,
-    SamplingContent,
     SamplingCreateMessageParams,
     SamplingCreateMessageResult,
-    ModelPreferences,
-    ModelHint,
-    // Notifications
-    NotificationsInitialized,
-    NotificationsToolsListChanged,
-    NotificationsResourcesListChanged,
-    NotificationsPromptsListChanged,
-    NotificationsRootsListChanged,
-    NotificationsProgress,
-    ProgressParams,
-    NotificationsMessage,
-    LogMessageParams,
-    // Method registry
-    McpMethodKind,
+    SamplingMessage,
+    ToolsCall,
+    // Tools methods
+    ToolsList,
 };
 
 // Re-export transport types
 pub use transport::{
+    ChildProcess,
+    ContentLengthFramer,
+    FramingError,
+    LineDelimitedFramer,
+    // Framing
+    MessageFramer,
+    OutgoingMessage,
+    StdioConfig,
+    // Stdio transport
+    StdioTransport,
     // Core types
     Transport,
     TransportConfig,
-    TransportType,
-    TransportMessage,
-    OutgoingMessage,
     TransportError,
+    TransportMessage,
     TransportStats,
-    // Stdio transport
-    StdioTransport,
-    StdioConfig,
-    ChildProcess,
-    // Framing
-    MessageFramer,
-    FramingError,
-    LineDelimitedFramer,
-    ContentLengthFramer,
+    TransportType,
 };
 
 // Re-export client types
 pub use client::{
+    ConnectionState,
     // Core types
     McpClient,
     McpClientConfig,
-    ConnectionState,
     ServerInfo,
     StateTransitionError,
 };
 
 // Re-export correlation types
 pub use correlation::{
-    // Core types
-    RequestTracker,
+    CorrelationError,
     PendingRequest,
     PendingRequestHandle,
     PendingRequestInfo,
+    // Core types
+    RequestTracker,
     TrackerStats,
-    CorrelationError,
 };
 
 // Re-export heartbeat types
 pub use heartbeat::{
-    // Core types
-    HeartbeatManager,
-    HeartbeatConfig,
-    HeartbeatHandle,
-    HeartbeatStats,
     ActivityTracker,
     ConnectionHealth,
+    HeartbeatConfig,
+    HeartbeatHandle,
+    // Core types
+    HeartbeatManager,
+    HeartbeatStats,
     PingSender,
 };
 
 // Re-export reconnect types
 pub use reconnect::{
-    // Core types
-    ReconnectionManager,
+    BackoffStrategy,
+    DegradationLevel,
     ReconnectConfig,
     ReconnectHandle,
     ReconnectStats,
-    BackoffStrategy,
-    DegradationLevel,
+    // Core types
+    ReconnectionManager,
+    Reconnector,
     RecoveryConfig,
     RecoveryStrategy,
-    Reconnector,
 };
 
 // Re-export router types
 pub use router::{
-    // Core types
-    RequestRouter,
-    ResponseParser,
-    ResponseCorrelator,
-    TypedResponse,
-    RequestBuilder,
     MessageClassifier,
     MessageKind,
-    RequestHandler,
     NotificationHandler,
+    RequestBuilder,
+    RequestHandler,
+    // Core types
+    RequestRouter,
+    ResponseCorrelator,
+    ResponseParser,
     RouterStats,
+    TypedResponse,
 };
 
 // Re-export notification types
 pub use notification::{
-    NotificationDispatcher,
-    NotificationEvent,
-    NotificationBuilder,
-    NotificationStats,
+    NotificationBuilder, NotificationDispatcher, NotificationEvent, NotificationStats,
 };

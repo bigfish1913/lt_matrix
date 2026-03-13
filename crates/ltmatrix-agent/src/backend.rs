@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Agent backend abstraction
 //!
 //! This module defines the core abstraction contract for all agent backends,
@@ -573,10 +572,7 @@ mod tests {
         let error = AgentError::CommandNotFound {
             command: "claude".to_string(),
         };
-        assert_eq!(
-            error.to_string(),
-            "Agent command 'claude' not found"
-        );
+        assert_eq!(error.to_string(), "Agent command 'claude' not found");
     }
 
     #[test]
@@ -631,10 +627,7 @@ mod tests {
         let error = AgentError::SessionNotFound {
             session_id: "abc-123".to_string(),
         };
-        assert_eq!(
-            error.to_string(),
-            "Session 'abc-123' not found"
-        );
+        assert_eq!(error.to_string(), "Session 'abc-123' not found");
     }
 
     #[test]

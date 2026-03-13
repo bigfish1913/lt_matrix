@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Semantic versioning implementation
 //!
 //! This module provides version parsing, comparison, and bumping following
@@ -116,7 +115,10 @@ impl Version {
 
         // Split off pre-release
         let (main_part, pre_release) = if let Some(idx) = version_part.find('-') {
-            (version_part[..idx].to_string(), Some(version_part[idx + 1..].to_string()))
+            (
+                version_part[..idx].to_string(),
+                Some(version_part[idx + 1..].to_string()),
+            )
         } else {
             (version_part.to_string(), None)
         };
@@ -130,17 +132,17 @@ impl Version {
             )));
         }
 
-        let major = parts[0]
-            .parse()
-            .map_err(|_| BumpError::InvalidFormat(format!("Invalid major version: {}", parts[0])))?;
+        let major = parts[0].parse().map_err(|_| {
+            BumpError::InvalidFormat(format!("Invalid major version: {}", parts[0]))
+        })?;
 
-        let minor = parts[1]
-            .parse()
-            .map_err(|_| BumpError::InvalidFormat(format!("Invalid minor version: {}", parts[1])))?;
+        let minor = parts[1].parse().map_err(|_| {
+            BumpError::InvalidFormat(format!("Invalid minor version: {}", parts[1]))
+        })?;
 
-        let patch = parts[2]
-            .parse()
-            .map_err(|_| BumpError::InvalidFormat(format!("Invalid patch version: {}", parts[2])))?;
+        let patch = parts[2].parse().map_err(|_| {
+            BumpError::InvalidFormat(format!("Invalid patch version: {}", parts[2]))
+        })?;
 
         Ok(Self {
             major,
@@ -370,10 +372,14 @@ mod tests {
     #[test]
     fn test_bump_pre_release() {
         let v = Version::parse("1.2.3").unwrap();
-        let bumped = v.bump(VersionBump::PreRelease("alpha".to_string())).unwrap();
+        let bumped = v
+            .bump(VersionBump::PreRelease("alpha".to_string()))
+            .unwrap();
         assert_eq!(bumped.to_string(), "1.2.3-alpha.1");
 
-        let bumped2 = bumped.bump(VersionBump::PreRelease("alpha".to_string())).unwrap();
+        let bumped2 = bumped
+            .bump(VersionBump::PreRelease("alpha".to_string()))
+            .unwrap();
         assert_eq!(bumped2.to_string(), "1.2.3-alpha.2");
     }
 

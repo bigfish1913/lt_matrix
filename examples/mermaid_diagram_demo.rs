@@ -6,7 +6,7 @@
 use ltmatrix::models::{Task, TaskStatus};
 use ltmatrix::tasks::scheduler::schedule_tasks;
 use ltmatrix::tasks::topology::{
-    generate_mermaid_flowchart, generate_mermaid_graph, export_mermaid_to_file,
+    export_mermaid_to_file, generate_mermaid_flowchart, generate_mermaid_graph,
 };
 
 fn main() {

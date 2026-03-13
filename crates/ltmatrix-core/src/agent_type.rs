@@ -103,7 +103,7 @@ impl std::fmt::Display for AgentType {
             AgentType::Dev => write!(f, "dev"),
             AgentType::Test => write!(f, "test"),
             AgentType::Review => write!(f, "review"),
-            }
+        }
     }
 }
 
@@ -113,14 +113,8 @@ mod tests {
 
     #[test]
     fn test_agent_type_from_keywords_plan() {
-        assert_eq!(
-            AgentType::from_keywords("分析系统架构"),
-            AgentType::Plan
-        );
-        assert_eq!(
-            AgentType::from_keywords("规划任务拆分"),
-            AgentType::Plan
-        );
+        assert_eq!(AgentType::from_keywords("分析系统架构"), AgentType::Plan);
+        assert_eq!(AgentType::from_keywords("规划任务拆分"), AgentType::Plan);
         assert_eq!(
             AgentType::from_keywords("analyze the requirements"),
             AgentType::Plan
@@ -129,30 +123,15 @@ mod tests {
 
     #[test]
     fn test_agent_type_from_keywords_test() {
-        assert_eq!(
-            AgentType::from_keywords("编写测试用例"),
-            AgentType::Test
-        );
-        assert_eq!(
-            AgentType::from_keywords("验证功能正确性"),
-            AgentType::Test
-        );
-        assert_eq!(
-            AgentType::from_keywords("run unit tests"),
-            AgentType::Test
-        );
+        assert_eq!(AgentType::from_keywords("编写测试用例"), AgentType::Test);
+        assert_eq!(AgentType::from_keywords("验证功能正确性"), AgentType::Test);
+        assert_eq!(AgentType::from_keywords("run unit tests"), AgentType::Test);
     }
 
     #[test]
     fn test_agent_type_from_keywords_review() {
-        assert_eq!(
-            AgentType::from_keywords("审查代码质量"),
-            AgentType::Review
-        );
-        assert_eq!(
-            AgentType::from_keywords("代码审计"),
-            AgentType::Review
-        );
+        assert_eq!(AgentType::from_keywords("审查代码质量"), AgentType::Review);
+        assert_eq!(AgentType::from_keywords("代码审计"), AgentType::Review);
         assert_eq!(
             AgentType::from_keywords("review the changes"),
             AgentType::Review
@@ -161,14 +140,8 @@ mod tests {
 
     #[test]
     fn test_agent_type_from_keywords_dev() {
-        assert_eq!(
-            AgentType::from_keywords("实现用户登录功能"),
-            AgentType::Dev
-        );
-        assert_eq!(
-            AgentType::from_keywords("修复bug"),
-            AgentType::Dev
-        );
+        assert_eq!(AgentType::from_keywords("实现用户登录功能"), AgentType::Dev);
+        assert_eq!(AgentType::from_keywords("修复bug"), AgentType::Dev);
         assert_eq!(
             AgentType::from_keywords("implement new feature"),
             AgentType::Dev

@@ -154,7 +154,11 @@ fn test_request_serialization_no_params() {
 #[test]
 fn test_request_serialization_with_params() {
     let params = json!({"key": "value"});
-    let request = JsonRpcRequest::with_params(RequestId::String("req-1".into()), "serialize_with_params", params);
+    let request = JsonRpcRequest::with_params(
+        RequestId::String("req-1".into()),
+        "serialize_with_params",
+        params,
+    );
     let json = request.to_json().unwrap();
 
     let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
@@ -199,11 +203,8 @@ fn test_request_deserialization_with_array_params() {
 
 #[test]
 fn test_request_roundtrip() {
-    let original = JsonRpcRequest::with_params(
-        RequestId::Number(99),
-        "roundtrip",
-        json!({"test": "data"}),
-    );
+    let original =
+        JsonRpcRequest::with_params(RequestId::Number(99), "roundtrip", json!({"test": "data"}));
 
     let json = original.to_json().unwrap();
     let deserialized = JsonRpcRequest::from_json(&json).unwrap();
@@ -331,7 +332,10 @@ fn test_response_roundtrip_error() {
     let deserialized = JsonRpcResponse::from_json(&json).unwrap();
 
     assert_eq!(original.id, deserialized.id);
-    assert_eq!(original.error.unwrap().code, deserialized.error.unwrap().code);
+    assert_eq!(
+        original.error.unwrap().code,
+        deserialized.error.unwrap().code
+    );
 }
 
 // ============================================================================
@@ -414,10 +418,7 @@ fn test_notification_deserialization_with_params() {
 
 #[test]
 fn test_notification_roundtrip() {
-    let original = JsonRpcNotification::with_params(
-        "roundtrip_event",
-        json!({"test": "value"}),
-    );
+    let original = JsonRpcNotification::with_params("roundtrip_event", json!({"test": "value"}));
 
     let json = original.to_json().unwrap();
     let deserialized = JsonRpcNotification::from_json(&json).unwrap();
@@ -565,11 +566,20 @@ fn test_error_code_from_i32_server_range() {
 #[test]
 fn test_error_code_message() {
     assert_eq!(JsonRpcErrorCode::ParseError.message(), "Parse error");
-    assert_eq!(JsonRpcErrorCode::InvalidRequest.message(), "Invalid Request");
-    assert_eq!(JsonRpcErrorCode::MethodNotFound.message(), "Method not found");
+    assert_eq!(
+        JsonRpcErrorCode::InvalidRequest.message(),
+        "Invalid Request"
+    );
+    assert_eq!(
+        JsonRpcErrorCode::MethodNotFound.message(),
+        "Method not found"
+    );
     assert_eq!(JsonRpcErrorCode::InvalidParams.message(), "Invalid params");
     assert_eq!(JsonRpcErrorCode::InternalError.message(), "Internal error");
-    assert_eq!(JsonRpcErrorCode::ServerError(-32001).message(), "Server error");
+    assert_eq!(
+        JsonRpcErrorCode::ServerError(-32001).message(),
+        "Server error"
+    );
 }
 
 #[test]
@@ -693,11 +703,8 @@ fn test_error_deserialization() {
 #[test]
 fn test_full_request_response_cycle() {
     // Create request
-    let request = JsonRpcRequest::with_params(
-        RequestId::Number(1),
-        "calculate",
-        json!({"a": 10, "b": 20}),
-    );
+    let request =
+        JsonRpcRequest::with_params(RequestId::Number(1), "calculate", json!({"a": 10, "b": 20}));
 
     // Serialize and send
     let request_json = request.to_json().unwrap();
@@ -1017,11 +1024,8 @@ fn test_request_params_serialization_skip_when_none() {
 
 #[test]
 fn test_request_params_serialization_include_when_some() {
-    let request = JsonRpcRequest::with_params(
-        RequestId::Number(1),
-        "test",
-        json!({"key": "value"})
-    );
+    let request =
+        JsonRpcRequest::with_params(RequestId::Number(1), "test", json!({"key": "value"}));
     let json = request.to_json().unwrap();
     let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
     // When params is Some, it should be in the JSON
@@ -1261,20 +1265,14 @@ fn test_error_code_positive_number() {
 
 #[test]
 fn test_error_with_empty_message() {
-    let error = JsonRpcError::new(
-        JsonRpcErrorCode::ParseError,
-        "".to_string(),
-    );
+    let error = JsonRpcError::new(JsonRpcErrorCode::ParseError, "".to_string());
     assert_eq!(error.message, "");
 }
 
 #[test]
 fn test_error_with_long_message() {
     let long_msg = "x".repeat(10000);
-    let error = JsonRpcError::new(
-        JsonRpcErrorCode::InternalError,
-        long_msg.clone(),
-    );
+    let error = JsonRpcError::new(JsonRpcErrorCode::InternalError, long_msg.clone());
     assert_eq!(error.message.len(), 10000);
 }
 
@@ -1336,7 +1334,7 @@ fn test_batch_request_scenario() {
         JsonRpcRequest::with_params(
             RequestId::Number(2),
             "update_user",
-            json!({"name": "Alice"})
+            json!({"name": "Alice"}),
         ),
         JsonRpcRequest::new(RequestId::Number(3), "list_users"),
     ];
@@ -1355,13 +1353,13 @@ fn test_error_propagation_scenario() {
     let request = JsonRpcRequest::with_params(
         RequestId::Number(1),
         "calculate",
-        json!({"a": "invalid", "b": "also_invalid"})
+        json!({"a": "invalid", "b": "also_invalid"}),
     );
 
     // Server detects invalid params
     let error_response = JsonRpcResponse::error(
         request.id,
-        JsonRpcError::invalid_params("parameters must be numbers")
+        JsonRpcError::invalid_params("parameters must be numbers"),
     );
 
     assert!(error_response.is_error());
@@ -1375,11 +1373,14 @@ fn test_server_error_with_custom_code() {
     // Server-specific error in reserved range
     let custom_error = JsonRpcError::new(
         JsonRpcErrorCode::ServerError(-32050),
-        "Database timeout".to_string()
+        "Database timeout".to_string(),
     );
 
     assert_eq!(custom_error.code, -32050);
-    assert_eq!(custom_error.code_enum(), JsonRpcErrorCode::ServerError(-32050));
+    assert_eq!(
+        custom_error.code_enum(),
+        JsonRpcErrorCode::ServerError(-32050)
+    );
 }
 
 #[test]

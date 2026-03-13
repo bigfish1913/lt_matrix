@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Test coverage analysis module
 //!
 //! This module handles test coverage checking, aggregation of test findings,
@@ -482,24 +481,20 @@ pub async fn analyze_coverage(
 
     let report = match framework {
         TestFramework::Cargo => analyze_cargo_coverage(config).await?,
-        TestFramework::Pytest => {
-            analyze_python_coverage(config).await.unwrap_or_else(|e| {
-                warn!("Python coverage analysis failed: {}", e);
-                create_empty_coverage_report()
-            })
-        }
-        TestFramework::Go => {
-            analyze_go_coverage(config).await.unwrap_or_else(|e| {
-                warn!("Go coverage analysis failed: {}", e);
-                create_empty_coverage_report()
-            })
-        }
-        TestFramework::Npm => {
-            analyze_javascript_coverage(config).await.unwrap_or_else(|e| {
+        TestFramework::Pytest => analyze_python_coverage(config).await.unwrap_or_else(|e| {
+            warn!("Python coverage analysis failed: {}", e);
+            create_empty_coverage_report()
+        }),
+        TestFramework::Go => analyze_go_coverage(config).await.unwrap_or_else(|e| {
+            warn!("Go coverage analysis failed: {}", e);
+            create_empty_coverage_report()
+        }),
+        TestFramework::Npm => analyze_javascript_coverage(config)
+            .await
+            .unwrap_or_else(|e| {
                 warn!("JavaScript coverage analysis failed: {}", e);
                 create_empty_coverage_report()
-            })
-        }
+            }),
         TestFramework::None => create_empty_coverage_report(),
     };
 
@@ -624,8 +619,7 @@ fn analyze_directory(
     let mut total_lines = 0;
     let mut covered_lines = 0;
 
-    let entries = std::fs::read_dir(dir)
-        .context(format!("Failed to read directory: {:?}", dir))?;
+    let entries = std::fs::read_dir(dir).context(format!("Failed to read directory: {:?}", dir))?;
 
     for entry in entries.flatten() {
         let path = entry.path();
@@ -666,8 +660,8 @@ fn analyze_directory(
 
 /// Analyze a single Rust file for coverage
 fn analyze_rust_file(path: &Path, _config: &CoverageConfig) -> Result<Option<FileCoverage>> {
-    let content = std::fs::read_to_string(path)
-        .context(format!("Failed to read file: {:?}", path))?;
+    let content =
+        std::fs::read_to_string(path).context(format!("Failed to read file: {:?}", path))?;
 
     let mut code_lines = 0;
 
@@ -776,10 +770,7 @@ pub fn display_coverage_summary(report: &CoverageReport) {
     if !report.low_coverage_modules.is_empty() {
         println!("\nLow Coverage Modules:");
         for module in &report.low_coverage_modules {
-            println!(
-                "  {} - {:.1}%",
-                module.name, module.coverage_percent
-            );
+            println!("  {} - {:.1}%", module.name, module.coverage_percent);
         }
     }
 }
@@ -787,11 +778,9 @@ pub fn display_coverage_summary(report: &CoverageReport) {
 /// Display aggregated findings summary
 pub fn display_findings_summary(findings: &AggregatedFindings) {
     println!("\n=== Aggregated Findings ===");
-    println!("Critical: {} | High: {} | Medium: {} | Low: {}",
-        findings.critical_count,
-        findings.high_count,
-        findings.medium_count,
-        findings.low_count
+    println!(
+        "Critical: {} | High: {} | Medium: {} | Low: {}",
+        findings.critical_count, findings.high_count, findings.medium_count, findings.low_count
     );
 
     if let Some(coverage) = &findings.coverage {

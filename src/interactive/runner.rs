@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Interactive clarification runner
 //!
 //! This module implements the interactive dialog system for the --ask flag,
@@ -33,7 +32,10 @@ impl ClarificationRunner {
     }
 
     /// Run an interactive clarification session
-    pub fn run_clarification(&self, mut session: ClarificationSession) -> Result<ClarificationSession> {
+    pub fn run_clarification(
+        &self,
+        mut session: ClarificationSession,
+    ) -> Result<ClarificationSession> {
         use dialoguer::theme::ColorfulTheme;
 
         if session.questions.is_empty() {
@@ -85,7 +87,9 @@ impl ClarificationRunner {
 
         match question.question_type {
             QuestionType::Text => self.ask_text_question(session, question, default_text, theme),
-            QuestionType::Choice => self.ask_choice_question(session, question, default_text, theme),
+            QuestionType::Choice => {
+                self.ask_choice_question(session, question, default_text, theme)
+            }
             QuestionType::Confirm => self.ask_confirm_question(session, question, theme),
             QuestionType::MultiSelect => self.ask_multiselect_question(session, question, theme),
         }
@@ -143,7 +147,9 @@ impl ClarificationRunner {
         default: &str,
         theme: &dialoguer::theme::ColorfulTheme,
     ) -> Result<()> {
-        let options = question.options.as_ref()
+        let options = question
+            .options
+            .as_ref()
             .context("Choice question must have options")?;
 
         let prompt = if question.required {
@@ -191,7 +197,9 @@ impl ClarificationRunner {
     ) -> Result<()> {
         let prompt = format!("❓ {}", question.question_text);
 
-        let default = question.default_value.as_ref()
+        let default = question
+            .default_value
+            .as_ref()
             .map(|d| d == "yes" || d == "true" || d == "y")
             .unwrap_or(false);
 
@@ -219,18 +227,27 @@ impl ClarificationRunner {
         question: &ClarificationQuestion,
         theme: &dialoguer::theme::ColorfulTheme,
     ) -> Result<()> {
-        let options = question.options.as_ref()
+        let options = question
+            .options
+            .as_ref()
             .context("Multi-select question must have options")?;
 
         let prompt = if question.required {
-            format!("❓ {} (space to select, enter to confirm)", question.question_text)
+            format!(
+                "❓ {} (space to select, enter to confirm)",
+                question.question_text
+            )
         } else {
-            format!("❓ {} (space to select, enter to confirm, optional)", question.question_text)
+            format!(
+                "❓ {} (space to select, enter to confirm, optional)",
+                question.question_text
+            )
         };
 
         // Parse default selections - convert to boolean array
         let default_indices: Vec<usize> = if let Some(default) = &question.default_value {
-            default.split(',')
+            default
+                .split(',')
                 .filter_map(|idx| idx.trim().parse::<usize>().ok())
                 .filter(|&idx| idx < options.len())
                 .collect()
@@ -367,14 +384,19 @@ impl NonInteractiveRunner {
 
         for qid in &question_ids {
             // Find the question
-            let question = session.questions.iter()
+            let question = session
+                .questions
+                .iter()
                 .find(|q| &q.id == qid)
                 .cloned()
                 .context(format!("Question '{}' not found", qid))?;
 
             // Use default value if available
             if let Some(default) = &question.default_value {
-                debug!("Using default value for question '{}': {}", question.id, default);
+                debug!(
+                    "Using default value for question '{}': {}",
+                    question.id, default
+                );
                 session.answer_question(&question.id, default)?;
             } else if !question.required {
                 debug!("Skipping optional question '{}'", question.id);
@@ -386,7 +408,10 @@ impl NonInteractiveRunner {
         session.mark_completed();
 
         if !session.answers.is_empty() {
-            info!("Clarification session completed with {} answers", session.answers.len());
+            info!(
+                "Clarification session completed with {} answers",
+                session.answers.len()
+            );
         }
 
         Ok(session)

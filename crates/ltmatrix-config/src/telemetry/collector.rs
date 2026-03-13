@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Telemetry collector
 //!
 //! This module handles collecting telemetry events during pipeline execution.
@@ -11,10 +10,10 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use tracing::{debug, info};
 
-use ltmatrix_core::{ExecutionMode, Task};
 use crate::telemetry::config::TelemetryConfig;
 use crate::telemetry::event::{ErrorCategory, SessionId, TelemetryEvent};
 use chrono::Utc;
+use ltmatrix_core::{ExecutionMode, Task};
 use std::time::Duration;
 
 /// Telemetry collector that gathers events during pipeline execution
@@ -154,8 +153,8 @@ impl TelemetryCollector {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use uuid::Uuid;
     use ltmatrix_core::TaskStatus;
+    use uuid::Uuid;
 
     fn create_test_collector() -> TelemetryCollector {
         let config = TelemetryConfig::enabled();
@@ -181,7 +180,9 @@ mod tests {
     async fn test_record_session_start() {
         let collector = create_test_collector();
 
-        collector.record_session_start("0.1.0", "linux", "x86_64").await;
+        collector
+            .record_session_start("0.1.0", "linux", "x86_64")
+            .await;
 
         assert_eq!(collector.event_count().await, 1);
     }
@@ -199,12 +200,14 @@ mod tests {
         let mut completed_task = tasks[0].clone();
         completed_task.status = TaskStatus::Completed;
 
-        collector.record_pipeline_complete(
-            ExecutionMode::Standard,
-            "claude",
-            &[tasks[0].clone(), completed_task],
-            Duration::from_secs(60),
-        ).await;
+        collector
+            .record_pipeline_complete(
+                ExecutionMode::Standard,
+                "claude",
+                &[tasks[0].clone(), completed_task],
+                Duration::from_secs(60),
+            )
+            .await;
 
         assert_eq!(collector.event_count().await, 1);
     }
@@ -222,7 +225,9 @@ mod tests {
     async fn test_take_events() {
         let collector = create_test_collector();
 
-        collector.record_session_start("0.1.0", "linux", "x86_64").await;
+        collector
+            .record_session_start("0.1.0", "linux", "x86_64")
+            .await;
         collector.record_error("Test error").await;
 
         assert_eq!(collector.event_count().await, 2);
@@ -242,7 +247,9 @@ mod tests {
         let collector = TelemetryCollector::new(config, session_id);
 
         // Add 3 events (buffer size is 2)
-        collector.record_session_start("0.1.0", "linux", "x86_64").await;
+        collector
+            .record_session_start("0.1.0", "linux", "x86_64")
+            .await;
         collector.record_error("Error 1").await;
         collector.record_error("Error 2").await;
 
@@ -252,14 +259,13 @@ mod tests {
 
     #[tokio::test]
     async fn test_should_flush() {
-        let config = TelemetryConfig::builder()
-            .enabled()
-            .batch_size(3)
-            .build();
+        let config = TelemetryConfig::builder().enabled().batch_size(3).build();
         let session_id = Uuid::new_v4();
         let collector = TelemetryCollector::new(config, session_id);
 
-        collector.record_session_start("0.1.0", "linux", "x86_64").await;
+        collector
+            .record_session_start("0.1.0", "linux", "x86_64")
+            .await;
         assert!(!collector.should_flush().await);
 
         collector.record_error("Error 1").await;
@@ -275,7 +281,9 @@ mod tests {
         let session_id = Uuid::new_v4();
         let collector = TelemetryCollector::new(config, session_id);
 
-        collector.record_session_start("0.1.0", "linux", "x86_64").await;
+        collector
+            .record_session_start("0.1.0", "linux", "x86_64")
+            .await;
         collector.record_error("Test error").await;
 
         assert_eq!(collector.event_count().await, 0);

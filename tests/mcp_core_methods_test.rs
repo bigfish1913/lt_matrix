@@ -7,18 +7,15 @@
 //! These tests verify the fundamental MCP protocol methods needed for
 //! basic client-server communication.
 
-use ltmatrix::mcp::{
-    ClientCapabilities, ImplementationInfo, InitializeParams, InitializeResult,
-    Resource, ResourceContents, ResourceReadParams,
-    ResourcesListParams, ResourcesListResult,
-    ServerCapabilities, ServerInfo, ToolsCapability,
-    MCP_PROTOCOL_VERSION,
-};
-use ltmatrix::mcp::protocol::wrappers::{
-    Initialize, McpMethod, PaginatedMethod, ResourcesList, ResourcesRead,
-    McpMethodKind,
-};
 use ltmatrix::mcp::protocol::messages::{JsonRpcResponse, RequestId};
+use ltmatrix::mcp::protocol::wrappers::{
+    Initialize, McpMethod, McpMethodKind, PaginatedMethod, ResourcesList, ResourcesRead,
+};
+use ltmatrix::mcp::{
+    ClientCapabilities, ImplementationInfo, InitializeParams, InitializeResult, Resource,
+    ResourceContents, ResourceReadParams, ResourcesListParams, ResourcesListResult,
+    ServerCapabilities, ServerInfo, ToolsCapability, MCP_PROTOCOL_VERSION,
+};
 use serde_json::json;
 
 // ============================================================================
@@ -58,8 +55,7 @@ mod initialize_method_tests {
             roots: Some(ltmatrix::mcp::RootsCapability::with_list_changed(true)),
             ..Default::default()
         };
-        let params = InitializeParams::new("test-client", "1.0.0")
-            .with_capabilities(capabilities);
+        let params = InitializeParams::new("test-client", "1.0.0").with_capabilities(capabilities);
 
         let request = Initialize::build_request(RequestId::String("init-1".to_string()), params);
 
@@ -111,7 +107,10 @@ mod initialize_method_tests {
         assert_eq!(result.protocol_version, "2025-11-25");
         assert_eq!(result.server_info.name, "playwright-mcp");
         assert_eq!(result.server_info.version, "1.0.0");
-        assert_eq!(result.instructions, Some("Welcome to the MCP server".to_string()));
+        assert_eq!(
+            result.instructions,
+            Some("Welcome to the MCP server".to_string())
+        );
         assert!(result.capabilities.tools.is_some());
         assert!(result.capabilities.resources.is_some());
     }
@@ -142,7 +141,9 @@ mod initialize_method_tests {
     fn test_initialize_parse_error_response() {
         let response = JsonRpcResponse::error(
             RequestId::Number(1),
-            ltmatrix::mcp::protocol::errors::JsonRpcError::invalid_params("Invalid protocol version"),
+            ltmatrix::mcp::protocol::errors::JsonRpcError::invalid_params(
+                "Invalid protocol version",
+            ),
         );
 
         let result = Initialize::parse_response(response);
@@ -210,7 +211,9 @@ mod initialize_method_tests {
         let init_result = InitializeResult {
             protocol_version: "2025-11-25".to_string(),
             capabilities: ServerCapabilities {
-                tools: Some(ToolsCapability { list_changed: Some(true) }),
+                tools: Some(ToolsCapability {
+                    list_changed: Some(true),
+                }),
                 ..Default::default()
             },
             server_info: ImplementationInfo::new("test-server", "1.0.0"),
@@ -222,7 +225,10 @@ mod initialize_method_tests {
         assert_eq!(server_info.info.name, "test-server");
         assert_eq!(server_info.info.version, "1.0.0");
         assert_eq!(server_info.protocol_version, "2025-11-25");
-        assert_eq!(server_info.instructions, Some("Test instructions".to_string()));
+        assert_eq!(
+            server_info.instructions,
+            Some("Test instructions".to_string())
+        );
         assert!(server_info.capabilities.tools.is_some());
     }
 }
@@ -307,8 +313,14 @@ mod resources_list_method_tests {
         assert_eq!(result.resources.len(), 2);
         assert_eq!(result.resources[0].uri, "file:///project/package.json");
         assert_eq!(result.resources[0].name, "package.json");
-        assert_eq!(result.resources[0].description, Some("Node.js package manifest".to_string()));
-        assert_eq!(result.resources[0].mime_type, Some("application/json".to_string()));
+        assert_eq!(
+            result.resources[0].description,
+            Some("Node.js package manifest".to_string())
+        );
+        assert_eq!(
+            result.resources[0].mime_type,
+            Some("application/json".to_string())
+        );
         assert_eq!(result.resources[1].uri, "file:///project/README.md");
         assert_eq!(result.next_cursor, Some("next-page".to_string()));
     }
@@ -357,7 +369,10 @@ mod resources_list_method_tests {
             resources: vec![],
             next_cursor: Some("cursor-value".to_string()),
         };
-        assert_eq!(ResourcesList::next_cursor(&result_with_cursor), Some("cursor-value"));
+        assert_eq!(
+            ResourcesList::next_cursor(&result_with_cursor),
+            Some("cursor-value")
+        );
 
         let result_without_cursor = ResourcesListResult {
             resources: vec![],
@@ -391,7 +406,10 @@ mod resources_list_method_tests {
 
         assert_eq!(resource.uri, "file:///project/src/main.rs");
         assert_eq!(resource.name, "main.rs");
-        assert_eq!(resource.description, Some("Application entry point".to_string()));
+        assert_eq!(
+            resource.description,
+            Some("Application entry point".to_string())
+        );
         assert_eq!(resource.mime_type, Some("text/x-rust".to_string()));
     }
 
@@ -487,8 +505,14 @@ mod resources_read_method_tests {
 
         assert_eq!(result.contents.len(), 1);
         assert_eq!(result.contents[0].uri, "file:///project/README.md");
-        assert_eq!(result.contents[0].mime_type, Some("text/markdown".to_string()));
-        assert_eq!(result.contents[0].text, Some("# Project Title\n\nThis is the README content.".to_string()));
+        assert_eq!(
+            result.contents[0].mime_type,
+            Some("text/markdown".to_string())
+        );
+        assert_eq!(
+            result.contents[0].text,
+            Some("# Project Title\n\nThis is the README content.".to_string())
+        );
         assert!(result.contents[0].blob.is_none());
     }
 
@@ -541,8 +565,14 @@ mod resources_read_method_tests {
         let result = ResourcesRead::parse_response(response).unwrap();
 
         assert_eq!(result.contents.len(), 2);
-        assert_eq!(result.contents[0].text, Some("Content of file 1".to_string()));
-        assert_eq!(result.contents[1].text, Some("Content of file 2".to_string()));
+        assert_eq!(
+            result.contents[0].text,
+            Some("Content of file 1".to_string())
+        );
+        assert_eq!(
+            result.contents[1].text,
+            Some("Content of file 2".to_string())
+        );
     }
 
     /// Test ResourceContents helper methods
@@ -562,11 +592,14 @@ mod resources_read_method_tests {
         let contents = ResourceContents::blob(
             "file:///binary.bin",
             "base64encodeddata",
-            "application/octet-stream"
+            "application/octet-stream",
         );
 
         assert_eq!(contents.uri, "file:///binary.bin");
-        assert_eq!(contents.mime_type, Some("application/octet-stream".to_string()));
+        assert_eq!(
+            contents.mime_type,
+            Some("application/octet-stream".to_string())
+        );
         assert!(contents.text.is_none());
         assert_eq!(contents.blob, Some("base64encodeddata".to_string()));
     }
@@ -576,7 +609,9 @@ mod resources_read_method_tests {
     fn test_resources_read_not_found_error() {
         let response = JsonRpcResponse::error(
             RequestId::Number(1),
-            ltmatrix::mcp::protocol::errors::JsonRpcError::invalid_params("Resource not found: file:///nonexistent.txt"),
+            ltmatrix::mcp::protocol::errors::JsonRpcError::invalid_params(
+                "Resource not found: file:///nonexistent.txt",
+            ),
         );
 
         let result = ResourcesRead::parse_response(response);
@@ -776,10 +811,12 @@ mod serialization_edge_cases {
     #[test]
     fn test_many_resources_in_list() {
         let resources: Vec<serde_json::Value> = (0..100)
-            .map(|i| json!({
-                "uri": format!("file:///resource-{}.txt", i),
-                "name": format!("resource-{}.txt", i)
-            }))
+            .map(|i| {
+                json!({
+                    "uri": format!("file:///resource-{}.txt", i),
+                    "name": format!("resource-{}.txt", i)
+                })
+            })
             .collect();
 
         let response = JsonRpcResponse::success(
@@ -846,10 +883,7 @@ mod jsonrpc_format_tests {
     /// Test response serialization format
     #[test]
     fn test_response_serialization_format() {
-        let response = JsonRpcResponse::success(
-            RequestId::Number(1),
-            json!({"resources": []}),
-        );
+        let response = JsonRpcResponse::success(RequestId::Number(1), json!({"resources": []}));
 
         let json = serde_json::to_string(&response).unwrap();
 
@@ -1017,7 +1051,10 @@ mod integration_like_tests {
         let result = ResourcesRead::parse_response(response).unwrap();
 
         assert_eq!(result.contents.len(), 1);
-        assert_eq!(result.contents[0].mime_type, Some("application/json".to_string()));
+        assert_eq!(
+            result.contents[0].mime_type,
+            Some("application/json".to_string())
+        );
 
         let text = result.contents[0].text.as_ref().unwrap();
         assert!(text.contains("my-project"));

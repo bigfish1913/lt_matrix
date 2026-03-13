@@ -154,7 +154,8 @@ impl NotificationEvent {
             }
             NotificationsMessage::METHOD_NAME => {
                 if let Some(params) = &notification.params {
-                    if let Ok(log_params) = serde_json::from_value::<LogMessageParams>(params.clone())
+                    if let Ok(log_params) =
+                        serde_json::from_value::<LogMessageParams>(params.clone())
                     {
                         return NotificationEvent::Message(log_params);
                     }
@@ -265,8 +266,7 @@ impl NotificationDispatcher {
         F: Fn() -> Fut + Send + Sync + 'static,
         Fut: Future<Output = ()> + Send + 'static,
     {
-        let handler_fn: NotificationHandlerFn =
-            Arc::new(move |_event| Box::pin(handler()));
+        let handler_fn: NotificationHandlerFn = Arc::new(move |_event| Box::pin(handler()));
         let mut handlers = self.handlers.write().await;
         handlers.insert(
             NotificationsInitialized::METHOD_NAME.to_string(),
@@ -336,14 +336,13 @@ impl NotificationDispatcher {
         F: Fn(ProgressParams) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = ()> + Send + 'static,
     {
-        let handler_fn: NotificationHandlerFn =
-            Arc::new(move |event| {
-                if let NotificationEvent::Progress(params) = event {
-                    Box::pin(handler(params.clone()))
-                } else {
-                    Box::pin(async {})
-                }
-            });
+        let handler_fn: NotificationHandlerFn = Arc::new(move |event| {
+            if let NotificationEvent::Progress(params) = event {
+                Box::pin(handler(params.clone()))
+            } else {
+                Box::pin(async {})
+            }
+        });
         let mut handlers = self.handlers.write().await;
         handlers.insert(NotificationsProgress::METHOD_NAME.to_string(), handler_fn);
     }
@@ -354,14 +353,13 @@ impl NotificationDispatcher {
         F: Fn(LogMessageParams) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = ()> + Send + 'static,
     {
-        let handler_fn: NotificationHandlerFn =
-            Arc::new(move |event| {
-                if let NotificationEvent::Message(params) = event {
-                    Box::pin(handler(params.clone()))
-                } else {
-                    Box::pin(async {})
-                }
-            });
+        let handler_fn: NotificationHandlerFn = Arc::new(move |event| {
+            if let NotificationEvent::Message(params) = event {
+                Box::pin(handler(params.clone()))
+            } else {
+                Box::pin(async {})
+            }
+        });
         let mut handlers = self.handlers.write().await;
         handlers.insert(NotificationsMessage::METHOD_NAME.to_string(), handler_fn);
     }
@@ -374,11 +372,10 @@ impl NotificationDispatcher {
         F: Fn(NotificationEvent) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = ()> + Send + 'static,
     {
-        let handler_fn: RawNotificationHandlerFn =
-            Arc::new(move |notification| {
-                let event = NotificationEvent::from_notification(&notification);
-                Box::pin(handler(event))
-            });
+        let handler_fn: RawNotificationHandlerFn = Arc::new(move |notification| {
+            let event = NotificationEvent::from_notification(&notification);
+            Box::pin(handler(event))
+        });
         let mut raw_handlers = self.raw_handlers.write().await;
         raw_handlers.push(handler_fn);
     }
@@ -403,18 +400,16 @@ impl NotificationDispatcher {
         F: Fn(T) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = ()> + Send + 'static,
     {
-        let handler_fn: NotificationHandlerFn =
-            Arc::new(move |event| {
-                if let NotificationEvent::Unknown { params, .. } = &event {
-                    if let Some(params_value) = params {
-                        if let Ok(typed_params) = serde_json::from_value::<T>(params_value.clone())
-                        {
-                            return Box::pin(handler(typed_params));
-                        }
+        let handler_fn: NotificationHandlerFn = Arc::new(move |event| {
+            if let NotificationEvent::Unknown { params, .. } = &event {
+                if let Some(params_value) = params {
+                    if let Ok(typed_params) = serde_json::from_value::<T>(params_value.clone()) {
+                        return Box::pin(handler(typed_params));
                     }
                 }
-                Box::pin(async {})
-            });
+            }
+            Box::pin(async {})
+        });
         let mut handlers = self.handlers.write().await;
         handlers.insert(method.to_string(), handler_fn);
     }
@@ -700,19 +695,14 @@ mod tests {
         );
         dispatcher.dispatch(notification).await;
 
-        assert_eq!(
-            progress_value.load(std::sync::atomic::Ordering::SeqCst),
-            75
-        );
+        assert_eq!(progress_value.load(std::sync::atomic::Ordering::SeqCst), 75);
     }
 
     #[tokio::test]
     async fn test_dispatcher_stats() {
         let dispatcher = NotificationDispatcher::new();
 
-        dispatcher
-            .on_tools_list_changed(|| async {})
-            .await;
+        dispatcher.on_tools_list_changed(|| async {}).await;
 
         let notification1 = JsonRpcNotification::new(NotificationsToolsListChanged::METHOD_NAME);
         let notification2 = JsonRpcNotification::new(NotificationsInitialized::METHOD_NAME);
@@ -842,9 +832,7 @@ mod tests {
         let methods = dispatcher.registered_methods().await;
         assert_eq!(methods.len(), 2);
         assert!(methods.contains(&NotificationsInitialized::METHOD_NAME.to_string()));
-        assert!(
-            methods.contains(&NotificationsToolsListChanged::METHOD_NAME.to_string())
-        );
+        assert!(methods.contains(&NotificationsToolsListChanged::METHOD_NAME.to_string()));
     }
 
     #[tokio::test]

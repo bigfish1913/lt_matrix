@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Git repository operations
 //!
 //! This module provides high-level Git repository operations including

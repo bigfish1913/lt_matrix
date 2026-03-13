@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Task generation stage
 //!
 //! This module implements the Generate stage of the pipeline, which:
@@ -182,7 +181,9 @@ impl GenerationLog {
                 TaskComplexity::Moderate => "moderate",
                 TaskComplexity::Complex => "complex",
             };
-            *complexity_breakdown.entry(complexity_key.to_string()).or_insert(0) += 1;
+            *complexity_breakdown
+                .entry(complexity_key.to_string())
+                .or_insert(0) += 1;
 
             let agent_type_key = match task.agent_type {
                 AgentType::Plan => "plan",
@@ -190,7 +191,9 @@ impl GenerationLog {
                 AgentType::Test => "test",
                 AgentType::Review => "review",
             };
-            *agent_type_breakdown.entry(agent_type_key.to_string()).or_insert(0) += 1;
+            *agent_type_breakdown
+                .entry(agent_type_key.to_string())
+                .or_insert(0) += 1;
         }
 
         let dependency_analysis = analyze_dependencies(tasks);
@@ -227,12 +230,30 @@ impl GenerationLog {
         }
 
         output.push_str("\nDependency Analysis:\n");
-        output.push_str(&format!("  - Max Depth: {}\n", self.dependency_analysis.max_depth));
-        output.push_str(&format!("  - Root Tasks: {}\n", self.dependency_analysis.root_count));
-        output.push_str(&format!("  - Leaf Tasks: {}\n", self.dependency_analysis.leaf_count));
-        output.push_str(&format!("  - Total Edges: {}\n", self.dependency_analysis.total_edges));
-        output.push_str(&format!("  - Critical Path: {}\n", self.dependency_analysis.critical_path_length));
-        output.push_str(&format!("  - Parallelizable: {}\n", self.dependency_analysis.parallelizable_count));
+        output.push_str(&format!(
+            "  - Max Depth: {}\n",
+            self.dependency_analysis.max_depth
+        ));
+        output.push_str(&format!(
+            "  - Root Tasks: {}\n",
+            self.dependency_analysis.root_count
+        ));
+        output.push_str(&format!(
+            "  - Leaf Tasks: {}\n",
+            self.dependency_analysis.leaf_count
+        ));
+        output.push_str(&format!(
+            "  - Total Edges: {}\n",
+            self.dependency_analysis.total_edges
+        ));
+        output.push_str(&format!(
+            "  - Critical Path: {}\n",
+            self.dependency_analysis.critical_path_length
+        ));
+        output.push_str(&format!(
+            "  - Parallelizable: {}\n",
+            self.dependency_analysis.parallelizable_count
+        ));
 
         output.push_str(&format!("\nSplit Strategy: {:?}\n", self.split_strategy));
 
@@ -242,7 +263,7 @@ impl GenerationLog {
 
 /// Analyzes task dependencies
 fn analyze_dependencies(tasks: &[Task]) -> DependencyAnalysis {
-    use std::collections::{HashSet, HashMap};
+    use std::collections::{HashMap, HashSet};
 
     let task_ids: HashSet<&str> = tasks.iter().map(|t| t.id.as_str()).collect();
 
@@ -264,7 +285,8 @@ fn analyze_dependencies(tasks: &[Task]) -> DependencyAnalysis {
     }
 
     // Leaf tasks are those that have no dependents
-    let leaf_count = tasks.iter()
+    let leaf_count = tasks
+        .iter()
         .filter(|t| dependent_count.get(t.id.as_str()).unwrap_or(&0) == &0)
         .count();
 
@@ -294,9 +316,8 @@ fn determine_split_strategy(tasks: &[Task]) -> SplitStrategy {
     }
 
     // Calculate average task description length as a heuristic
-    let avg_desc_len: f64 = tasks.iter()
-        .map(|t| t.description.len())
-        .sum::<usize>() as f64 / tasks.len() as f64;
+    let avg_desc_len: f64 =
+        tasks.iter().map(|t| t.description.len()).sum::<usize>() as f64 / tasks.len() as f64;
 
     // Shorter descriptions typically indicate smaller, more granular tasks
     if avg_desc_len < 100.0 {
@@ -372,7 +393,10 @@ pub struct DependencyGraphStats {
 #[derive(Debug, Clone)]
 pub enum DependencyError {
     /// Reference to a task that doesn't exist
-    MissingReference { task_id: String, missing_ref: String },
+    MissingReference {
+        task_id: String,
+        missing_ref: String,
+    },
 
     /// Circular dependency in the task graph
     CircularChain { chain: Vec<String> },
@@ -381,12 +405,13 @@ pub enum DependencyError {
 impl From<DependencyError> for ValidationError {
     fn from(error: DependencyError) -> Self {
         match error {
-            DependencyError::MissingReference { task_id, missing_ref } => {
-                ValidationError::MissingDependency {
-                    task: task_id,
-                    dependency: missing_ref,
-                }
-            }
+            DependencyError::MissingReference {
+                task_id,
+                missing_ref,
+            } => ValidationError::MissingDependency {
+                task: task_id,
+                dependency: missing_ref,
+            },
             DependencyError::CircularChain { chain } => {
                 ValidationError::CircularDependency { chain }
             }
@@ -474,8 +499,7 @@ pub async fn generate_tasks(goal: &str, config: &GenerateConfig) -> Result<Gener
     // Log detailed generation information
     info!(
         "Generation completed: {} tasks created (depth: {})",
-        task_count,
-        dependency_depth
+        task_count, dependency_depth
     );
     debug!("Generation log:\n{}", generation_log.to_readable_string());
 
@@ -743,9 +767,11 @@ pub fn validate_dependencies(tasks: &[Task]) -> Vec<ValidationError> {
 
     // Check for circular dependencies
     let circular_chains = detect_circular_dependencies(tasks);
-    errors.extend(circular_chains.into_iter().map(|chain| {
-        ValidationError::CircularDependency { chain }
-    }));
+    errors.extend(
+        circular_chains
+            .into_iter()
+            .map(|chain| ValidationError::CircularDependency { chain }),
+    );
 
     errors
 }
@@ -784,9 +810,12 @@ pub fn validate_dependencies_with_stats(tasks: &[Task]) -> DependencyValidationR
     let circular_count = circular_chains.len();
 
     let mut errors = dep_errors;
-    errors.extend(circular_chains.iter().cloned().map(|chain| {
-        DependencyError::CircularChain { chain }
-    }));
+    errors.extend(
+        circular_chains
+            .iter()
+            .cloned()
+            .map(|chain| DependencyError::CircularChain { chain }),
+    );
 
     // Calculate graph statistics
     let stats = calculate_dependency_graph_stats(tasks, missing_count, circular_count);
@@ -840,7 +869,11 @@ fn calculate_dependency_graph_stats(
     let root_tasks = tasks.iter().filter(|t| t.depends_on.is_empty()).count();
     let leaf_tasks = tasks
         .iter()
-        .filter(|t| reverse_dep_map.get(t.id.as_str()).map_or(true, |v| v.is_empty()))
+        .filter(|t| {
+            reverse_dep_map
+                .get(t.id.as_str())
+                .map_or(true, |v| v.is_empty())
+        })
         .count();
 
     DependencyGraphStats {
@@ -864,10 +897,7 @@ fn calculate_dependency_graph_stats(
 ///
 /// # Returns
 /// List of MissingDependency errors for each invalid reference
-fn detect_missing_dependencies(
-    tasks: &[Task],
-    task_ids: &HashSet<&str>,
-) -> Vec<ValidationError> {
+fn detect_missing_dependencies(tasks: &[Task], task_ids: &HashSet<&str>) -> Vec<ValidationError> {
     let mut errors = Vec::new();
 
     for task in tasks {
@@ -902,13 +932,9 @@ fn detect_circular_dependencies(tasks: &[Task]) -> Vec<Vec<String>> {
 
     for task_id in adj_map.keys() {
         if !visited.contains(task_id) {
-            if let Some(cycle) = dfs_detect_cycle(
-                task_id,
-                &adj_map,
-                &mut visited,
-                &mut rec_stack,
-                &mut path,
-            ) {
+            if let Some(cycle) =
+                dfs_detect_cycle(task_id, &adj_map, &mut visited, &mut rec_stack, &mut path)
+            {
                 circular_chains.push(cycle);
             }
         }
@@ -932,9 +958,7 @@ fn dfs_detect_cycle<'a>(
     if let Some(neighbors) = adj_map.get(node) {
         for neighbor in neighbors {
             if !visited.contains(neighbor) {
-                if let Some(cycle) =
-                    dfs_detect_cycle(neighbor, adj_map, visited, rec_stack, path)
-                {
+                if let Some(cycle) = dfs_detect_cycle(neighbor, adj_map, visited, rec_stack, path) {
                     return Some(cycle);
                 }
             } else if rec_stack.contains(neighbor) {
@@ -1183,20 +1207,17 @@ Some text after."#;
 
     #[test]
     fn test_validate_tasks_missing_dependency() {
-        let tasks = vec![
-            {
-                let mut t = Task::new("task-1", "Task 1", "First task");
-                t.depends_on = vec!["non-existent".to_string()];
-                t
-            },
-        ];
+        let tasks = vec![{
+            let mut t = Task::new("task-1", "Task 1", "First task");
+            t.depends_on = vec!["non-existent".to_string()];
+            t
+        }];
 
         let errors = validate_tasks(&tasks);
         assert!(
-            errors.iter().any(|e| matches!(
-                e,
-                ValidationError::MissingDependency { .. }
-            )),
+            errors
+                .iter()
+                .any(|e| matches!(e, ValidationError::MissingDependency { .. })),
             "Should detect missing dependency"
         );
     }
@@ -1210,7 +1231,9 @@ Some text after."#;
 
         let errors = validate_tasks(&tasks);
         assert!(
-            errors.iter().any(|e| matches!(e, ValidationError::DuplicateTaskId { .. })),
+            errors
+                .iter()
+                .any(|e| matches!(e, ValidationError::DuplicateTaskId { .. })),
             "Should detect duplicate ID"
         );
     }
@@ -1232,30 +1255,26 @@ Some text after."#;
 
         let errors = validate_tasks(&tasks);
         assert!(
-            errors.iter().any(|e| matches!(
-                e,
-                ValidationError::CircularDependency { .. }
-            )),
+            errors
+                .iter()
+                .any(|e| matches!(e, ValidationError::CircularDependency { .. })),
             "Should detect circular dependency"
         );
     }
 
     #[test]
     fn test_validate_tasks_invalid_structure() {
-        let tasks = vec![
-            {
-                let mut t = Task::new("task-1", "", "Description");
-                t.depends_on = vec![];
-                t
-            },
-        ];
+        let tasks = vec![{
+            let mut t = Task::new("task-1", "", "Description");
+            t.depends_on = vec![];
+            t
+        }];
 
         let errors = validate_tasks(&tasks);
         assert!(
-            errors.iter().any(|e| matches!(
-                e,
-                ValidationError::InvalidStructure { .. }
-            )),
+            errors
+                .iter()
+                .any(|e| matches!(e, ValidationError::InvalidStructure { .. })),
             "Should detect invalid structure (empty title)"
         );
     }
@@ -1629,18 +1648,19 @@ Some text after."#;
         ];
 
         let errors = validate_dependencies(&tasks);
-        assert!(errors.is_empty(), "Should have no errors for valid dependencies");
+        assert!(
+            errors.is_empty(),
+            "Should have no errors for valid dependencies"
+        );
     }
 
     #[test]
     fn test_validate_dependencies_single_missing() {
-        let tasks = vec![
-            {
-                let mut t = Task::new("task-1", "Task 1", "Has missing dependency");
-                t.depends_on = vec!["non-existent".to_string()];
-                t
-            },
-        ];
+        let tasks = vec![{
+            let mut t = Task::new("task-1", "Task 1", "Has missing dependency");
+            t.depends_on = vec!["non-existent".to_string()];
+            t
+        }];
 
         let errors = validate_dependencies(&tasks);
         assert_eq!(errors.len(), 1);
@@ -1652,17 +1672,17 @@ Some text after."#;
 
     #[test]
     fn test_validate_dependencies_multiple_missing() {
-        let tasks = vec![
-            {
-                let mut t = Task::new("task-1", "Task 1", "Missing deps");
-                t.depends_on = vec!["missing-1".to_string(), "missing-2".to_string()];
-                t
-            },
-        ];
+        let tasks = vec![{
+            let mut t = Task::new("task-1", "Task 1", "Missing deps");
+            t.depends_on = vec!["missing-1".to_string(), "missing-2".to_string()];
+            t
+        }];
 
         let errors = validate_dependencies(&tasks);
         assert_eq!(errors.len(), 2);
-        assert!(errors.iter().all(|e| matches!(e, ValidationError::MissingDependency { .. })));
+        assert!(errors
+            .iter()
+            .all(|e| matches!(e, ValidationError::MissingDependency { .. })));
     }
 
     #[test]
@@ -1744,8 +1764,12 @@ Some text after."#;
 
         let errors = validate_dependencies(&tasks);
         assert_eq!(errors.len(), 2); // 1 missing + 1 circular
-        assert!(errors.iter().any(|e| matches!(e, ValidationError::MissingDependency { .. })));
-        assert!(errors.iter().any(|e| matches!(e, ValidationError::CircularDependency { .. })));
+        assert!(errors
+            .iter()
+            .any(|e| matches!(e, ValidationError::MissingDependency { .. })));
+        assert!(errors
+            .iter()
+            .any(|e| matches!(e, ValidationError::CircularDependency { .. })));
     }
 
     #[test]
@@ -1846,13 +1870,11 @@ Some text after."#;
 
     #[test]
     fn test_validate_dependencies_with_stats_with_missing() {
-        let tasks = vec![
-            {
-                let mut t = Task::new("task-1", "Task 1", "Has missing dep");
-                t.depends_on = vec!["missing".to_string()];
-                t
-            },
-        ];
+        let tasks = vec![{
+            let mut t = Task::new("task-1", "Task 1", "Has missing dep");
+            t.depends_on = vec!["missing".to_string()];
+            t
+        }];
 
         let result = validate_dependencies_with_stats(&tasks);
         assert!(!result.is_valid);

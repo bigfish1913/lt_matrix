@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Topological visualization of task dependencies and execution order
 //!
 //! This module provides ASCII art visualization for:
@@ -16,8 +15,8 @@
 //! - Graph visualization of execution plans
 //! - Export to .mmd files
 
-use ltmatrix_core::{Task, TaskStatus};
 use crate::tasks::scheduler::ExecutionPlan;
+use ltmatrix_core::{Task, TaskStatus};
 use std::collections::HashMap;
 use std::fs;
 use std::io::Write;
@@ -66,10 +65,8 @@ pub fn visualize_dependency_graph(tasks: &[Task], config: Option<TopologyConfig>
     let mut result = String::new();
 
     // Build task map for quick lookup
-    let task_map: HashMap<&str, &Task> = tasks
-        .iter()
-        .map(|task| (task.id.as_str(), task))
-        .collect();
+    let task_map: HashMap<&str, &Task> =
+        tasks.iter().map(|task| (task.id.as_str(), task)).collect();
 
     // Find root tasks (no dependencies)
     let root_tasks: Vec<&Task> = tasks
@@ -127,8 +124,14 @@ pub fn visualize_execution_plan(plan: &ExecutionPlan, config: Option<TopologyCon
     // Statistics
     result.push_str(&format!("Total Tasks: {}\n", plan.total_tasks));
     result.push_str(&format!("Max Depth: {}\n", plan.max_depth));
-    result.push_str(&format!("Critical Path Length: {}\n", plan.critical_path.len()));
-    result.push_str(&format!("Parallelizable Tasks: {}\n\n", plan.parallelizable_tasks.len()));
+    result.push_str(&format!(
+        "Critical Path Length: {}\n",
+        plan.critical_path.len()
+    ));
+    result.push_str(&format!(
+        "Parallelizable Tasks: {}\n\n",
+        plan.parallelizable_tasks.len()
+    ));
 
     // Execution Levels
     if config.show_levels {
@@ -137,7 +140,11 @@ pub fn visualize_execution_plan(plan: &ExecutionPlan, config: Option<TopologyCon
         result.push_str("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n");
 
         for (level_index, level_tasks) in plan.execution_levels.iter().enumerate() {
-            result.push_str(&format!("Level {} ({} tasks):\n", level_index, level_tasks.len()));
+            result.push_str(&format!(
+                "Level {} ({} tasks):\n",
+                level_index,
+                level_tasks.len()
+            ));
 
             for (task_index, task) in level_tasks.iter().enumerate() {
                 let prefix = if config.compact { "  " } else { "    " };
@@ -153,13 +160,17 @@ pub fn visualize_execution_plan(plan: &ExecutionPlan, config: Option<TopologyCon
                     String::new()
                 };
 
-                let critical = if config.highlight_critical && plan.critical_path.contains(&task.id) {
+                let critical = if config.highlight_critical && plan.critical_path.contains(&task.id)
+                {
                     " ★ CRITICAL"
                 } else {
                     ""
                 };
 
-                result.push_str(&format!("{}{}{}{}{}\n", prefix, connector, task.id, status, critical));
+                result.push_str(&format!(
+                    "{}{}{}{}{}\n",
+                    prefix, connector, task.id, status, critical
+                ));
             }
             result.push('\n');
         }
@@ -207,18 +218,24 @@ pub fn visualize_execution_plan(plan: &ExecutionPlan, config: Option<TopologyCon
 ///
 /// A string containing the ASCII art visualization
 #[must_use]
-pub fn visualize_task_dependencies(task: &Task, tasks: &[Task], config: Option<TopologyConfig>) -> String {
+pub fn visualize_task_dependencies(
+    task: &Task,
+    tasks: &[Task],
+    config: Option<TopologyConfig>,
+) -> String {
     let config = config.unwrap_or_default();
     let mut result = String::new();
 
     // Build task map
-    let task_map: HashMap<&str, &Task> = tasks
-        .iter()
-        .map(|t| (t.id.as_str(), t))
-        .collect();
+    let task_map: HashMap<&str, &Task> = tasks.iter().map(|t| (t.id.as_str(), t)).collect();
 
-    result.push_str(&format!("╔════════════════════════════════════════════════════════════╗\n"));
-    result.push_str(&format!("║  Dependencies for: {}                             ║\n", task.id));
+    result.push_str(&format!(
+        "╔════════════════════════════════════════════════════════════╗\n"
+    ));
+    result.push_str(&format!(
+        "║  Dependencies for: {}                             ║\n",
+        task.id
+    ));
     result.push_str("╚════════════════════════════════════════════════════════════╝\n\n");
 
     // Show the task itself
@@ -264,7 +281,10 @@ pub fn visualize_task_dependencies(task: &Task, tasks: &[Task], config: Option<T
             } else {
                 String::new()
             };
-            result.push_str(&format!("  ↑ {}{}: {}\n", dependent.id, status, dependent.title));
+            result.push_str(&format!(
+                "  ↑ {}{}: {}\n",
+                dependent.id, status, dependent.title
+            ));
         }
     } else {
         result.push_str("No dependents (leaf task)\n");
@@ -303,10 +323,7 @@ pub fn visualize_dependency_matrix(tasks: &[Task], config: Option<TopologyConfig
     let sorted_tasks = simple_topological_sort(&mut tasks_vec);
 
     // Calculate column widths
-    let max_id_len = sorted_tasks.iter()
-        .map(|t| t.id.len())
-        .max()
-        .unwrap_or(10);
+    let max_id_len = sorted_tasks.iter().map(|t| t.id.len()).max().unwrap_or(10);
 
     // Header row
     result.push_str(&format!("{:width$} |", "", width = max_id_len + 2));
@@ -369,7 +386,13 @@ fn visualize_dependency_tree(
         String::new()
     };
 
-    output.push_str(&format!("{}{}{}{}\n", prefix, task.id, status, format!(": {}", task.title)));
+    output.push_str(&format!(
+        "{}{}{}{}\n",
+        prefix,
+        task.id,
+        status,
+        format!(": {}", task.title)
+    ));
 
     // Find tasks that depend on this one (its children in the dependency tree)
     let dependents: Vec<&Task> = task_map
@@ -383,7 +406,11 @@ fn visualize_dependency_tree(
 
         for (index, dependent) in dependents.iter().enumerate() {
             let is_last_child = index == child_count - 1;
-            let connector = if is_last_child { "└── " } else { "├── " };
+            let connector = if is_last_child {
+                "└── "
+            } else {
+                "├── "
+            };
             let child_prefix = format!("{}{}", prefix, connector);
 
             // Build continuation prefix for grandchildren
@@ -440,7 +467,14 @@ fn format_task_with_dependencies(
             build_tree_continuation(continuation, is_last)
         };
 
-        format_task_with_dependencies(dependent, task_map, &new_prefix, &new_continuation_str, config, output);
+        format_task_with_dependencies(
+            dependent,
+            task_map,
+            &new_prefix,
+            &new_continuation_str,
+            config,
+            output,
+        );
     }
 }
 
@@ -552,17 +586,16 @@ pub fn generate_mermaid_flowchart(tasks: &[Task], show_status: Option<bool>) -> 
     }
 
     // Build task map for quick lookup
-    let task_map: HashMap<&str, &Task> = tasks
-        .iter()
-        .map(|task| (task.id.as_str(), task))
-        .collect();
+    let task_map: HashMap<&str, &Task> =
+        tasks.iter().map(|task| (task.id.as_str(), task)).collect();
 
     // Generate node definitions
     for task in tasks {
         let node_id = sanitize_mermaid_id(&task.id);
 
         let label = if include_status {
-            format!("{}[\"{}\\n{}: {}\"]",
+            format!(
+                "{}[\"{}\\n{}: {}\"]",
                 node_id,
                 task.id,
                 status_to_mermaid_text(&task.status),
@@ -641,7 +674,10 @@ pub fn generate_mermaid_graph(plan: &ExecutionPlan, show_levels: Option<bool>) -
     if include_levels {
         result.push_str("\n    %% Execution Levels\n");
         for (level_index, level_tasks) in plan.execution_levels.iter().enumerate() {
-            result.push_str(&format!("    subgraph Level{} [\"Level {}\"]\n", level_index, level_index));
+            result.push_str(&format!(
+                "    subgraph Level{} [\"Level {}\"]\n",
+                level_index, level_index
+            ));
             for task in level_tasks {
                 let node_id = sanitize_mermaid_id(&task.id);
                 result.push_str(&format!("        {}[\"{}\"]\n", node_id, task.id));
@@ -668,7 +704,8 @@ pub fn generate_mermaid_graph(plan: &ExecutionPlan, show_levels: Option<bool>) -
 
     // Add statistics
     result.push_str("\n    %% Statistics\n");
-    result.push_str(&format!("    stats[\"Total: {} | Max Depth: {} | Critical Path: {}\"]\n",
+    result.push_str(&format!(
+        "    stats[\"Total: {} | Max Depth: {} | Critical Path: {}\"]\n",
         plan.total_tasks,
         plan.max_depth,
         plan.critical_path.len()
@@ -718,7 +755,13 @@ fn sanitize_mermaid_id(id: &str) -> String {
     if id.chars().next().map_or(false, |c| c.is_alphabetic()) {
         let sanitized: String = id
             .chars()
-            .map(|c| if c.is_alphanumeric() || c == '_' || c == '-' { c } else { '_' })
+            .map(|c| {
+                if c.is_alphanumeric() || c == '_' || c == '-' {
+                    c
+                } else {
+                    '_'
+                }
+            })
             .collect();
         return sanitized;
     }

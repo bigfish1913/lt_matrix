@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Interactive clarification system
 //!
 //! This module implements the --ask functionality which prompts users

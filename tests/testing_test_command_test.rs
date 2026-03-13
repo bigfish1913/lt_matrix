@@ -64,8 +64,7 @@ fn test_test_command_for_framework() {
 #[test]
 fn test_test_command_with_arg_single() {
     // Test adding a single argument using builder pattern
-    let cmd = TestCommand::new(Framework::Cargo)
-        .with_arg("--release");
+    let cmd = TestCommand::new(Framework::Cargo).with_arg("--release");
 
     assert_eq!(cmd.args, vec!["test", "--release"]);
 }
@@ -87,8 +86,7 @@ fn test_test_command_with_arg_chaining() {
 #[test]
 fn test_test_command_with_args_multiple() {
     // Test adding multiple arguments at once
-    let cmd = TestCommand::new(Framework::Pytest)
-        .with_args(&["--tb=short", "-x", "--timeout=10"]);
+    let cmd = TestCommand::new(Framework::Pytest).with_args(&["--tb=short", "-x", "--timeout=10"]);
 
     assert_eq!(cmd.args, vec!["-v", "--tb=short", "-x", "--timeout=10"]);
 }
@@ -103,18 +101,26 @@ fn test_test_command_with_args_mixed() {
 
     assert_eq!(
         cmd.args,
-        vec!["test", "--release", "--verbose", "--no-fail-fast", "--quiet"]
+        vec![
+            "test",
+            "--release",
+            "--verbose",
+            "--no-fail-fast",
+            "--quiet"
+        ]
     );
 }
 
 #[test]
 fn test_test_command_with_env_single() {
     // Test adding a single environment variable
-    let cmd = TestCommand::new(Framework::Cargo)
-        .with_env("RUST_LOG", "debug");
+    let cmd = TestCommand::new(Framework::Cargo).with_env("RUST_LOG", "debug");
 
     assert_eq!(cmd.env_vars.len(), 1);
-    assert_eq!(cmd.env_vars[0], ("RUST_LOG".to_string(), "debug".to_string()));
+    assert_eq!(
+        cmd.env_vars[0],
+        ("RUST_LOG".to_string(), "debug".to_string())
+    );
 }
 
 #[test]
@@ -126,7 +132,10 @@ fn test_test_command_with_env_multiple() {
         .with_env("TEST_VAR", "test_value");
 
     assert_eq!(cmd.env_vars.len(), 3);
-    assert_eq!(cmd.env_vars[0], ("RUST_LOG".to_string(), "debug".to_string()));
+    assert_eq!(
+        cmd.env_vars[0],
+        ("RUST_LOG".to_string(), "debug".to_string())
+    );
     assert_eq!(
         cmd.env_vars[1],
         ("RUST_BACKTRACE".to_string(), "1".to_string())
@@ -151,8 +160,7 @@ fn test_test_command_with_env_string_types() {
 #[test]
 fn test_test_command_with_work_dir() {
     // Test setting the working directory
-    let cmd = TestCommand::new(Framework::Cargo)
-        .with_work_dir("/my/project");
+    let cmd = TestCommand::new(Framework::Cargo).with_work_dir("/my/project");
 
     assert_eq!(cmd.work_dir, Some("/my/project".to_string()));
 }
@@ -160,14 +168,11 @@ fn test_test_command_with_work_dir() {
 #[test]
 fn test_test_command_with_work_dir_types() {
     // Test that with_work_dir accepts different string-like types
-    let cmd1 = TestCommand::new(Framework::Cargo)
-        .with_work_dir("/path1");
+    let cmd1 = TestCommand::new(Framework::Cargo).with_work_dir("/path1");
 
-    let cmd2 = TestCommand::new(Framework::Cargo)
-        .with_work_dir(String::from("/path2"));
+    let cmd2 = TestCommand::new(Framework::Cargo).with_work_dir(String::from("/path2"));
 
-    let cmd3 = TestCommand::new(Framework::Cargo)
-        .with_work_dir(&String::from("/path3"));
+    let cmd3 = TestCommand::new(Framework::Cargo).with_work_dir(&String::from("/path3"));
 
     assert_eq!(cmd1.work_dir, Some("/path1".to_string()));
     assert_eq!(cmd2.work_dir, Some("/path2".to_string()));
@@ -214,13 +219,9 @@ fn test_test_command_to_command_line_with_args() {
 #[test]
 fn test_test_command_to_command_line_with_work_dir() {
     // Test converting to command line string with working directory
-    let cmd = TestCommand::new(Framework::Cargo)
-        .with_work_dir("/my/project");
+    let cmd = TestCommand::new(Framework::Cargo).with_work_dir("/my/project");
 
-    assert_eq!(
-        cmd.to_command_line(),
-        "(cd /my/project && cargo test)"
-    );
+    assert_eq!(cmd.to_command_line(), "(cd /my/project && cargo test)");
 }
 
 #[test]
@@ -268,8 +269,7 @@ fn test_test_command_equality() {
     let cmd3 = TestCommand::new(Framework::Pytest);
     assert_ne!(cmd1, cmd3);
 
-    let cmd4 = TestCommand::new(Framework::Cargo)
-        .with_arg("--release");
+    let cmd4 = TestCommand::new(Framework::Cargo).with_arg("--release");
     assert_ne!(cmd1, cmd4);
 }
 
@@ -330,13 +330,15 @@ fn test_test_command_deserialization() {
         "work_dir": "/tmp"
     }"#;
 
-    let cmd: TestCommand =
-        from_str(json).expect("Failed to deserialize TestCommand");
+    let cmd: TestCommand = from_str(json).expect("Failed to deserialize TestCommand");
 
     assert_eq!(cmd.framework, Framework::Cargo);
     assert_eq!(cmd.program, "cargo");
     assert_eq!(cmd.args, vec!["test", "--release"]);
-    assert_eq!(cmd.env_vars, vec![("RUST_LOG".to_string(), "debug".to_string())]);
+    assert_eq!(
+        cmd.env_vars,
+        vec![("RUST_LOG".to_string(), "debug".to_string())]
+    );
     assert_eq!(cmd.work_dir, Some("/tmp".to_string()));
 }
 
@@ -349,8 +351,7 @@ fn test_test_command_roundtrip_serialization() {
         .with_work_dir("/test/path");
 
     let json = to_string(&original).expect("Failed to serialize");
-    let deserialized: TestCommand =
-        from_str(&json).expect("Failed to deserialize");
+    let deserialized: TestCommand = from_str(&json).expect("Failed to deserialize");
 
     assert_eq!(original, deserialized);
 }

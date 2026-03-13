@@ -7,7 +7,9 @@
 //! - Log file cleanup on successful completion
 //! - Integration with tracing subsystem
 
-use ltmatrix::logging::file_manager::{LogManager, DEFAULT_MAX_LOG_AGE_DAYS, DEFAULT_MAX_LOG_FILES};
+use ltmatrix::logging::file_manager::{
+    LogManager, DEFAULT_MAX_LOG_AGE_DAYS, DEFAULT_MAX_LOG_FILES,
+};
 use ltmatrix::logging::level::LogLevel;
 use ltmatrix::logging::logger;
 use std::fs;
@@ -54,18 +56,29 @@ fn test_timestamped_log_file_format() {
     let log_path = log_manager.generate_log_path();
 
     // Check filename format
-    let filename = log_path.file_name()
+    let filename = log_path
+        .file_name()
         .and_then(|n| n.to_str())
         .expect("Filename should be valid UTF-8");
 
     // Should match pattern: run-YYYYMMDD-HHMMSS-###.log
-    assert!(filename.starts_with("run-"), "Filename should start with 'run-'");
-    assert!(filename.ends_with(".log"), "Filename should end with '.log'");
+    assert!(
+        filename.starts_with("run-"),
+        "Filename should start with 'run-'"
+    );
+    assert!(
+        filename.ends_with(".log"),
+        "Filename should end with '.log'"
+    );
 
     // Extract timestamp part (without 'run-' prefix and '.log' suffix)
     let timestamp_part = &filename[4..filename.len() - 4];
     // Format: YYYYMMDD-HHMMSS-### (8 date + 1 hyphen + 6 time + 1 hyphen + 3 millis = 19 chars)
-    assert_eq!(timestamp_part.len(), 19, "Timestamp should be 19 characters (YYYYMMDD-HHMMSS-###)");
+    assert_eq!(
+        timestamp_part.len(),
+        19,
+        "Timestamp should be 19 characters (YYYYMMDD-HHMMSS-###)"
+    );
     assert!(
         timestamp_part.chars().nth(8) == Some('-'),
         "Should have hyphen separator after date"
@@ -132,8 +145,7 @@ fn test_create_timestamped_log_files() {
 #[test]
 fn test_rotation_by_count() {
     let temp_dir = tempfile::tempdir().unwrap();
-    let log_manager = LogManager::new(Some(temp_dir.path()))
-        .with_max_files(2);
+    let log_manager = LogManager::new(Some(temp_dir.path())).with_max_files(2);
 
     // Create 3 log files
     let _file1 = log_manager.create_log_file().unwrap();
@@ -152,14 +164,16 @@ fn test_rotation_by_count() {
 
     // Should now have at most 2 files
     let log_info_after = log_manager.get_log_info().unwrap();
-    assert!(log_info_after.len() <= 2, "Should have at most 2 files after cleanup");
+    assert!(
+        log_info_after.len() <= 2,
+        "Should have at most 2 files after cleanup"
+    );
 }
 
 #[test]
 fn test_rotation_by_age() {
     let temp_dir = tempfile::tempdir().unwrap();
-    let log_manager = LogManager::new(Some(temp_dir.path()))
-        .with_max_age_days(0); // Remove all files immediately
+    let log_manager = LogManager::new(Some(temp_dir.path())).with_max_age_days(0); // Remove all files immediately
 
     // Create a log file
     let _file1 = log_manager.create_log_file().unwrap();
@@ -170,14 +184,17 @@ fn test_rotation_by_age() {
 
     // Should now be empty
     let log_info = log_manager.get_log_info().unwrap();
-    assert_eq!(log_info.len(), 0, "Should have no files after age-based cleanup");
+    assert_eq!(
+        log_info.len(),
+        0,
+        "Should have no files after age-based cleanup"
+    );
 }
 
 #[test]
 fn test_rotation_by_size() {
     let temp_dir = tempfile::tempdir().unwrap();
-    let log_manager = LogManager::new(Some(temp_dir.path()))
-        .with_max_total_size(200); // Max 200 bytes
+    let log_manager = LogManager::new(Some(temp_dir.path())).with_max_total_size(200); // Max 200 bytes
 
     // Create log files with known content
     let file1 = log_manager.create_log_file().unwrap();
@@ -213,8 +230,7 @@ fn test_rotation_by_size() {
 #[test]
 fn test_cleanup_on_success_removes_old_logs() {
     let temp_dir = tempfile::tempdir().unwrap();
-    let log_manager = LogManager::new(Some(temp_dir.path()))
-        .with_max_files(2);
+    let log_manager = LogManager::new(Some(temp_dir.path())).with_max_files(2);
 
     // Create multiple log files
     let _file1 = log_manager.create_log_file().unwrap();
@@ -266,10 +282,8 @@ fn test_logging_with_manager_creates_log_file() {
     let temp_dir = tempfile::tempdir().unwrap();
 
     // Initialize logging with management
-    let (_guard, log_manager) = logger::init_logging_with_management(
-        LogLevel::Info,
-        Some(temp_dir.path())
-    ).unwrap();
+    let (_guard, log_manager) =
+        logger::init_logging_with_management(LogLevel::Info, Some(temp_dir.path())).unwrap();
 
     // Log file should have been created
     let log_info = log_manager.get_log_info().unwrap();
@@ -290,10 +304,8 @@ fn test_logging_with_manager_writes_to_file() {
     // Initialize logging with management
     // Note: This test verifies the logging integration. In parallel test execution,
     // the global subscriber might already be registered from another test.
-    let (_guard, log_manager) = logger::init_logging_with_management(
-        LogLevel::Info,
-        Some(temp_dir.path())
-    ).unwrap();
+    let (_guard, log_manager) =
+        logger::init_logging_with_management(LogLevel::Info, Some(temp_dir.path())).unwrap();
 
     // Write a log message
     info!("Test message for logging integration");
@@ -310,7 +322,8 @@ fn test_logging_with_manager_writes_to_file() {
     assert!(!log_info.is_empty(), "Should have at least one log file");
 
     // Verify the most recent log file
-    let log_file = log_info.iter()
+    let log_file = log_info
+        .iter()
         .max_by_key(|f| f.modified_time)
         .expect("Should have at least one log file");
 
@@ -380,8 +393,16 @@ fn test_log_file_info_structure() {
     let content_bytes = fs::read(&log_path).unwrap();
     let content = std::str::from_utf8(&content_bytes).unwrap();
     // The content should be exactly what we wrote
-    assert_eq!(content, "Test log content", "Content should match what we wrote: {:?}", content_bytes);
-    assert_eq!(info.size, content_bytes.len() as u64, "File size should match content length");
+    assert_eq!(
+        content, "Test log content",
+        "Content should match what we wrote: {:?}",
+        content_bytes
+    );
+    assert_eq!(
+        info.size,
+        content_bytes.len() as u64,
+        "File size should match content length"
+    );
     assert!(info.age_days >= 0);
     assert!(info.age_days < 1); // Should be very recent
 }

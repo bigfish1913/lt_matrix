@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Progress tracking and display
 //!
 //! This module provides real-time progress tracking, progress bars, and ETA estimation
@@ -19,7 +18,7 @@ pub use bar::{
     colorize_percentage, create_custom_progress_bar, create_progress_bar, create_spinner,
     BarColorConfig,
 };
-pub use eta::{EtaCalculator, HistoricalData, MetricsCollector, format_eta};
+pub use eta::{format_eta, EtaCalculator, HistoricalData, MetricsCollector};
 pub use manager::{ProgressBarType, ProgressManager, ProgressManagerConfig};
 pub use reporter::{
     flush, report_progress_summary, report_status, report_task_blocked, report_task_complete,

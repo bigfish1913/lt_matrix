@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Task management
 //!
 //! This module handles task scheduling, execution, and dependency resolution

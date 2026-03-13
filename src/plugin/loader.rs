@@ -2,13 +2,12 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Plugin loader for dynamic libraries and WASM modules
 //!
 //! This module provides functionality for loading plugins from
 //! shared libraries and WASM modules.
 
-use anyhow::{Result, bail};
+use anyhow::{bail, Result};
 use std::path::Path;
 
 /// Plugin loader interface
@@ -35,7 +34,7 @@ impl PluginLoader {
     /// Load a plugin from a WASM module
     pub async fn load_wasm_module(&self, path: &Path) -> Result<()> {
         let _path = path; // Reserved for future implementation
-        // WASM loading is planned for future implementation
+                          // WASM loading is planned for future implementation
         bail!("WASM plugin loading is not yet implemented")
     }
 

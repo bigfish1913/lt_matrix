@@ -4,8 +4,8 @@
 //! performance issues, and serialization scenarios.
 
 use ltmatrix::pipeline::coverage::{
-    aggregate_findings, AggregatedFindings, CoverageReport, FileCoverage,
-    IssueDetail, IssueSeverity, ModuleCoverage, PerformanceIssue, SecurityIssue, TestFailure,
+    aggregate_findings, AggregatedFindings, CoverageReport, FileCoverage, IssueDetail,
+    IssueSeverity, ModuleCoverage, PerformanceIssue, SecurityIssue, TestFailure,
 };
 use ltmatrix::pipeline::fix_cycle::{should_trigger_fix_cycle, FixCycleConfig};
 
@@ -48,10 +48,7 @@ fn test_performance_issue_detail_trait() {
     assert_eq!(issue.description(), "Memory usage grows unbounded");
     assert_eq!(issue.severity(), IssueSeverity::Critical);
     assert_eq!(issue.affected_component(), "src/cache.rs");
-    assert_eq!(
-        issue.suggested_fix(),
-        Some("Implement cache eviction")
-    );
+    assert_eq!(issue.suggested_fix(), Some("Implement cache eviction"));
 }
 
 // ==================== File Coverage Tests ====================
@@ -470,7 +467,11 @@ fn test_test_failure_with_stack_trace() {
     };
 
     assert!(failure.stack_trace.is_some());
-    assert!(failure.stack_trace.as_ref().unwrap().contains("stack trace"));
+    assert!(failure
+        .stack_trace
+        .as_ref()
+        .unwrap()
+        .contains("stack trace"));
     assert_eq!(failure.severity(), IssueSeverity::Critical);
 }
 

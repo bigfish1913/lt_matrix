@@ -101,7 +101,10 @@ fn cross_platform_lib_example_exists() {
 #[test]
 fn simple_cli_tool_has_readme() {
     let root = get_project_root();
-    let readme_path = root.join(EXAMPLES_DIR).join("simple-cli-tool").join("README.md");
+    let readme_path = root
+        .join(EXAMPLES_DIR)
+        .join("simple-cli-tool")
+        .join("README.md");
 
     assert!(
         readme_path.exists(),
@@ -113,7 +116,10 @@ fn simple_cli_tool_has_readme() {
 #[test]
 fn multi_task_workflow_has_readme() {
     let root = get_project_root();
-    let readme_path = root.join(EXAMPLES_DIR).join("multi-task-workflow").join("README.md");
+    let readme_path = root
+        .join(EXAMPLES_DIR)
+        .join("multi-task-workflow")
+        .join("README.md");
 
     assert!(
         readme_path.exists(),
@@ -125,7 +131,10 @@ fn multi_task_workflow_has_readme() {
 #[test]
 fn web_api_testing_has_readme() {
     let root = get_project_root();
-    let readme_path = root.join(EXAMPLES_DIR).join("web-api-testing").join("README.md");
+    let readme_path = root
+        .join(EXAMPLES_DIR)
+        .join("web-api-testing")
+        .join("README.md");
 
     assert!(
         readme_path.exists(),
@@ -137,7 +146,10 @@ fn web_api_testing_has_readme() {
 #[test]
 fn cross_platform_lib_has_readme() {
     let root = get_project_root();
-    let readme_path = root.join(EXAMPLES_DIR).join("cross-platform-lib").join("README.md");
+    let readme_path = root
+        .join(EXAMPLES_DIR)
+        .join("cross-platform-lib")
+        .join("README.md");
 
     assert!(
         readme_path.exists(),
@@ -153,25 +165,26 @@ fn cross_platform_lib_has_readme() {
 #[test]
 fn simple_cli_tool_readme_explains_purpose() {
     let root = get_project_root();
-    let readme_path = root.join(EXAMPLES_DIR).join("simple-cli-tool").join("README.md");
+    let readme_path = root
+        .join(EXAMPLES_DIR)
+        .join("simple-cli-tool")
+        .join("README.md");
 
     let content = fs::read_to_string(&readme_path)
         .expect("Failed to read README.md - run simple_cli_tool_has_readme test first");
 
     // README should explain purpose
     assert!(
-        content.to_lowercase().contains("purpose") ||
-        content.to_lowercase().contains("goal") ||
-        content.to_lowercase().contains("demonstrates") ||
-        content.to_lowercase().contains("this example"),
+        content.to_lowercase().contains("purpose")
+            || content.to_lowercase().contains("goal")
+            || content.to_lowercase().contains("demonstrates")
+            || content.to_lowercase().contains("this example"),
         "simple-cli-tool README should explain the purpose of the example"
     );
 
     // README should show expected output
     assert!(
-        content.contains("Expected") ||
-        content.contains("output") ||
-        content.contains("```\n"),
+        content.contains("Expected") || content.contains("output") || content.contains("```\n"),
         "simple-cli-tool README should show expected output or behavior"
     );
 }
@@ -179,17 +192,20 @@ fn simple_cli_tool_readme_explains_purpose() {
 #[test]
 fn multi_task_workflow_readme_explains_dependencies() {
     let root = get_project_root();
-    let readme_path = root.join(EXAMPLES_DIR).join("multi-task-workflow").join("README.md");
+    let readme_path = root
+        .join(EXAMPLES_DIR)
+        .join("multi-task-workflow")
+        .join("README.md");
 
     let content = fs::read_to_string(&readme_path)
         .expect("Failed to read README.md - run multi_task_workflow_has_readme test first");
 
     // README should explain task dependencies
     assert!(
-        content.to_lowercase().contains("dependenc") ||
-        content.to_lowercase().contains("depend") ||
-        content.to_lowercase().contains("task") ||
-        content.to_lowercase().contains("workflow"),
+        content.to_lowercase().contains("dependenc")
+            || content.to_lowercase().contains("depend")
+            || content.to_lowercase().contains("task")
+            || content.to_lowercase().contains("workflow"),
         "multi-task-workflow README should explain task dependencies or workflow"
     );
 }
@@ -197,17 +213,20 @@ fn multi_task_workflow_readme_explains_dependencies() {
 #[test]
 fn web_api_testing_readme_explains_testing() {
     let root = get_project_root();
-    let readme_path = root.join(EXAMPLES_DIR).join("web-api-testing").join("README.md");
+    let readme_path = root
+        .join(EXAMPLES_DIR)
+        .join("web-api-testing")
+        .join("README.md");
 
     let content = fs::read_to_string(&readme_path)
         .expect("Failed to read README.md - run web_api_testing_has_readme test first");
 
     // README should explain testing aspect
     assert!(
-        content.to_lowercase().contains("test") ||
-        content.to_lowercase().contains("e2e") ||
-        content.to_lowercase().contains("integration") ||
-        content.to_lowercase().contains("api"),
+        content.to_lowercase().contains("test")
+            || content.to_lowercase().contains("e2e")
+            || content.to_lowercase().contains("integration")
+            || content.to_lowercase().contains("api"),
         "web-api-testing README should explain testing approach or API testing"
     );
 }
@@ -215,18 +234,21 @@ fn web_api_testing_readme_explains_testing() {
 #[test]
 fn cross_platform_lib_readme_explains_platforms() {
     let root = get_project_root();
-    let readme_path = root.join(EXAMPLES_DIR).join("cross-platform-lib").join("README.md");
+    let readme_path = root
+        .join(EXAMPLES_DIR)
+        .join("cross-platform-lib")
+        .join("README.md");
 
     let content = fs::read_to_string(&readme_path)
         .expect("Failed to read README.md - run cross_platform_lib_has_readme test first");
 
     // README should explain cross-platform considerations
     assert!(
-        content.to_lowercase().contains("platform") ||
-        content.to_lowercase().contains("windows") ||
-        content.to_lowercase().contains("linux") ||
-        content.to_lowercase().contains("macos") ||
-        content.to_lowercase().contains("cross"),
+        content.to_lowercase().contains("platform")
+            || content.to_lowercase().contains("windows")
+            || content.to_lowercase().contains("linux")
+            || content.to_lowercase().contains("macos")
+            || content.to_lowercase().contains("cross"),
         "cross-platform-lib README should explain platform considerations"
     );
 }
@@ -270,9 +292,9 @@ fn tutorial_is_walkthrough() {
 
     // Tutorial should explain how to use ltmatrix
     assert!(
-        content.to_lowercase().contains("ltmatrix") ||
-        content.to_lowercase().contains("usage") ||
-        content.to_lowercase().contains("getting started"),
+        content.to_lowercase().contains("ltmatrix")
+            || content.to_lowercase().contains("usage")
+            || content.to_lowercase().contains("getting started"),
         "Tutorial should explain ltmatrix usage"
     );
 }
@@ -286,10 +308,10 @@ fn tutorial_covers_examples() {
         .expect("Failed to read tutorial.md - run tutorial_exists test first");
 
     // Tutorial should reference or cover the examples
-    let covers_examples = content.to_lowercase().contains("example") ||
-                          content.to_lowercase().contains("simple") ||
-                          content.to_lowercase().contains("cli") ||
-                          content.to_lowercase().contains("task");
+    let covers_examples = content.to_lowercase().contains("example")
+        || content.to_lowercase().contains("simple")
+        || content.to_lowercase().contains("cli")
+        || content.to_lowercase().contains("task");
 
     assert!(
         covers_examples,
@@ -342,21 +364,22 @@ fn all_example_readmes_contain_command_examples() {
         if path.is_dir() {
             let readme_path = path.join("README.md");
             if readme_path.exists() {
-                let content = fs::read_to_string(&readme_path)
-                    .expect("Failed to read README");
+                let content = fs::read_to_string(&readme_path).expect("Failed to read README");
 
                 // READMEs should show command examples
                 if !content.contains("ltmatrix") && !content.contains("```") {
-                    readmes_without_commands.push(
-                        path.file_name().unwrap().to_string_lossy().to_string()
-                    );
+                    readmes_without_commands
+                        .push(path.file_name().unwrap().to_string_lossy().to_string());
                 }
                 checked_count += 1;
             }
         }
     }
 
-    assert!(checked_count > 0, "At least one example README should exist");
+    assert!(
+        checked_count > 0,
+        "At least one example README should exist"
+    );
     assert!(
         readmes_without_commands.is_empty(),
         "Example READMEs without command examples: {:?}",

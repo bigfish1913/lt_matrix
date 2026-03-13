@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Security utilities for input validation and sanitization
 //!
 //! This module provides security utilities to prevent common vulnerabilities:
@@ -10,10 +9,10 @@
 //! - Path traversal prevention
 //! - Input sanitization
 
+mod command;
 mod input;
 mod path;
-mod command;
 
+pub use command::*;
 pub use input::*;
 pub use path::*;
-pub use command::*;

@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Acceptance tests for logging subsystem implementation
 //!
 //! These tests verify the task acceptance criteria:

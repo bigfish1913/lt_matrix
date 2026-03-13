@@ -43,21 +43,24 @@ mod tag_trigger_tests {
     #[test]
     fn release_triggers_on_semver_tags() {
         let workflow = load_release_workflow();
-        let on = workflow.get("on").expect("Workflow should have 'on' trigger");
+        let on = workflow
+            .get("on")
+            .expect("Workflow should have 'on' trigger");
 
         // Check push trigger with version tags
         let push = on.get("push").expect("Release should have push trigger");
-        let tags = push.get("tags")
+        let tags = push
+            .get("tags")
             .and_then(|t| t.as_sequence())
             .expect("Push trigger should have tags");
 
-        let tag_patterns: Vec<&str> = tags.iter()
-            .filter_map(|t| t.as_str())
-            .collect();
+        let tag_patterns: Vec<&str> = tags.iter().filter_map(|t| t.as_str()).collect();
 
         // Should trigger on version tags pattern
         assert!(
-            tag_patterns.iter().any(|p| p.contains("v") && p.contains("*")),
+            tag_patterns
+                .iter()
+                .any(|p| p.contains("v") && p.contains("*")),
             "Release should trigger on version tag pattern (e.g., 'v*.*.*')"
         );
     }
@@ -65,7 +68,9 @@ mod tag_trigger_tests {
     #[test]
     fn release_supports_manual_dispatch() {
         let workflow = load_release_workflow();
-        let on = workflow.get("on").expect("Workflow should have 'on' trigger");
+        let on = workflow
+            .get("on")
+            .expect("Workflow should have 'on' trigger");
 
         // Check for workflow_dispatch for manual releases
         let dispatch = on.get("workflow_dispatch");
@@ -78,15 +83,22 @@ mod tag_trigger_tests {
     #[test]
     fn release_dispatch_has_version_input() {
         let workflow = load_release_workflow();
-        let on = workflow.get("on").expect("Workflow should have 'on' trigger");
-        let dispatch = on.get("workflow_dispatch")
+        let on = workflow
+            .get("on")
+            .expect("Workflow should have 'on' trigger");
+        let dispatch = on
+            .get("workflow_dispatch")
             .expect("Release should support workflow_dispatch");
-        let inputs = dispatch.get("inputs")
+        let inputs = dispatch
+            .get("inputs")
             .expect("workflow_dispatch should have inputs");
 
         // Should have version input for manual releases
         let version_input = inputs.get("version");
-        assert!(version_input.is_some(), "workflow_dispatch should have 'version' input");
+        assert!(
+            version_input.is_some(),
+            "workflow_dispatch should have 'version' input"
+        );
     }
 }
 
@@ -102,12 +114,11 @@ mod cross_platform_build_tests {
         let workflow = load_release_workflow();
         let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
 
-        let linux_job = jobs.as_mapping().unwrap().iter()
-            .find(|(k, _)| {
-                k.as_str()
-                    .map(|s| s.contains("build") && s.contains("linux"))
-                    .unwrap_or(false)
-            });
+        let linux_job = jobs.as_mapping().unwrap().iter().find(|(k, _)| {
+            k.as_str()
+                .map(|s| s.contains("build") && s.contains("linux"))
+                .unwrap_or(false)
+        });
 
         assert!(linux_job.is_some(), "Release should have Linux build job");
     }
@@ -117,12 +128,11 @@ mod cross_platform_build_tests {
         let workflow = load_release_workflow();
         let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
 
-        let macos_job = jobs.as_mapping().unwrap().iter()
-            .find(|(k, _)| {
-                k.as_str()
-                    .map(|s| s.contains("build") && s.contains("macos"))
-                    .unwrap_or(false)
-            });
+        let macos_job = jobs.as_mapping().unwrap().iter().find(|(k, _)| {
+            k.as_str()
+                .map(|s| s.contains("build") && s.contains("macos"))
+                .unwrap_or(false)
+        });
 
         assert!(macos_job.is_some(), "Release should have macOS build job");
     }
@@ -132,14 +142,16 @@ mod cross_platform_build_tests {
         let workflow = load_release_workflow();
         let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
 
-        let windows_job = jobs.as_mapping().unwrap().iter()
-            .find(|(k, _)| {
-                k.as_str()
-                    .map(|s| s.contains("build") && s.contains("windows"))
-                    .unwrap_or(false)
-            });
+        let windows_job = jobs.as_mapping().unwrap().iter().find(|(k, _)| {
+            k.as_str()
+                .map(|s| s.contains("build") && s.contains("windows"))
+                .unwrap_or(false)
+        });
 
-        assert!(windows_job.is_some(), "Release should have Windows build job");
+        assert!(
+            windows_job.is_some(),
+            "Release should have Windows build job"
+        );
     }
 
     #[test]
@@ -147,7 +159,10 @@ mod cross_platform_build_tests {
         let workflow = load_release_workflow();
         let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
 
-        let linux_job = jobs.as_mapping().unwrap().iter()
+        let linux_job = jobs
+            .as_mapping()
+            .unwrap()
+            .iter()
             .find(|(k, _)| {
                 k.as_str()
                     .map(|s| s.contains("build") && s.contains("linux"))
@@ -158,7 +173,8 @@ mod cross_platform_build_tests {
         assert!(linux_job.is_some(), "Should have Linux build job");
 
         if let Some(job) = linux_job {
-            let steps = job.get("steps")
+            let steps = job
+                .get("steps")
                 .and_then(|s| s.as_sequence())
                 .expect("Linux build job should have steps");
 
@@ -166,9 +182,9 @@ mod cross_platform_build_tests {
             let uses_zigbuild = steps.iter().any(|step| {
                 let run = step.get("run").and_then(|r| r.as_str()).unwrap_or("");
                 let name = step.get("name").and_then(|n| n.as_str()).unwrap_or("");
-                run.contains("cargo-zigbuild") ||
-                run.contains("cargo zigbuild") ||
-                name.to_lowercase().contains("zigbuild")
+                run.contains("cargo-zigbuild")
+                    || run.contains("cargo zigbuild")
+                    || name.to_lowercase().contains("zigbuild")
             });
 
             assert!(
@@ -183,7 +199,10 @@ mod cross_platform_build_tests {
         let workflow = load_release_workflow();
         let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
 
-        let linux_job = jobs.as_mapping().unwrap().iter()
+        let linux_job = jobs
+            .as_mapping()
+            .unwrap()
+            .iter()
             .find(|(k, _)| {
                 k.as_str()
                     .map(|s| s.contains("build") && s.contains("linux"))
@@ -192,13 +211,13 @@ mod cross_platform_build_tests {
             .map(|(_, v)| v);
 
         if let Some(job) = linux_job {
-            let matrix = job.get("strategy")
-                .and_then(|s| s.get("matrix"));
+            let matrix = job.get("strategy").and_then(|s| s.get("matrix"));
 
             if let Some(matrix) = matrix {
                 // Check include array for targets
                 if let Some(includes) = matrix.get("include").and_then(|i| i.as_sequence()) {
-                    let targets: Vec<&str> = includes.iter()
+                    let targets: Vec<&str> = includes
+                        .iter()
                         .filter_map(|item| item.get("target").and_then(|t| t.as_str()))
                         .collect();
 
@@ -208,7 +227,9 @@ mod cross_platform_build_tests {
                     );
                 } else if let Some(targets) = matrix.get("target").and_then(|t| t.as_sequence()) {
                     assert!(
-                        targets.iter().any(|t| t.as_str().map(|s| s.contains("aarch64")).unwrap_or(false)),
+                        targets
+                            .iter()
+                            .any(|t| t.as_str().map(|s| s.contains("aarch64")).unwrap_or(false)),
                         "Linux build should include ARM64 (aarch64) target"
                     );
                 }
@@ -221,7 +242,10 @@ mod cross_platform_build_tests {
         let workflow = load_release_workflow();
         let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
 
-        let linux_job = jobs.as_mapping().unwrap().iter()
+        let linux_job = jobs
+            .as_mapping()
+            .unwrap()
+            .iter()
             .find(|(k, _)| {
                 k.as_str()
                     .map(|s| s.contains("build") && s.contains("linux"))
@@ -230,12 +254,12 @@ mod cross_platform_build_tests {
             .map(|(_, v)| v);
 
         if let Some(job) = linux_job {
-            let matrix = job.get("strategy")
-                .and_then(|s| s.get("matrix"));
+            let matrix = job.get("strategy").and_then(|s| s.get("matrix"));
 
             if let Some(matrix) = matrix {
                 if let Some(includes) = matrix.get("include").and_then(|i| i.as_sequence()) {
-                    let targets: Vec<&str> = includes.iter()
+                    let targets: Vec<&str> = includes
+                        .iter()
                         .filter_map(|item| item.get("target").and_then(|t| t.as_str()))
                         .collect();
 
@@ -245,7 +269,9 @@ mod cross_platform_build_tests {
                     );
                 } else if let Some(targets) = matrix.get("target").and_then(|t| t.as_sequence()) {
                     assert!(
-                        targets.iter().any(|t| t.as_str().map(|s| s.contains("musl")).unwrap_or(false)),
+                        targets
+                            .iter()
+                            .any(|t| t.as_str().map(|s| s.contains("musl")).unwrap_or(false)),
                         "Linux build should include musl (static) target"
                     );
                 }
@@ -258,7 +284,10 @@ mod cross_platform_build_tests {
         let workflow = load_release_workflow();
         let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
 
-        let macos_job = jobs.as_mapping().unwrap().iter()
+        let macos_job = jobs
+            .as_mapping()
+            .unwrap()
+            .iter()
             .find(|(k, _)| {
                 k.as_str()
                     .map(|s| s.contains("build") && s.contains("macos") && !s.contains("universal"))
@@ -269,13 +298,14 @@ mod cross_platform_build_tests {
         assert!(macos_job.is_some(), "Should have macOS build job");
 
         if let Some(job) = macos_job {
-            let matrix = job.get("strategy")
-                .and_then(|s| s.get("matrix"));
+            let matrix = job.get("strategy").and_then(|s| s.get("matrix"));
 
             if let Some(matrix) = matrix {
                 if let Some(targets) = matrix.get("target").and_then(|t| t.as_sequence()) {
                     assert!(
-                        targets.iter().any(|t| t.as_str().map(|s| s.contains("aarch64")).unwrap_or(false)),
+                        targets
+                            .iter()
+                            .any(|t| t.as_str().map(|s| s.contains("aarch64")).unwrap_or(false)),
                         "macOS build should include ARM64 (Apple Silicon) target"
                     );
                 }
@@ -288,12 +318,11 @@ mod cross_platform_build_tests {
         let workflow = load_release_workflow();
         let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
 
-        let universal_job = jobs.as_mapping().unwrap().iter()
-            .find(|(k, _)| {
-                k.as_str()
-                    .map(|s| s.contains("macos") && s.contains("universal"))
-                    .unwrap_or(false)
-            });
+        let universal_job = jobs.as_mapping().unwrap().iter().find(|(k, _)| {
+            k.as_str()
+                .map(|s| s.contains("macos") && s.contains("universal"))
+                .unwrap_or(false)
+        });
 
         assert!(
             universal_job.is_some(),
@@ -306,7 +335,10 @@ mod cross_platform_build_tests {
         let workflow = load_release_workflow();
         let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
 
-        let windows_job = jobs.as_mapping().unwrap().iter()
+        let windows_job = jobs
+            .as_mapping()
+            .unwrap()
+            .iter()
             .find(|(k, _)| {
                 k.as_str()
                     .map(|s| s.contains("build") && s.contains("windows"))
@@ -317,13 +349,14 @@ mod cross_platform_build_tests {
         assert!(windows_job.is_some(), "Should have Windows build job");
 
         if let Some(job) = windows_job {
-            let matrix = job.get("strategy")
-                .and_then(|s| s.get("matrix"));
+            let matrix = job.get("strategy").and_then(|s| s.get("matrix"));
 
             if let Some(matrix) = matrix {
                 if let Some(targets) = matrix.get("target").and_then(|t| t.as_sequence()) {
                     assert!(
-                        targets.iter().any(|t| t.as_str().map(|s| s.contains("aarch64")).unwrap_or(false)),
+                        targets
+                            .iter()
+                            .any(|t| t.as_str().map(|s| s.contains("aarch64")).unwrap_or(false)),
                         "Windows build should include ARM64 target"
                     );
                 }
@@ -337,8 +370,15 @@ mod cross_platform_build_tests {
         let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
 
         // Linux should use ubuntu runner
-        let linux_job = jobs.as_mapping().unwrap().iter()
-            .find(|(k, _)| k.as_str().map(|s| s.contains("build") && s.contains("linux")).unwrap_or(false))
+        let linux_job = jobs
+            .as_mapping()
+            .unwrap()
+            .iter()
+            .find(|(k, _)| {
+                k.as_str()
+                    .map(|s| s.contains("build") && s.contains("linux"))
+                    .unwrap_or(false)
+            })
             .map(|(_, v)| v);
         if let Some(job) = linux_job {
             let runner = job.get("runs-on").and_then(|r| r.as_str());
@@ -349,8 +389,15 @@ mod cross_platform_build_tests {
         }
 
         // macOS should use macos runner
-        let macos_job = jobs.as_mapping().unwrap().iter()
-            .find(|(k, _)| k.as_str().map(|s| s.contains("build") && s.contains("macos")).unwrap_or(false))
+        let macos_job = jobs
+            .as_mapping()
+            .unwrap()
+            .iter()
+            .find(|(k, _)| {
+                k.as_str()
+                    .map(|s| s.contains("build") && s.contains("macos"))
+                    .unwrap_or(false)
+            })
             .map(|(_, v)| v);
         if let Some(job) = macos_job {
             let runner = job.get("runs-on").and_then(|r| r.as_str());
@@ -361,8 +408,15 @@ mod cross_platform_build_tests {
         }
 
         // Windows should use windows runner
-        let windows_job = jobs.as_mapping().unwrap().iter()
-            .find(|(k, _)| k.as_str().map(|s| s.contains("build") && s.contains("windows")).unwrap_or(false))
+        let windows_job = jobs
+            .as_mapping()
+            .unwrap()
+            .iter()
+            .find(|(k, _)| {
+                k.as_str()
+                    .map(|s| s.contains("build") && s.contains("windows"))
+                    .unwrap_or(false)
+            })
             .map(|(_, v)| v);
         if let Some(job) = windows_job {
             let runner = job.get("runs-on").and_then(|r| r.as_str());
@@ -398,10 +452,12 @@ mod github_release_tests {
         let workflow = load_release_workflow();
         let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
 
-        let create_release = jobs.get("create-release")
+        let create_release = jobs
+            .get("create-release")
             .expect("Should have create-release job");
 
-        let steps = create_release.get("steps")
+        let steps = create_release
+            .get("steps")
             .and_then(|s| s.as_sequence())
             .expect("create-release should have steps");
 
@@ -423,10 +479,12 @@ mod github_release_tests {
         let workflow = load_release_workflow();
         let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
 
-        let create_release = jobs.get("create-release")
+        let create_release = jobs
+            .get("create-release")
             .expect("Should have create-release job");
 
-        let steps = create_release.get("steps")
+        let steps = create_release
+            .get("steps")
             .and_then(|s| s.as_sequence())
             .expect("create-release should have steps");
 
@@ -457,10 +515,12 @@ mod github_release_tests {
         let workflow = load_release_workflow();
         let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
 
-        let create_release = jobs.get("create-release")
+        let create_release = jobs
+            .get("create-release")
             .expect("Should have create-release job");
 
-        let steps = create_release.get("steps")
+        let steps = create_release
+            .get("steps")
             .and_then(|s| s.as_sequence())
             .expect("create-release should have steps");
 
@@ -486,18 +546,24 @@ mod github_release_tests {
         let workflow = load_release_workflow();
         let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
 
-        let build_jobs: Vec<_> = jobs.as_mapping().unwrap().iter()
+        let build_jobs: Vec<_> = jobs
+            .as_mapping()
+            .unwrap()
+            .iter()
             .filter(|(k, _)| k.as_str().map(|s| s.contains("build")).unwrap_or(false))
             .collect();
 
         for (job_name, job) in build_jobs {
-            let steps = job.get("steps")
-                .and_then(|s| s.as_sequence());
+            let steps = job.get("steps").and_then(|s| s.as_sequence());
 
-            let has_upload = steps.map(|s| s.iter().any(|step| {
-                let uses = step.get("uses").and_then(|u| u.as_str()).unwrap_or("");
-                uses.contains("upload") || uses.contains("release")
-            })).unwrap_or(false);
+            let has_upload = steps
+                .map(|s| {
+                    s.iter().any(|step| {
+                        let uses = step.get("uses").and_then(|u| u.as_str()).unwrap_or("");
+                        uses.contains("upload") || uses.contains("release")
+                    })
+                })
+                .unwrap_or(false);
 
             assert!(
                 has_upload,
@@ -532,18 +598,17 @@ mod changelog_tests {
         let workflow = load_release_workflow();
         let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
 
-        let changelog_job = jobs.get("changelog")
-            .expect("Should have changelog job");
+        let changelog_job = jobs.get("changelog").expect("Should have changelog job");
 
-        let steps = changelog_job.get("steps")
+        let steps = changelog_job
+            .get("steps")
             .and_then(|s| s.as_sequence())
             .expect("changelog job should have steps");
 
         let has_generate_step = steps.iter().any(|step| {
             let name = step.get("name").and_then(|n| n.as_str()).unwrap_or("");
             let run = step.get("run").and_then(|r| r.as_str()).unwrap_or("");
-            name.to_lowercase().contains("changelog") ||
-            run.to_lowercase().contains("changelog")
+            name.to_lowercase().contains("changelog") || run.to_lowercase().contains("changelog")
         });
 
         assert!(
@@ -557,10 +622,10 @@ mod changelog_tests {
         let workflow = load_release_workflow();
         let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
 
-        let changelog_job = jobs.get("changelog")
-            .expect("Should have changelog job");
+        let changelog_job = jobs.get("changelog").expect("Should have changelog job");
 
-        let steps = changelog_job.get("steps")
+        let steps = changelog_job
+            .get("steps")
             .and_then(|s| s.as_sequence())
             .expect("changelog job should have steps");
 
@@ -582,8 +647,7 @@ mod changelog_tests {
         let workflow = load_release_workflow();
         let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
 
-        let changelog_job = jobs.get("changelog")
-            .expect("Should have changelog job");
+        let changelog_job = jobs.get("changelog").expect("Should have changelog job");
 
         let outputs = changelog_job.get("outputs");
         assert!(
@@ -603,10 +667,14 @@ mod draft_release_tests {
     #[test]
     fn workflow_dispatch_has_draft_input() {
         let workflow = load_release_workflow();
-        let on = workflow.get("on").expect("Workflow should have 'on' trigger");
-        let dispatch = on.get("workflow_dispatch")
+        let on = workflow
+            .get("on")
+            .expect("Workflow should have 'on' trigger");
+        let dispatch = on
+            .get("workflow_dispatch")
             .expect("Release should support workflow_dispatch");
-        let inputs = dispatch.get("inputs")
+        let inputs = dispatch
+            .get("inputs")
             .expect("workflow_dispatch should have inputs");
 
         let draft_input = inputs.get("draft");
@@ -619,14 +687,17 @@ mod draft_release_tests {
     #[test]
     fn draft_input_is_boolean() {
         let workflow = load_release_workflow();
-        let on = workflow.get("on").expect("Workflow should have 'on' trigger");
-        let dispatch = on.get("workflow_dispatch")
+        let on = workflow
+            .get("on")
+            .expect("Workflow should have 'on' trigger");
+        let dispatch = on
+            .get("workflow_dispatch")
             .expect("Release should support workflow_dispatch");
-        let inputs = dispatch.get("inputs")
+        let inputs = dispatch
+            .get("inputs")
             .expect("workflow_dispatch should have inputs");
 
-        let draft_input = inputs.get("draft")
-            .expect("Should have draft input");
+        let draft_input = inputs.get("draft").expect("Should have draft input");
 
         let draft_type = draft_input.get("type").and_then(|t| t.as_str());
         assert_eq!(
@@ -639,14 +710,17 @@ mod draft_release_tests {
     #[test]
     fn draft_default_is_true() {
         let workflow = load_release_workflow();
-        let on = workflow.get("on").expect("Workflow should have 'on' trigger");
-        let dispatch = on.get("workflow_dispatch")
+        let on = workflow
+            .get("on")
+            .expect("Workflow should have 'on' trigger");
+        let dispatch = on
+            .get("workflow_dispatch")
             .expect("Release should support workflow_dispatch");
-        let inputs = dispatch.get("inputs")
+        let inputs = dispatch
+            .get("inputs")
             .expect("workflow_dispatch should have inputs");
 
-        let draft_input = inputs.get("draft")
-            .expect("Should have draft input");
+        let draft_input = inputs.get("draft").expect("Should have draft input");
 
         let default = draft_input.get("default").and_then(|d| d.as_str());
         assert_eq!(
@@ -661,10 +735,12 @@ mod draft_release_tests {
         let workflow = load_release_workflow();
         let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
 
-        let create_release = jobs.get("create-release")
+        let create_release = jobs
+            .get("create-release")
             .expect("Should have create-release job");
 
-        let steps = create_release.get("steps")
+        let steps = create_release
+            .get("steps")
             .and_then(|s| s.as_sequence())
             .expect("create-release should have steps");
 
@@ -691,10 +767,10 @@ mod draft_release_tests {
         let workflow = load_release_workflow();
         let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
 
-        let prepare = jobs.get("prepare")
-            .expect("Should have prepare job");
+        let prepare = jobs.get("prepare").expect("Should have prepare job");
 
-        let outputs = prepare.get("outputs")
+        let outputs = prepare
+            .get("outputs")
             .expect("prepare job should have outputs");
 
         assert!(
@@ -716,10 +792,10 @@ mod prerelease_tests {
         let workflow = load_release_workflow();
         let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
 
-        let prepare = jobs.get("prepare")
-            .expect("Should have prepare job");
+        let prepare = jobs.get("prepare").expect("Should have prepare job");
 
-        let outputs = prepare.get("outputs")
+        let outputs = prepare
+            .get("outputs")
             .expect("prepare job should have outputs");
 
         assert!(
@@ -733,10 +809,12 @@ mod prerelease_tests {
         let workflow = load_release_workflow();
         let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
 
-        let create_release = jobs.get("create-release")
+        let create_release = jobs
+            .get("create-release")
             .expect("Should have create-release job");
 
-        let steps = create_release.get("steps")
+        let steps = create_release
+            .get("steps")
             .and_then(|s| s.as_sequence())
             .expect("create-release should have steps");
 
@@ -771,7 +849,8 @@ mod job_dependency_tests {
         let workflow = load_release_workflow();
         let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
 
-        let create_release = jobs.get("create-release")
+        let create_release = jobs
+            .get("create-release")
             .expect("Should have create-release job");
 
         let needs = create_release.get("needs");
@@ -801,7 +880,8 @@ mod job_dependency_tests {
         let workflow = load_release_workflow();
         let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
 
-        let create_release = jobs.get("create-release")
+        let create_release = jobs
+            .get("create-release")
             .expect("Should have create-release job");
 
         let needs = create_release.get("needs");
@@ -826,7 +906,10 @@ mod job_dependency_tests {
         let workflow = load_release_workflow();
         let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
 
-        let build_jobs: Vec<_> = jobs.as_mapping().unwrap().iter()
+        let build_jobs: Vec<_> = jobs
+            .as_mapping()
+            .unwrap()
+            .iter()
             .filter(|(k, _)| k.as_str().map(|s| s.contains("build")).unwrap_or(false))
             .collect();
 
@@ -842,7 +925,9 @@ mod job_dependency_tests {
                 };
 
                 assert!(
-                    needs_list.iter().any(|n| n.contains("release") || n.contains("prepare")),
+                    needs_list
+                        .iter()
+                        .any(|n| n.contains("release") || n.contains("prepare")),
                     "Build job '{}' should depend on create-release or prepare job",
                     job_name.as_str().unwrap_or("unknown")
                 );
@@ -863,20 +948,26 @@ mod caching_tests {
         let workflow = load_release_workflow();
         let jobs = workflow.get("jobs").expect("Workflow should have 'jobs'");
 
-        let build_jobs: Vec<_> = jobs.as_mapping().unwrap().iter()
+        let build_jobs: Vec<_> = jobs
+            .as_mapping()
+            .unwrap()
+            .iter()
             .filter(|(k, _)| k.as_str().map(|s| s.contains("build")).unwrap_or(false))
             .collect();
 
-        let jobs_with_cache: usize = build_jobs.iter()
+        let jobs_with_cache: usize = build_jobs
+            .iter()
             .filter(|(_, job)| {
                 job.get("steps")
                     .and_then(|steps| steps.as_sequence())
-                    .map(|steps| steps.iter().any(|step| {
-                        step.get("uses")
-                            .and_then(|u| u.as_str())
-                            .map(|u| u.contains("cache"))
-                            .unwrap_or(false)
-                    }))
+                    .map(|steps| {
+                        steps.iter().any(|step| {
+                            step.get("uses")
+                                .and_then(|u| u.as_str())
+                                .map(|u| u.contains("cache"))
+                                .unwrap_or(false)
+                        })
+                    })
                     .unwrap_or(false)
             })
             .count();

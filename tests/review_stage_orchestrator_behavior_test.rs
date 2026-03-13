@@ -6,7 +6,7 @@
 
 use ltmatrix::models::{ExecutionMode, PipelineStage, Task, TaskStatus};
 use ltmatrix::pipeline::orchestrator::{OrchestratorConfig, PipelineOrchestrator};
-use ltmatrix::pipeline::review::{ReviewConfig, IssueCategory, IssueSeverity, CodeIssue};
+use ltmatrix::pipeline::review::{CodeIssue, IssueCategory, IssueSeverity, ReviewConfig};
 use tempfile::TempDir;
 
 // =============================================================================
@@ -49,8 +49,7 @@ async fn test_orchestrator_review_stage_enabled_in_expert_mode() {
 async fn test_orchestrator_review_config_work_dir_propagation() {
     let temp_dir = TempDir::new().unwrap();
 
-    let config = OrchestratorConfig::expert_mode()
-        .with_work_dir(temp_dir.path());
+    let config = OrchestratorConfig::expert_mode().with_work_dir(temp_dir.path());
 
     // Work dir should be propagated to review config
     assert_eq!(config.review_config.work_dir, temp_dir.path());
@@ -82,8 +81,14 @@ async fn test_orchestrator_review_severity_threshold_expert_mode() {
 fn test_review_stage_dependencies_on_test() {
     let stages = PipelineStage::pipeline_for_mode(ExecutionMode::Expert);
 
-    let test_idx = stages.iter().position(|s| s == &PipelineStage::Test).unwrap();
-    let review_idx = stages.iter().position(|s| s == &PipelineStage::Review).unwrap();
+    let test_idx = stages
+        .iter()
+        .position(|s| s == &PipelineStage::Test)
+        .unwrap();
+    let review_idx = stages
+        .iter()
+        .position(|s| s == &PipelineStage::Review)
+        .unwrap();
 
     // Review must come after Test (Test must complete before Review)
     assert!(review_idx > test_idx, "Review depends on Test completion");
@@ -93,11 +98,20 @@ fn test_review_stage_dependencies_on_test() {
 fn test_review_stage_before_verify() {
     let stages = PipelineStage::pipeline_for_mode(ExecutionMode::Expert);
 
-    let review_idx = stages.iter().position(|s| s == &PipelineStage::Review).unwrap();
-    let verify_idx = stages.iter().position(|s| s == &PipelineStage::Verify).unwrap();
+    let review_idx = stages
+        .iter()
+        .position(|s| s == &PipelineStage::Review)
+        .unwrap();
+    let verify_idx = stages
+        .iter()
+        .position(|s| s == &PipelineStage::Verify)
+        .unwrap();
 
     // Review must come before Verify
-    assert!(review_idx < verify_idx, "Review must complete before Verify");
+    assert!(
+        review_idx < verify_idx,
+        "Review must complete before Verify"
+    );
 }
 
 #[test]
@@ -205,10 +219,7 @@ fn test_review_summary_aggregates_correctly() {
             (IssueCategory::Security, 1),
             (IssueCategory::Documentation, 1),
         ],
-        issues_by_severity: vec![
-            (IssueSeverity::Critical, 1),
-            (IssueSeverity::Info, 1),
-        ],
+        issues_by_severity: vec![(IssueSeverity::Critical, 1), (IssueSeverity::Info, 1)],
         results: vec![],
     };
 
@@ -234,7 +245,10 @@ fn test_review_requires_verify_enabled() {
 
     // When verify is disabled, review should not run
     config.mode_config.verify = false;
-    assert!(!config.should_run(), "Review should not run when verify is disabled");
+    assert!(
+        !config.should_run(),
+        "Review should not run when verify is disabled"
+    );
 }
 
 #[test]
@@ -269,7 +283,9 @@ async fn test_orchestrator_handles_empty_task_list_review() {
     let orchestrator = PipelineOrchestrator::new(config).unwrap();
 
     // Orchestrator should handle empty task list gracefully
-    let result = orchestrator.execute_pipeline("Empty goal", ExecutionMode::Expert).await;
+    let result = orchestrator
+        .execute_pipeline("Empty goal", ExecutionMode::Expert)
+        .await;
 
     // Should succeed even with no actual tasks (just generates minimal tasks)
     assert!(result.is_ok());
@@ -373,19 +389,17 @@ fn test_review_severity_threshold_filtering() {
         failed_tasks: 0,
         skipped_tasks: 0,
         total_time: 0,
-        all_issues: vec![
-            CodeIssue {
-                category: IssueCategory::Quality,
-                severity: IssueSeverity::Info, // Below threshold
-                title: "Minor style issue".to_string(),
-                description: "Style suggestion".to_string(),
-                file: None,
-                line: None,
-                suggestion: None,
-                code_snippet: None,
-                blocking: false,
-            },
-        ],
+        all_issues: vec![CodeIssue {
+            category: IssueCategory::Quality,
+            severity: IssueSeverity::Info, // Below threshold
+            title: "Minor style issue".to_string(),
+            description: "Style suggestion".to_string(),
+            file: None,
+            line: None,
+            suggestion: None,
+            code_snippet: None,
+            blocking: false,
+        }],
         issues_by_category: vec![],
         issues_by_severity: vec![],
         results: vec![],
@@ -393,12 +407,17 @@ fn test_review_severity_threshold_filtering() {
 
     // With Medium threshold, Info issues should be filtered out
     let threshold = IssueSeverity::Medium;
-    let filtered_issues: Vec<_> = summary.all_issues
+    let filtered_issues: Vec<_> = summary
+        .all_issues
         .iter()
         .filter(|issue| issue.severity >= threshold)
         .collect();
 
-    assert_eq!(filtered_issues.len(), 0, "Info issues should be filtered out by Medium threshold");
+    assert_eq!(
+        filtered_issues.len(),
+        0,
+        "Info issues should be filtered out by Medium threshold"
+    );
 }
 
 // =============================================================================
@@ -480,6 +499,18 @@ fn test_blocking_issues_grouped_by_category() {
     }
 
     assert_eq!(blocking_by_category.len(), 2);
-    assert_eq!(blocking_by_category.get(&IssueCategory::Security).unwrap().len(), 2);
-    assert_eq!(blocking_by_category.get(&IssueCategory::Performance).unwrap().len(), 1);
+    assert_eq!(
+        blocking_by_category
+            .get(&IssueCategory::Security)
+            .unwrap()
+            .len(),
+        2
+    );
+    assert_eq!(
+        blocking_by_category
+            .get(&IssueCategory::Performance)
+            .unwrap()
+            .len(),
+        1
+    );
 }

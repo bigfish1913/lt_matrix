@@ -17,8 +17,7 @@ fn test_license_file_exists() {
 #[test]
 fn test_license_contains_mit_text() {
     let license_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("LICENSE");
-    let content = fs::read_to_string(&license_path)
-        .expect("Should be able to read LICENSE file");
+    let content = fs::read_to_string(&license_path).expect("Should be able to read LICENSE file");
 
     // MIT license must contain these key elements
     assert!(
@@ -42,15 +41,11 @@ fn test_license_contains_mit_text() {
 #[test]
 fn test_license_has_copyright_year() {
     let license_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("LICENSE");
-    let content = fs::read_to_string(&license_path)
-        .expect("Should be able to read LICENSE file");
+    let content = fs::read_to_string(&license_path).expect("Should be able to read LICENSE file");
 
     // Check for copyright year (current year 2026 or a range)
     let has_year = content.contains("2026") || content.contains("2025") || content.contains("2024");
-    assert!(
-        has_year,
-        "LICENSE should contain a copyright year"
-    );
+    assert!(has_year, "LICENSE should contain a copyright year");
 }
 
 /// Check if LICENSE-3RDPARTY exists for dependency licensing
@@ -90,8 +85,7 @@ fn test_third_party_license_lists_dependencies() {
 #[test]
 fn test_readme_documents_license() {
     let readme_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("README.md");
-    let content = fs::read_to_string(&readme_path)
-        .expect("Should be able to read README.md");
+    let content = fs::read_to_string(&readme_path).expect("Should be able to read README.md");
 
     let content_lower = content.to_lowercase();
     assert!(
@@ -108,8 +102,7 @@ fn test_readme_documents_license() {
 #[test]
 fn test_main_rs_has_license_header() {
     let main_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/main.rs");
-    let content = fs::read_to_string(&main_path)
-        .expect("Should be able to read src/main.rs");
+    let content = fs::read_to_string(&main_path).expect("Should be able to read src/main.rs");
 
     assert!(
         content.contains("Copyright") || content.contains("SPDX-License-Identifier") || content.contains("MIT"),
@@ -120,11 +113,12 @@ fn test_main_rs_has_license_header() {
 #[test]
 fn test_lib_rs_has_license_header() {
     let lib_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/lib.rs");
-    let content = fs::read_to_string(&lib_path)
-        .expect("Should be able to read src/lib.rs");
+    let content = fs::read_to_string(&lib_path).expect("Should be able to read src/lib.rs");
 
     assert!(
-        content.contains("Copyright") || content.contains("SPDX-License-Identifier") || content.contains("MIT"),
+        content.contains("Copyright")
+            || content.contains("SPDX-License-Identifier")
+            || content.contains("MIT"),
         "src/lib.rs should have a license header with Copyright, SPDX identifier, or MIT reference"
     );
 }
@@ -137,7 +131,11 @@ fn test_all_source_files_have_license_headers() {
     let mut files_checked = 0;
     let mut files_without_header = Vec::new();
 
-    fn check_rs_files(dir: &Path, files_checked: &mut usize, files_without_header: &mut Vec<String>) {
+    fn check_rs_files(
+        dir: &Path,
+        files_checked: &mut usize,
+        files_without_header: &mut Vec<String>,
+    ) {
         if let Ok(entries) = fs::read_dir(dir) {
             for entry in entries.flatten() {
                 let path = entry.path();
@@ -152,7 +150,8 @@ fn test_all_source_files_have_license_headers() {
                             || content.contains("Licensed under");
 
                         if !has_header {
-                            let relative = path.strip_prefix(env!("CARGO_MANIFEST_DIR"))
+                            let relative = path
+                                .strip_prefix(env!("CARGO_MANIFEST_DIR"))
                                 .unwrap_or(&path);
                             files_without_header.push(relative.display().to_string());
                         }
@@ -180,8 +179,7 @@ fn test_all_source_files_have_license_headers() {
 #[test]
 fn test_cargo_toml_has_license_field() {
     let cargo_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("Cargo.toml");
-    let content = fs::read_to_string(&cargo_path)
-        .expect("Should be able to read Cargo.toml");
+    let content = fs::read_to_string(&cargo_path).expect("Should be able to read Cargo.toml");
 
     assert!(
         content.contains("license") && content.contains("MIT"),

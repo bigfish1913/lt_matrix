@@ -12,17 +12,17 @@
 //! - Payload structures
 
 use ltmatrix::mcp::{
-    JsonRpcError, JsonRpcErrorCode, JsonRpcMessage, JsonRpcNotification, JsonRpcRequest,
-    JsonRpcResponse, RequestId,
-};
-use ltmatrix::mcp::{
-    ClientCapabilities, ImplementationInfo, InitializeParams, InitializeResult,
-    LoggingSetLevelParams, LogLevel, Prompt, PromptArgument, PromptContent, PromptMessage,
-    PromptsGetParams, PromptsGetResult, PromptsListParams, PromptsListResult,
-    Resource, ResourceContents, ResourceReadParams, ResourceReadResult, ResourcesCapability,
-    ResourcesListParams, ResourcesListResult, Root, RootsCapability, RootsListParams, RootsListResult,
+    ClientCapabilities, ImplementationInfo, InitializeParams, InitializeResult, LogLevel,
+    LoggingSetLevelParams, Prompt, PromptArgument, PromptContent, PromptMessage, PromptsGetParams,
+    PromptsGetResult, PromptsListParams, PromptsListResult, Resource, ResourceContents,
+    ResourceReadParams, ResourceReadResult, ResourcesCapability, ResourcesListParams,
+    ResourcesListResult, Root, RootsCapability, RootsListParams, RootsListResult,
     ServerCapabilities, Tool, ToolCallParams, ToolCallResult, ToolContent, ToolsCapability,
     ToolsListParams, ToolsListResult, MCP_PROTOCOL_VERSION,
+};
+use ltmatrix::mcp::{
+    JsonRpcError, JsonRpcErrorCode, JsonRpcMessage, JsonRpcNotification, JsonRpcRequest,
+    JsonRpcResponse, RequestId,
 };
 use serde_json::json;
 
@@ -157,7 +157,8 @@ mod request_tests {
 
     #[test]
     fn test_request_deserialization() {
-        let json = r#"{"jsonrpc":"2.0","id":"abc123","method":"tools/call","params":{"name":"test"}}"#;
+        let json =
+            r#"{"jsonrpc":"2.0","id":"abc123","method":"tools/call","params":{"name":"test"}}"#;
         let request = JsonRpcRequest::from_json(json).unwrap();
 
         assert_eq!(request.jsonrpc, "2.0");
@@ -288,7 +289,8 @@ mod response_tests {
 
     #[test]
     fn test_response_deserialization_error() {
-        let json = r#"{"jsonrpc":"2.0","id":1,"error":{"code":-32601,"message":"Method not found"}}"#;
+        let json =
+            r#"{"jsonrpc":"2.0","id":1,"error":{"code":-32601,"message":"Method not found"}}"#;
         let response = JsonRpcResponse::from_json(json).unwrap();
 
         assert!(response.is_error());
@@ -335,7 +337,8 @@ mod notification_tests {
     #[test]
     fn test_notification_with_params() {
         let params = json!({"level": "info"});
-        let notification = JsonRpcNotification::with_params("notifications/message", params.clone());
+        let notification =
+            JsonRpcNotification::with_params("notifications/message", params.clone());
 
         assert!(notification.params.is_some());
         assert_eq!(notification.params.unwrap(), params);
@@ -355,8 +358,7 @@ mod notification_tests {
 
     #[test]
     fn test_notification_serialization_with_params() {
-        let notification =
-            JsonRpcNotification::with_params("event", json!({"data": "value"}));
+        let notification = JsonRpcNotification::with_params("event", json!({"data": "value"}));
         let json = notification.to_json().unwrap();
 
         assert!(json.contains("\"params\""));
@@ -365,7 +367,8 @@ mod notification_tests {
 
     #[test]
     fn test_notification_deserialization() {
-        let json = r#"{"jsonrpc":"2.0","method":"notifications/canceled","params":{"reason":"timeout"}}"#;
+        let json =
+            r#"{"jsonrpc":"2.0","method":"notifications/canceled","params":{"reason":"timeout"}}"#;
         let notification = JsonRpcNotification::from_json(json).unwrap();
 
         assert_eq!(notification.jsonrpc, "2.0");
@@ -493,11 +496,26 @@ mod error_tests {
 
     #[test]
     fn test_error_code_from_i32() {
-        assert_eq!(JsonRpcErrorCode::from_i32(-32700), JsonRpcErrorCode::ParseError);
-        assert_eq!(JsonRpcErrorCode::from_i32(-32600), JsonRpcErrorCode::InvalidRequest);
-        assert_eq!(JsonRpcErrorCode::from_i32(-32601), JsonRpcErrorCode::MethodNotFound);
-        assert_eq!(JsonRpcErrorCode::from_i32(-32602), JsonRpcErrorCode::InvalidParams);
-        assert_eq!(JsonRpcErrorCode::from_i32(-32603), JsonRpcErrorCode::InternalError);
+        assert_eq!(
+            JsonRpcErrorCode::from_i32(-32700),
+            JsonRpcErrorCode::ParseError
+        );
+        assert_eq!(
+            JsonRpcErrorCode::from_i32(-32600),
+            JsonRpcErrorCode::InvalidRequest
+        );
+        assert_eq!(
+            JsonRpcErrorCode::from_i32(-32601),
+            JsonRpcErrorCode::MethodNotFound
+        );
+        assert_eq!(
+            JsonRpcErrorCode::from_i32(-32602),
+            JsonRpcErrorCode::InvalidParams
+        );
+        assert_eq!(
+            JsonRpcErrorCode::from_i32(-32603),
+            JsonRpcErrorCode::InternalError
+        );
     }
 
     #[test]
@@ -505,7 +523,10 @@ mod error_tests {
         // Server errors are in range -32000 to -32099
         let server_error = JsonRpcErrorCode::ServerError(-32050);
         assert_eq!(server_error.as_i32(), -32050);
-        assert_eq!(JsonRpcErrorCode::from_i32(-32050), JsonRpcErrorCode::ServerError(-32050));
+        assert_eq!(
+            JsonRpcErrorCode::from_i32(-32050),
+            JsonRpcErrorCode::ServerError(-32050)
+        );
     }
 
     #[test]
@@ -594,11 +615,10 @@ mod mcp_method_types_tests {
 
     #[test]
     fn test_initialize_params_serialization() {
-        let params = InitializeParams::new("client", "1.0")
-            .with_capabilities(ClientCapabilities {
-                roots: Some(RootsCapability::with_list_changed(true)),
-                ..Default::default()
-            });
+        let params = InitializeParams::new("client", "1.0").with_capabilities(ClientCapabilities {
+            roots: Some(RootsCapability::with_list_changed(true)),
+            ..Default::default()
+        });
 
         let json = serde_json::to_string(&params).unwrap();
 
@@ -650,7 +670,8 @@ mod mcp_method_types_tests {
 
     #[test]
     fn test_tool_call_params() {
-        let params = ToolCallParams::new("test_tool").with_arguments(json!({"url": "https://example.com"}));
+        let params =
+            ToolCallParams::new("test_tool").with_arguments(json!({"url": "https://example.com"}));
 
         let json = serde_json::to_string(&params).unwrap();
         assert!(json.contains("\"name\":\"test_tool\""));
@@ -721,7 +742,11 @@ mod mcp_method_types_tests {
 
     #[test]
     fn test_resource_contents_blob() {
-        let contents = ResourceContents::blob("file:///binary.bin", "base64data", "application/octet-stream");
+        let contents = ResourceContents::blob(
+            "file:///binary.bin",
+            "base64data",
+            "application/octet-stream",
+        );
 
         let json = serde_json::to_string(&contents).unwrap();
         assert!(json.contains("\"blob\":\"base64data\""));
@@ -752,10 +777,19 @@ mod mcp_method_types_tests {
 
     #[test]
     fn test_log_level_serialization() {
-        assert_eq!(serde_json::to_string(&LogLevel::Debug).unwrap(), "\"debug\"");
+        assert_eq!(
+            serde_json::to_string(&LogLevel::Debug).unwrap(),
+            "\"debug\""
+        );
         assert_eq!(serde_json::to_string(&LogLevel::Info).unwrap(), "\"info\"");
-        assert_eq!(serde_json::to_string(&LogLevel::Warning).unwrap(), "\"warning\"");
-        assert_eq!(serde_json::to_string(&LogLevel::Error).unwrap(), "\"error\"");
+        assert_eq!(
+            serde_json::to_string(&LogLevel::Warning).unwrap(),
+            "\"warning\""
+        );
+        assert_eq!(
+            serde_json::to_string(&LogLevel::Error).unwrap(),
+            "\"error\""
+        );
     }
 
     #[test]
@@ -886,10 +920,7 @@ mod protocol_compliance_tests {
         assert!(!json.contains("\"params\""));
 
         // Error without data
-        let error = JsonRpcError::new(
-            JsonRpcErrorCode::InternalError,
-            "error".to_string(),
-        );
+        let error = JsonRpcError::new(JsonRpcErrorCode::InternalError, "error".to_string());
         let json = serde_json::to_string(&error).unwrap();
         assert!(!json.contains("\"data\""));
     }

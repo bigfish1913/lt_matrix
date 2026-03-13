@@ -273,7 +273,10 @@ pub enum TaskStatus {
 impl TaskStatus {
     /// Returns true if the status is a terminal state (completed, failed, or skipped)
     pub fn is_terminal(&self) -> bool {
-        matches!(self, TaskStatus::Completed | TaskStatus::Failed | TaskStatus::SkippedModeDisabled)
+        matches!(
+            self,
+            TaskStatus::Completed | TaskStatus::Failed | TaskStatus::SkippedModeDisabled
+        )
     }
 
     /// Returns true if the task was skipped
@@ -434,7 +437,12 @@ impl ExecutionMode {
         match self {
             ExecutionMode::Fast => vec![AgentType::Plan, AgentType::Dev],
             ExecutionMode::Standard => vec![AgentType::Plan, AgentType::Dev, AgentType::Test],
-            ExecutionMode::Expert => vec![AgentType::Plan, AgentType::Dev, AgentType::Test, AgentType::Review],
+            ExecutionMode::Expert => vec![
+                AgentType::Plan,
+                AgentType::Dev,
+                AgentType::Test,
+                AgentType::Review,
+            ],
         }
     }
 }

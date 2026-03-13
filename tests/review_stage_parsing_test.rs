@@ -1,9 +1,9 @@
 //! Tests for review stage parsing functions
 
+use ltmatrix::models::Task;
 use ltmatrix::pipeline::review::{
     build_review_prompt, IssueCategory, IssueSeverity, ReviewAssessment, ReviewConfig,
 };
-use ltmatrix::models::Task;
 use serde_json::json;
 
 #[test]
@@ -28,7 +28,11 @@ fn test_build_review_prompt_with_no_checks_enabled() {
 
 #[test]
 fn test_build_review_prompt_includes_task_context() {
-    let task = Task::new("task-123", "Auth Module", "Implement JWT authentication with refresh tokens");
+    let task = Task::new(
+        "task-123",
+        "Auth Module",
+        "Implement JWT authentication with refresh tokens",
+    );
     let config = ReviewConfig::default();
 
     let prompt = build_review_prompt(&task, &config);

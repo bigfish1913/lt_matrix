@@ -3,13 +3,13 @@
 //! This test suite verifies the end-to-end functionality of the telemetry system,
 //! including opt-in behavior, privacy compliance, event collection, and data transmission.
 
+use ltmatrix::models::{ExecutionMode, Task, TaskStatus};
 use ltmatrix::telemetry::{
     collector::TelemetryCollector,
     config::{TelemetryConfig, TelemetryConfigBuilder},
     event::{ErrorCategory, SessionId, TelemetryEvent},
     sender::TelemetrySender,
 };
-use ltmatrix::models::{ExecutionMode, Task, TaskStatus};
 use std::time::Duration;
 use tokio::time::sleep;
 use uuid::Uuid;
@@ -46,11 +46,13 @@ fn create_test_sender() -> TelemetrySender {
 /// Helper to create test tasks
 fn create_test_tasks(count: usize) -> Vec<Task> {
     (0..count)
-        .map(|i| Task::new(
-            format!("task-{}", i),
-            format!("Test task {}", i),
-            format!("Description for task {}", i),
-        ))
+        .map(|i| {
+            Task::new(
+                format!("task-{}", i),
+                format!("Test task {}", i),
+                format!("Description for task {}", i),
+            )
+        })
         .collect()
 }
 
@@ -62,7 +64,10 @@ mod privacy_tests {
     #[test]
     fn test_telemetry_is_opt_in_only() {
         let config = TelemetryConfig::default();
-        assert!(!config.enabled, "Telemetry should be disabled by default for opt-in privacy");
+        assert!(
+            !config.enabled,
+            "Telemetry should be disabled by default for opt-in privacy"
+        );
     }
 
     /// Test that collector respects disabled state
@@ -71,7 +76,9 @@ mod privacy_tests {
         let collector = create_disabled_collector();
 
         // Try to record various events
-        collector.record_session_start("1.0.0", "linux", "x86_64").await;
+        collector
+            .record_session_start("1.0.0", "linux", "x86_64")
+            .await;
         collector
             .record_pipeline_complete(
                 ExecutionMode::Standard,
@@ -110,10 +117,22 @@ mod privacy_tests {
     fn test_error_messages_are_categorized_not_stored() {
         // Test with various error messages that might contain sensitive data
         let test_cases = vec![
-            ("Failed to connect to database at postgres://user:password@localhost/db", ErrorCategory::Other),
-            ("Agent timeout while processing file /home/user/project/src/main.rs", ErrorCategory::AgentTimeout),
-            ("Test failed in test_user_authentication() in src/auth.rs", ErrorCategory::TestFailure),
-            ("Git commit failed: nothing to commit in /home/user/secret-project", ErrorCategory::GitOperationFailed),
+            (
+                "Failed to connect to database at postgres://user:password@localhost/db",
+                ErrorCategory::Other,
+            ),
+            (
+                "Agent timeout while processing file /home/user/project/src/main.rs",
+                ErrorCategory::AgentTimeout,
+            ),
+            (
+                "Test failed in test_user_authentication() in src/auth.rs",
+                ErrorCategory::TestFailure,
+            ),
+            (
+                "Git commit failed: nothing to commit in /home/user/secret-project",
+                ErrorCategory::GitOperationFailed,
+            ),
         ];
 
         for (error_message, expected_category) in test_cases {
@@ -125,9 +144,18 @@ mod privacy_tests {
 
             // Verify the category doesn't contain sensitive information
             let category_str = format!("{:?}", category);
-            assert!(!category_str.contains("password"), "Category should not contain sensitive data");
-            assert!(!category_str.contains("localhost"), "Category should not contain hostnames");
-            assert!(!category_str.contains("/home/"), "Category should not contain file paths");
+            assert!(
+                !category_str.contains("password"),
+                "Category should not contain sensitive data"
+            );
+            assert!(
+                !category_str.contains("localhost"),
+                "Category should not contain hostnames"
+            );
+            assert!(
+                !category_str.contains("/home/"),
+                "Category should not contain file paths"
+            );
         }
     }
 
@@ -151,10 +179,22 @@ mod privacy_tests {
         let event_json = serde_json::to_string(&events).expect("Failed to serialize events");
 
         // Verify no file paths in the serialized event
-        assert!(!event_json.contains("/"), "Event should not contain file paths");
-        assert!(!event_json.contains("\\"), "Event should not contain Windows file paths");
-        assert!(!event_json.contains("home"), "Event should not contain home directory indicators");
-        assert!(!event_json.contains("project"), "Event should not contain project names");
+        assert!(
+            !event_json.contains("/"),
+            "Event should not contain file paths"
+        );
+        assert!(
+            !event_json.contains("\\"),
+            "Event should not contain Windows file paths"
+        );
+        assert!(
+            !event_json.contains("home"),
+            "Event should not contain home directory indicators"
+        );
+        assert!(
+            !event_json.contains("project"),
+            "Event should not contain project names"
+        );
     }
 
     /// Test that events don't contain code content
@@ -163,16 +203,30 @@ mod privacy_tests {
         let collector = create_test_collector();
 
         // Record session start
-        collector.record_session_start("1.0.0", "linux", "x86_64").await;
+        collector
+            .record_session_start("1.0.0", "linux", "x86_64")
+            .await;
 
         let events = collector.take_events().await;
         let event_json = serde_json::to_string(&events).expect("Failed to serialize events");
 
         // Verify no code-like content
-        assert!(!event_json.contains("fn "), "Event should not contain function definitions");
-        assert!(!event_json.contains("class "), "Event should not contain class definitions");
-        assert!(!event_json.contains("import "), "Event should not contain import statements");
-        assert!(!event_json.contains("def "), "Event should not contain Python function definitions");
+        assert!(
+            !event_json.contains("fn "),
+            "Event should not contain function definitions"
+        );
+        assert!(
+            !event_json.contains("class "),
+            "Event should not contain class definitions"
+        );
+        assert!(
+            !event_json.contains("import "),
+            "Event should not contain import statements"
+        );
+        assert!(
+            !event_json.contains("def "),
+            "Event should not contain Python function definitions"
+        );
     }
 
     /// Test that telemetry doesn't impact functionality when disabled
@@ -181,7 +235,9 @@ mod privacy_tests {
         let collector = create_disabled_collector();
 
         // All operations should work normally even when telemetry is disabled
-        collector.record_session_start("1.0.0", "linux", "x86_64").await;
+        collector
+            .record_session_start("1.0.0", "linux", "x86_64")
+            .await;
         collector
             .record_pipeline_complete(
                 ExecutionMode::Fast,
@@ -207,7 +263,9 @@ mod event_collection_tests {
     async fn test_session_start_event_collection() {
         let collector = create_test_collector();
 
-        collector.record_session_start("1.0.0", "linux", "x86_64").await;
+        collector
+            .record_session_start("1.0.0", "linux", "x86_64")
+            .await;
 
         let events = collector.take_events().await;
         assert_eq!(events.len(), 1);
@@ -310,7 +368,9 @@ mod event_collection_tests {
     async fn test_multiple_event_types_collection() {
         let collector = create_test_collector();
 
-        collector.record_session_start("1.0.0", "windows", "x86_64").await;
+        collector
+            .record_session_start("1.0.0", "windows", "x86_64")
+            .await;
         collector
             .record_pipeline_complete(
                 ExecutionMode::Standard,
@@ -369,15 +429,14 @@ mod batching_tests {
     /// Test batching behavior
     #[tokio::test]
     async fn test_batching_behavior() {
-        let config = TelemetryConfig::builder()
-            .enabled()
-            .batch_size(3)
-            .build();
+        let config = TelemetryConfig::builder().enabled().batch_size(3).build();
         let session_id = Uuid::new_v4();
         let collector = TelemetryCollector::new(config, session_id);
 
         // Add 2 events (below batch size)
-        collector.record_session_start("1.0.0", "linux", "x86_64").await;
+        collector
+            .record_session_start("1.0.0", "linux", "x86_64")
+            .await;
         collector.record_error("Error 1").await;
 
         assert!(!collector.should_flush().await);
@@ -395,7 +454,9 @@ mod batching_tests {
     async fn test_take_events_clears_buffer() {
         let collector = create_test_collector();
 
-        collector.record_session_start("1.0.0", "linux", "x86_64").await;
+        collector
+            .record_session_start("1.0.0", "linux", "x86_64")
+            .await;
         collector.record_error("Error 1").await;
 
         assert_eq!(collector.event_count().await, 2);
@@ -492,8 +553,14 @@ mod sender_tests {
         assert!(json.is_ok(), "Events should be serializable to JSON");
 
         let json_str = json.unwrap();
-        assert!(json_str.contains("event_type"), "JSON should contain event type tag");
-        assert!(json_str.contains("session_id"), "JSON should contain session ID");
+        assert!(
+            json_str.contains("event_type"),
+            "JSON should contain event type tag"
+        );
+        assert!(
+            json_str.contains("session_id"),
+            "JSON should contain session ID"
+        );
     }
 }
 
@@ -576,20 +643,53 @@ mod error_category_tests {
     fn test_error_category_classification() {
         let test_cases = vec![
             ("Agent execution timed out", ErrorCategory::AgentTimeout),
-            ("The agent timed out after 3600s", ErrorCategory::AgentTimeout),
+            (
+                "The agent timed out after 3600s",
+                ErrorCategory::AgentTimeout,
+            ),
             ("Test failed: assertion failed", ErrorCategory::TestFailure),
-            ("Test execution failed with 2 errors", ErrorCategory::TestFailure),
-            ("Verification failed for task-1", ErrorCategory::VerificationFailed),
-            ("Task verification returned false", ErrorCategory::VerificationFailed),
+            (
+                "Test execution failed with 2 errors",
+                ErrorCategory::TestFailure,
+            ),
+            (
+                "Verification failed for task-1",
+                ErrorCategory::VerificationFailed,
+            ),
+            (
+                "Task verification returned false",
+                ErrorCategory::VerificationFailed,
+            ),
             ("Git commit failed", ErrorCategory::GitOperationFailed),
             ("Git push rejected", ErrorCategory::GitOperationFailed),
-            ("Configuration error: missing field", ErrorCategory::ConfigurationError),
-            ("Config validation failed", ErrorCategory::ConfigurationError),
-            ("Dependency validation failed", ErrorCategory::DependencyValidationFailed),
-            ("Dependency check failed", ErrorCategory::DependencyValidationFailed),
-            ("Pipeline execution failed", ErrorCategory::PipelineExecutionFailed),
-            ("Pipeline error occurred", ErrorCategory::PipelineExecutionFailed),
-            ("Agent execution failed", ErrorCategory::AgentExecutionFailed),
+            (
+                "Configuration error: missing field",
+                ErrorCategory::ConfigurationError,
+            ),
+            (
+                "Config validation failed",
+                ErrorCategory::ConfigurationError,
+            ),
+            (
+                "Dependency validation failed",
+                ErrorCategory::DependencyValidationFailed,
+            ),
+            (
+                "Dependency check failed",
+                ErrorCategory::DependencyValidationFailed,
+            ),
+            (
+                "Pipeline execution failed",
+                ErrorCategory::PipelineExecutionFailed,
+            ),
+            (
+                "Pipeline error occurred",
+                ErrorCategory::PipelineExecutionFailed,
+            ),
+            (
+                "Agent execution failed",
+                ErrorCategory::AgentExecutionFailed,
+            ),
             ("Agent returned error", ErrorCategory::AgentExecutionFailed),
             ("Unknown error occurred", ErrorCategory::Other),
         ];
@@ -641,7 +741,9 @@ mod integration_tests {
         let sender = create_test_sender();
 
         // Simulate a pipeline run
-        collector.record_session_start("1.0.0", "linux", "x86_64").await;
+        collector
+            .record_session_start("1.0.0", "linux", "x86_64")
+            .await;
 
         let mut tasks = create_test_tasks(3);
         tasks[0].status = TaskStatus::Completed;
@@ -675,7 +777,11 @@ mod integration_tests {
         let collector = create_test_collector();
         let tasks = create_test_tasks(2);
 
-        for mode in [ExecutionMode::Fast, ExecutionMode::Standard, ExecutionMode::Expert] {
+        for mode in [
+            ExecutionMode::Fast,
+            ExecutionMode::Standard,
+            ExecutionMode::Expert,
+        ] {
             collector
                 .record_pipeline_complete(mode, "claude", &tasks, Duration::from_secs(60))
                 .await;
@@ -688,9 +794,7 @@ mod integration_tests {
         let modes: Vec<_> = events
             .iter()
             .filter_map(|e| match e {
-                TelemetryEvent::PipelineComplete {
-                    execution_mode, ..
-                } => Some(*execution_mode),
+                TelemetryEvent::PipelineComplete { execution_mode, .. } => Some(*execution_mode),
                 _ => None,
             })
             .collect();
@@ -714,7 +818,9 @@ mod integration_tests {
         assert_eq!(collector2.session_id(), &session_id);
 
         // Record events in both
-        collector1.record_session_start("1.0.0", "linux", "x86_64").await;
+        collector1
+            .record_session_start("1.0.0", "linux", "x86_64")
+            .await;
         collector2.record_error("Test error").await;
 
         // Events should be separate (different collectors)
@@ -731,7 +837,9 @@ mod integration_tests {
 
         // Try various operations
         for _ in 0..10 {
-            collector.record_session_start("1.0.0", "linux", "x86_64").await;
+            collector
+                .record_session_start("1.0.0", "linux", "x86_64")
+                .await;
             collector.record_error("Test error").await;
             collector
                 .record_pipeline_complete(

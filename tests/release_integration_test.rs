@@ -3,9 +3,7 @@
 //! These tests verify the complete release management workflow.
 
 use ltmatrix::release::{
-    Changelog, ChangelogEntry, ChangelogSection,
-    Version, VersionBump,
-    CheckResult, CheckStatus,
+    Changelog, ChangelogEntry, ChangelogSection, CheckResult, CheckStatus, Version, VersionBump,
 };
 
 // =============================================================================
@@ -70,12 +68,38 @@ fn test_changelog_integration_create_complete() {
     assert_eq!(changelog.entry_count(), 6);
 
     // Verify filtering by section works
-    assert_eq!(changelog.entries_by_section(ChangelogSection::Added).len(), 1);
-    assert_eq!(changelog.entries_by_section(ChangelogSection::Changed).len(), 1);
-    assert_eq!(changelog.entries_by_section(ChangelogSection::Deprecated).len(), 1);
-    assert_eq!(changelog.entries_by_section(ChangelogSection::Removed).len(), 1);
-    assert_eq!(changelog.entries_by_section(ChangelogSection::Fixed).len(), 1);
-    assert_eq!(changelog.entries_by_section(ChangelogSection::Security).len(), 1);
+    assert_eq!(
+        changelog.entries_by_section(ChangelogSection::Added).len(),
+        1
+    );
+    assert_eq!(
+        changelog
+            .entries_by_section(ChangelogSection::Changed)
+            .len(),
+        1
+    );
+    assert_eq!(
+        changelog
+            .entries_by_section(ChangelogSection::Deprecated)
+            .len(),
+        1
+    );
+    assert_eq!(
+        changelog
+            .entries_by_section(ChangelogSection::Removed)
+            .len(),
+        1
+    );
+    assert_eq!(
+        changelog.entries_by_section(ChangelogSection::Fixed).len(),
+        1
+    );
+    assert_eq!(
+        changelog
+            .entries_by_section(ChangelogSection::Security)
+            .len(),
+        1
+    );
 }
 
 #[test]
@@ -136,17 +160,23 @@ fn test_version_release_workflow() {
     assert!(dev.is_pre_release());
 
     // Alpha 2
-    let dev = dev.bump(VersionBump::PreRelease("alpha".to_string())).unwrap();
+    let dev = dev
+        .bump(VersionBump::PreRelease("alpha".to_string()))
+        .unwrap();
     assert_eq!(dev.to_string(), "1.0.0-alpha.2");
 
     // Beta 1 (start new pre-release series)
-    let dev = Version::parse("1.0.0").unwrap()
-        .bump(VersionBump::PreRelease("beta".to_string())).unwrap();
+    let dev = Version::parse("1.0.0")
+        .unwrap()
+        .bump(VersionBump::PreRelease("beta".to_string()))
+        .unwrap();
     assert_eq!(dev.to_string(), "1.0.0-beta.1");
 
     // RC 1
-    let rc = Version::parse("1.0.0").unwrap()
-        .bump(VersionBump::PreRelease("rc".to_string())).unwrap();
+    let rc = Version::parse("1.0.0")
+        .unwrap()
+        .bump(VersionBump::PreRelease("rc".to_string()))
+        .unwrap();
     assert_eq!(rc.to_string(), "1.0.0-rc.1");
 
     // Final release (no pre-release)
@@ -260,14 +290,20 @@ fn test_check_result_workflow() {
     ];
 
     // All should pass (warnings are acceptable)
-    let all_passed = checks.iter().all(|c|
-        c.status == CheckStatus::Passed || c.status == CheckStatus::Warning
-    );
+    let all_passed = checks
+        .iter()
+        .all(|c| c.status == CheckStatus::Passed || c.status == CheckStatus::Warning);
     assert!(all_passed);
 
     // Count by status
-    let passed_count = checks.iter().filter(|c| c.status == CheckStatus::Passed).count();
-    let warning_count = checks.iter().filter(|c| c.status == CheckStatus::Warning).count();
+    let passed_count = checks
+        .iter()
+        .filter(|c| c.status == CheckStatus::Passed)
+        .count();
+    let warning_count = checks
+        .iter()
+        .filter(|c| c.status == CheckStatus::Warning)
+        .count();
 
     assert_eq!(passed_count, 6);
     assert_eq!(warning_count, 1);
@@ -284,13 +320,16 @@ fn test_check_result_failure_scenario() {
         CheckResult::passed("Clean working tree"),
     ];
 
-    let failed_count = checks.iter().filter(|c| c.status == CheckStatus::Failed).count();
+    let failed_count = checks
+        .iter()
+        .filter(|c| c.status == CheckStatus::Failed)
+        .count();
     assert_eq!(failed_count, 2);
 
     // Release should be blocked
-    let release_ok = checks.iter().all(|c|
-        c.status == CheckStatus::Passed || c.status == CheckStatus::Skipped
-    );
+    let release_ok = checks
+        .iter()
+        .all(|c| c.status == CheckStatus::Passed || c.status == CheckStatus::Skipped);
     assert!(!release_ok);
 }
 

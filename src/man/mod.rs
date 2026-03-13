@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Man page generation
 //!
 //! This module provides functionality to generate Unix man pages for ltmatrix

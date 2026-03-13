@@ -21,9 +21,9 @@ use tracing::{debug, error, info, instrument, warn};
 use ltmatrix::agent::{AgentFactory, AgentPool};
 use ltmatrix::cli::args::{Args, Command};
 use ltmatrix::config::settings::{self, CliOverrides, Config};
+use ltmatrix::logging::file_manager::LogManager;
 use ltmatrix::logging::level::LogLevel as LoggingLevel;
 use ltmatrix::logging::logger;
-use ltmatrix::logging::file_manager::LogManager;
 use ltmatrix::models::ExecutionMode;
 use ltmatrix::pipeline::orchestrator::{OrchestratorConfig, PipelineOrchestrator};
 
@@ -80,7 +80,8 @@ fn main() {
         Err(e) => {
             // Check if this is a help/version request
             if e.kind() == clap::error::ErrorKind::DisplayHelp
-                || e.kind() == clap::error::ErrorKind::DisplayVersion {
+                || e.kind() == clap::error::ErrorKind::DisplayVersion
+            {
                 // Use clap's exit handler which prints help/version and exits correctly
                 e.exit();
             }
@@ -129,8 +130,7 @@ fn run_application(args: Args) -> Result<i32> {
     let agent_pool = initialize_agent_backend(&config, &args)?;
 
     // Create application state
-    let mut app_state = AppState::new(config, args.clone())
-        .with_agent_pool(agent_pool);
+    let mut app_state = AppState::new(config, args.clone()).with_agent_pool(agent_pool);
 
     // Set up signal handling for graceful shutdown
     setup_signal_handlers();
@@ -145,15 +145,11 @@ fn run_application(args: Args) -> Result<i32> {
         Some(Command::Completions(completions_args)) => {
             execute_completions_command(&mut app_state, completions_args)?
         }
-        Some(Command::Man(man_args)) => {
-            execute_man_command(&mut app_state, man_args)?
-        }
+        Some(Command::Man(man_args)) => execute_man_command(&mut app_state, man_args)?,
         Some(Command::Cleanup(cleanup_args)) => {
             execute_cleanup_command(&mut app_state, cleanup_args)?
         }
-        Some(Command::Memory(memory_args)) => {
-            execute_memory_command(&mut app_state, memory_args)?
-        }
+        Some(Command::Memory(memory_args)) => execute_memory_command(&mut app_state, memory_args)?,
         None => {
             // Default: run the main pipeline
             execute_run_command(&mut app_state)?
@@ -212,8 +208,7 @@ fn initialize_logging(args: &Args) -> Result<(Option<LogManager>, LoggingLevel)>
         None
     } else if args.command.is_none() || matches!(args.command, Some(Command::Release(_))) {
         // Use automatic log file management for main run and release commands
-        let base_dir = env::current_dir()
-            .context("Failed to get current directory")?;
+        let base_dir = env::current_dir().context("Failed to get current directory")?;
 
         let (guard, manager) = logger::init_logging_with_management(log_level, Some(base_dir))
             .context("Failed to initialize logging with management")?;
@@ -298,7 +293,8 @@ fn initialize_agent_backend(config: &Config, args: &Args) -> Result<AgentPool> {
     }
 
     // Create agent instance
-    let _agent = factory.create(&agent_name)
+    let _agent = factory
+        .create(&agent_name)
         .with_context(|| format!("Failed to create agent backend '{}'", agent_name))?;
 
     // Create agent pool with configuration
@@ -391,33 +387,28 @@ fn execute_run_command(app_state: &mut AppState) -> Result<i32> {
     }
 
     // Build orchestrator configuration
-    let work_dir = env::current_dir()
-        .context("Failed to get current directory")?;
+    let work_dir = env::current_dir().context("Failed to get current directory")?;
 
     // Get agent pool from app state
-    let agent_pool = app_state.agent_pool.clone()
+    let agent_pool = app_state
+        .agent_pool
+        .clone()
         .ok_or_else(|| anyhow::anyhow!("Agent pool not initialized"))?;
 
     // Create orchestrator config based on execution mode
     let orchestrator_config = match mode {
-        ExecutionMode::Fast => {
-            OrchestratorConfig::fast_mode()
-                .with_work_dir(&work_dir)
-                .with_agent_pool(agent_pool)
-                .with_progress(app_state.config.output.progress)
-        }
-        ExecutionMode::Expert => {
-            OrchestratorConfig::expert_mode()
-                .with_work_dir(&work_dir)
-                .with_agent_pool(agent_pool)
-                .with_progress(app_state.config.output.progress)
-        }
-        ExecutionMode::Standard => {
-            OrchestratorConfig::default()
-                .with_work_dir(&work_dir)
-                .with_agent_pool(agent_pool)
-                .with_progress(app_state.config.output.progress)
-        }
+        ExecutionMode::Fast => OrchestratorConfig::fast_mode()
+            .with_work_dir(&work_dir)
+            .with_agent_pool(agent_pool)
+            .with_progress(app_state.config.output.progress),
+        ExecutionMode::Expert => OrchestratorConfig::expert_mode()
+            .with_work_dir(&work_dir)
+            .with_agent_pool(agent_pool)
+            .with_progress(app_state.config.output.progress),
+        ExecutionMode::Standard => OrchestratorConfig::default()
+            .with_work_dir(&work_dir)
+            .with_agent_pool(agent_pool)
+            .with_progress(app_state.config.output.progress),
     };
 
     // Create pipeline orchestrator
@@ -477,7 +468,10 @@ fn execute_completions_command(
     _app_state: &mut AppState,
     completions_args: &ltmatrix::cli::args::CompletionsArgs,
 ) -> Result<i32> {
-    info!("Executing completions command for shell: {}", completions_args.shell);
+    info!(
+        "Executing completions command for shell: {}",
+        completions_args.shell
+    );
 
     // Delegate to CLI command handler
     if let Err(e) = ltmatrix::cli::command::execute_completions(completions_args) {
@@ -681,7 +675,9 @@ unsafe impl Sync for LogGuardWrapper {}
 /// Set the global log guard
 fn set_global_log_guard(guard: ltmatrix::logging::logger::LogGuard) -> Result<()> {
     GLOBAL_LOG_GUARD
-        .set(LogGuardWrapper { _guard: Some(guard) })
+        .set(LogGuardWrapper {
+            _guard: Some(guard),
+        })
         .map_err(|_| anyhow!("Global log guard already set"))?;
     Ok(())
 }

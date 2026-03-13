@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Task dependency scheduler with topological sorting
 //!
 //! This module implements a sophisticated task scheduling system that:
@@ -341,7 +340,12 @@ fn calculate_execution_levels(
     _graph: &HashMap<String, Vec<String>>,
     execution_order: &[String],
 ) -> Vec<Vec<Task>> {
-    calculate_execution_levels_with_priority(task_map, _graph, execution_order, &PriorityConfig::default())
+    calculate_execution_levels_with_priority(
+        task_map,
+        _graph,
+        execution_order,
+        &PriorityConfig::default(),
+    )
 }
 
 /// Groups tasks into execution levels with priority-based sorting
@@ -1109,7 +1113,10 @@ mod tests {
 
         // Without priority sorting, order is based on topological sort (may vary)
         // Just verify both tasks are present
-        let ids: Vec<&str> = plan.execution_levels[0].iter().map(|t| t.id.as_str()).collect();
+        let ids: Vec<&str> = plan.execution_levels[0]
+            .iter()
+            .map(|t| t.id.as_str())
+            .collect();
         assert!(ids.contains(&"task-1"));
         assert!(ids.contains(&"task-2"));
     }
@@ -1169,7 +1176,10 @@ mod tests {
         assert_eq!(plan.execution_levels[0].len(), 4);
 
         // task-1 and task-2 should be adjacent (they share context-a)
-        let ids: Vec<&str> = plan.execution_levels[0].iter().map(|t| t.id.as_str()).collect();
+        let ids: Vec<&str> = plan.execution_levels[0]
+            .iter()
+            .map(|t| t.id.as_str())
+            .collect();
         let pos1 = ids.iter().position(|&id| id == "task-1").unwrap();
         let pos2 = ids.iter().position(|&id| id == "task-2").unwrap();
         assert!(
@@ -1200,7 +1210,10 @@ mod tests {
 
         // Both tasks should be present
         assert_eq!(plan.execution_levels[0].len(), 2);
-        let ids: Vec<&str> = plan.execution_levels[0].iter().map(|t| t.id.as_str()).collect();
+        let ids: Vec<&str> = plan.execution_levels[0]
+            .iter()
+            .map(|t| t.id.as_str())
+            .collect();
         assert!(ids.contains(&"task-1"));
         assert!(ids.contains(&"task-2"));
     }

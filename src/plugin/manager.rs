@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Plugin manager for discovery, loading, and lifecycle management
 //!
 //! This module provides the central plugin management functionality.
@@ -15,8 +14,8 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 
-use super::traits::{Plugin, PluginMetadata, PluginType};
 use super::stage::PipelineStagePlugin;
+use super::traits::{Plugin, PluginMetadata, PluginType};
 use super::CustomStageConfig;
 
 /// Plugin manager handles discovery, loading, and lifecycle of plugins
@@ -183,8 +182,8 @@ impl PluginManager {
         let entries = std::fs::read_dir(dir)
             .with_context(|| format!("Failed to read directory: {}", dir.display()))?;
 
-        let glob_pattern = Pattern::new(pattern)
-            .with_context(|| format!("Invalid glob pattern: {}", pattern))?;
+        let glob_pattern =
+            Pattern::new(pattern).with_context(|| format!("Invalid glob pattern: {}", pattern))?;
 
         for entry in entries {
             let entry = entry?;
@@ -214,7 +213,10 @@ impl PluginManager {
     }
 
     /// Register a pipeline stage plugin
-    pub async fn register_stage_plugin<P: PipelineStagePlugin + 'static>(&self, plugin: P) -> Result<()> {
+    pub async fn register_stage_plugin<P: PipelineStagePlugin + 'static>(
+        &self,
+        plugin: P,
+    ) -> Result<()> {
         let metadata = plugin.metadata().clone();
         let id = metadata.id.clone();
         let stage_id = plugin.config().id.clone();
@@ -270,7 +272,11 @@ impl PluginManager {
             if discovery.plugin_type == plugin_type {
                 // For now, we only support manifest-based plugins
                 if let Some(manifest) = &discovery.manifest {
-                    info!("Would load plugin: {} from {}", manifest.plugin.id, discovery.path.display());
+                    info!(
+                        "Would load plugin: {} from {}",
+                        manifest.plugin.id,
+                        discovery.path.display()
+                    );
                     loaded.push(manifest.plugin.id.clone());
                 }
             }

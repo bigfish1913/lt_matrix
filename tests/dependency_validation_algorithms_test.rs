@@ -99,10 +99,7 @@ fn test_algorithm_missing_detection_empty_task_id_set() {
 #[test]
 fn test_algorithm_dfs_cycle_detection_two_nodes() {
     // Simple 2-node cycle: A -> B -> A
-    let tasks = vec![
-        create_task("a", vec!["b"]),
-        create_task("b", vec!["a"]),
-    ];
+    let tasks = vec![create_task("a", vec!["b"]), create_task("b", vec!["a"])];
 
     let errors = validate_dependencies(&tasks);
 
@@ -165,12 +162,17 @@ fn test_algorithm_dfs_cycle_extraction_from_path() {
     // Check that at least one circular dependency contains cycle nodes
     let has_cycle = errors.iter().any(|e| {
         if let ltmatrix::pipeline::generate::ValidationError::CircularDependency { chain } = e {
-            chain.len() >= 2 && (chain.contains(&"cycle-start".to_string()) || chain.contains(&"cycle-end".to_string()))
+            chain.len() >= 2
+                && (chain.contains(&"cycle-start".to_string())
+                    || chain.contains(&"cycle-end".to_string()))
         } else {
             false
         }
     });
-    assert!(has_cycle, "Should detect cycle involving cycle-start/cycle-end");
+    assert!(
+        has_cycle,
+        "Should detect cycle involving cycle-start/cycle-end"
+    );
 }
 
 #[test]
@@ -227,7 +229,10 @@ fn test_algorithm_dfs_no_false_positives_diamond() {
 
     let errors = validate_dependencies(&tasks);
 
-    assert!(errors.is_empty(), "Diamond structure should not be detected as a cycle");
+    assert!(
+        errors.is_empty(),
+        "Diamond structure should not be detected as a cycle"
+    );
 }
 
 #[test]
@@ -257,8 +262,8 @@ fn test_algorithm_combined_missing_and_circular() {
 
     let tasks = vec![
         create_task("task-1", vec!["missing"]), // Missing dependency
-        create_task("a", vec!["b"]), // Part of cycle
-        create_task("b", vec!["a"]), // Part of cycle
+        create_task("a", vec!["b"]),            // Part of cycle
+        create_task("b", vec!["a"]),            // Part of cycle
     ];
 
     let errors = validate_dependencies(&tasks);
@@ -460,7 +465,10 @@ fn test_algorithm_performance_large_linear_chain() {
         if i == 1 {
             tasks.push(create_task("task-1", vec![]));
         } else {
-            tasks.push(create_task(&format!("task-{}", i), vec![&format!("task-{}", i - 1)]));
+            tasks.push(create_task(
+                &format!("task-{}", i),
+                vec![&format!("task-{}", i - 1)],
+            ));
         }
     }
 
@@ -557,10 +565,7 @@ fn test_algorithm_duplicate_dependencies() {
 
 #[test]
 fn test_algorithm_result_structure_valid() {
-    let tasks = vec![
-        create_task("a", vec![]),
-        create_task("b", vec!["a"]),
-    ];
+    let tasks = vec![create_task("a", vec![]), create_task("b", vec!["a"])];
 
     let result = validate_dependencies_with_stats(&tasks);
 
@@ -573,10 +578,7 @@ fn test_algorithm_result_structure_valid() {
 
 #[test]
 fn test_algorithm_result_structure_invalid() {
-    let tasks = vec![
-        create_task("a", vec!["b"]),
-        create_task("b", vec!["a"]),
-    ];
+    let tasks = vec![create_task("a", vec!["b"]), create_task("b", vec!["a"])];
 
     let result = validate_dependencies_with_stats(&tasks);
 

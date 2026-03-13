@@ -4,7 +4,7 @@
 //! the progress manager and provides accurate time estimates.
 
 use ltmatrix::models::TaskStatus;
-use ltmatrix::progress::eta::{HistoricalData, format_eta};
+use ltmatrix::progress::eta::{format_eta, HistoricalData};
 use ltmatrix::progress::{ProgressBarType, ProgressManager, ProgressManagerConfig};
 use std::thread;
 use std::time::Duration;
@@ -92,7 +92,11 @@ fn test_progress_manager_eta_in_template() {
     manager.initialize(5, ProgressBarType::Single);
 
     // Add a task and update it
-    manager.add_task("task-1".to_string(), "Test Task".to_string(), TaskStatus::Pending);
+    manager.add_task(
+        "task-1".to_string(),
+        "Test Task".to_string(),
+        TaskStatus::Pending,
+    );
     manager.update_task("task-1", TaskStatus::InProgress, Some(50));
 
     // Thread sleep to ensure some elapsed time
@@ -182,9 +186,7 @@ fn test_progress_manager_updates_metrics_on_completion() {
 
 #[test]
 fn test_progress_manager_multi_bar_with_eta() {
-    let config = ProgressManagerConfig::new()
-        .with_eta(true)
-        .with_multi(true);
+    let config = ProgressManagerConfig::new().with_eta(true).with_multi(true);
 
     let mut manager = ProgressManager::new(Some(config));
     manager.initialize(2, ProgressBarType::Multi);

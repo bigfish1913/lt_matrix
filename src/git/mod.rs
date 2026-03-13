@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Git integration
 //!
 //! This module provides Git operations including branching, committing, and merging

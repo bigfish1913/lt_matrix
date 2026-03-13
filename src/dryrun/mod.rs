@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Dry-run mode for ltmatrix
 //!
 //! This module implements the --dry-run flag functionality that:
@@ -14,9 +13,9 @@
 use anyhow::{Context, Result};
 use tracing::info;
 
-use ltmatrix_core::{ExecutionMode, Task, TaskComplexity};
 use crate::pipeline::assess::{assess_tasks, AssessConfig};
 use crate::tasks::scheduler::{schedule_tasks, ExecutionPlan};
+use ltmatrix_core::{ExecutionMode, Task, TaskComplexity};
 
 /// Configuration for dry-run mode
 #[derive(Debug, Clone)]

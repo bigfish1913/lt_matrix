@@ -30,14 +30,7 @@ fn create_test_repo() -> Result<(TempDir, Repository)> {
         let tree_oid = index.write_tree()?;
         let tree = repo.find_tree(tree_oid)?;
 
-        repo.commit(
-            Some("HEAD"),
-            &sig,
-            &sig,
-            "Initial commit",
-            &tree,
-            &[],
-        )?;
+        repo.commit(Some("HEAD"), &sig, &sig, "Initial commit", &tree, &[])?;
     }
 
     Ok((temp_dir, repo))
@@ -74,14 +67,7 @@ fn commit_changes(repo: &Repository, message: &str) -> Result<git2::Oid> {
     let tree = repo.find_tree(tree_oid)?;
 
     let head_commit = repo.head()?.peel_to_commit()?;
-    let oid = repo.commit(
-        Some("HEAD"),
-        &sig,
-        &sig,
-        message,
-        &tree,
-        &[&head_commit],
-    )?;
+    let oid = repo.commit(Some("HEAD"), &sig, &sig, message, &tree, &[&head_commit])?;
 
     Ok(oid)
 }
@@ -133,7 +119,10 @@ async fn test_commit_stage_handles_merge_conflicts() {
 
     // Assert: Should not crash - handle gracefully
     // (Real conflict scenario requires more complex setup with divergent branches)
-    assert!(result.is_ok(), "Should handle commit operations without crashing");
+    assert!(
+        result.is_ok(),
+        "Should handle commit operations without crashing"
+    );
 
     let (updated_tasks, summary) = result.unwrap();
     // The specific behavior depends on the actual state of the repo
@@ -255,7 +244,10 @@ async fn test_commit_stage_reports_conflicts_in_summary() {
 
     // These should be consistent
     if has_conflicts {
-        assert!(!is_success, "Should not be complete success if there are conflicts");
+        assert!(
+            !is_success,
+            "Should not be complete success if there are conflicts"
+        );
     }
 }
 
@@ -315,7 +307,10 @@ async fn test_commit_summary_display_with_conflicts() {
 
     // Assert: Verify summary state
     assert!(summary.has_conflicts(), "Should report having conflicts");
-    assert!(!summary.is_complete_success(), "Should not be complete success with conflicts");
+    assert!(
+        !summary.is_complete_success(),
+        "Should not be complete success with conflicts"
+    );
     assert_eq!(summary.conflicts, 1, "Should have 1 conflict");
 }
 
@@ -462,6 +457,12 @@ async fn test_commit_stage_handles_empty_tasks_list() {
     assert_eq!(updated_tasks.len(), 0, "Should return empty tasks list");
     assert_eq!(summary.total_tasks, 0, "Should have 0 total tasks");
     assert_eq!(summary.committed_tasks, 0, "Should have 0 committed tasks");
-    assert!(!summary.has_conflicts(), "Should have no conflicts with empty task list");
-    assert!(summary.is_complete_success(), "Empty task list should be complete success");
+    assert!(
+        !summary.has_conflicts(),
+        "Should have no conflicts with empty task list"
+    );
+    assert!(
+        summary.is_complete_success(),
+        "Empty task list should be complete success"
+    );
 }

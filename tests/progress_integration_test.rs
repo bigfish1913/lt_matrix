@@ -9,7 +9,9 @@ use ltmatrix::progress::{
     colorize_percentage, create_custom_progress_bar, create_progress_bar, create_spinner,
     BarColorConfig, ProgressBarType, ProgressManager, ProgressManagerConfig,
 };
-use ltmatrix::progress::{report_progress_summary, report_task_complete, report_task_start, ReporterColorConfig};
+use ltmatrix::progress::{
+    report_progress_summary, report_task_complete, report_task_start, ReporterColorConfig,
+};
 use ltmatrix::terminal::ColorConfig;
 
 /// Tests the complete single-bar progress workflow
@@ -19,9 +21,21 @@ fn test_single_bar_complete_workflow() {
     manager.initialize(3, ProgressBarType::Single);
 
     // Add tasks
-    manager.add_task("task-1".to_string(), "Task 1".to_string(), TaskStatus::Pending);
-    manager.add_task("task-2".to_string(), "Task 2".to_string(), TaskStatus::Pending);
-    manager.add_task("task-3".to_string(), "Task 3".to_string(), TaskStatus::Pending);
+    manager.add_task(
+        "task-1".to_string(),
+        "Task 1".to_string(),
+        TaskStatus::Pending,
+    );
+    manager.add_task(
+        "task-2".to_string(),
+        "Task 2".to_string(),
+        TaskStatus::Pending,
+    );
+    manager.add_task(
+        "task-3".to_string(),
+        "Task 3".to_string(),
+        TaskStatus::Pending,
+    );
 
     // Verify initial state
     let stats = manager.get_stats();
@@ -68,9 +82,21 @@ fn test_multi_bar_complete_workflow() {
     manager.initialize(3, ProgressBarType::Multi);
 
     // Add tasks
-    manager.add_task("build-1".to_string(), "Build Backend".to_string(), TaskStatus::InProgress);
-    manager.add_task("build-2".to_string(), "Build Frontend".to_string(), TaskStatus::InProgress);
-    manager.add_task("test-1".to_string(), "Run Tests".to_string(), TaskStatus::Pending);
+    manager.add_task(
+        "build-1".to_string(),
+        "Build Backend".to_string(),
+        TaskStatus::InProgress,
+    );
+    manager.add_task(
+        "build-2".to_string(),
+        "Build Frontend".to_string(),
+        TaskStatus::InProgress,
+    );
+    manager.add_task(
+        "test-1".to_string(),
+        "Run Tests".to_string(),
+        TaskStatus::Pending,
+    );
 
     // Verify initial state
     let stats = manager.get_stats();
@@ -105,7 +131,11 @@ fn test_task_status_transitions() {
     let mut manager = ProgressManager::new(None);
     manager.initialize(1, ProgressBarType::Single);
 
-    manager.add_task("task-1".to_string(), "Test Task".to_string(), TaskStatus::Pending);
+    manager.add_task(
+        "task-1".to_string(),
+        "Test Task".to_string(),
+        TaskStatus::Pending,
+    );
 
     // Verify pending state
     let stats = manager.get_stats();
@@ -130,8 +160,16 @@ fn test_failed_task_handling() {
     let mut manager = ProgressManager::new(None);
     manager.initialize(2, ProgressBarType::Single);
 
-    manager.add_task("task-1".to_string(), "Success Task".to_string(), TaskStatus::Pending);
-    manager.add_task("task-2".to_string(), "Failed Task".to_string(), TaskStatus::Pending);
+    manager.add_task(
+        "task-1".to_string(),
+        "Success Task".to_string(),
+        TaskStatus::Pending,
+    );
+    manager.add_task(
+        "task-2".to_string(),
+        "Failed Task".to_string(),
+        TaskStatus::Pending,
+    );
 
     // Complete first task
     manager.update_task("task-1", TaskStatus::Completed, Some(100));
@@ -153,8 +191,16 @@ fn test_blocked_task_handling() {
     let mut manager = ProgressManager::new(None);
     manager.initialize(2, ProgressBarType::Single);
 
-    manager.add_task("task-1".to_string(), "Blocking Task".to_string(), TaskStatus::Pending);
-    manager.add_task("task-2".to_string(), "Blocked Task".to_string(), TaskStatus::Pending);
+    manager.add_task(
+        "task-1".to_string(),
+        "Blocking Task".to_string(),
+        TaskStatus::Pending,
+    );
+    manager.add_task(
+        "task-2".to_string(),
+        "Blocked Task".to_string(),
+        TaskStatus::Pending,
+    );
 
     // Mark second task as blocked
     manager.update_task("task-2", TaskStatus::Blocked, None);
@@ -270,8 +316,16 @@ fn test_manager_with_custom_config() {
     let mut manager = ProgressManager::new(Some(config));
     manager.initialize(2, ProgressBarType::Single);
 
-    manager.add_task("task-1".to_string(), "Task 1".to_string(), TaskStatus::Pending);
-    manager.add_task("task-2".to_string(), "Task 2".to_string(), TaskStatus::Pending);
+    manager.add_task(
+        "task-1".to_string(),
+        "Task 1".to_string(),
+        TaskStatus::Pending,
+    );
+    manager.add_task(
+        "task-2".to_string(),
+        "Task 2".to_string(),
+        TaskStatus::Pending,
+    );
 
     // Verify tasks are tracked
     let stats = manager.get_stats();
@@ -286,7 +340,11 @@ fn test_message_setting() {
     let mut manager = ProgressManager::new(None);
     manager.initialize(1, ProgressBarType::Single);
 
-    manager.add_task("task-1".to_string(), "Task 1".to_string(), TaskStatus::Pending);
+    manager.add_task(
+        "task-1".to_string(),
+        "Task 1".to_string(),
+        TaskStatus::Pending,
+    );
 
     // Set custom message
     manager.set_message("Custom message".to_string());
@@ -300,7 +358,11 @@ fn test_abandon_functionality() {
     let mut manager = ProgressManager::new(None);
     manager.initialize(1, ProgressBarType::Single);
 
-    manager.add_task("task-1".to_string(), "Task 1".to_string(), TaskStatus::InProgress);
+    manager.add_task(
+        "task-1".to_string(),
+        "Task 1".to_string(),
+        TaskStatus::InProgress,
+    );
 
     // Abandon instead of finish
     manager.abandon();
@@ -313,8 +375,16 @@ fn test_clear_functionality() {
     let mut manager = ProgressManager::new(Some(config));
     manager.initialize(2, ProgressBarType::Multi);
 
-    manager.add_task("task-1".to_string(), "Task 1".to_string(), TaskStatus::InProgress);
-    manager.add_task("task-2".to_string(), "Task 2".to_string(), TaskStatus::InProgress);
+    manager.add_task(
+        "task-1".to_string(),
+        "Task 1".to_string(),
+        TaskStatus::InProgress,
+    );
+    manager.add_task(
+        "task-2".to_string(),
+        "Task 2".to_string(),
+        TaskStatus::InProgress,
+    );
 
     // Clear all - just verify it doesn't panic
     manager.clear();
@@ -346,11 +416,11 @@ fn test_stats_accuracy() {
     manager.update_task("task-4", TaskStatus::Blocked, None);
 
     let stats = manager.get_stats();
-    assert_eq!(stats.pending, 1);       // task-5
-    assert_eq!(stats.in_progress, 1);   // task-1
-    assert_eq!(stats.completed, 1);     // task-2
-    assert_eq!(stats.failed, 1);        // task-3
-    assert_eq!(stats.blocked, 1);       // task-4
+    assert_eq!(stats.pending, 1); // task-5
+    assert_eq!(stats.in_progress, 1); // task-1
+    assert_eq!(stats.completed, 1); // task-2
+    assert_eq!(stats.failed, 1); // task-3
+    assert_eq!(stats.blocked, 1); // task-4
 
     manager.finish();
 }
@@ -392,9 +462,21 @@ fn test_concurrent_task_updates() {
     manager.initialize(3, ProgressBarType::Multi);
 
     // Add tasks
-    manager.add_task("task-1".to_string(), "Task 1".to_string(), TaskStatus::InProgress);
-    manager.add_task("task-2".to_string(), "Task 2".to_string(), TaskStatus::InProgress);
-    manager.add_task("task-3".to_string(), "Task 3".to_string(), TaskStatus::InProgress);
+    manager.add_task(
+        "task-1".to_string(),
+        "Task 1".to_string(),
+        TaskStatus::InProgress,
+    );
+    manager.add_task(
+        "task-2".to_string(),
+        "Task 2".to_string(),
+        TaskStatus::InProgress,
+    );
+    manager.add_task(
+        "task-3".to_string(),
+        "Task 3".to_string(),
+        TaskStatus::InProgress,
+    );
 
     // Simulate concurrent updates
     for i in 0..=4 {
@@ -421,10 +503,18 @@ fn test_percentage_display() {
     let mut manager = ProgressManager::new(None);
     manager.initialize(4, ProgressBarType::Single);
 
-    manager.add_task("task-1".to_string(), "Task 1".to_string(), TaskStatus::Completed);
+    manager.add_task(
+        "task-1".to_string(),
+        "Task 1".to_string(),
+        TaskStatus::Completed,
+    );
     manager.increment("task-1");
 
-    manager.add_task("task-2".to_string(), "Task 2".to_string(), TaskStatus::Completed);
+    manager.add_task(
+        "task-2".to_string(),
+        "Task 2".to_string(),
+        TaskStatus::Completed,
+    );
     manager.increment("task-2");
 
     // With 2/4 tasks completed, should show 50%
@@ -440,7 +530,11 @@ fn test_task_name_storage() {
     let mut manager = ProgressManager::new(Some(ProgressManagerConfig::new().with_multi(true)));
     manager.initialize(1, ProgressBarType::Multi);
 
-    manager.add_task("task-1".to_string(), "My Custom Task Name".to_string(), TaskStatus::Pending);
+    manager.add_task(
+        "task-1".to_string(),
+        "My Custom Task Name".to_string(),
+        TaskStatus::Pending,
+    );
 
     // Verify task is tracked
     let stats = manager.get_stats();
@@ -476,7 +570,11 @@ fn test_finish_after_abandon() {
     let mut manager = ProgressManager::new(None);
     manager.initialize(1, ProgressBarType::Single);
 
-    manager.add_task("task-1".to_string(), "Task 1".to_string(), TaskStatus::InProgress);
+    manager.add_task(
+        "task-1".to_string(),
+        "Task 1".to_string(),
+        TaskStatus::InProgress,
+    );
 
     // Abandon first
     manager.abandon();

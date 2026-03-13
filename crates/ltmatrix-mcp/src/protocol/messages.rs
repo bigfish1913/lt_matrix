@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! JSON-RPC 2.0 message types for MCP protocol
 //!
 //! This module implements the three core message types defined by JSON-RPC 2.0:
@@ -144,9 +143,7 @@ impl<'de> Deserialize<'de> for JsonRpcRequest {
             .to_string();
 
         // Request MUST have an "id" field
-        let id_value = value
-            .get("id")
-            .ok_or_else(|| Error::missing_field("id"))?;
+        let id_value = value.get("id").ok_or_else(|| Error::missing_field("id"))?;
 
         let id = RequestId::deserialize(id_value)
             .map_err(|_| Error::custom("Invalid 'id' field in request"))?;

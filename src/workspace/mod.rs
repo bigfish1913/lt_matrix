@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Workspace state persistence module
 //!
 //! Provides functionality for saving and loading workspace state,
@@ -108,30 +107,28 @@ impl WorkspaceState {
     /// - The tasks-manifest.json file doesn't exist
     /// - The file contains invalid JSON
     pub fn load(project_root: PathBuf) -> Result<WorkspaceState, anyhow::Error> {
-        let manifest_path = project_root
-            .join(".ltmatrix")
-            .join("tasks-manifest.json");
+        let manifest_path = project_root.join(".ltmatrix").join("tasks-manifest.json");
 
         // Read the file with enhanced error context
-        let json = fs::read_to_string(&manifest_path)
-            .map_err(|e| {
-                anyhow::anyhow!(
-                    "Failed to read workspace manifest file at {:?}: {}. \
+        let json = fs::read_to_string(&manifest_path).map_err(|e| {
+            anyhow::anyhow!(
+                "Failed to read workspace manifest file at {:?}: {}. \
                     The file may not exist or may be corrupted. \
                     Use load_or_create() to automatically create a new state.",
-                    manifest_path, e
-                )
-            })?;
+                manifest_path,
+                e
+            )
+        })?;
 
         // Deserialize with enhanced error context
-        let state: WorkspaceState = serde_json::from_str(&json)
-            .map_err(|e| {
-                anyhow::anyhow!(
-                    "Failed to parse workspace manifest file at {:?}: {}. \
+        let state: WorkspaceState = serde_json::from_str(&json).map_err(|e| {
+            anyhow::anyhow!(
+                "Failed to parse workspace manifest file at {:?}: {}. \
                     The file may be corrupted. Consider using load_or_create() to recover.",
-                    manifest_path, e
-                )
-            })?;
+                manifest_path,
+                e
+            )
+        })?;
 
         Ok(state)
     }
@@ -151,30 +148,28 @@ impl WorkspaceState {
     /// Returns `Ok(WorkspaceState)` with transformed statuses on success,
     /// or an error if loading or transformation fails.
     pub fn load_with_transform(project_root: PathBuf) -> Result<WorkspaceState, anyhow::Error> {
-        let manifest_path = project_root
-            .join(".ltmatrix")
-            .join("tasks-manifest.json");
+        let manifest_path = project_root.join(".ltmatrix").join("tasks-manifest.json");
 
         // Read the file with enhanced error context
-        let json = fs::read_to_string(&manifest_path)
-            .map_err(|e| {
-                anyhow::anyhow!(
-                    "Failed to read workspace manifest file at {:?}: {}. \
+        let json = fs::read_to_string(&manifest_path).map_err(|e| {
+            anyhow::anyhow!(
+                "Failed to read workspace manifest file at {:?}: {}. \
                     The file may not exist or may be corrupted. \
                     Use load_or_create() to automatically create a new state.",
-                    manifest_path, e
-                )
-            })?;
+                manifest_path,
+                e
+            )
+        })?;
 
         // Deserialize with enhanced error context
-        let state: WorkspaceState = serde_json::from_str(&json)
-            .map_err(|e| {
-                anyhow::anyhow!(
-                    "Failed to parse workspace manifest file at {:?}: {}. \
+        let state: WorkspaceState = serde_json::from_str(&json).map_err(|e| {
+            anyhow::anyhow!(
+                "Failed to parse workspace manifest file at {:?}: {}. \
                     The file may be corrupted. Consider using load_or_create() to recover.",
-                    manifest_path, e
-                )
-            })?;
+                manifest_path,
+                e
+            )
+        })?;
 
         // Transform task statuses
         let transformed_state = Self::transform_task_states(state);
@@ -223,7 +218,8 @@ impl WorkspaceState {
                 // Log the corruption/error details
                 tracing::warn!(
                     "Failed to load workspace state from {:?}: {}. Creating new empty state.",
-                    project_root, e
+                    project_root,
+                    e
                 );
 
                 // Create new empty state as fallback
@@ -231,10 +227,7 @@ impl WorkspaceState {
 
                 // Save the new empty state so it exists for next time
                 if let Err(save_err) = new_state.save() {
-                    tracing::warn!(
-                        "Failed to save new empty workspace state: {}",
-                        save_err
-                    );
+                    tracing::warn!("Failed to save new empty workspace state: {}", save_err);
                 }
 
                 Ok(new_state)
@@ -251,7 +244,10 @@ impl WorkspaceState {
                 // Clear timestamps when resetting
                 task.started_at = None;
             }
-            TaskStatus::Pending | TaskStatus::Completed | TaskStatus::Failed | TaskStatus::SkippedModeDisabled => {
+            TaskStatus::Pending
+            | TaskStatus::Completed
+            | TaskStatus::Failed
+            | TaskStatus::SkippedModeDisabled => {
                 // Preserve these states
             }
         }
@@ -482,10 +478,7 @@ impl WorkspaceState {
     }
 
     /// Finds a task by ID (including searching in subtasks)
-    fn find_task_by_id_recursive<'a>(
-        id: &str,
-        tasks: &'a [Task],
-    ) -> Option<&'a Task> {
+    fn find_task_by_id_recursive<'a>(id: &str, tasks: &'a [Task]) -> Option<&'a Task> {
         for task in tasks {
             if task.id == id {
                 return Some(task);
@@ -549,9 +542,7 @@ impl WorkspaceState {
     /// }
     /// ```
     pub fn exists(project_root: &PathBuf) -> bool {
-        let manifest_path = project_root
-            .join(".ltmatrix")
-            .join("tasks-manifest.json");
+        let manifest_path = project_root.join(".ltmatrix").join("tasks-manifest.json");
         manifest_path.exists()
     }
 
@@ -971,10 +962,8 @@ mod tests {
         let mut task3 = Task::new("task-3", "Failed Task", "Description");
         task3.status = TaskStatus::Failed;
 
-        let state = WorkspaceState::new(
-            std::path::PathBuf::from("/tmp"),
-            vec![task1, task2, task3],
-        );
+        let state =
+            WorkspaceState::new(std::path::PathBuf::from("/tmp"), vec![task1, task2, task3]);
         let incomplete = state.get_incomplete_tasks();
         assert_eq!(incomplete.len(), 2);
     }

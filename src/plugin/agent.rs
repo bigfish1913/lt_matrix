@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Agent backend plugin trait
 //!
 //! This module defines the trait for custom agent backends.

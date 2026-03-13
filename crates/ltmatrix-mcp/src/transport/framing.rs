@@ -34,10 +34,7 @@ use std::collections::VecDeque;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FramingError {
     /// Message exceeds maximum allowed size
-    MessageTooLarge {
-        actual: usize,
-        max: usize,
-    },
+    MessageTooLarge { actual: usize, max: usize },
 
     /// Invalid content-length header
     InvalidContentLength(String),
@@ -353,8 +350,8 @@ impl ContentLengthFramer {
 
     /// Parse Content-Length from headers
     fn parse_content_length(&self, header_bytes: &[u8]) -> Result<usize, FramingError> {
-        let header_str = std::str::from_utf8(header_bytes)
-            .map_err(|_| FramingError::InvalidUtf8)?;
+        let header_str =
+            std::str::from_utf8(header_bytes).map_err(|_| FramingError::InvalidUtf8)?;
 
         for line in header_str.lines() {
             let line = line.trim();

@@ -14,11 +14,10 @@
 //! - Memory entry format validation
 
 use ltmatrix::memory::{
-    MemoryStore, MemoryEntry, MemoryCategory, MemoryPriority,
-    CodeSnippet, MemoryEntryBuilder,
-    extract_memory_from_task, extract_task_summary,
+    extract_memory_from_task, extract_task_summary, CodeSnippet, MemoryCategory, MemoryEntry,
+    MemoryEntryBuilder, MemoryPriority, MemoryStore,
 };
-use ltmatrix::models::{Task, TaskStatus, TaskComplexity};
+use ltmatrix::models::{Task, TaskComplexity, TaskStatus};
 use std::fs;
 use tempfile::TempDir;
 
@@ -40,11 +39,13 @@ fn test_memory_entry_builder_basic() {
 
 #[test]
 fn test_memory_entry_builder_requires_content() {
-    let result = MemoryEntryBuilder::new("task-001", "Test")
-        .build();
+    let result = MemoryEntryBuilder::new("task-001", "Test").build();
 
     assert!(result.is_err(), "Builder should require content");
-    assert!(result.unwrap_err().to_string().contains("Content is required"));
+    assert!(result
+        .unwrap_err()
+        .to_string()
+        .contains("Content is required"));
 }
 
 #[test]
@@ -213,20 +214,38 @@ fn test_memory_entry_builder_full() {
 
 #[test]
 fn test_memory_category_display() {
-    assert_eq!(format!("{}", MemoryCategory::ArchitectureDecision), "Architecture Decision");
+    assert_eq!(
+        format!("{}", MemoryCategory::ArchitectureDecision),
+        "Architecture Decision"
+    );
     assert_eq!(format!("{}", MemoryCategory::Pattern), "Pattern");
     assert_eq!(format!("{}", MemoryCategory::ApiDesign), "API Design");
     assert_eq!(format!("{}", MemoryCategory::DataModel), "Data Model");
-    assert_eq!(format!("{}", MemoryCategory::ErrorHandling), "Error Handling");
+    assert_eq!(
+        format!("{}", MemoryCategory::ErrorHandling),
+        "Error Handling"
+    );
     assert_eq!(format!("{}", MemoryCategory::Performance), "Performance");
     assert_eq!(format!("{}", MemoryCategory::Security), "Security");
     assert_eq!(format!("{}", MemoryCategory::Testing), "Testing");
     assert_eq!(format!("{}", MemoryCategory::Dependencies), "Dependencies");
-    assert_eq!(format!("{}", MemoryCategory::CodeOrganization), "Code Organization");
+    assert_eq!(
+        format!("{}", MemoryCategory::CodeOrganization),
+        "Code Organization"
+    );
     assert_eq!(format!("{}", MemoryCategory::BugFix), "Bug Fix");
-    assert_eq!(format!("{}", MemoryCategory::Configuration), "Configuration");
-    assert_eq!(format!("{}", MemoryCategory::ImportantNote), "Important Note");
-    assert_eq!(format!("{}", MemoryCategory::TaskCompletion), "Task Completion");
+    assert_eq!(
+        format!("{}", MemoryCategory::Configuration),
+        "Configuration"
+    );
+    assert_eq!(
+        format!("{}", MemoryCategory::ImportantNote),
+        "Important Note"
+    );
+    assert_eq!(
+        format!("{}", MemoryCategory::TaskCompletion),
+        "Task Completion"
+    );
     assert_eq!(format!("{}", MemoryCategory::General), "General");
 }
 
@@ -235,22 +254,61 @@ fn test_memory_category_from_str() {
     use std::str::FromStr;
 
     // Test various valid inputs
-    assert_eq!(MemoryCategory::from_str("Architecture Decision").unwrap(), MemoryCategory::ArchitectureDecision);
-    assert_eq!(MemoryCategory::from_str("architecture decision").unwrap(), MemoryCategory::ArchitectureDecision);
-    assert_eq!(MemoryCategory::from_str("architectural decision").unwrap(), MemoryCategory::ArchitectureDecision);
-    assert_eq!(MemoryCategory::from_str("Architecture_Decision").unwrap(), MemoryCategory::ArchitectureDecision);
+    assert_eq!(
+        MemoryCategory::from_str("Architecture Decision").unwrap(),
+        MemoryCategory::ArchitectureDecision
+    );
+    assert_eq!(
+        MemoryCategory::from_str("architecture decision").unwrap(),
+        MemoryCategory::ArchitectureDecision
+    );
+    assert_eq!(
+        MemoryCategory::from_str("architectural decision").unwrap(),
+        MemoryCategory::ArchitectureDecision
+    );
+    assert_eq!(
+        MemoryCategory::from_str("Architecture_Decision").unwrap(),
+        MemoryCategory::ArchitectureDecision
+    );
 
-    assert_eq!(MemoryCategory::from_str("Pattern").unwrap(), MemoryCategory::Pattern);
-    assert_eq!(MemoryCategory::from_str("patterns").unwrap(), MemoryCategory::Pattern);
+    assert_eq!(
+        MemoryCategory::from_str("Pattern").unwrap(),
+        MemoryCategory::Pattern
+    );
+    assert_eq!(
+        MemoryCategory::from_str("patterns").unwrap(),
+        MemoryCategory::Pattern
+    );
 
-    assert_eq!(MemoryCategory::from_str("API Design").unwrap(), MemoryCategory::ApiDesign);
-    assert_eq!(MemoryCategory::from_str("api").unwrap(), MemoryCategory::ApiDesign);
+    assert_eq!(
+        MemoryCategory::from_str("API Design").unwrap(),
+        MemoryCategory::ApiDesign
+    );
+    assert_eq!(
+        MemoryCategory::from_str("api").unwrap(),
+        MemoryCategory::ApiDesign
+    );
 
-    assert_eq!(MemoryCategory::from_str("Data Model").unwrap(), MemoryCategory::DataModel);
-    assert_eq!(MemoryCategory::from_str("Bug Fix").unwrap(), MemoryCategory::BugFix);
-    assert_eq!(MemoryCategory::from_str("bugfix").unwrap(), MemoryCategory::BugFix);
-    assert_eq!(MemoryCategory::from_str("Important Note").unwrap(), MemoryCategory::ImportantNote);
-    assert_eq!(MemoryCategory::from_str("note").unwrap(), MemoryCategory::ImportantNote);
+    assert_eq!(
+        MemoryCategory::from_str("Data Model").unwrap(),
+        MemoryCategory::DataModel
+    );
+    assert_eq!(
+        MemoryCategory::from_str("Bug Fix").unwrap(),
+        MemoryCategory::BugFix
+    );
+    assert_eq!(
+        MemoryCategory::from_str("bugfix").unwrap(),
+        MemoryCategory::BugFix
+    );
+    assert_eq!(
+        MemoryCategory::from_str("Important Note").unwrap(),
+        MemoryCategory::ImportantNote
+    );
+    assert_eq!(
+        MemoryCategory::from_str("note").unwrap(),
+        MemoryCategory::ImportantNote
+    );
 
     // Test invalid input
     assert!(MemoryCategory::from_str("invalid_category").is_err());
@@ -423,7 +481,11 @@ fn test_memory_entry_matches_title() {
 
 #[test]
 fn test_memory_entry_matches_content() {
-    let entry = MemoryEntry::new("task-001", "Decision", "We decided to use async Rust with Tokio runtime for performance");
+    let entry = MemoryEntry::new(
+        "task-001",
+        "Decision",
+        "We decided to use async Rust with Tokio runtime for performance",
+    );
 
     assert!(entry.matches("async"));
     assert!(entry.matches("tokio"));
@@ -433,8 +495,11 @@ fn test_memory_entry_matches_content() {
 
 #[test]
 fn test_memory_entry_matches_tags() {
-    let entry = MemoryEntry::new("task-001", "Tagged", "Content")
-        .with_tags(vec!["rust".to_string(), "async".to_string(), "tokio".to_string()]);
+    let entry = MemoryEntry::new("task-001", "Tagged", "Content").with_tags(vec![
+        "rust".to_string(),
+        "async".to_string(),
+        "tokio".to_string(),
+    ]);
 
     assert!(entry.matches("rust"));
     assert!(entry.matches("async"));
@@ -468,7 +533,11 @@ fn test_memory_entry_matches_case_insensitive() {
 
 #[test]
 fn test_memory_entry_to_summary() {
-    let entry = MemoryEntry::new("task-001", "Important Decision", "This is a critical architectural choice");
+    let entry = MemoryEntry::new(
+        "task-001",
+        "Important Decision",
+        "This is a critical architectural choice",
+    );
     let summary = entry.to_summary();
 
     assert!(summary.contains("Important Decision"));
@@ -477,7 +546,11 @@ fn test_memory_entry_to_summary() {
 
 #[test]
 fn test_memory_entry_to_summary_multiline() {
-    let entry = MemoryEntry::new("task-001", "Decision", "First line\nSecond line\nThird line");
+    let entry = MemoryEntry::new(
+        "task-001",
+        "Decision",
+        "First line\nSecond line\nThird line",
+    );
     let summary = entry.to_summary();
 
     // Should only include the first line
@@ -487,8 +560,8 @@ fn test_memory_entry_to_summary_multiline() {
 
 #[test]
 fn test_memory_entry_to_summary_with_category() {
-    let entry = MemoryEntry::new("task-001", "Decision", "Content")
-        .with_category("Architecture Decision");
+    let entry =
+        MemoryEntry::new("task-001", "Decision", "Content").with_category("Architecture Decision");
 
     let summary = entry.to_summary();
     assert!(summary.contains("Architecture Decision"));
@@ -511,7 +584,10 @@ fn test_memory_entry_deprecation() {
     entry.deprecation_reason = Some("Superseded by task-005".to_string());
 
     assert!(entry.deprecated);
-    assert_eq!(entry.deprecation_reason, Some("Superseded by task-005".to_string()));
+    assert_eq!(
+        entry.deprecation_reason,
+        Some("Superseded by task-005".to_string())
+    );
 }
 
 #[test]
@@ -628,10 +704,17 @@ fn test_memory_entry_id_generation() {
 
 #[test]
 fn test_memory_entry_id_sanitization() {
-    let entry = MemoryEntry::new("task-001", "Decision with Special!@#$%Characters", "Content");
+    let entry = MemoryEntry::new(
+        "task-001",
+        "Decision with Special!@#$%Characters",
+        "Content",
+    );
 
     // ID should only contain alphanumeric, dashes, and spaces converted to dashes
-    assert!(entry.id.chars().all(|c| c.is_alphanumeric() || c == '-' || c == '_'));
+    assert!(entry
+        .id
+        .chars()
+        .all(|c| c.is_alphanumeric() || c == '-' || c == '_'));
 }
 
 // ============================================================================
@@ -678,7 +761,11 @@ fn test_extract_memory_from_task_multiple_types() {
     let entries = extract_memory_from_task(&task, result).unwrap();
 
     // Should extract multiple entries of different types
-    assert!(entries.len() >= 5, "Expected at least 5 entries, got {}", entries.len());
+    assert!(
+        entries.len() >= 5,
+        "Expected at least 5 entries, got {}",
+        entries.len()
+    );
 
     let categories: Vec<_> = entries.iter().map(|e| e.category).collect();
     assert!(categories.contains(&MemoryCategory::ArchitectureDecision));
@@ -841,7 +928,10 @@ fn test_append_entry_includes_timestamp() {
 
     // Timestamp should be recent (within 1 second)
     let diff = (entries[0].timestamp - before).num_seconds().abs();
-    assert!(diff < 2, "Timestamp should be within 2 seconds of append time");
+    assert!(
+        diff < 2,
+        "Timestamp should be within 2 seconds of append time"
+    );
 
     // Verify timestamp is in file
     let memory_file = temp_dir.path().join(".claude/memory.md");
@@ -894,7 +984,7 @@ fn test_append_multiple_entries_with_timestamps() {
         let entry = MemoryEntry::new(
             format!("task-{:03}", i),
             format!("Decision {}", i),
-            format!("Content for decision {}", i)
+            format!("Content for decision {}", i),
         );
         store.append_entry(&entry).unwrap();
         std::thread::sleep(std::time::Duration::from_millis(10));
@@ -1078,7 +1168,11 @@ fn test_extraction_and_append_end_to_end() {
 
     // Verify all entries were stored
     let entries = store.get_entries();
-    assert!(entries.len() >= 6, "Expected at least 6 entries, got {}", entries.len());
+    assert!(
+        entries.len() >= 6,
+        "Expected at least 6 entries, got {}",
+        entries.len()
+    );
 
     // Verify memory file format
     let memory_file = temp_dir.path().join(".claude/memory.md");

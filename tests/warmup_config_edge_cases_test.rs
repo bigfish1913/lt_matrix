@@ -25,8 +25,13 @@ fn warmup_validate_fails_with_zero_max_queries() {
     };
 
     let result = config.validate();
-    assert!(result.is_err(), "Validation should fail for max_queries = 0");
-    assert!(result.unwrap_err().contains("max_queries must be greater than 0"));
+    assert!(
+        result.is_err(),
+        "Validation should fail for max_queries = 0"
+    );
+    assert!(result
+        .unwrap_err()
+        .contains("max_queries must be greater than 0"));
 }
 
 #[test]
@@ -40,8 +45,13 @@ fn warmup_validate_fails_with_zero_timeout() {
     };
 
     let result = config.validate();
-    assert!(result.is_err(), "Validation should fail for timeout_seconds = 0");
-    assert!(result.unwrap_err().contains("timeout_seconds must be greater than 0"));
+    assert!(
+        result.is_err(),
+        "Validation should fail for timeout_seconds = 0"
+    );
+    assert!(result
+        .unwrap_err()
+        .contains("timeout_seconds must be greater than 0"));
 }
 
 #[test]
@@ -55,8 +65,13 @@ fn warmup_validate_fails_with_empty_prompt_template() {
     };
 
     let result = config.validate();
-    assert!(result.is_err(), "Validation should fail for empty/whitespace prompt_template");
-    assert!(result.unwrap_err().contains("prompt_template cannot be empty"));
+    assert!(
+        result.is_err(),
+        "Validation should fail for empty/whitespace prompt_template"
+    );
+    assert!(result
+        .unwrap_err()
+        .contains("prompt_template cannot be empty"));
 }
 
 #[test]
@@ -70,7 +85,10 @@ fn warmup_validate_succeeds_with_none_prompt_template() {
     };
 
     let result = config.validate();
-    assert!(result.is_ok(), "Validation should succeed when prompt_template is None");
+    assert!(
+        result.is_ok(),
+        "Validation should succeed when prompt_template is None"
+    );
 }
 
 #[test]
@@ -84,7 +102,10 @@ fn warmup_validate_succeeds_with_valid_prompt_template() {
     };
 
     let result = config.validate();
-    assert!(result.is_ok(), "Validation should succeed for valid prompt_template");
+    assert!(
+        result.is_ok(),
+        "Validation should succeed for valid prompt_template"
+    );
 }
 
 // ============================================================================
@@ -95,26 +116,32 @@ fn warmup_validate_succeeds_with_valid_prompt_template() {
 fn warmup_minimum_valid_values() {
     let config = WarmupConfig {
         enabled: true,
-        max_queries: 1, // Minimum valid value
+        max_queries: 1,     // Minimum valid value
         timeout_seconds: 1, // Minimum valid value
         retry_on_failure: false,
         prompt_template: Some("x".to_string()), // Shortest non-empty string
     };
 
-    assert!(config.validate().is_ok(), "Minimum boundary values should be valid");
+    assert!(
+        config.validate().is_ok(),
+        "Minimum boundary values should be valid"
+    );
 }
 
 #[test]
 fn warmup_maximum_reasonable_values() {
     let config = WarmupConfig {
         enabled: true,
-        max_queries: 1000, // High but valid
+        max_queries: 1000,      // High but valid
         timeout_seconds: 86400, // 24 hours
         retry_on_failure: true,
         prompt_template: Some("A".repeat(10000)), // Very long prompt
     };
 
-    assert!(config.validate().is_ok(), "High boundary values should be valid");
+    assert!(
+        config.validate().is_ok(),
+        "High boundary values should be valid"
+    );
 }
 
 #[test]
@@ -127,7 +154,10 @@ fn warmup_config_with_all_disabled() {
         prompt_template: None,
     };
 
-    assert!(config.validate().is_ok(), "Disabled warmup config should still validate");
+    assert!(
+        config.validate().is_ok(),
+        "Disabled warmup config should still validate"
+    );
     assert_eq!(config.enabled, false);
 }
 
@@ -141,7 +171,10 @@ fn warmup_config_with_all_enabled() {
         prompt_template: Some("Custom prompt".to_string()),
     };
 
-    assert!(config.validate().is_ok(), "All features enabled should be valid");
+    assert!(
+        config.validate().is_ok(),
+        "All features enabled should be valid"
+    );
     assert_eq!(config.enabled, true);
     assert_eq!(config.retry_on_failure, true);
     assert!(config.prompt_template.is_some());
@@ -184,7 +217,10 @@ fn warmup_parse_toml_with_all_fields() {
     assert_eq!(config.warmup.max_queries, 10);
     assert_eq!(config.warmup.timeout_seconds, 120);
     assert_eq!(config.warmup.retry_on_failure, true);
-    assert_eq!(config.warmup.prompt_template, Some("Hello from warmup".to_string()));
+    assert_eq!(
+        config.warmup.prompt_template,
+        Some("Hello from warmup".to_string())
+    );
 }
 
 #[test]
@@ -276,7 +312,10 @@ fn warmup_load_config_from_file_with_warmup() {
     assert_eq!(config.warmup.max_queries, 5);
     assert_eq!(config.warmup.timeout_seconds, 60);
     assert_eq!(config.warmup.retry_on_failure, true);
-    assert_eq!(config.warmup.prompt_template, Some("Custom warmup".to_string()));
+    assert_eq!(
+        config.warmup.prompt_template,
+        Some("Custom warmup".to_string())
+    );
 }
 
 #[test]
@@ -295,7 +334,10 @@ fn warmup_load_config_from_file_with_invalid_warmup_validation() {
 
     let config = ltmatrix::config::settings::load_config_file(&config_path).unwrap();
     let result = config.warmup.validate();
-    assert!(result.is_err(), "Config with max_queries=0 should fail validation");
+    assert!(
+        result.is_err(),
+        "Config with max_queries=0 should fail validation"
+    );
 }
 
 // ============================================================================
@@ -350,7 +392,10 @@ fn warmup_merge_global_only() {
     // Global config should be used when there's no project config
     assert_eq!(merged.warmup.enabled, true);
     assert_eq!(merged.warmup.max_queries, 5);
-    assert_eq!(merged.warmup.prompt_template, Some("Global warmup".to_string()));
+    assert_eq!(
+        merged.warmup.prompt_template,
+        Some("Global warmup".to_string())
+    );
 }
 
 #[test]
@@ -466,8 +511,14 @@ fn warmup_config_alongside_other_sections() {
     // Other sections should still work
     assert_eq!(config.default, Some("claude".to_string()));
     assert!(config.agents.contains_key("claude"));
-    assert_eq!(config.output.format, ltmatrix::config::settings::OutputFormat::Json);
-    assert_eq!(config.logging.level, ltmatrix::config::settings::LogLevel::Debug);
+    assert_eq!(
+        config.output.format,
+        ltmatrix::config::settings::OutputFormat::Json
+    );
+    assert_eq!(
+        config.logging.level,
+        ltmatrix::config::settings::LogLevel::Debug
+    );
 }
 
 #[test]
@@ -501,7 +552,10 @@ fn warmup_config_in_full_config_file() {
     let config: Config = toml::from_str(toml_str).unwrap();
 
     // Verify warmup is integrated with other config
-    assert!(config.warmup.validate().is_ok(), "Warmup config should be valid");
+    assert!(
+        config.warmup.validate().is_ok(),
+        "Warmup config should be valid"
+    );
     assert_eq!(config.warmup.enabled, false);
     assert_eq!(config.agents.len(), 1);
     assert!(config.modes.fast.is_some());
@@ -526,7 +580,10 @@ fn warmup_default_values_are_consistent() {
 #[test]
 fn warmup_default_values_pass_validation() {
     let config = WarmupConfig::default();
-    assert!(config.validate().is_ok(), "Default warmup config should be valid");
+    assert!(
+        config.validate().is_ok(),
+        "Default warmup config should be valid"
+    );
 }
 
 #[test]

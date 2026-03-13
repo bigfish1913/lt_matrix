@@ -3,7 +3,7 @@
 //! Tests that the execute stage properly saves workspace state after
 //! each task completion and handles error scenarios.
 
-use ltmatrix::models::{Task, TaskStatus, TaskComplexity};
+use ltmatrix::models::{Task, TaskComplexity, TaskStatus};
 use ltmatrix::workspace::WorkspaceState;
 use tempfile::TempDir;
 
@@ -57,7 +57,10 @@ fn test_execute_saves_workspace_state_after_failure() {
     // Verify task-1 failure is saved
     let verified = WorkspaceState::load(project_root.clone()).unwrap();
     assert_eq!(verified.tasks[0].status, TaskStatus::Failed);
-    assert_eq!(verified.tasks[0].error, Some("Task execution failed".to_string()));
+    assert_eq!(
+        verified.tasks[0].error,
+        Some("Task execution failed".to_string())
+    );
 }
 
 /// Test that workspace state preserves all task properties after execution
@@ -87,7 +90,10 @@ fn test_execute_preserves_task_properties() {
     assert_eq!(verified.tasks[0].complexity, TaskComplexity::Complex);
     assert_eq!(verified.tasks[0].depends_on, vec!["dep-1".to_string()]);
     assert_eq!(verified.tasks[0].retry_count, 2);
-    assert_eq!(verified.tasks[0].session_id, Some("session-123".to_string()));
+    assert_eq!(
+        verified.tasks[0].session_id,
+        Some("session-123".to_string())
+    );
 }
 
 /// Test that workspace state handles concurrent execution correctly
@@ -171,5 +177,8 @@ fn test_execute_updates_metadata() {
 
     // Verify metadata was updated
     assert!(updated_state.metadata.modified_at > saved_state.metadata.modified_at);
-    assert_eq!(updated_state.metadata.created_at, initial_metadata.created_at);
+    assert_eq!(
+        updated_state.metadata.created_at,
+        initial_metadata.created_at
+    );
 }

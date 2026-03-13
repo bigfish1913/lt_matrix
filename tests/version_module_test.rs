@@ -72,16 +72,34 @@ fn test_version_parse_full() {
 #[test]
 fn test_version_invalid_formats() {
     // Missing parts
-    assert!(matches!(Version::parse("1.2"), Err(BumpError::InvalidFormat(_))));
-    assert!(matches!(Version::parse("1"), Err(BumpError::InvalidFormat(_))));
-    assert!(matches!(Version::parse("1.2.3.4"), Err(BumpError::InvalidFormat(_))));
+    assert!(matches!(
+        Version::parse("1.2"),
+        Err(BumpError::InvalidFormat(_))
+    ));
+    assert!(matches!(
+        Version::parse("1"),
+        Err(BumpError::InvalidFormat(_))
+    ));
+    assert!(matches!(
+        Version::parse("1.2.3.4"),
+        Err(BumpError::InvalidFormat(_))
+    ));
 
     // Non-numeric parts
-    assert!(matches!(Version::parse("a.b.c"), Err(BumpError::InvalidFormat(_))));
-    assert!(matches!(Version::parse("1.a.3"), Err(BumpError::InvalidFormat(_))));
+    assert!(matches!(
+        Version::parse("a.b.c"),
+        Err(BumpError::InvalidFormat(_))
+    ));
+    assert!(matches!(
+        Version::parse("1.a.3"),
+        Err(BumpError::InvalidFormat(_))
+    ));
 
     // Empty string
-    assert!(matches!(Version::parse(""), Err(BumpError::InvalidFormat(_))));
+    assert!(matches!(
+        Version::parse(""),
+        Err(BumpError::InvalidFormat(_))
+    ));
 }
 
 #[test]
@@ -159,7 +177,9 @@ fn test_version_bump_clears_pre_release() {
 #[test]
 fn test_version_bump_pre_release_new() {
     let v = Version::parse("1.2.3").unwrap();
-    let bumped = v.bump(VersionBump::PreRelease("alpha".to_string())).unwrap();
+    let bumped = v
+        .bump(VersionBump::PreRelease("alpha".to_string()))
+        .unwrap();
 
     assert!(bumped.is_pre_release());
     assert_eq!(bumped.pre_release, Some("alpha.1".to_string()));
@@ -169,7 +189,9 @@ fn test_version_bump_pre_release_new() {
 #[test]
 fn test_version_bump_pre_release_increment() {
     let v = Version::parse("1.2.3-alpha.1").unwrap();
-    let bumped = v.bump(VersionBump::PreRelease("alpha".to_string())).unwrap();
+    let bumped = v
+        .bump(VersionBump::PreRelease("alpha".to_string()))
+        .unwrap();
 
     assert_eq!(bumped.pre_release, Some("alpha.2".to_string()));
     assert_eq!(bumped.to_string(), "1.2.3-alpha.2");
@@ -273,10 +295,14 @@ fn test_version_pre_release_progression() {
     // Typical pre-release progression
     let v = Version::parse("1.0.0").unwrap();
 
-    let v = v.bump(VersionBump::PreRelease("alpha".to_string())).unwrap();
+    let v = v
+        .bump(VersionBump::PreRelease("alpha".to_string()))
+        .unwrap();
     assert_eq!(v.to_string(), "1.0.0-alpha.1");
 
-    let v = v.bump(VersionBump::PreRelease("alpha".to_string())).unwrap();
+    let v = v
+        .bump(VersionBump::PreRelease("alpha".to_string()))
+        .unwrap();
     assert_eq!(v.to_string(), "1.0.0-alpha.2");
 
     // Switch to beta

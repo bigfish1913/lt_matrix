@@ -3,8 +3,8 @@
 //! This example demonstrates how to use the generate stage to break down
 //! a user goal into structured tasks using Claude.
 
-use ltmatrix::pipeline::generate::{generate_tasks, GenerateConfig};
 use ltmatrix::pipeline::generate::calculate_generation_stats;
+use ltmatrix::pipeline::generate::{generate_tasks, GenerateConfig};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

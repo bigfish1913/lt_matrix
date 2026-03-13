@@ -180,9 +180,9 @@ impl ChildProcess {
         }
 
         // Spawn the process
-        let mut child = cmd
-            .spawn()
-            .map_err(|e| TransportError::ConnectionFailed(format!("Failed to spawn process: {}", e)))?;
+        let mut child = cmd.spawn().map_err(|e| {
+            TransportError::ConnectionFailed(format!("Failed to spawn process: {}", e))
+        })?;
 
         // Take stdin and stdout
         let stdin = child.stdin.take().ok_or_else(|| {
@@ -208,9 +208,9 @@ impl ChildProcess {
     /// Check if the process is still running
     pub async fn is_running(&mut self) -> bool {
         match self.child.try_wait() {
-            Ok(None) => true,  // Still running
+            Ok(None) => true,     // Still running
             Ok(Some(_)) => false, // Exited
-            Err(_) => false,  // Error checking status
+            Err(_) => false,      // Error checking status
         }
     }
 
@@ -703,8 +703,8 @@ impl Drop for StdioTransport {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::Transport;
+    use super::*;
 
     #[test]
     fn test_stdio_config_builder() {

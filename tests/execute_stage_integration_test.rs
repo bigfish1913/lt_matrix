@@ -488,8 +488,8 @@ fn test_execute_config_should_support_agent_pool() {
 
 #[tokio::test]
 async fn test_execute_tasks_should_use_agent_pool() {
-    use ltmatrix::agent::{AgentBackend, AgentPool};
     use ltmatrix::agent::claude::ClaudeAgent;
+    use ltmatrix::agent::{AgentBackend, AgentPool};
 
     // Create AgentPool
     let pool = AgentPool::from_default_config();

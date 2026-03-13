@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Project memory management
 //!
 //! This module provides persistent memory storage for architectural decisions,
@@ -166,7 +165,9 @@ impl std::str::FromStr for MemoryCategory {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let lower = s.to_lowercase().replace('_', " ").replace('-', " ");
         match lower.as_str() {
-            "architecture decision" | "architectural decision" => Ok(MemoryCategory::ArchitectureDecision),
+            "architecture decision" | "architectural decision" => {
+                Ok(MemoryCategory::ArchitectureDecision)
+            }
             "pattern" | "patterns" => Ok(MemoryCategory::Pattern),
             "api design" | "api" => Ok(MemoryCategory::ApiDesign),
             "data model" | "data models" => Ok(MemoryCategory::DataModel),
@@ -276,7 +277,11 @@ pub struct CodeSnippet {
 
 impl MemoryEntry {
     /// Create a new memory entry with required fields
-    pub fn new(task_id: impl Into<String>, title: impl Into<String>, content: impl Into<String>) -> Self {
+    pub fn new(
+        task_id: impl Into<String>,
+        title: impl Into<String>,
+        content: impl Into<String>,
+    ) -> Self {
         let now = Utc::now();
         let task_id = task_id.into();
         let title = title.into();
@@ -285,7 +290,8 @@ impl MemoryEntry {
         let id = format!(
             "mem-{}-{}",
             now.timestamp(),
-            title.chars()
+            title
+                .chars()
                 .filter(|c| c.is_alphanumeric() || *c == '-' || *c == ' ')
                 .take(20)
                 .collect::<String>()
@@ -363,7 +369,10 @@ impl MemoryEntry {
 
         // Metadata
         md.push_str(&format!("**Task**: {}\n", self.task_id));
-        md.push_str(&format!("**Date**: {}\n", self.timestamp.format("%Y-%m-%d %H:%M:%S UTC")));
+        md.push_str(&format!(
+            "**Date**: {}\n",
+            self.timestamp.format("%Y-%m-%d %H:%M:%S UTC")
+        ));
         md.push_str(&format!("**Priority**: {:?}\n", self.priority));
 
         if !self.files.is_empty() {
@@ -393,8 +402,10 @@ impl MemoryEntry {
         if !self.code_snippets.is_empty() {
             md.push_str("### Code Examples\n\n");
             for snippet in &self.code_snippets {
-                md.push_str(&format!("**{}** ({}:{}-{})\n",
-                    snippet.description, snippet.file, snippet.start_line, snippet.end_line));
+                md.push_str(&format!(
+                    "**{}** ({}:{}-{})\n",
+                    snippet.description, snippet.file, snippet.start_line, snippet.end_line
+                ));
                 md.push_str(&format!("```rust\n{}\n```\n\n", snippet.code));
             }
         }
@@ -438,12 +449,20 @@ impl MemoryEntry {
         }
 
         // Check tags
-        if self.tags.iter().any(|t| t.to_lowercase().contains(&query_lower)) {
+        if self
+            .tags
+            .iter()
+            .any(|t| t.to_lowercase().contains(&query_lower))
+        {
             return true;
         }
 
         // Check files
-        if self.files.iter().any(|f| f.to_lowercase().contains(&query_lower)) {
+        if self
+            .files
+            .iter()
+            .any(|f| f.to_lowercase().contains(&query_lower))
+        {
             return true;
         }
 
@@ -556,9 +575,9 @@ impl MemoryEntryBuilder {
 
     /// Build the memory entry
     pub fn build(self) -> Result<MemoryEntry> {
-        let content = self.content.ok_or_else(|| {
-            anyhow::anyhow!("Content is required for memory entry")
-        })?;
+        let content = self
+            .content
+            .ok_or_else(|| anyhow::anyhow!("Content is required for memory entry"))?;
 
         Ok(MemoryEntry {
             id: String::new(), // Will be generated in new()
@@ -603,15 +622,16 @@ impl MemoryStore {
 
     /// Create a new memory store with custom configuration
     pub fn with_config(project_root: impl AsRef<Path>, config: MemoryConfig) -> Result<Self> {
-        let project_root = project_root.as_ref().canonicalize()
+        let project_root = project_root
+            .as_ref()
+            .canonicalize()
             .context("Failed to canonicalize project root path")?;
         let memory_file = project_root.join(MEMORY_FILE_PATH);
 
         // Create .claude directory if it doesn't exist
         if let Some(parent) = memory_file.parent() {
             if !parent.exists() {
-                std::fs::create_dir_all(parent)
-                    .context("Failed to create .claude directory")?;
+                std::fs::create_dir_all(parent).context("Failed to create .claude directory")?;
                 info!("Created .claude directory at {}", parent.display());
             }
         }
@@ -632,12 +652,15 @@ impl MemoryStore {
     /// Load existing entries from the memory file
     fn load_entries(&self) -> Result<()> {
         if !self.memory_file.exists() {
-            debug!("Memory file does not exist yet: {}", self.memory_file.display());
+            debug!(
+                "Memory file does not exist yet: {}",
+                self.memory_file.display()
+            );
             return Ok(());
         }
 
-        let content = std::fs::read_to_string(&self.memory_file)
-            .context("Failed to read memory file")?;
+        let content =
+            std::fs::read_to_string(&self.memory_file).context("Failed to read memory file")?;
 
         // Parse entries from the markdown file
         let entries = parse_memory_file(&content)?;
@@ -687,8 +710,7 @@ impl MemoryStore {
             )
         };
 
-        std::fs::write(&self.memory_file, content)
-            .context("Failed to write memory file")?;
+        std::fs::write(&self.memory_file, content).context("Failed to write memory file")?;
 
         info!("Appended memory entry for task {}", entry.task_id);
 
@@ -725,10 +747,7 @@ impl MemoryStore {
         }
 
         if entries.len() > 20 {
-            context.push_str(&format!(
-                "\n... and {} older entries\n",
-                entries.len() - 20
-            ));
+            context.push_str(&format!("\n... and {} older entries\n", entries.len() - 20));
         }
 
         Ok(context)
@@ -746,8 +765,8 @@ impl MemoryStore {
             return Ok(());
         }
 
-        let metadata = std::fs::metadata(&self.memory_file)
-            .context("Failed to get memory file metadata")?;
+        let metadata =
+            std::fs::metadata(&self.memory_file).context("Failed to get memory file metadata")?;
 
         let entries = self.entries.read().unwrap();
 
@@ -780,11 +799,14 @@ impl MemoryStore {
         let (old_entries, recent_entries) = entries.split_at(entries.len() - keep_count);
 
         // Separate high-priority entries if preservation is enabled
-        let (high_priority_old, regular_old): (Vec<_>, Vec<_>) = if self.config.preserve_high_priority {
-            old_entries.iter().partition(|e| e.priority == MemoryPriority::High || e.priority == MemoryPriority::Critical)
-        } else {
-            (Vec::new(), old_entries.iter().collect())
-        };
+        let (high_priority_old, regular_old): (Vec<_>, Vec<_>) =
+            if self.config.preserve_high_priority {
+                old_entries.iter().partition(|e| {
+                    e.priority == MemoryPriority::High || e.priority == MemoryPriority::Critical
+                })
+            } else {
+                (Vec::new(), old_entries.iter().collect())
+            };
 
         // Group old entries by category (excluding high-priority if preserved)
         let mut categorized: std::collections::HashMap<String, Vec<&MemoryEntry>> =
@@ -805,7 +827,11 @@ impl MemoryStore {
         summary.push_str("## Summary of Earlier Work\n\n");
 
         for (category, category_entries) in categorized.iter() {
-            summary.push_str(&format!("### {} ({} entries)\n\n", category, category_entries.len()));
+            summary.push_str(&format!(
+                "### {} ({} entries)\n\n",
+                category,
+                category_entries.len()
+            ));
 
             for entry in category_entries {
                 summary.push_str(&format!(
@@ -867,8 +893,7 @@ impl MemoryStore {
         entries.clear();
 
         if self.memory_file.exists() {
-            std::fs::remove_file(&self.memory_file)
-                .context("Failed to remove memory file")?;
+            std::fs::remove_file(&self.memory_file).context("Failed to remove memory file")?;
         }
 
         Ok(())
@@ -902,15 +927,17 @@ fn parse_memory_section(section: &str) -> Option<MemoryEntry> {
     let lines: Vec<&str> = section.lines().collect();
 
     // Extract title (first ## heading, may have category prefix like "[Architecture Decision]")
-    let title_line = lines
-        .iter()
-        .find(|line| line.starts_with("## "))?;
+    let title_line = lines.iter().find(|line| line.starts_with("## "))?;
 
     // Extract title, potentially removing category prefix
     let title_text = title_line.trim_start_matches("## ");
     let title = if title_text.starts_with('[') {
         // Extract title after "] " pattern
-        title_text.split("] ").nth(1).unwrap_or(title_text).to_string()
+        title_text
+            .split("] ")
+            .nth(1)
+            .unwrap_or(title_text)
+            .to_string()
     } else {
         title_text.to_string()
     };
@@ -930,10 +957,9 @@ fn parse_memory_section(section: &str) -> Option<MemoryEntry> {
             category_str = line.trim_start_matches("**Category**: ").to_string();
         } else if line.starts_with("**Date**: ") {
             let date_str = line.trim_start_matches("**Date**: ");
-            if let Ok(parsed) = chrono::NaiveDateTime::parse_from_str(
-                date_str,
-                "%Y-%m-%d %H:%M:%S UTC"
-            ) {
+            if let Ok(parsed) =
+                chrono::NaiveDateTime::parse_from_str(date_str, "%Y-%m-%d %H:%M:%S UTC")
+            {
                 timestamp = DateTime::from_naive_utc_and_offset(parsed, Utc);
             }
         } else if line.starts_with("**Files**: ") {
@@ -1012,11 +1038,7 @@ mod tests {
 
     #[test]
     fn test_memory_entry_creation() {
-        let entry = MemoryEntry::new(
-            "task-001",
-            "Test Decision",
-            "This is a test decision"
-        );
+        let entry = MemoryEntry::new("task-001", "Test Decision", "This is a test decision");
 
         assert_eq!(entry.task_id, "task-001");
         assert_eq!(entry.title, "Test Decision");
@@ -1034,7 +1056,11 @@ mod tests {
 
     #[test]
     fn test_memory_entry_markdown_format() {
-        let entry = MemoryEntry::new("task-042", "Test Title", "Test content line 1\nTest content line 2");
+        let entry = MemoryEntry::new(
+            "task-042",
+            "Test Title",
+            "Test content line 1\nTest content line 2",
+        );
 
         let markdown = entry.to_markdown();
 
@@ -1080,7 +1106,7 @@ mod tests {
             let entry = MemoryEntry::new(
                 format!("task-{:03}", i),
                 format!("Decision {}", i),
-                format!("Content for decision {}", i)
+                format!("Content for decision {}", i),
             );
             store.append_entry(&entry).unwrap();
         }

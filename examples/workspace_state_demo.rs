@@ -3,7 +3,7 @@
 //! This example demonstrates how to use the WorkspaceState API
 //! to save and load task manifests.
 
-use ltmatrix::models::{Task, TaskStatus, TaskComplexity};
+use ltmatrix::models::{Task, TaskComplexity, TaskStatus};
 use ltmatrix::workspace::WorkspaceState;
 use std::path::PathBuf;
 

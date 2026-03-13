@@ -174,8 +174,7 @@ impl BackoffStrategy {
                 max_delay,
                 multiplier,
             } => {
-                let delay_secs = initial_delay.as_secs_f64()
-                    * multiplier.powi(attempt as i32);
+                let delay_secs = initial_delay.as_secs_f64() * multiplier.powi(attempt as i32);
                 let delay = Duration::from_secs_f64(delay_secs);
                 delay.min(*max_delay)
             }
@@ -186,8 +185,7 @@ impl BackoffStrategy {
                 multiplier,
                 jitter,
             } => {
-                let base_delay_secs = initial_delay.as_secs_f64()
-                    * multiplier.powi(attempt as i32);
+                let base_delay_secs = initial_delay.as_secs_f64() * multiplier.powi(attempt as i32);
 
                 // Apply jitter: random value in [1-jitter, 1+jitter]
                 // For simplicity, we use a deterministic jitter based on attempt
@@ -203,12 +201,7 @@ impl BackoffStrategy {
 
 impl Default for BackoffStrategy {
     fn default() -> Self {
-        Self::exponential_with_jitter(
-            Duration::from_secs(1),
-            Duration::from_secs(60),
-            2.0,
-            0.3,
-        )
+        Self::exponential_with_jitter(Duration::from_secs(1), Duration::from_secs(60), 2.0, 0.3)
     }
 }
 
@@ -896,8 +889,9 @@ impl RecoveryConfig {
                     RecoveryStrategy::RetryWithDelay
                 }
             }
-            McpErrorCode::InternalError
-            | McpErrorCode::ServerStarting => RecoveryStrategy::RetryWithDelay,
+            McpErrorCode::InternalError | McpErrorCode::ServerStarting => {
+                RecoveryStrategy::RetryWithDelay
+            }
             _ => RecoveryStrategy::Retry,
         }
     }
@@ -937,11 +931,8 @@ mod tests {
 
     #[test]
     fn test_backoff_exponential() {
-        let backoff = BackoffStrategy::exponential(
-            Duration::from_secs(1),
-            Duration::from_secs(60),
-            2.0,
-        );
+        let backoff =
+            BackoffStrategy::exponential(Duration::from_secs(1), Duration::from_secs(60), 2.0);
 
         assert_eq!(backoff.calculate_delay(0), Duration::from_secs(1));
         assert_eq!(backoff.calculate_delay(1), Duration::from_secs(2));
@@ -998,16 +989,28 @@ mod tests {
     #[test]
     fn test_degradation_level() {
         let healthy = ConnectionHealth::Healthy;
-        assert_eq!(DegradationLevel::from_health(&healthy), DegradationLevel::None);
+        assert_eq!(
+            DegradationLevel::from_health(&healthy),
+            DegradationLevel::None
+        );
 
         let degraded1 = ConnectionHealth::Degraded { missed_pings: 1 };
-        assert_eq!(DegradationLevel::from_health(&degraded1), DegradationLevel::Minor);
+        assert_eq!(
+            DegradationLevel::from_health(&degraded1),
+            DegradationLevel::Minor
+        );
 
         let degraded2 = ConnectionHealth::Degraded { missed_pings: 2 };
-        assert_eq!(DegradationLevel::from_health(&degraded2), DegradationLevel::Moderate);
+        assert_eq!(
+            DegradationLevel::from_health(&degraded2),
+            DegradationLevel::Moderate
+        );
 
         let stale = ConnectionHealth::Stale { missed_pings: 5 };
-        assert_eq!(DegradationLevel::from_health(&stale), DegradationLevel::Critical);
+        assert_eq!(
+            DegradationLevel::from_health(&stale),
+            DegradationLevel::Critical
+        );
     }
 
     #[test]
@@ -1068,8 +1071,7 @@ mod tests {
     #[tokio::test]
     async fn test_reconnection_manager_backoff() {
         let manager = ReconnectionManager::new(
-            ReconnectConfig::new()
-                .with_backoff(BackoffStrategy::fixed(Duration::from_secs(2)))
+            ReconnectConfig::new().with_backoff(BackoffStrategy::fixed(Duration::from_secs(2))),
         );
 
         let delay1 = manager.next_backoff();
@@ -1082,10 +1084,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_reconnection_manager_max_attempts() {
-        let manager = ReconnectionManager::new(
-            ReconnectConfig::new()
-                .with_max_attempts(3)
-        );
+        let manager = ReconnectionManager::new(ReconnectConfig::new().with_max_attempts(3));
 
         assert!(manager.should_reconnect());
         manager.next_backoff();
@@ -1103,13 +1102,17 @@ mod tests {
         let manager = ReconnectionManager::new(ReconnectConfig::default());
 
         // Record failed attempt
-        manager.record_attempt(false, Duration::from_millis(100)).await;
+        manager
+            .record_attempt(false, Duration::from_millis(100))
+            .await;
         let stats = manager.stats().await;
         assert_eq!(stats.failed_attempts, 1);
         assert_eq!(stats.consecutive_failures, 1);
 
         // Record successful attempt
-        manager.record_attempt(true, Duration::from_millis(150)).await;
+        manager
+            .record_attempt(true, Duration::from_millis(150))
+            .await;
         let stats = manager.stats().await;
         assert_eq!(stats.successful_reconnects, 1);
         assert_eq!(stats.consecutive_failures, 0);
@@ -1137,8 +1140,12 @@ mod tests {
         assert!(!manager.is_degraded().await);
 
         // Record failures
-        manager.record_attempt(false, Duration::from_millis(50)).await;
-        manager.record_attempt(false, Duration::from_millis(50)).await;
+        manager
+            .record_attempt(false, Duration::from_millis(50))
+            .await;
+        manager
+            .record_attempt(false, Duration::from_millis(50))
+            .await;
 
         // Should be degraded
         assert!(manager.is_degraded().await);
@@ -1150,7 +1157,10 @@ mod tests {
 
         // Transport errors should trigger reconnect
         let error = McpError::communication("Connection lost");
-        assert_eq!(config.strategy_for(&error), RecoveryStrategy::ReconnectAndRetry);
+        assert_eq!(
+            config.strategy_for(&error),
+            RecoveryStrategy::ReconnectAndRetry
+        );
 
         // Invalid request should fail fast
         let error = McpError::new(McpErrorCode::InvalidRequest, "Bad request");
@@ -1158,15 +1168,15 @@ mod tests {
 
         // Timeout should trigger reconnect
         let error = McpError::timeout("test", Duration::from_secs(10));
-        assert_eq!(config.strategy_for(&error), RecoveryStrategy::ReconnectAndRetry);
+        assert_eq!(
+            config.strategy_for(&error),
+            RecoveryStrategy::ReconnectAndRetry
+        );
     }
 
     #[tokio::test]
     async fn test_reconnection_manager_auto_disabled() {
-        let manager = ReconnectionManager::new(
-            ReconnectConfig::new()
-                .with_auto_reconnect(false)
-        );
+        let manager = ReconnectionManager::new(ReconnectConfig::new().with_auto_reconnect(false));
 
         assert!(!manager.should_reconnect());
     }

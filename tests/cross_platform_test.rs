@@ -144,7 +144,10 @@ fn test_home_dir_cross_platform() {
         .or_else(|_| env::var("USERPROFILE"))
         .or_else(|_| env::var("HOMEPATH"));
 
-    assert!(home_dir.is_ok() || cfg!(windows), "Home should be available");
+    assert!(
+        home_dir.is_ok() || cfg!(windows),
+        "Home should be available"
+    );
 }
 
 // ============================================================================
@@ -241,7 +244,10 @@ fn test_command_git_version() {
     assert!(output.status.success(), "Git should execute");
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("git version"), "Git version should be printed");
+    assert!(
+        stdout.contains("git version"),
+        "Git version should be printed"
+    );
 }
 
 #[test]
@@ -420,8 +426,7 @@ fn test_env_home_variable() {
     let home = env::var("HOME")
         .or_else(|_| env::var("USERPROFILE"))
         .or_else(|_| {
-            env::var("HOMEDRIVE")
-                .and_then(|d| env::var("HOMEPATH").map(|p| format!("{}{}", d, p)))
+            env::var("HOMEDRIVE").and_then(|d| env::var("HOMEPATH").map(|p| format!("{}{}", d, p)))
         });
 
     assert!(home.is_ok() || is_windows(), "Home should be set");
@@ -439,7 +444,10 @@ fn test_system_time() {
     let duration = now.duration_since(UNIX_EPOCH);
 
     assert!(duration.is_ok(), "Should get time since epoch");
-    assert!(duration.unwrap().as_secs() > 1_700_000_000, "Time should be recent");
+    assert!(
+        duration.unwrap().as_secs() > 1_700_000_000,
+        "Time should be recent"
+    );
 }
 
 #[test]
@@ -598,7 +606,11 @@ fn test_io_error_kind() {
     assert!(result.is_err(), "Should fail for nonexistent file");
 
     let error = result.unwrap_err();
-    assert_eq!(error.kind(), ErrorKind::NotFound, "Should be NotFound error");
+    assert_eq!(
+        error.kind(),
+        ErrorKind::NotFound,
+        "Should be NotFound error"
+    );
 }
 
 #[test]
@@ -704,15 +716,24 @@ fn test_path_starts_with() {
     let path = PathBuf::from("src/lib/module.rs");
 
     assert!(path.starts_with("src"), "Path should start with 'src'");
-    assert!(path.starts_with("src/lib"), "Path should start with 'src/lib'");
+    assert!(
+        path.starts_with("src/lib"),
+        "Path should start with 'src/lib'"
+    );
 }
 
 #[test]
 fn test_path_ends_with() {
     let path = PathBuf::from("src/lib/module.rs");
 
-    assert!(path.ends_with("module.rs"), "Path should end with 'module.rs'");
-    assert!(path.ends_with("lib/module.rs"), "Path should end with 'lib/module.rs'");
+    assert!(
+        path.ends_with("module.rs"),
+        "Path should end with 'module.rs'"
+    );
+    assert!(
+        path.ends_with("lib/module.rs"),
+        "Path should end with 'lib/module.rs'"
+    );
 }
 
 // ============================================================================
@@ -755,7 +776,10 @@ fn test_command_args_with_spaces() {
 
     let output = result.unwrap();
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("hello world"), "Should handle spaced argument");
+    assert!(
+        stdout.contains("hello world"),
+        "Should handle spaced argument"
+    );
 }
 
 // ============================================================================
@@ -768,11 +792,17 @@ fn test_windows_unc_path_handling() {
     let unc_path = PathBuf::from(r"\\server\share\file.txt");
 
     // UNC paths should be valid path objects
-    assert!(unc_path.to_str().is_some(), "UNC path should be valid string");
+    assert!(
+        unc_path.to_str().is_some(),
+        "UNC path should be valid string"
+    );
 
     // On Windows, UNC paths are absolute
     #[cfg(windows)]
-    assert!(unc_path.is_absolute(), "UNC path should be absolute on Windows");
+    assert!(
+        unc_path.is_absolute(),
+        "UNC path should be absolute on Windows"
+    );
 }
 
 #[test]
@@ -782,7 +812,10 @@ fn test_windows_drive_letter_path() {
 
     #[cfg(windows)]
     {
-        assert!(drive_path.is_absolute(), "Drive path should be absolute on Windows");
+        assert!(
+            drive_path.is_absolute(),
+            "Drive path should be absolute on Windows"
+        );
         // Components should include drive root
         let components: Vec<_> = drive_path.components().collect();
         assert!(!components.is_empty(), "Should have components");
@@ -801,7 +834,10 @@ fn test_windows_long_path_prefix() {
     let long_path = PathBuf::from(r"\\?\C:\Very\Long\Path\That\Exceeds\Normal\Limits");
 
     // Should be valid on all platforms
-    assert!(long_path.to_str().is_some(), "Long path prefix should be valid");
+    assert!(
+        long_path.to_str().is_some(),
+        "Long path prefix should be valid"
+    );
 }
 
 #[test]
@@ -839,7 +875,11 @@ fn test_path_reserved_names_windows() {
     for name in &reserved_names {
         let path = PathBuf::from(name);
         // These are valid Path objects but problematic as filenames on Windows
-        assert!(path.to_str().is_some(), "{} should be a valid path component", name);
+        assert!(
+            path.to_str().is_some(),
+            "{} should be a valid path component",
+            name
+        );
     }
 }
 
@@ -868,7 +908,11 @@ fn test_path_traversal_detection() {
             }
         }
 
-        assert!(has_traversal, "Path '{}' should contain traversal", path_str);
+        assert!(
+            has_traversal,
+            "Path '{}' should contain traversal",
+            path_str
+        );
     }
 }
 
@@ -884,11 +928,15 @@ fn test_safe_path_components() {
 
     for path_str in &safe_paths {
         let path = PathBuf::from(path_str);
-        let has_traversal = path.components().any(|c| {
-            matches!(c, std::path::Component::ParentDir)
-        });
+        let has_traversal = path
+            .components()
+            .any(|c| matches!(c, std::path::Component::ParentDir));
 
-        assert!(!has_traversal, "Path '{}' should not contain traversal", path_str);
+        assert!(
+            !has_traversal,
+            "Path '{}' should not contain traversal",
+            path_str
+        );
     }
 }
 
@@ -901,7 +949,11 @@ fn test_path_sanitize_characters() {
         let filename = format!("test{}file.txt", ch);
         // These create valid Path objects but may be invalid on some filesystems
         let path = PathBuf::from(&filename);
-        assert!(path.to_str().is_some(), "Path with '{}' should be valid Path object", ch);
+        assert!(
+            path.to_str().is_some(),
+            "Path with '{}' should be valid Path object",
+            ch
+        );
     }
 }
 
@@ -912,7 +964,10 @@ fn test_path_null_byte_rejection() {
     // This test verifies normal path operations don't introduce nulls
     let path = PathBuf::from("normal/path.txt");
     let path_str = path.to_string_lossy();
-    assert!(!path_str.contains('\0'), "Path should not contain null bytes");
+    assert!(
+        !path_str.contains('\0'),
+        "Path should not contain null bytes"
+    );
 }
 
 // ============================================================================
@@ -928,9 +983,7 @@ fn test_command_shell_differences() {
         ("sh", vec!["-c", "echo test"])
     };
 
-    let result = Command::new(shell.0)
-        .args(&shell.1)
-        .output();
+    let result = Command::new(shell.0).args(&shell.1).output();
 
     assert!(result.is_ok(), "Shell command should execute");
     let output = result.unwrap();
@@ -958,7 +1011,9 @@ fn test_command_path_separator_in_args() {
 fn test_command_output_encoding() {
     // Test that command output encoding is handled correctly
     let result = if is_windows() {
-        Command::new("cmd").args(["/C", "echo", "Hello World"]).output()
+        Command::new("cmd")
+            .args(["/C", "echo", "Hello World"])
+            .output()
     } else {
         Command::new("echo").arg("Hello World").output()
     };
@@ -1040,7 +1095,10 @@ fn test_env_path_separator() {
     let separator = if is_windows() { ';' } else { ':' };
 
     // PATH should have at least one entry
-    let entries: Vec<_> = path_var.split(separator).filter(|s| !s.is_empty()).collect();
+    let entries: Vec<_> = path_var
+        .split(separator)
+        .filter(|s| !s.is_empty())
+        .collect();
     assert!(!entries.is_empty(), "PATH should have entries");
 }
 
@@ -1066,7 +1124,10 @@ fn test_env_user_variables() {
     };
 
     // User should be available on most systems
-    assert!(user.is_ok() || is_windows(), "User variable should be available");
+    assert!(
+        user.is_ok() || is_windows(),
+        "User variable should be available"
+    );
 }
 
 // ============================================================================
@@ -1272,7 +1333,10 @@ fn test_symlink_detection() {
     assert!(metadata.is_ok(), "Should get symlink metadata");
 
     let meta = metadata.unwrap();
-    assert!(!meta.file_type().is_symlink(), "Regular file should not be symlink");
+    assert!(
+        !meta.file_type().is_symlink(),
+        "Regular file should not be symlink"
+    );
 
     fs::remove_file(&regular_file).ok();
 }
@@ -1393,5 +1457,9 @@ fn test_system_info() {
     let valid_arch = ["x86_64", "x86", "aarch64", "arm"];
 
     assert!(valid_os.contains(&os), "OS should be recognized: {}", os);
-    assert!(valid_arch.contains(&arch), "Architecture should be recognized: {}", arch);
+    assert!(
+        valid_arch.contains(&arch),
+        "Architecture should be recognized: {}",
+        arch
+    );
 }

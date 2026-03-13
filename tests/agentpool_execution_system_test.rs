@@ -265,7 +265,7 @@ fn test_pool_config_edge_cases() {
     let config = PoolConfig {
         max_sessions: 10000,
         cleanup_interval_seconds: 86400, // 1 day
-        stale_threshold_seconds: 86400, // 1 day
+        stale_threshold_seconds: 86400,  // 1 day
         ..Default::default()
     };
     assert!(config.validate().is_ok());

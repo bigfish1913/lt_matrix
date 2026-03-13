@@ -209,7 +209,11 @@ fn test_ac9_multiple_question_management() {
         id: "frontend".to_string(),
         question_text: "Frontend framework?".to_string(),
         question_type: QuestionType::Choice,
-        options: Some(vec!["React".to_string(), "Vue".to_string(), "Svelte".to_string()]),
+        options: Some(vec![
+            "React".to_string(),
+            "Vue".to_string(),
+            "Svelte".to_string(),
+        ]),
         default_value: None,
         required: true,
         multi_select: false,

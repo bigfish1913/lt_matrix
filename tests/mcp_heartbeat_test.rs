@@ -619,9 +619,7 @@ mod heartbeat_manager_health_tests {
 
     #[tokio::test]
     async fn test_manager_health_stays_healthy() {
-        let manager = HeartbeatManager::new(
-            HeartbeatConfig::new().with_max_missed_pings(3),
-        );
+        let manager = HeartbeatManager::new(HeartbeatConfig::new().with_max_missed_pings(3));
 
         // Initially healthy
         assert!(manager.is_healthy().await);
@@ -684,9 +682,8 @@ mod heartbeat_manager_background_tests {
 
     #[tokio::test]
     async fn test_manager_handle_stop_and_join() {
-        let manager = HeartbeatManager::new(
-            HeartbeatConfig::new().with_interval(Duration::from_millis(100)),
-        );
+        let manager =
+            HeartbeatManager::new(HeartbeatConfig::new().with_interval(Duration::from_millis(100)));
 
         let handle = manager.start().await.unwrap();
 
@@ -870,9 +867,7 @@ mod integration_tests {
 
     #[tokio::test]
     async fn test_health_recovers_after_pong() {
-        let manager = HeartbeatManager::new(
-            HeartbeatConfig::new().with_max_missed_pings(3),
-        );
+        let manager = HeartbeatManager::new(HeartbeatConfig::new().with_max_missed_pings(3));
 
         // Start healthy
         assert!(manager.is_healthy().await);
@@ -942,9 +937,7 @@ mod edge_case_tests {
 
     #[tokio::test]
     async fn test_zero_missed_pings_threshold() {
-        let manager = HeartbeatManager::new(
-            HeartbeatConfig::new().with_max_missed_pings(0),
-        );
+        let manager = HeartbeatManager::new(HeartbeatConfig::new().with_max_missed_pings(0));
 
         // With threshold of 0, even healthy state might be considered stale
         // depending on implementation - this tests that edge case
@@ -984,9 +977,8 @@ mod edge_case_tests {
 
     #[tokio::test]
     async fn test_multiple_start_stop_cycles() {
-        let manager = HeartbeatManager::new(
-            HeartbeatConfig::new().with_interval(Duration::from_millis(100)),
-        );
+        let manager =
+            HeartbeatManager::new(HeartbeatConfig::new().with_interval(Duration::from_millis(100)));
 
         for _ in 0..3 {
             let handle = manager.start().await.unwrap();

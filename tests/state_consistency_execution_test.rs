@@ -9,8 +9,8 @@
 //! - Recovery Scenarios: State restoration and continuation after interruption
 //! - State Integrity: Data consistency, validation, and verification
 
+use ltmatrix::models::{Task, TaskComplexity, TaskStatus};
 use ltmatrix::workspace::WorkspaceState;
-use ltmatrix::models::{Task, TaskStatus, TaskComplexity};
 use std::fs;
 use std::path::PathBuf;
 use std::time::Duration;
@@ -27,7 +27,11 @@ fn setup_test_workspace() -> (TempDir, PathBuf) {
 
 /// Creates a sample task with specified status
 fn create_task(id: &str, status: TaskStatus) -> Task {
-    let mut task = Task::new(id, format!("Task {}", id), format!("Description for {}", id));
+    let mut task = Task::new(
+        id,
+        format!("Task {}", id),
+        format!("Description for {}", id),
+    );
     task.status = status;
     task
 }
@@ -49,12 +53,30 @@ fn create_dependency_chain(count: usize) -> Vec<Task> {
 fn verify_task_properties(original: &Task, loaded: &Task) {
     assert_eq!(original.id, loaded.id, "Task ID should match");
     assert_eq!(original.title, loaded.title, "Task title should match");
-    assert_eq!(original.description, loaded.description, "Task description should match");
-    assert_eq!(original.complexity, loaded.complexity, "Task complexity should match");
-    assert_eq!(original.depends_on, loaded.depends_on, "Task dependencies should match");
-    assert_eq!(original.retry_count, loaded.retry_count, "Retry count should match");
-    assert_eq!(original.session_id, loaded.session_id, "Session ID should match");
-    assert_eq!(original.parent_session_id, loaded.parent_session_id, "Parent session ID should match");
+    assert_eq!(
+        original.description, loaded.description,
+        "Task description should match"
+    );
+    assert_eq!(
+        original.complexity, loaded.complexity,
+        "Task complexity should match"
+    );
+    assert_eq!(
+        original.depends_on, loaded.depends_on,
+        "Task dependencies should match"
+    );
+    assert_eq!(
+        original.retry_count, loaded.retry_count,
+        "Retry count should match"
+    );
+    assert_eq!(
+        original.session_id, loaded.session_id,
+        "Session ID should match"
+    );
+    assert_eq!(
+        original.parent_session_id, loaded.parent_session_id,
+        "Parent session ID should match"
+    );
 }
 
 // ==================== Normal Execution Scenarios ====================
@@ -124,7 +146,10 @@ fn test_normal_execution_multiple_tasks_sequential() {
 
     // Final verification
     let final_state = WorkspaceState::load(project_root).unwrap();
-    assert!(final_state.tasks.iter().all(|t| t.status == TaskStatus::Completed));
+    assert!(final_state
+        .tasks
+        .iter()
+        .all(|t| t.status == TaskStatus::Completed));
 }
 
 #[test]
@@ -229,7 +254,10 @@ fn test_normal_execution_preserves_session_id() {
 
     // Verify session ID preserved through execution
     let final_state = WorkspaceState::load(project_root).unwrap();
-    assert_eq!(final_state.tasks[0].session_id, Some("session-abc123".to_string()));
+    assert_eq!(
+        final_state.tasks[0].session_id,
+        Some("session-abc123".to_string())
+    );
 }
 
 // ==================== Interrupted Execution Scenarios ====================
@@ -254,8 +282,10 @@ fn test_interrupted_execution_during_in_progress() {
     // Load with transform should reset to Pending
     let recovered_state = WorkspaceState::load_with_transform(project_root.clone()).unwrap();
     assert_eq!(recovered_state.tasks[0].status, TaskStatus::Pending);
-    assert!(recovered_state.tasks[0].started_at.is_none(),
-        "started_at should be cleared on recovery");
+    assert!(
+        recovered_state.tasks[0].started_at.is_none(),
+        "started_at should be cleared on recovery"
+    );
 }
 
 #[test]
@@ -367,8 +397,10 @@ fn test_interrupted_execution_during_retry() {
     // Recovery should preserve retry count but reset status
     let recovered_state = WorkspaceState::load_with_transform(project_root).unwrap();
     assert_eq!(recovered_state.tasks[0].status, TaskStatus::Pending);
-    assert_eq!(recovered_state.tasks[0].retry_count, 1,
-        "Retry count should be preserved during recovery");
+    assert_eq!(
+        recovered_state.tasks[0].retry_count, 1,
+        "Retry count should be preserved during recovery"
+    );
     assert!(recovered_state.tasks[0].started_at.is_none());
 }
 
@@ -394,8 +426,14 @@ fn test_interrupted_execution_with_nested_subtasks() {
     let recovered_state = WorkspaceState::load_with_transform(project_root).unwrap();
 
     assert_eq!(recovered_state.tasks[0].status, TaskStatus::Pending);
-    assert_eq!(recovered_state.tasks[0].subtasks[0].status, TaskStatus::Completed);
-    assert_eq!(recovered_state.tasks[0].subtasks[1].status, TaskStatus::Pending);
+    assert_eq!(
+        recovered_state.tasks[0].subtasks[0].status,
+        TaskStatus::Completed
+    );
+    assert_eq!(
+        recovered_state.tasks[0].subtasks[1].status,
+        TaskStatus::Pending
+    );
     assert!(recovered_state.tasks[0].subtasks[1].started_at.is_none());
 }
 
@@ -446,7 +484,10 @@ fn test_recovery_after_interruption_continues_from_completed() {
 
     // Verify all tasks completed
     let final_state = WorkspaceState::load(project_root).unwrap();
-    assert!(final_state.tasks.iter().all(|t| t.status == TaskStatus::Completed));
+    assert!(final_state
+        .tasks
+        .iter()
+        .all(|t| t.status == TaskStatus::Completed));
 }
 
 #[test]
@@ -467,8 +508,10 @@ fn test_recovery_preserves_failed_task_errors() {
     // Recovery should preserve failed status and error
     let recovered_state = WorkspaceState::load_with_transform(project_root).unwrap();
     assert_eq!(recovered_state.tasks[0].status, TaskStatus::Failed);
-    assert_eq!(recovered_state.tasks[0].error,
-        Some("Critical error: cannot proceed".to_string()));
+    assert_eq!(
+        recovered_state.tasks[0].error,
+        Some("Critical error: cannot proceed".to_string())
+    );
 }
 
 #[test]
@@ -715,8 +758,20 @@ fn test_state_integrity_large_number_of_tasks() {
     // Verify partial completion
     let final_state = WorkspaceState::load(project_root).unwrap();
     assert_eq!(final_state.tasks.len(), 100);
-    assert_eq!(final_state.tasks[0..50].iter().filter(|t| t.status == TaskStatus::Completed).count(), 50);
-    assert_eq!(final_state.tasks[50..100].iter().filter(|t| t.status == TaskStatus::Pending).count(), 50);
+    assert_eq!(
+        final_state.tasks[0..50]
+            .iter()
+            .filter(|t| t.status == TaskStatus::Completed)
+            .count(),
+        50
+    );
+    assert_eq!(
+        final_state.tasks[50..100]
+            .iter()
+            .filter(|t| t.status == TaskStatus::Pending)
+            .count(),
+        50
+    );
 }
 
 #[test]
@@ -737,6 +792,12 @@ fn test_state_integrity_unicode_content() {
     // Load and verify unicode preserved
     let loaded_state = WorkspaceState::load(project_root).unwrap();
     assert_eq!(loaded_state.tasks[0].id, "task-unicode-测试");
-    assert_eq!(loaded_state.tasks[0].title, "Tâche avec çäräçtërës spécïäux");
-    assert_eq!(loaded_state.tasks[0].description, "描述包含中文、العربية、עברית");
+    assert_eq!(
+        loaded_state.tasks[0].title,
+        "Tâche avec çäräçtërës spécïäux"
+    );
+    assert_eq!(
+        loaded_state.tasks[0].description,
+        "描述包含中文、العربية、עברית"
+    );
 }

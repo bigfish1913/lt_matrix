@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Testing framework detection
 //!
 //! This module provides functionality to detect which testing framework
@@ -138,7 +137,8 @@ impl TestCommand {
 
     /// Add multiple arguments to the command
     pub fn with_args(mut self, args: &[impl AsRef<str>]) -> Self {
-        self.args.extend(args.iter().map(|s| s.as_ref().to_string()));
+        self.args
+            .extend(args.iter().map(|s| s.as_ref().to_string()));
         self
     }
 
@@ -259,8 +259,14 @@ mod tests {
             .with_work_dir("/tmp/test");
 
         assert_eq!(cmd.program, "cargo");
-        assert_eq!(cmd.args, vec!["test", "--release", "--no-fail-fast", "--verbose"]);
-        assert_eq!(cmd.env_vars, vec![("RUST_LOG".to_string(), "debug".to_string())]);
+        assert_eq!(
+            cmd.args,
+            vec!["test", "--release", "--no-fail-fast", "--verbose"]
+        );
+        assert_eq!(
+            cmd.env_vars,
+            vec![("RUST_LOG".to_string(), "debug".to_string())]
+        );
         assert_eq!(cmd.work_dir, Some("/tmp/test".to_string()));
     }
 
@@ -277,8 +283,7 @@ mod tests {
         let cmd1 = TestCommand::new(Framework::Pytest);
         assert_eq!(cmd1.to_command_line(), "pytest -v");
 
-        let cmd2 = TestCommand::new(Framework::Cargo)
-            .with_work_dir("/my/project");
+        let cmd2 = TestCommand::new(Framework::Cargo).with_work_dir("/my/project");
         assert_eq!(cmd2.to_command_line(), "(cd /my/project && cargo test)");
     }
 

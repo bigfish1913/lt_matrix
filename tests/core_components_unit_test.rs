@@ -11,19 +11,19 @@
 //! - Task model operations
 //! - Telemetry event handling
 
+use chrono::{Duration, Utc};
+use clap::Parser;
 use ltmatrix::agent::backend::{
     AgentConfig, AgentError, AgentResponse, AgentSession, ExecutionConfig, MemorySession,
 };
 use ltmatrix::agent::pool::SessionPool;
 use ltmatrix::cli::args::{
-    Args, BlockedStrategy, Command, ExecutionModeArg, LogLevel, OutputFormat, Shell,
-    CleanupArgs, CompletionsArgs, ManArgs, MemoryArgs, MemoryAction, MemoryClearArgs,
-    MemoryStatusArgs, MemorySummarizeArgs, ReleaseArgs,
+    Args, BlockedStrategy, CleanupArgs, Command, CompletionsArgs, ExecutionModeArg, LogLevel,
+    ManArgs, MemoryAction, MemoryArgs, MemoryClearArgs, MemoryStatusArgs, MemorySummarizeArgs,
+    OutputFormat, ReleaseArgs, Shell,
 };
 use ltmatrix::models::{ExecutionMode, Task, TaskComplexity, TaskStatus};
 use ltmatrix::telemetry::event::{ErrorCategory, TelemetryEvent};
-use chrono::{Duration, Utc};
-use clap::Parser;
 use uuid::Uuid;
 
 // ============================================================================
@@ -113,7 +113,8 @@ mod cli_parsing_tests {
             ("warn", LogLevel::Warn),
             ("error", LogLevel::Error),
         ] {
-            let args = Args::try_parse_from(["ltmatrix", "--log-level", level_str, "goal"]).unwrap();
+            let args =
+                Args::try_parse_from(["ltmatrix", "--log-level", level_str, "goal"]).unwrap();
             assert_eq!(args.log_level, Some(expected));
         }
     }
@@ -126,22 +127,35 @@ mod cli_parsing_tests {
             ("abort", BlockedStrategy::Abort),
             ("retry", BlockedStrategy::Retry),
         ] {
-            let args = Args::try_parse_from(["ltmatrix", "--on-blocked", strategy_str, "goal"]).unwrap();
+            let args =
+                Args::try_parse_from(["ltmatrix", "--on-blocked", strategy_str, "goal"]).unwrap();
             assert_eq!(args.on_blocked, Some(expected));
         }
     }
 
     #[test]
     fn test_args_timeout_and_retries() {
-        let args = Args::try_parse_from(["ltmatrix", "--timeout", "7200", "--max-retries", "5", "goal"]).unwrap();
+        let args = Args::try_parse_from([
+            "ltmatrix",
+            "--timeout",
+            "7200",
+            "--max-retries",
+            "5",
+            "goal",
+        ])
+        .unwrap();
         assert_eq!(args.timeout, Some(7200));
         assert_eq!(args.max_retries, Some(5));
     }
 
     #[test]
     fn test_args_config_path() {
-        let args = Args::try_parse_from(["ltmatrix", "--config", "/path/to/config.toml", "goal"]).unwrap();
-        assert_eq!(args.config, Some(std::path::PathBuf::from("/path/to/config.toml")));
+        let args =
+            Args::try_parse_from(["ltmatrix", "--config", "/path/to/config.toml", "goal"]).unwrap();
+        assert_eq!(
+            args.config,
+            Some(std::path::PathBuf::from("/path/to/config.toml"))
+        );
     }
 
     #[test]
@@ -152,7 +166,16 @@ mod cli_parsing_tests {
 
     #[test]
     fn test_args_flags() {
-        let args = Args::try_parse_from(["ltmatrix", "--dry-run", "--resume", "--ask", "--no-color", "--telemetry", "goal"]).unwrap();
+        let args = Args::try_parse_from([
+            "ltmatrix",
+            "--dry-run",
+            "--resume",
+            "--ask",
+            "--no-color",
+            "--telemetry",
+            "goal",
+        ])
+        .unwrap();
         assert!(args.dry_run);
         assert!(args.resume);
         assert!(args.ask);
@@ -169,9 +192,18 @@ mod cli_parsing_tests {
 
     #[test]
     fn test_execution_mode_to_model() {
-        assert!(matches!(ExecutionModeArg::Fast.to_model(), ExecutionMode::Fast));
-        assert!(matches!(ExecutionModeArg::Standard.to_model(), ExecutionMode::Standard));
-        assert!(matches!(ExecutionModeArg::Expert.to_model(), ExecutionMode::Expert));
+        assert!(matches!(
+            ExecutionModeArg::Fast.to_model(),
+            ExecutionMode::Fast
+        ));
+        assert!(matches!(
+            ExecutionModeArg::Standard.to_model(),
+            ExecutionMode::Standard
+        ));
+        assert!(matches!(
+            ExecutionModeArg::Expert.to_model(),
+            ExecutionMode::Expert
+        ));
     }
 
     #[test]
@@ -257,7 +289,13 @@ mod cli_parsing_tests {
     fn test_cleanup_subcommand_reset_all() {
         let args = Args::try_parse_from(["ltmatrix", "cleanup", "--reset-all"]).unwrap();
         match args.command {
-            Some(Command::Cleanup(CleanupArgs { reset_all, reset_failed, remove, force, dry_run })) => {
+            Some(Command::Cleanup(CleanupArgs {
+                reset_all,
+                reset_failed,
+                remove,
+                force,
+                dry_run,
+            })) => {
                 assert!(reset_all);
                 assert!(!reset_failed);
                 assert!(!remove);
@@ -270,9 +308,16 @@ mod cli_parsing_tests {
 
     #[test]
     fn test_cleanup_subcommand_reset_failed() {
-        let args = Args::try_parse_from(["ltmatrix", "cleanup", "--reset-failed", "--force"]).unwrap();
+        let args =
+            Args::try_parse_from(["ltmatrix", "cleanup", "--reset-failed", "--force"]).unwrap();
         match args.command {
-            Some(Command::Cleanup(CleanupArgs { reset_all, reset_failed, remove, force, dry_run })) => {
+            Some(Command::Cleanup(CleanupArgs {
+                reset_all,
+                reset_failed,
+                remove,
+                force,
+                dry_run,
+            })) => {
                 assert!(!reset_all);
                 assert!(reset_failed);
                 assert!(!remove);
@@ -287,7 +332,13 @@ mod cli_parsing_tests {
     fn test_cleanup_subcommand_remove() {
         let args = Args::try_parse_from(["ltmatrix", "cleanup", "--remove", "--dry-run"]).unwrap();
         match args.command {
-            Some(Command::Cleanup(CleanupArgs { reset_all, reset_failed, remove, force, dry_run })) => {
+            Some(Command::Cleanup(CleanupArgs {
+                reset_all,
+                reset_failed,
+                remove,
+                force,
+                dry_run,
+            })) => {
                 assert!(!reset_all);
                 assert!(!reset_failed);
                 assert!(remove);
@@ -318,7 +369,9 @@ mod cli_parsing_tests {
         // Summarize
         let args = Args::try_parse_from(["ltmatrix", "memory", "summarize", "--force"]).unwrap();
         match args.command {
-            Some(Command::Memory(MemoryArgs { action: MemoryAction::Summarize(args) })) => {
+            Some(Command::Memory(MemoryArgs {
+                action: MemoryAction::Summarize(args),
+            })) => {
                 assert!(args.force);
                 assert!(!args.dry_run);
             }
@@ -328,7 +381,9 @@ mod cli_parsing_tests {
         // Status
         let args = Args::try_parse_from(["ltmatrix", "memory", "status", "--json"]).unwrap();
         match args.command {
-            Some(Command::Memory(MemoryArgs { action: MemoryAction::Status(args) })) => {
+            Some(Command::Memory(MemoryArgs {
+                action: MemoryAction::Status(args),
+            })) => {
                 assert!(args.json);
             }
             _ => panic!("Expected Memory Status command"),
@@ -337,7 +392,9 @@ mod cli_parsing_tests {
         // Clear
         let args = Args::try_parse_from(["ltmatrix", "memory", "clear", "--force"]).unwrap();
         match args.command {
-            Some(Command::Memory(MemoryArgs { action: MemoryAction::Clear(args) })) => {
+            Some(Command::Memory(MemoryArgs {
+                action: MemoryAction::Clear(args),
+            })) => {
                 assert!(args.force);
             }
             _ => panic!("Expected Memory Clear command"),
@@ -346,9 +403,15 @@ mod cli_parsing_tests {
 
     #[test]
     fn test_release_subcommand() {
-        let args = Args::try_parse_from(["ltmatrix", "release", "--archive", "--all-targets"]).unwrap();
+        let args =
+            Args::try_parse_from(["ltmatrix", "release", "--archive", "--all-targets"]).unwrap();
         match args.command {
-            Some(Command::Release(ReleaseArgs { target, output, archive, all_targets })) => {
+            Some(Command::Release(ReleaseArgs {
+                target,
+                output,
+                archive,
+                all_targets,
+            })) => {
                 assert!(target.is_none());
                 assert_eq!(output, std::path::PathBuf::from("./dist"));
                 assert!(archive);
@@ -360,9 +423,20 @@ mod cli_parsing_tests {
 
     #[test]
     fn test_release_subcommand_with_target() {
-        let args = Args::try_parse_from(["ltmatrix", "release", "--target", "x86_64-unknown-linux-musl"]).unwrap();
+        let args = Args::try_parse_from([
+            "ltmatrix",
+            "release",
+            "--target",
+            "x86_64-unknown-linux-musl",
+        ])
+        .unwrap();
         match args.command {
-            Some(Command::Release(ReleaseArgs { target, output, archive, all_targets })) => {
+            Some(Command::Release(ReleaseArgs {
+                target,
+                output,
+                archive,
+                all_targets,
+            })) => {
                 assert_eq!(target, Some("x86_64-unknown-linux-musl".to_string()));
                 assert!(!archive);
                 assert!(!all_targets);
@@ -1336,10 +1410,7 @@ mod telemetry_event_tests {
             ErrorCategory::from_error_message("unknown error"),
             ErrorCategory::Other
         );
-        assert_eq!(
-            ErrorCategory::from_error_message(""),
-            ErrorCategory::Other
-        );
+        assert_eq!(ErrorCategory::from_error_message(""), ErrorCategory::Other);
     }
 }
 
@@ -1359,7 +1430,11 @@ mod execution_mode_tests {
 
     #[test]
     fn test_execution_mode_serialization() {
-        for mode in [ExecutionMode::Fast, ExecutionMode::Standard, ExecutionMode::Expert] {
+        for mode in [
+            ExecutionMode::Fast,
+            ExecutionMode::Standard,
+            ExecutionMode::Expert,
+        ] {
             let json = serde_json::to_string(&mode).unwrap();
             let parsed: ExecutionMode = serde_json::from_str(&json).unwrap();
             assert_eq!(mode, parsed);
@@ -1503,7 +1578,10 @@ mod edge_case_tests {
     fn test_cli_args_with_special_goal() {
         // Test goal with special characters
         let args = Args::try_parse_from(["ltmatrix", "build a \"REST API\" with tests"]).unwrap();
-        assert_eq!(args.goal, Some("build a \"REST API\" with tests".to_string()));
+        assert_eq!(
+            args.goal,
+            Some("build a \"REST API\" with tests".to_string())
+        );
     }
 
     #[test]
@@ -1514,10 +1592,13 @@ mod edge_case_tests {
             "--dry-run",
             "--no-color",
             "--telemetry",
-            "--timeout", "60",
-            "--max-retries", "1",
+            "--timeout",
+            "60",
+            "--max-retries",
+            "1",
             "goal",
-        ]).unwrap();
+        ])
+        .unwrap();
 
         assert!(args.fast);
         assert!(args.dry_run);

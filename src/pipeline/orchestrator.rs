@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Pipeline orchestrator
 //!
 //! This module implements the core orchestration logic for the ltmatrix pipeline.
@@ -41,7 +40,7 @@
 //! # }
 //! ```
 
-use anyhow::{Result, bail};
+use anyhow::{bail, Result};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -50,19 +49,17 @@ use std::time::Duration;
 use tokio::sync::RwLock;
 use tracing::{debug, error, info, instrument, warn};
 
-use ltmatrix_agent::AgentPool;
-use ltmatrix_core::{
-    ExecutionMode, ModeConfig, PipelineStage, Task,
-};
-use crate::pipeline::assess::{AssessConfig, assess_tasks};
-use crate::pipeline::commit::{CommitConfig, commit_tasks};
-use crate::pipeline::execute::{ExecuteConfig, execute_tasks};
-use crate::pipeline::generate::{GenerateConfig, generate_tasks};
-use crate::pipeline::memory::{MemoryConfig, update_memory};
+use crate::pipeline::assess::{assess_tasks, AssessConfig};
+use crate::pipeline::commit::{commit_tasks, CommitConfig};
+use crate::pipeline::execute::{execute_tasks, ExecuteConfig};
+use crate::pipeline::generate::{generate_tasks, GenerateConfig};
+use crate::pipeline::memory::{update_memory, MemoryConfig};
 use crate::pipeline::review::{review_tasks, ReviewConfig};
-use crate::pipeline::test::{TestConfig, test_tasks};
-use crate::pipeline::verify::{VerifyConfig, verify_tasks};
-use crate::workspace::{WorkspaceState, RecoverySummary};
+use crate::pipeline::test::{test_tasks, TestConfig};
+use crate::pipeline::verify::{verify_tasks, VerifyConfig};
+use crate::workspace::{RecoverySummary, WorkspaceState};
+use ltmatrix_agent::AgentPool;
+use ltmatrix_core::{ExecutionMode, ModeConfig, PipelineStage, Task};
 
 /// Configuration for the pipeline orchestrator
 #[derive(Debug, Clone)]
@@ -113,8 +110,7 @@ pub struct OrchestratorConfig {
 impl Default for OrchestratorConfig {
     fn default() -> Self {
         let execution_mode = ExecutionMode::Standard;
-        let work_dir = std::env::current_dir()
-            .unwrap_or_else(|_| PathBuf::from("."));
+        let work_dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
 
         OrchestratorConfig {
             execution_mode,
@@ -378,11 +374,7 @@ impl PipelineOrchestrator {
                         }
                     }
 
-                    info!(
-                        "Stage {:?} completed: {} tasks",
-                        stage,
-                        stage_result.len()
-                    );
+                    info!("Stage {:?} completed: {} tasks", stage, stage_result.len());
                 }
                 Err(e) => {
                     error!("Stage {:?} failed: {}", stage, e);
@@ -419,9 +411,7 @@ impl PipelineOrchestrator {
         let pb = self.create_stage_progress_bar(stage_name, stage_index);
 
         let result = match stage {
-            PipelineStage::Generate => {
-                self.execute_generate_stage(goal, pb.as_ref()).await?
-            }
+            PipelineStage::Generate => self.execute_generate_stage(goal, pb.as_ref()).await?,
             PipelineStage::Assess => {
                 let tasks = self.get_current_tasks().await?;
                 self.execute_assess_stage(tasks, pb.as_ref()).await?
@@ -522,7 +512,11 @@ impl PipelineOrchestrator {
         // Update progress
         if let Some(pb) = pb {
             let completed = executed_tasks.iter().filter(|t| t.is_completed()).count();
-            pb.set_message(format!("Executed {}/{} tasks", completed, executed_tasks.len()));
+            pb.set_message(format!(
+                "Executed {}/{} tasks",
+                completed,
+                executed_tasks.len()
+            ));
             pb.inc(50);
         }
 
@@ -578,7 +572,8 @@ impl PipelineOrchestrator {
             pb.set_message(format!("Reviewing {} tasks...", tasks.len()));
         }
 
-        let (reviewed_tasks, review_summary) = review_tasks(tasks, &self.config.review_config).await?;
+        let (reviewed_tasks, review_summary) =
+            review_tasks(tasks, &self.config.review_config).await?;
 
         // Count blocking issues
         let blocking_count = review_summary
@@ -590,8 +585,7 @@ impl PipelineOrchestrator {
         // Log review summary
         info!(
             "Review completed: {} tasks assessed, {} blocking issues found",
-            review_summary.total_tasks,
-            blocking_count
+            review_summary.total_tasks, blocking_count
         );
 
         if let Some(pb) = pb {
@@ -607,11 +601,17 @@ impl PipelineOrchestrator {
 
         // If there are critical issues that block the pipeline, log them
         if blocking_count > 0 {
-            warn!("Found {} blocking issues that must be addressed:", blocking_count);
+            warn!(
+                "Found {} blocking issues that must be addressed:",
+                blocking_count
+            );
 
             // Group blocking issues by category for better reporting
             use std::collections::HashMap;
-            let mut blocking_by_category: HashMap<crate::pipeline::review::IssueCategory, Vec<&crate::pipeline::review::CodeIssue>> = HashMap::new();
+            let mut blocking_by_category: HashMap<
+                crate::pipeline::review::IssueCategory,
+                Vec<&crate::pipeline::review::CodeIssue>,
+            > = HashMap::new();
 
             for issue in &review_summary.all_issues {
                 if issue.blocking {
@@ -654,7 +654,11 @@ impl PipelineOrchestrator {
 
         if let Some(pb) = pb {
             let verified = verified_tasks.iter().filter(|t| t.is_completed()).count();
-            pb.set_message(format!("Verified {}/{} tasks", verified, verified_tasks.len()));
+            pb.set_message(format!(
+                "Verified {}/{} tasks",
+                verified,
+                verified_tasks.len()
+            ));
             pb.inc(50);
         }
 
@@ -678,7 +682,10 @@ impl PipelineOrchestrator {
         let (committed_tasks, _summary) = commit_tasks(tasks, &self.config.commit_config).await?;
 
         if let Some(pb) = pb {
-            pb.set_message(format!("Committed changes for {} tasks", committed_tasks.len()));
+            pb.set_message(format!(
+                "Committed changes for {} tasks",
+                committed_tasks.len()
+            ));
             pb.inc(100);
         }
 
@@ -740,7 +747,11 @@ impl PipelineOrchestrator {
     }
 
     /// Create a progress bar for a stage
-    fn create_stage_progress_bar(&self, stage_name: &str, stage_index: usize) -> Option<ProgressBar> {
+    fn create_stage_progress_bar(
+        &self,
+        stage_name: &str,
+        stage_index: usize,
+    ) -> Option<ProgressBar> {
         if !self.config.show_progress {
             return None;
         }
@@ -832,10 +843,7 @@ impl PipelineOrchestrator {
             return Ok(PipelineResult::new());
         }
 
-        info!(
-            "Resuming {} incomplete tasks",
-            recovery.total_incomplete
-        );
+        info!("Resuming {} incomplete tasks", recovery.total_incomplete);
 
         // Initialize state with loaded tasks
         {
@@ -864,10 +872,7 @@ impl PipelineOrchestrator {
         let stages = PipelineStage::pipeline_for_mode(self.config.execution_mode);
 
         // Find the starting stage index
-        let start_index = stages
-            .iter()
-            .position(|&s| s == start_stage)
-            .unwrap_or(0);
+        let start_index = stages.iter().position(|&s| s == start_stage).unwrap_or(0);
 
         // Execute stages starting from the specified stage
         for (stage_index, stage) in stages.iter().enumerate().skip(start_index) {
@@ -889,11 +894,7 @@ impl PipelineOrchestrator {
                         }
                     }
 
-                    info!(
-                        "Stage {:?} completed: {} tasks",
-                        stage,
-                        stage_result.len()
-                    );
+                    info!("Stage {:?} completed: {} tasks", stage, stage_result.len());
                 }
                 Err(e) => {
                     error!("Stage {:?} failed: {}", stage, e);
@@ -934,12 +935,8 @@ impl PipelineOrchestrator {
                 // For resume, we skip generation and use existing tasks
                 return Ok(tasks);
             }
-            PipelineStage::Assess => {
-                self.execute_assess_stage(tasks, pb.as_ref()).await?
-            }
-            PipelineStage::Execute => {
-                self.execute_execute_stage(tasks, pb.as_ref()).await?
-            }
+            PipelineStage::Assess => self.execute_assess_stage(tasks, pb.as_ref()).await?,
+            PipelineStage::Execute => self.execute_execute_stage(tasks, pb.as_ref()).await?,
             PipelineStage::Test => {
                 let completed = self.get_completed_tasks().await?;
                 self.execute_test_stage(completed, pb.as_ref()).await?
@@ -1035,8 +1032,7 @@ mod tests {
     #[tokio::test]
     async fn test_orchestrator_creation() {
         let temp_dir = TempDir::new().unwrap();
-        let config = OrchestratorConfig::default()
-            .with_work_dir(temp_dir.path());
+        let config = OrchestratorConfig::default().with_work_dir(temp_dir.path());
 
         let orchestrator = PipelineOrchestrator::new(config);
         assert!(orchestrator.is_ok());
@@ -1044,8 +1040,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_orchestrator_invalid_work_dir() {
-        let config = OrchestratorConfig::default()
-            .with_work_dir("/nonexistent/path");
+        let config = OrchestratorConfig::default().with_work_dir("/nonexistent/path");
 
         let orchestrator = PipelineOrchestrator::new(config);
         assert!(orchestrator.is_err());

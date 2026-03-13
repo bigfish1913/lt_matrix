@@ -8,9 +8,9 @@
 //! - Session pool statistics are accurate
 //! - Session cleanup and management
 
-use ltmatrix::agent::warmup::WarmupExecutor;
-use ltmatrix::agent::{AgentSession, pool::SessionPool};
 use ltmatrix::agent::backend::{AgentBackend, AgentConfig, AgentResponse, ExecutionConfig};
+use ltmatrix::agent::warmup::WarmupExecutor;
+use ltmatrix::agent::{pool::SessionPool, AgentSession};
 use ltmatrix::config::settings::WarmupConfig;
 use ltmatrix::models::Agent;
 
@@ -38,7 +38,11 @@ impl SessionTrackingAgent {
 
 #[async_trait::async_trait]
 impl AgentBackend for SessionTrackingAgent {
-    async fn execute(&self, _prompt: &str, _config: &ExecutionConfig) -> anyhow::Result<AgentResponse> {
+    async fn execute(
+        &self,
+        _prompt: &str,
+        _config: &ExecutionConfig,
+    ) -> anyhow::Result<AgentResponse> {
         Ok(AgentResponse {
             output: "Ready".to_string(),
             ..Default::default()
@@ -78,7 +82,10 @@ impl AgentBackend for SessionTrackingAgent {
         Ok(true)
     }
 
-    async fn validate_config(&self, _config: &AgentConfig) -> Result<(), ltmatrix::agent::backend::AgentError> {
+    async fn validate_config(
+        &self,
+        _config: &AgentConfig,
+    ) -> Result<(), ltmatrix::agent::backend::AgentError> {
         Ok(())
     }
 
@@ -107,7 +114,10 @@ async fn warmup_creates_session_in_pool() {
     let agent = SessionTrackingAgent::new("test-agent");
     let _result = executor.warmup_agent(&agent, &mut pool).await.unwrap();
 
-    assert!(pool.len() >= 1, "Pool should have at least one session after warmup");
+    assert!(
+        pool.len() >= 1,
+        "Pool should have at least one session after warmup"
+    );
 }
 
 #[tokio::test]
@@ -153,8 +163,11 @@ async fn warmup_reuses_session_for_same_agent() {
     let _result = executor.warmup_agent(&agent, &mut pool).await.unwrap();
 
     // Should have recorded exactly 1 session ID (even with 2 queries, they reuse the session)
-    assert_eq!(agent.recorded_session_count(), 1,
-               "Agent should use the same session for all warmup queries");
+    assert_eq!(
+        agent.recorded_session_count(),
+        1,
+        "Agent should use the same session for all warmup queries"
+    );
 }
 
 #[tokio::test]
@@ -177,8 +190,11 @@ async fn warmup_session_reuse_across_multiple_warmup_calls() {
 
     // All calls should use the same session
     assert_eq!(pool.len(), 1, "Pool should still have only 1 session");
-    assert_eq!(agent.recorded_session_count(), 3,
-               "Should have recorded 3 session uses (same session ID 3 times)");
+    assert_eq!(
+        agent.recorded_session_count(),
+        3,
+        "Should have recorded 3 session uses (same session ID 3 times)"
+    );
 }
 
 // ============================================================================
@@ -203,11 +219,22 @@ async fn session_pool_statistics_accurate_after_warmup() {
     let agent2 = SessionTrackingAgent::new("agent2");
 
     executor.warmup_agent(&agent1, &mut pool).await.unwrap();
-    assert!(!pool.is_empty(), "Pool should not be empty after first warmup");
-    assert_eq!(pool.len(), 1, "Pool should have 1 session after first warmup");
+    assert!(
+        !pool.is_empty(),
+        "Pool should not be empty after first warmup"
+    );
+    assert_eq!(
+        pool.len(),
+        1,
+        "Pool should have 1 session after first warmup"
+    );
 
     executor.warmup_agent(&agent2, &mut pool).await.unwrap();
-    assert_eq!(pool.len(), 2, "Pool should have 2 sessions after second warmup");
+    assert_eq!(
+        pool.len(),
+        2,
+        "Pool should have 2 sessions after second warmup"
+    );
 }
 
 #[tokio::test]
@@ -234,8 +261,11 @@ async fn session_pool_handles_multiple_agents_correctly() {
 
     // Verify each agent got a session
     for agent in &agents {
-        assert_eq!(agent.recorded_session_count(), 1,
-                   "Each agent should have recorded 1 session use");
+        assert_eq!(
+            agent.recorded_session_count(),
+            1,
+            "Each agent should have recorded 1 session use"
+        );
     }
 }
 
@@ -283,8 +313,11 @@ async fn warmup_with_multiple_queries_uses_same_session() {
     // Even though max_queries is 5, only first query should execute
     // (implementation breaks after first success)
     // But all queries should use the same session
-    assert_eq!(agent.recorded_session_count(), 1,
-               "All queries should use the same session");
+    assert_eq!(
+        agent.recorded_session_count(),
+        1,
+        "All queries should use the same session"
+    );
 }
 
 // ============================================================================
@@ -310,10 +343,19 @@ async fn session_ids_are_unique_for_different_agents() {
     executor.warmup_agent(&agent2, &mut pool).await.unwrap();
 
     // Get session IDs for each agent
-    let id1 = pool.get_or_create("unique-agent-1", "test-model").session_id().to_string();
-    let id2 = pool.get_or_create("unique-agent-2", "test-model").session_id().to_string();
+    let id1 = pool
+        .get_or_create("unique-agent-1", "test-model")
+        .session_id()
+        .to_string();
+    let id2 = pool
+        .get_or_create("unique-agent-2", "test-model")
+        .session_id()
+        .to_string();
 
-    assert_ne!(id1, id2, "Different agents should have different session IDs");
+    assert_ne!(
+        id1, id2,
+        "Different agents should have different session IDs"
+    );
 }
 
 #[tokio::test]
@@ -338,7 +380,10 @@ async fn session_id_is_consistent_for_same_agent() {
     let session2 = pool.get_or_create("consistent-id-agent", "test-model");
     let id2 = session2.session_id().to_string();
 
-    assert_eq!(id1, id2, "Same agent should get the same session ID across warmups");
+    assert_eq!(
+        id1, id2,
+        "Same agent should get the same session ID across warmups"
+    );
 }
 
 // ============================================================================
@@ -368,8 +413,11 @@ async fn warmup_multiple_agents_populates_pool() {
 
     // Verify each agent has a recorded session
     for agent in &agents {
-        assert_eq!(agent.recorded_session_count(), 1,
-                   "Each agent should have used a session");
+        assert_eq!(
+            agent.recorded_session_count(),
+            1,
+            "Each agent should have used a session"
+        );
     }
 }
 
@@ -394,7 +442,11 @@ async fn warmup_respects_existing_sessions_in_pool() {
     // Warmup should reuse the existing session
     let _result = executor.warmup_agent(&agent, &mut pool).await.unwrap();
 
-    assert_eq!(pool.len(), 1, "Pool should still have only 1 session (reused existing)");
+    assert_eq!(
+        pool.len(),
+        1,
+        "Pool should still have only 1 session (reused existing)"
+    );
 }
 
 // ============================================================================
@@ -410,8 +462,15 @@ async fn session_pool_empty_state() {
 
     // Add a session
     let _session = pool.get_or_create("test-agent", "test-model");
-    assert!(!pool.is_empty(), "Pool should not be empty after adding session");
-    assert_eq!(pool.len(), 1, "Pool should have length 1 after adding session");
+    assert!(
+        !pool.is_empty(),
+        "Pool should not be empty after adding session"
+    );
+    assert_eq!(
+        pool.len(),
+        1,
+        "Pool should have length 1 after adding session"
+    );
 }
 
 #[tokio::test]
@@ -426,8 +485,14 @@ async fn session_pool_with_no_warmup() {
 
     let result = executor.warmup_agent(&agent, &mut pool).await.unwrap();
 
-    assert!(result.is_skipped(), "Warmup should be skipped when disabled");
-    assert!(pool.is_empty(), "Pool should be empty when warmup is skipped");
+    assert!(
+        result.is_skipped(),
+        "Warmup should be skipped when disabled"
+    );
+    assert!(
+        pool.is_empty(),
+        "Pool should be empty when warmup is skipped"
+    );
 }
 
 // ============================================================================

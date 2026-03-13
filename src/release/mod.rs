@@ -2,21 +2,20 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Release management module
 //!
 //! This module provides version management and release automation for ltmatrix.
 //! It handles semantic versioning, changelog generation, and release orchestration.
 
-mod version;
 mod changelog;
-mod precheck;
 mod git_ops;
+mod precheck;
+mod version;
 
-pub use version::{Version, VersionBump, BumpError};
 pub use changelog::{Changelog, ChangelogEntry, ChangelogSection};
-pub use precheck::{PreReleaseCheck, CheckResult, CheckStatus};
-pub use git_ops::{GitOperations, GitError};
+pub use git_ops::{GitError, GitOperations};
+pub use precheck::{CheckResult, CheckStatus, PreReleaseCheck};
+pub use version::{BumpError, Version, VersionBump};
 
 use anyhow::Result;
 use std::path::{Path, PathBuf};
@@ -77,7 +76,10 @@ impl ReleaseManager {
     /// Update CHANGELOG.md file
     pub fn update_changelog_file(&self, changelog: &Changelog, version: &Version) -> Result<()> {
         if self.dry_run {
-            println!("[Dry run] Would update CHANGELOG.md with version {}", version);
+            println!(
+                "[Dry run] Would update CHANGELOG.md with version {}",
+                version
+            );
             return Ok(());
         }
 
@@ -90,7 +92,10 @@ impl ReleaseManager {
         let git = GitOperations::new(&self.project_root)?;
 
         if self.dry_run {
-            println!("[Dry run] Would create tag v{} with message: {}", version, message);
+            println!(
+                "[Dry run] Would create tag v{} with message: {}",
+                version, message
+            );
             return Ok(());
         }
 
@@ -123,7 +128,10 @@ impl ReleaseManager {
             .ok()
             .flatten();
         let changelog = self.generate_changelog(last_tag.as_deref())?;
-        println!("✓ Changelog generated ({} entries)", changelog.entry_count());
+        println!(
+            "✓ Changelog generated ({} entries)",
+            changelog.entry_count()
+        );
 
         // Step 4: Update changelog file
         self.update_changelog_file(&changelog, &new_version)?;
@@ -144,7 +152,9 @@ impl ReleaseManager {
         println!("\n🎉 Release v{} prepared successfully!", new_version);
 
         if self.dry_run {
-            println!("\n[Dry run mode] No changes were made. Run without --dry-run to apply changes.");
+            println!(
+                "\n[Dry run mode] No changes were made. Run without --dry-run to apply changes."
+            );
         } else {
             println!("\nNext steps:");
             println!("  1. Review the changes");

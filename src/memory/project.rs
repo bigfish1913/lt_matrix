@@ -223,8 +223,8 @@ impl ProjectMemory {
             .await
             .context("Failed to read project memory file")?;
 
-        let memory: ProjectMemory = serde_json::from_str(&content)
-            .context("Failed to parse project memory JSON")?;
+        let memory: ProjectMemory =
+            serde_json::from_str(&content).context("Failed to parse project memory JSON")?;
 
         info!("Loaded project memory from {:?}", path);
         Ok(memory)
@@ -239,8 +239,8 @@ impl ProjectMemory {
                 .context("Failed to create memory directory")?;
         }
 
-        let content = serde_json::to_string_pretty(self)
-            .context("Failed to serialize project memory")?;
+        let content =
+            serde_json::to_string_pretty(self).context("Failed to serialize project memory")?;
 
         fs::write(path, content)
             .await
@@ -335,16 +335,16 @@ impl ProjectMemory {
                 self.completed_tasks.len()
             ));
             for task in self.get_recent_tasks(5) {
-                summary.push_str(&format!(
-                    "- {} ({})\n",
-                    task.title, task.agent_type
-                ));
+                summary.push_str(&format!("- {} ({})\n", task.title, task.agent_type));
             }
         }
 
         // Key decisions
         if !self.decisions.is_empty() {
-            summary.push_str(&format!("\n## Architecture Decisions ({} total)\n", self.decisions.len()));
+            summary.push_str(&format!(
+                "\n## Architecture Decisions ({} total)\n",
+                self.decisions.len()
+            ));
             for decision in self.decisions.iter().take(3) {
                 summary.push_str(&format!("- {}: {}\n", decision.title, decision.rationale));
             }
@@ -356,7 +356,10 @@ impl ProjectMemory {
 
 /// Get the default project memory path
 pub fn get_project_memory_path(project_root: &Path) -> PathBuf {
-    project_root.join(".ltmatrix").join("memory").join("project.json")
+    project_root
+        .join(".ltmatrix")
+        .join("memory")
+        .join("project.json")
 }
 
 #[cfg(test)]

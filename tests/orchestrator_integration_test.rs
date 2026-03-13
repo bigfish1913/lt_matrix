@@ -11,9 +11,7 @@
 use ltmatrix::models::{
     ExecutionMode, ModeConfig, PipelineStage, Task, TaskComplexity, TaskStatus,
 };
-use ltmatrix::pipeline::orchestrator::{
-    OrchestratorConfig, PipelineOrchestrator,
-};
+use ltmatrix::pipeline::orchestrator::{OrchestratorConfig, PipelineOrchestrator};
 use std::time::Duration;
 use tempfile::TempDir;
 
@@ -69,7 +67,10 @@ async fn test_orchestrator_config_builder() {
     assert_eq!(config.test_config.work_dir, temp_dir.path());
     assert_eq!(config.verify_config.work_dir, temp_dir.path());
     assert_eq!(config.commit_config.work_dir, temp_dir.path());
-    assert_eq!(config.memory_config.project_root, Some(temp_dir.path().to_path_buf()));
+    assert_eq!(
+        config.memory_config.project_root,
+        Some(temp_dir.path().to_path_buf())
+    );
 }
 
 /// Test orchestrator creation with valid work directory
@@ -107,13 +108,12 @@ fn test_pipeline_result_success_rate() {
     let orchestrator = PipelineOrchestrator::new(config).unwrap();
     let rt = tokio::runtime::Runtime::new().unwrap();
 
-    let result = rt
-        .block_on(async {
-            orchestrator
-                .execute_pipeline("Test", ExecutionMode::Fast)
-                .await
-                .unwrap()
-        });
+    let result = rt.block_on(async {
+        orchestrator
+            .execute_pipeline("Test", ExecutionMode::Fast)
+            .await
+            .unwrap()
+    });
 
     // Test success_rate method
     assert!(result.success_rate() >= 0.0);
@@ -169,9 +169,18 @@ fn test_pipeline_stages_expert_mode() {
     assert!(stages.contains(&PipelineStage::Memory));
 
     // Verify Review is positioned between Test and Verify
-    let test_idx = stages.iter().position(|s| s == &PipelineStage::Test).unwrap();
-    let review_idx = stages.iter().position(|s| s == &PipelineStage::Review).unwrap();
-    let verify_idx = stages.iter().position(|s| s == &PipelineStage::Verify).unwrap();
+    let test_idx = stages
+        .iter()
+        .position(|s| s == &PipelineStage::Test)
+        .unwrap();
+    let review_idx = stages
+        .iter()
+        .position(|s| s == &PipelineStage::Review)
+        .unwrap();
+    let verify_idx = stages
+        .iter()
+        .position(|s| s == &PipelineStage::Verify)
+        .unwrap();
     assert!(review_idx > test_idx, "Review should come after Test");
     assert!(review_idx < verify_idx, "Review should come before Verify");
 }
@@ -227,9 +236,7 @@ async fn test_orchestrator_execution_empty_goal() {
     let orchestrator = PipelineOrchestrator::new(config).unwrap();
 
     // Execute with empty goal - should not crash
-    let result = orchestrator
-        .execute_pipeline("", ExecutionMode::Fast)
-        .await;
+    let result = orchestrator.execute_pipeline("", ExecutionMode::Fast).await;
 
     // The result should be valid even if stages fail
     assert!(result.is_ok());
@@ -264,13 +271,21 @@ async fn test_orchestrator_state_initialization() {
 async fn test_orchestrator_different_modes() {
     let temp_dir = TempDir::new().unwrap();
 
-    for mode in [ExecutionMode::Fast, ExecutionMode::Standard, ExecutionMode::Expert] {
+    for mode in [
+        ExecutionMode::Fast,
+        ExecutionMode::Standard,
+        ExecutionMode::Expert,
+    ] {
         let config = OrchestratorConfig::default()
             .with_work_dir(temp_dir.path())
             .with_progress(false);
 
         let orchestrator = PipelineOrchestrator::new(config);
-        assert!(orchestrator.is_ok(), "Failed to create orchestrator for {:?}", mode);
+        assert!(
+            orchestrator.is_ok(),
+            "Failed to create orchestrator for {:?}",
+            mode
+        );
 
         if let Ok(orch) = orchestrator {
             let result = orch.execute_pipeline("Test goal", mode).await;
@@ -614,7 +629,9 @@ async fn test_orchestrator_long_goal() {
     // Create a very long goal (1000 characters)
     let long_goal = "Build a comprehensive system ".repeat(50);
 
-    let result = orchestrator.execute_pipeline(&long_goal, ExecutionMode::Fast).await;
+    let result = orchestrator
+        .execute_pipeline(&long_goal, ExecutionMode::Fast)
+        .await;
     assert!(result.is_ok());
 }
 
@@ -635,7 +652,9 @@ async fn test_orchestrator_custom_work_dir() {
 
     let orchestrator = PipelineOrchestrator::new(config).unwrap();
 
-    let result = orchestrator.execute_pipeline("Test custom dir", ExecutionMode::Fast).await;
+    let result = orchestrator
+        .execute_pipeline("Test custom dir", ExecutionMode::Fast)
+        .await;
     assert!(result.is_ok());
 }
 
@@ -682,7 +701,9 @@ async fn test_orchestrator_special_characters_in_goal() {
     ];
 
     for goal in goals {
-        let result = orchestrator.execute_pipeline(goal, ExecutionMode::Fast).await;
+        let result = orchestrator
+            .execute_pipeline(goal, ExecutionMode::Fast)
+            .await;
         assert!(result.is_ok(), "Failed for goal: {}", goal);
     }
 }

@@ -3,10 +3,10 @@
 //! These tests verify the integration of the generate stage with the Claude agent,
 //! testing end-to-end workflows with mocked or actual API responses.
 
+use ltmatrix::models::{Task, TaskComplexity, TaskStatus};
 use ltmatrix::pipeline::generate::{
     generate_tasks, GenerateConfig, GenerationResult, ValidationError,
 };
-use ltmatrix::models::{Task, TaskComplexity, TaskStatus};
 
 #[tokio::test]
 async fn test_generate_stage_integration_with_claude_agent() {
@@ -114,7 +114,11 @@ async fn test_validation_error_types() {
 
     // Circular dependency error
     let error2 = ValidationError::CircularDependency {
-        chain: vec!["task-1".to_string(), "task-2".to_string(), "task-1".to_string()],
+        chain: vec![
+            "task-1".to_string(),
+            "task-2".to_string(),
+            "task-1".to_string(),
+        ],
     };
     let display2 = format!("{}", error2);
     assert!(display1.contains("task-1"));
@@ -163,12 +167,10 @@ async fn test_generate_result_with_validation_errors() {
         tasks: vec![],
         task_count: 0,
         dependency_depth: 0,
-        validation_errors: vec![
-            ValidationError::MissingDependency {
-                task: "task-1".to_string(),
-                dependency: "missing".to_string(),
-            },
-        ],
+        validation_errors: vec![ValidationError::MissingDependency {
+            task: "task-1".to_string(),
+            dependency: "missing".to_string(),
+        }],
     };
 
     assert_eq!(result.validation_errors.len(), 1);

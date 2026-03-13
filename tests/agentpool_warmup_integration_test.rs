@@ -70,7 +70,8 @@ async fn agentpool_warms_up_on_first_session_creation() {
     let mut pool = SessionPool::with_warmup(executor);
 
     // Create first session - should trigger warmup
-    let session_id = pool.get_or_create_warmup("claude", "claude-sonnet-4-6")
+    let session_id = pool
+        .get_or_create_warmup("claude", "claude-sonnet-4-6")
         .await
         .expect("Warmup should succeed");
 
@@ -90,7 +91,8 @@ async fn agentpool_skips_warmup_when_disabled() {
     let mut pool = SessionPool::with_warmup(executor);
 
     // Create session - should skip warmup
-    let session_id = pool.get_or_create_warmup("claude", "claude-sonnet-4-6")
+    let session_id = pool
+        .get_or_create_warmup("claude", "claude-sonnet-4-6")
         .await
         .expect("Should succeed even without warmup");
 
@@ -117,7 +119,9 @@ async fn agentpool_handles_warmup_failure_when_retry_disabled() {
     let mut pool = SessionPool::with_warmup(executor);
 
     // Should handle warmup failure gracefully
-    let result = pool.get_or_create_warmup("claude", "claude-sonnet-4-6").await;
+    let result = pool
+        .get_or_create_warmup("claude", "claude-sonnet-4-6")
+        .await;
 
     // Should either succeed with fallback or return error
     // (Implementation choice: fail fast or create session anyway)
@@ -139,7 +143,8 @@ async fn agentpool_retries_warmup_when_enabled() {
     let mut pool = SessionPool::with_warmup(executor);
 
     // Should retry warmup on failure
-    let session_id = pool.get_or_create_warmup("claude", "claude-sonnet-4-6")
+    let session_id = pool
+        .get_or_create_warmup("claude", "claude-sonnet-4-6")
         .await
         .expect("Should succeed after retry");
 
@@ -166,12 +171,14 @@ async fn agentpool_reuses_warmed_session() {
     let mut pool = SessionPool::with_warmup(executor);
 
     // First call - warms up
-    let session_id1 = pool.get_or_create_warmup("claude", "claude-sonnet-4-6")
+    let session_id1 = pool
+        .get_or_create_warmup("claude", "claude-sonnet-4-6")
         .await
         .expect("First call should warm up");
 
     // Second call - should reuse
-    let session_id2 = pool.get_or_create_warmup("claude", "claude-sonnet-4-6")
+    let session_id2 = pool
+        .get_or_create_warmup("claude", "claude-sonnet-4-6")
         .await
         .expect("Second call should reuse");
 
@@ -220,7 +227,8 @@ async fn agentpool_warmup_integration_end_to_end() {
     let mut pool = SessionPool::with_warmup(executor);
 
     // Step 1: Create session with warmup
-    let session_id = pool.get_or_create_warmup("claude", "claude-sonnet-4-6")
+    let session_id = pool
+        .get_or_create_warmup("claude", "claude-sonnet-4-6")
         .await
         .expect("Warmup should succeed");
 
@@ -231,7 +239,8 @@ async fn agentpool_warmup_integration_end_to_end() {
     assert_eq!(session_ref.agent_name(), "claude");
 
     // Step 3: Reuse session
-    let session_id2 = pool.get_or_create_warmup("claude", "claude-sonnet-4-6")
+    let session_id2 = pool
+        .get_or_create_warmup("claude", "claude-sonnet-4-6")
         .await
         .expect("Reuse should succeed");
 

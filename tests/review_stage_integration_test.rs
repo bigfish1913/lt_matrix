@@ -124,7 +124,10 @@ fn test_expert_mode_pipeline_order() {
         PipelineStage::Memory,
     ];
 
-    assert_eq!(stages, expected_order, "Expert mode pipeline should have the correct stage order");
+    assert_eq!(
+        stages, expected_order,
+        "Expert mode pipeline should have the correct stage order"
+    );
 }
 
 #[test]
@@ -140,7 +143,10 @@ fn test_standard_mode_pipeline_order() {
         PipelineStage::Memory,
     ];
 
-    assert_eq!(stages, expected_order, "Standard mode pipeline should have the correct stage order");
+    assert_eq!(
+        stages, expected_order,
+        "Standard mode pipeline should have the correct stage order"
+    );
 }
 
 #[test]
@@ -155,17 +161,22 @@ fn test_fast_mode_pipeline_order() {
         PipelineStage::Memory,
     ];
 
-    assert_eq!(stages, expected_order, "Fast mode pipeline should have the correct stage order");
+    assert_eq!(
+        stages, expected_order,
+        "Fast mode pipeline should have the correct stage order"
+    );
 }
 
 #[tokio::test]
 async fn test_orchestrator_creates_successfully_with_review_config() {
     let temp_dir = TempDir::new().unwrap();
-    let config = OrchestratorConfig::expert_mode()
-        .with_work_dir(temp_dir.path());
+    let config = OrchestratorConfig::expert_mode().with_work_dir(temp_dir.path());
 
     let orchestrator = PipelineOrchestrator::new(config);
-    assert!(orchestrator.is_ok(), "Orchestrator should create successfully with review config");
+    assert!(
+        orchestrator.is_ok(),
+        "Orchestrator should create successfully with review config"
+    );
 }
 
 #[test]
@@ -173,8 +184,14 @@ fn test_review_config_expert_mode_properties() {
     let config = ReviewConfig::expert_mode();
 
     assert!(config.enabled, "Review should be enabled in expert mode");
-    assert_eq!(config.mode_config.verify, true, "Verify should be enabled in expert mode");
-    assert!(config.review_model.contains("opus"), "Expert mode should use Opus model");
+    assert_eq!(
+        config.mode_config.verify, true,
+        "Verify should be enabled in expert mode"
+    );
+    assert!(
+        config.review_model.contains("opus"),
+        "Expert mode should use Opus model"
+    );
     assert_eq!(config.timeout, 900, "Expert mode should have 15min timeout");
 }
 

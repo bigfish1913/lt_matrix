@@ -74,24 +74,24 @@ pub trait McpMethod: Sized + Send + Sync + 'static {
 
         response
             .result
-            .ok_or_else(|| McpError::protocol(super::errors::McpErrorCode::InternalError, "Missing result field"))
-            .and_then(|value| {
-                serde_json::from_value(value).map_err(McpError::from)
+            .ok_or_else(|| {
+                McpError::protocol(
+                    super::errors::McpErrorCode::InternalError,
+                    "Missing result field",
+                )
             })
+            .and_then(|value| serde_json::from_value(value).map_err(McpError::from))
     }
 
     /// Parse raw JSON bytes into the typed result
     fn parse_response_json(json: &str) -> McpResult<Self::Result> {
-        let response: JsonRpcResponse =
-            serde_json::from_str(json).map_err(McpError::from)?;
+        let response: JsonRpcResponse = serde_json::from_str(json).map_err(McpError::from)?;
         Self::parse_response(response)
     }
 
     /// Serialize params to JSON value
     fn params_to_value(params: Self::Params) -> JsonRpcResult<Value> {
-        serde_json::to_value(params).map_err(|e| {
-            JsonRpcError::invalid_params(&e.to_string())
-        })
+        serde_json::to_value(params).map_err(|e| JsonRpcError::invalid_params(&e.to_string()))
     }
 
     /// Deserialize result from JSON value
@@ -781,10 +781,8 @@ mod tests {
 
     #[test]
     fn test_tools_call_wrapper() {
-        let params = ToolsCall::params_with_args(
-            "browser_navigate",
-            json!({"url": "https://example.com"}),
-        );
+        let params =
+            ToolsCall::params_with_args("browser_navigate", json!({"url": "https://example.com"}));
         let request = ToolsCall::build_request(RequestId::Number(1), params);
 
         assert_eq!(request.method, "tools/call");
@@ -805,10 +803,7 @@ mod tests {
 
     #[test]
     fn test_prompts_get_wrapper() {
-        let params = PromptsGet::params_with_args(
-            "code_review",
-            json!({"language": "rust"}),
-        );
+        let params = PromptsGet::params_with_args("code_review", json!({"language": "rust"}));
         let request = PromptsGet::build_request(RequestId::Number(1), params);
 
         assert_eq!(request.method, "prompts/get");
@@ -923,10 +918,7 @@ mod tests {
             McpMethodKind::from_method_name("tools/call"),
             Some(McpMethodKind::ToolsCall)
         );
-        assert_eq!(
-            McpMethodKind::from_method_name("unknown"),
-            None
-        );
+        assert_eq!(McpMethodKind::from_method_name("unknown"), None);
     }
 
     #[test]

@@ -9,8 +9,8 @@
 //! - Configuration-driven behavior
 
 use ltmatrix::agent::backend::AgentSession;
-use ltmatrix::agent::warmup::{WarmupExecutor, WarmupResult};
 use ltmatrix::agent::pool::SessionPool;
+use ltmatrix::agent::warmup::{WarmupExecutor, WarmupResult};
 use ltmatrix::config::settings::WarmupConfig;
 
 /// Test that warmup executor can be created with default config
@@ -75,17 +75,26 @@ fn test_session_pool_initialization_after_warmup() {
     assert_eq!(pool.len(), 0);
 
     // After getting a session for an agent, pool should have one session
-    let session_id = pool.get_or_create("claude", "claude-sonnet-4-6").session_id().to_string();
+    let session_id = pool
+        .get_or_create("claude", "claude-sonnet-4-6")
+        .session_id()
+        .to_string();
     assert!(!session_id.is_empty());
     assert_eq!(pool.len(), 1);
 
     // Getting session for same agent should return the same session
-    let session_id2 = pool.get_or_create("claude", "claude-sonnet-4-6").session_id().to_string();
+    let session_id2 = pool
+        .get_or_create("claude", "claude-sonnet-4-6")
+        .session_id()
+        .to_string();
     assert_eq!(session_id, session_id2);
     assert_eq!(pool.len(), 1);
 
     // Getting session for different agent should create a new session
-    let session_id3 = pool.get_or_create("opencode", "gpt-4").session_id().to_string();
+    let session_id3 = pool
+        .get_or_create("opencode", "gpt-4")
+        .session_id()
+        .to_string();
     assert_ne!(session_id, session_id3);
     assert_eq!(pool.len(), 2);
 }
@@ -151,8 +160,7 @@ fn test_warmup_config_merge_behavior() {
         timeout_seconds = 30
     "#;
 
-    let global: ltmatrix::config::settings::Config =
-        toml::from_str(global_toml).unwrap();
+    let global: ltmatrix::config::settings::Config = toml::from_str(global_toml).unwrap();
     assert_eq!(global.warmup.max_queries, 2);
     assert_eq!(global.warmup.timeout_seconds, 30);
 
@@ -165,8 +173,7 @@ fn test_warmup_config_merge_behavior() {
         retry_on_failure = true
     "#;
 
-    let project: ltmatrix::config::settings::Config =
-        toml::from_str(project_toml).unwrap();
+    let project: ltmatrix::config::settings::Config = toml::from_str(project_toml).unwrap();
     assert_eq!(project.warmup.enabled, false);
     assert_eq!(project.warmup.max_queries, 10);
     assert_eq!(project.warmup.timeout_seconds, 90);
@@ -235,11 +242,20 @@ fn test_session_reuse_after_warmup() {
     let mut pool = SessionPool::new();
 
     // First call creates a new session
-    let session_id = pool.get_or_create("claude", "claude-sonnet-4-6").session_id().to_string();
+    let session_id = pool
+        .get_or_create("claude", "claude-sonnet-4-6")
+        .session_id()
+        .to_string();
 
     // Subsequent calls reuse the same session
-    let session_id2 = pool.get_or_create("claude", "claude-sonnet-4-6").session_id().to_string();
-    let session_id3 = pool.get_or_create("claude", "claude-sonnet-4-6").session_id().to_string();
+    let session_id2 = pool
+        .get_or_create("claude", "claude-sonnet-4-6")
+        .session_id()
+        .to_string();
+    let session_id3 = pool
+        .get_or_create("claude", "claude-sonnet-4-6")
+        .session_id()
+        .to_string();
 
     assert_eq!(session_id2, session_id);
     assert_eq!(session_id3, session_id);
@@ -251,9 +267,18 @@ fn test_session_reuse_after_warmup() {
 fn test_different_agents_get_different_sessions() {
     let mut pool = SessionPool::new();
 
-    let session_id1 = pool.get_or_create("claude", "claude-sonnet-4-6").session_id().to_string();
-    let session_id2 = pool.get_or_create("opencode", "gpt-4").session_id().to_string();
-    let session_id3 = pool.get_or_create("kimicode", "moonshot-v1-128k").session_id().to_string();
+    let session_id1 = pool
+        .get_or_create("claude", "claude-sonnet-4-6")
+        .session_id()
+        .to_string();
+    let session_id2 = pool
+        .get_or_create("opencode", "gpt-4")
+        .session_id()
+        .to_string();
+    let session_id3 = pool
+        .get_or_create("kimicode", "moonshot-v1-128k")
+        .session_id()
+        .to_string();
 
     assert_ne!(session_id1, session_id2);
     assert_ne!(session_id2, session_id3);
@@ -277,18 +302,9 @@ fn test_warmup_config_serialization_roundtrip() {
 
     assert_eq!(original.enabled, deserialized.enabled);
     assert_eq!(original.max_queries, deserialized.max_queries);
-    assert_eq!(
-        original.timeout_seconds,
-        deserialized.timeout_seconds
-    );
-    assert_eq!(
-        original.retry_on_failure,
-        deserialized.retry_on_failure
-    );
-    assert_eq!(
-        original.prompt_template,
-        deserialized.prompt_template
-    );
+    assert_eq!(original.timeout_seconds, deserialized.timeout_seconds);
+    assert_eq!(original.retry_on_failure, deserialized.retry_on_failure);
+    assert_eq!(original.prompt_template, deserialized.prompt_template);
 }
 
 /// Test that warmup config integrates with main config
@@ -303,8 +319,7 @@ fn test_warmup_config_main_integration() {
         prompt_template = "Integration test"
     "#;
 
-    let config: ltmatrix::config::settings::Config =
-        toml::from_str(config_toml).unwrap();
+    let config: ltmatrix::config::settings::Config = toml::from_str(config_toml).unwrap();
 
     assert_eq!(config.warmup.enabled, true);
     assert_eq!(config.warmup.max_queries, 4);

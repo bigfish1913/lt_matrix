@@ -6,7 +6,7 @@
 
 use ltmatrix::models::{ExecutionMode, PipelineStage, Task, TaskStatus};
 use ltmatrix::pipeline::orchestrator::OrchestratorConfig;
-use ltmatrix::pipeline::review::{ReviewConfig, IssueCategory, IssueSeverity};
+use ltmatrix::pipeline::review::{IssueCategory, IssueSeverity, ReviewConfig};
 use tempfile::TempDir;
 
 // =============================================================================
@@ -22,7 +22,10 @@ fn test_review_config_should_run_expert_mode() {
 #[test]
 fn test_review_config_should_run_standard_mode() {
     let config = ReviewConfig::default();
-    assert!(!config.should_run(), "Review should not run in standard mode");
+    assert!(
+        !config.should_run(),
+        "Review should not run in standard mode"
+    );
 }
 
 #[test]
@@ -64,7 +67,10 @@ fn test_review_stage_display_properties() {
     let stage = PipelineStage::Review;
 
     assert_eq!(stage.display_name(), "Code Review");
-    assert!(stage.requires_agent(), "Review stage should require agent interaction");
+    assert!(
+        stage.requires_agent(),
+        "Review stage should require agent interaction"
+    );
 }
 
 #[test]
@@ -75,9 +81,18 @@ fn test_review_stage_in_expert_pipeline() {
     assert!(stages.contains(&PipelineStage::Review));
 
     // Review should be between Test and Verify
-    let test_idx = stages.iter().position(|s| s == &PipelineStage::Test).unwrap();
-    let review_idx = stages.iter().position(|s| s == &PipelineStage::Review).unwrap();
-    let verify_idx = stages.iter().position(|s| s == &PipelineStage::Verify).unwrap();
+    let test_idx = stages
+        .iter()
+        .position(|s| s == &PipelineStage::Test)
+        .unwrap();
+    let review_idx = stages
+        .iter()
+        .position(|s| s == &PipelineStage::Review)
+        .unwrap();
+    let verify_idx = stages
+        .iter()
+        .position(|s| s == &PipelineStage::Verify)
+        .unwrap();
 
     assert!(review_idx > test_idx, "Review should come after Test");
     assert!(review_idx < verify_idx, "Review should come before Verify");
@@ -199,7 +214,10 @@ fn test_pipeline_flow_review_in_correct_position() {
         PipelineStage::Memory,
     ];
 
-    assert_eq!(stages, expected_order, "Review should be between Test and Verify");
+    assert_eq!(
+        stages, expected_order,
+        "Review should be between Test and Verify"
+    );
 }
 
 #[test]
@@ -219,8 +237,7 @@ fn test_pipeline_flow_all_modes_have_valid_stages() {
         assert!(stages.contains(&PipelineStage::Memory));
 
         // Stages should be unique
-        let unique_stages: std::collections::HashSet<_> =
-            stages.iter().collect();
+        let unique_stages: std::collections::HashSet<_> = stages.iter().collect();
         assert_eq!(
             unique_stages.len(),
             stages.len(),
@@ -355,10 +372,7 @@ fn test_review_isolation_from_other_stages() {
     assert!(expert_config.review_config.enabled);
 
     // Other stages should still be configured (using default behavior)
-    assert_eq!(
-        expert_config.execution_mode,
-        ExecutionMode::Expert
-    );
+    assert_eq!(expert_config.execution_mode, ExecutionMode::Expert);
 }
 
 #[test]

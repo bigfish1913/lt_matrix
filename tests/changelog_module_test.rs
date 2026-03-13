@@ -3,9 +3,7 @@
 //! These tests verify the changelog generation and management functionality
 //! following Keep a Changelog format.
 
-use ltmatrix::release::{
-    Changelog, ChangelogEntry, ChangelogSection,
-};
+use ltmatrix::release::{Changelog, ChangelogEntry, ChangelogSection};
 
 #[test]
 fn test_changelog_section_display() {

@@ -4,12 +4,12 @@
 //! modules integrate correctly with the existing execute/test/verify stages.
 
 use ltmatrix::pipeline::coverage::{
-    AggregatedFindings, CoverageConfig, CoverageReport, IssueDetail, IssueSeverity,
-    SecurityIssue, TestFailure,
+    AggregatedFindings, CoverageConfig, CoverageReport, IssueDetail, IssueSeverity, SecurityIssue,
+    TestFailure,
 };
 use ltmatrix::pipeline::fix_cycle::{
-    determine_fix_strategy, execute_fix_cycle, FixCycleConfig, FixCycleTrigger, FixStrategy,
-    should_trigger_fix_cycle,
+    determine_fix_strategy, execute_fix_cycle, should_trigger_fix_cycle, FixCycleConfig,
+    FixCycleTrigger, FixStrategy,
 };
 
 // ==================== Coverage Configuration Tests ====================
@@ -361,7 +361,10 @@ fn test_determine_fix_strategy_low_issues() {
 
 #[test]
 fn test_determine_fix_strategy_verification_failure() {
-    let strategy = determine_fix_strategy(IssueSeverity::Critical, FixCycleTrigger::VerificationFailure);
+    let strategy = determine_fix_strategy(
+        IssueSeverity::Critical,
+        FixCycleTrigger::VerificationFailure,
+    );
     assert_eq!(strategy, FixStrategy::FixAndVerify);
 }
 
@@ -482,17 +485,32 @@ fn test_should_trigger_fix_cycle_medium_and_low_issues() {
 #[test]
 fn test_fix_cycle_trigger_equality() {
     assert_eq!(FixCycleTrigger::TestFailure, FixCycleTrigger::TestFailure);
-    assert_eq!(FixCycleTrigger::VerificationFailure, FixCycleTrigger::VerificationFailure);
-    assert_eq!(FixCycleTrigger::SecurityIssue, FixCycleTrigger::SecurityIssue);
-    assert_eq!(FixCycleTrigger::PerformanceIssue, FixCycleTrigger::PerformanceIssue);
+    assert_eq!(
+        FixCycleTrigger::VerificationFailure,
+        FixCycleTrigger::VerificationFailure
+    );
+    assert_eq!(
+        FixCycleTrigger::SecurityIssue,
+        FixCycleTrigger::SecurityIssue
+    );
+    assert_eq!(
+        FixCycleTrigger::PerformanceIssue,
+        FixCycleTrigger::PerformanceIssue
+    );
     assert_eq!(FixCycleTrigger::LowCoverage, FixCycleTrigger::LowCoverage);
     assert_eq!(FixCycleTrigger::Manual, FixCycleTrigger::Manual);
 }
 
 #[test]
 fn test_fix_cycle_trigger_inequality() {
-    assert_ne!(FixCycleTrigger::TestFailure, FixCycleTrigger::VerificationFailure);
-    assert_ne!(FixCycleTrigger::SecurityIssue, FixCycleTrigger::PerformanceIssue);
+    assert_ne!(
+        FixCycleTrigger::TestFailure,
+        FixCycleTrigger::VerificationFailure
+    );
+    assert_ne!(
+        FixCycleTrigger::SecurityIssue,
+        FixCycleTrigger::PerformanceIssue
+    );
     assert_ne!(FixCycleTrigger::LowCoverage, FixCycleTrigger::Manual);
 }
 

@@ -7,17 +7,16 @@
 //! These tests verify prompt template discovery and retrieval functionality,
 //! including parameter validation and result formatting.
 
-use ltmatrix::mcp::{
-    Prompt, PromptArgument, PromptContent, PromptMessage,
-    PromptsListParams, PromptsListResult, PromptsGetParams, PromptsGetResult,
-};
-use ltmatrix::mcp::protocol::wrappers::{
-    McpMethod, PaginatedMethod, PromptsList, PromptsGet,
-    McpMethodKind,
-};
-use ltmatrix::mcp::protocol::messages::{JsonRpcResponse, RequestId};
-use ltmatrix::mcp::protocol::errors::JsonRpcError;
 use ltmatrix::mcp::client::McpClient;
+use ltmatrix::mcp::protocol::errors::JsonRpcError;
+use ltmatrix::mcp::protocol::messages::{JsonRpcResponse, RequestId};
+use ltmatrix::mcp::protocol::wrappers::{
+    McpMethod, McpMethodKind, PaginatedMethod, PromptsGet, PromptsList,
+};
+use ltmatrix::mcp::{
+    Prompt, PromptArgument, PromptContent, PromptMessage, PromptsGetParams, PromptsGetResult,
+    PromptsListParams, PromptsListResult,
+};
 use serde_json::json;
 
 // ============================================================================
@@ -105,7 +104,10 @@ mod prompts_list_method_tests {
 
         assert_eq!(result.prompts.len(), 2);
         assert_eq!(result.prompts[0].name, "code_review");
-        assert_eq!(result.prompts[0].description, Some("Generate a code review prompt".to_string()));
+        assert_eq!(
+            result.prompts[0].description,
+            Some("Generate a code review prompt".to_string())
+        );
         assert!(result.prompts[0].arguments.is_some());
 
         let args = result.prompts[0].arguments.as_ref().unwrap();
@@ -257,7 +259,7 @@ mod prompts_get_method_tests {
             json!({
                 "language": "rust",
                 "style": "thorough"
-            })
+            }),
         );
         let request = PromptsGet::build_request(RequestId::Number(1), params);
 
@@ -278,10 +280,7 @@ mod prompts_get_method_tests {
     /// Test PromptsGet::params_with_args helper
     #[test]
     fn test_prompts_get_params_with_args_helper() {
-        let params = PromptsGet::params_with_args(
-            "translate",
-            json!({"from": "en", "to": "es"})
-        );
+        let params = PromptsGet::params_with_args("translate", json!({"from": "en", "to": "es"}));
         assert_eq!(params.name, "translate");
         assert!(params.arguments.is_some());
     }
@@ -314,12 +313,17 @@ mod prompts_get_method_tests {
 
         let result = PromptsGet::parse_response(response).unwrap();
 
-        assert_eq!(result.description, Some("Code review prompt for Rust".to_string()));
+        assert_eq!(
+            result.description,
+            Some("Code review prompt for Rust".to_string())
+        );
         assert_eq!(result.messages.len(), 2);
 
         assert_eq!(result.messages[0].role, "user");
         match &result.messages[0].content {
-            PromptContent::Text { text } => assert_eq!(text, "Please review the following Rust code:"),
+            PromptContent::Text { text } => {
+                assert_eq!(text, "Please review the following Rust code:")
+            }
             _ => panic!("Expected text content"),
         }
 
@@ -500,7 +504,7 @@ mod parameter_validation_tests {
                     "language": "rust",
                     "strict": true
                 }
-            })
+            }),
         );
         let args = params.arguments.unwrap();
         assert_eq!(args["config"]["language"], "rust");
@@ -563,10 +567,7 @@ mod result_formatting_tests {
     fn test_prompt_content_summary() {
         let result = PromptsGetResult {
             description: None,
-            messages: vec![
-                PromptMessage::user("Text 1"),
-                PromptMessage::user("Text 2"),
-            ],
+            messages: vec![PromptMessage::user("Text 1"), PromptMessage::user("Text 2")],
         };
 
         let (text_count, image_count, resource_count) = McpClient::prompt_content_summary(&result);
@@ -639,7 +640,7 @@ mod integration_like_tests {
     fn test_simulated_prompts_get_flow() {
         let params = PromptsGet::params_with_args(
             "code_review",
-            json!({"language": "rust", "strict": true})
+            json!({"language": "rust", "strict": true}),
         );
         let request = PromptsGet::build_request(RequestId::Number(1), params);
 
@@ -661,7 +662,10 @@ mod integration_like_tests {
         );
 
         let result = PromptsGet::parse_response(response).unwrap();
-        assert_eq!(result.description, Some("Review Rust code with strict mode".to_string()));
+        assert_eq!(
+            result.description,
+            Some("Review Rust code with strict mode".to_string())
+        );
         assert_eq!(result.messages.len(), 1);
     }
 
@@ -714,8 +718,16 @@ mod serialization_edge_cases {
         );
 
         let result = PromptsList::parse_response(response).unwrap();
-        assert!(result.prompts[0].description.as_ref().unwrap().contains("中文"));
-        assert!(result.prompts[0].description.as_ref().unwrap().contains("🎉"));
+        assert!(result.prompts[0]
+            .description
+            .as_ref()
+            .unwrap()
+            .contains("中文"));
+        assert!(result.prompts[0]
+            .description
+            .as_ref()
+            .unwrap()
+            .contains("🎉"));
     }
 
     /// Test large prompt output
@@ -748,10 +760,8 @@ mod serialization_edge_cases {
             .map(|i| json!({ "name": format!("prompt_{}", i) }))
             .collect();
 
-        let response = JsonRpcResponse::success(
-            RequestId::Number(1),
-            json!({ "prompts": prompts }),
-        );
+        let response =
+            JsonRpcResponse::success(RequestId::Number(1), json!({ "prompts": prompts }));
 
         let result = PromptsList::parse_response(response).unwrap();
         assert_eq!(result.prompts.len(), 100);
@@ -760,13 +770,18 @@ mod serialization_edge_cases {
     /// Test request id variations
     #[test]
     fn test_request_id_variations() {
-        let request = PromptsList::build_request(RequestId::Number(1), PromptsListParams::default());
+        let request =
+            PromptsList::build_request(RequestId::Number(1), PromptsListParams::default());
         assert_eq!(request.id, RequestId::Number(1));
 
-        let request = PromptsList::build_request(RequestId::String("abc-123".to_string()), PromptsListParams::default());
+        let request = PromptsList::build_request(
+            RequestId::String("abc-123".to_string()),
+            PromptsListParams::default(),
+        );
         assert_eq!(request.id, RequestId::String("abc-123".to_string()));
 
-        let request = PromptsList::build_request(RequestId::Number(i64::MAX), PromptsListParams::default());
+        let request =
+            PromptsList::build_request(RequestId::Number(i64::MAX), PromptsListParams::default());
         assert_eq!(request.id, RequestId::Number(i64::MAX));
     }
 
@@ -803,10 +818,12 @@ mod jsonrpc_format_tests {
     /// Test JSON-RPC version in requests
     #[test]
     fn test_jsonrpc_version_in_requests() {
-        let request = PromptsList::build_request(RequestId::Number(1), PromptsListParams::default());
+        let request =
+            PromptsList::build_request(RequestId::Number(1), PromptsListParams::default());
         assert_eq!(request.jsonrpc, "2.0");
 
-        let request = PromptsGet::build_request(RequestId::Number(1), PromptsGetParams::new("test"));
+        let request =
+            PromptsGet::build_request(RequestId::Number(1), PromptsGetParams::new("test"));
         assert_eq!(request.jsonrpc, "2.0");
     }
 
@@ -871,10 +888,7 @@ mod error_handling_tests {
     /// Test parsing response with missing fields
     #[test]
     fn test_parse_response_missing_fields() {
-        let response = JsonRpcResponse::success(
-            RequestId::Number(1),
-            json!({}),
-        );
+        let response = JsonRpcResponse::success(RequestId::Number(1), json!({}));
 
         let result = PromptsList::parse_response(response);
         assert!(result.is_err());

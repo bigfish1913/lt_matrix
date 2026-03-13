@@ -25,10 +25,17 @@ fn lifecycle_session_creation_via_get_or_create() {
     // Create a new session
     let session = pool.get_or_create("claude", "claude-sonnet-4-6");
 
-    assert!(!session.session_id().is_empty(), "Session ID should be generated");
+    assert!(
+        !session.session_id().is_empty(),
+        "Session ID should be generated"
+    );
     assert_eq!(session.agent_name(), "claude");
     assert_eq!(session.model(), "claude-sonnet-4-6");
-    assert_eq!(session.reuse_count(), 0, "New session should have reuse_count of 0");
+    assert_eq!(
+        session.reuse_count(),
+        0,
+        "New session should have reuse_count of 0"
+    );
     assert!(!session.is_stale(), "New session should not be stale");
 }
 
@@ -62,7 +69,10 @@ fn lifecycle_session_release_via_remove() {
     let removed = pool.remove(&id);
     assert!(removed.is_some(), "Should successfully remove session");
     assert_eq!(pool.len(), 0, "Pool should be empty after removal");
-    assert!(pool.get(&id).is_none(), "Removed session should not be accessible");
+    assert!(
+        pool.get(&id).is_none(),
+        "Removed session should not be accessible"
+    );
 }
 
 #[test]
@@ -140,7 +150,10 @@ fn lifecycle_cleanup_stale_sessions() {
 
     assert_eq!(removed_count, 1, "Should remove 1 stale session");
     assert_eq!(pool.len(), 1, "Should have 1 session after cleanup");
-    assert!(pool.get(&stale_id).is_none(), "Stale session should be removed");
+    assert!(
+        pool.get(&stale_id).is_none(),
+        "Stale session should be removed"
+    );
 }
 
 #[test]
@@ -180,8 +193,14 @@ fn lifecycle_cleanup_no_sessions_to_remove() {
 fn lifecycle_explicit_cleanup_removes_specific_session() {
     let mut pool = SessionPool::new();
 
-    let id1 = pool.get_or_create("agent1", "model1").session_id().to_string();
-    let id2 = pool.get_or_create("agent2", "model2").session_id().to_string();
+    let id1 = pool
+        .get_or_create("agent1", "model1")
+        .session_id()
+        .to_string();
+    let id2 = pool
+        .get_or_create("agent2", "model2")
+        .session_id()
+        .to_string();
 
     assert_eq!(pool.len(), 2);
 
@@ -212,9 +231,7 @@ async fn lifecycle_session_manager_file_cleanup() {
         created_at: chrono::Utc::now() - chrono::Duration::seconds(4000),
         last_accessed: chrono::Utc::now() - chrono::Duration::seconds(4000),
         reuse_count: 0,
-        file_path: manager
-            .sessions_dir
-            .join("claude-stale-id.json"),
+        file_path: manager.sessions_dir.join("claude-stale-id.json"),
     };
 
     let content = serde_json::to_string(&stale_session).unwrap();
@@ -258,11 +275,17 @@ fn lifecycle_health_check_boundary_conditions() {
 
     // Exactly 1 hour old (3600 seconds) - should NOT be stale
     session.last_accessed = chrono::Utc::now() - chrono::Duration::seconds(3600);
-    assert!(!session.is_stale(), "Session exactly 1 hour old should not be stale");
+    assert!(
+        !session.is_stale(),
+        "Session exactly 1 hour old should not be stale"
+    );
 
     // 1 hour + 1 second old - should be stale
     session.last_accessed = chrono::Utc::now() - chrono::Duration::seconds(3601);
-    assert!(session.is_stale(), "Session 1 hour + 1 second old should be stale");
+    assert!(
+        session.is_stale(),
+        "Session 1 hour + 1 second old should be stale"
+    );
 }
 
 #[test]
@@ -276,7 +299,10 @@ fn lifecycle_health_check_mark_accessed_refreshes() {
     // Mark as accessed
     session.mark_accessed();
 
-    assert!(!session.is_stale(), "Session should be fresh after mark_accessed");
+    assert!(
+        !session.is_stale(),
+        "Session should be fresh after mark_accessed"
+    );
     assert_eq!(session.reuse_count(), 1);
 }
 
@@ -305,10 +331,7 @@ fn lifecycle_health_check_pool_mark_accessed() {
     let success = pool.mark_accessed(&id);
 
     assert!(success, "mark_accessed should return true");
-    assert_eq!(
-        pool.get(&id).unwrap().reuse_count(),
-        initial_count + 1
-    );
+    assert_eq!(pool.get(&id).unwrap().reuse_count(), initial_count + 1);
 }
 
 #[test]
@@ -316,7 +339,10 @@ fn lifecycle_health_check_nonexistent_session_mark_accessed() {
     let mut pool = SessionPool::new();
 
     let success = pool.mark_accessed("nonexistent-id");
-    assert!(!success, "mark_accessed should return false for nonexistent session");
+    assert!(
+        !success,
+        "mark_accessed should return false for nonexistent session"
+    );
 }
 
 // ============================================================================
@@ -338,10 +364,7 @@ fn lifecycle_concurrent_get_or_create_same_session() {
         .collect();
 
     // Wait for all threads
-    let session_ids: Vec<_> = handles
-        .into_iter()
-        .map(|h| h.join().unwrap())
-        .collect();
+    let session_ids: Vec<_> = handles.into_iter().map(|h| h.join().unwrap()).collect();
 
     // All threads should get the same session ID
     let first_id = &session_ids[0];
@@ -376,10 +399,7 @@ fn lifecycle_concurrent_different_agents_create_separate_sessions() {
         .collect();
 
     // Wait for all threads
-    let session_ids: Vec<_> = handles
-        .into_iter()
-        .map(|h| h.join().unwrap())
-        .collect();
+    let session_ids: Vec<_> = handles.into_iter().map(|h| h.join().unwrap()).collect();
 
     // All session IDs should be different
     assert_eq!(session_ids.len(), 3);
@@ -403,7 +423,9 @@ fn lifecycle_concurrent_mark_accessed_thread_safety() {
     // Create initial session and capture its ID
     let id = {
         let mut pool = pool.lock().unwrap();
-        pool.get_or_create("claude", "claude-sonnet-4-6").session_id().to_string()
+        pool.get_or_create("claude", "claude-sonnet-4-6")
+            .session_id()
+            .to_string()
     };
 
     // Multiple threads marking as accessed
@@ -458,7 +480,10 @@ fn lifecycle_concurrent_register_and_get() {
 
     // Wait for all threads and verify all succeeded
     for handle in handles {
-        assert!(handle.join().unwrap(), "Each thread should successfully register and get its session");
+        assert!(
+            handle.join().unwrap(),
+            "Each thread should successfully register and get its session"
+        );
     }
 
     // Pool should have all sessions
@@ -535,7 +560,10 @@ fn lifecycle_concurrent_remove_different_sessions() {
 
     // All removals should succeed
     for handle in handles {
-        assert!(handle.join().unwrap(), "Each session should be successfully removed");
+        assert!(
+            handle.join().unwrap(),
+            "Each session should be successfully removed"
+        );
     }
 
     // Pool should be empty
@@ -550,7 +578,10 @@ fn lifecycle_concurrent_remove_different_sessions() {
 fn lifecycle_session_pool_operations_consistency_after_removal() {
     let mut pool = SessionPool::new();
 
-    let id = pool.get_or_create("claude", "claude-sonnet-4-6").session_id().to_string();
+    let id = pool
+        .get_or_create("claude", "claude-sonnet-4-6")
+        .session_id()
+        .to_string();
 
     // Verify session exists
     assert!(pool.get(&id).is_some());
@@ -565,7 +596,10 @@ fn lifecycle_session_pool_operations_consistency_after_removal() {
     assert!(pool.is_empty());
 
     // Can create new session after removal
-    let new_id = pool.get_or_create("claude", "claude-sonnet-4-6").session_id().to_string();
+    let new_id = pool
+        .get_or_create("claude", "claude-sonnet-4-6")
+        .session_id()
+        .to_string();
     assert_ne!(new_id, id, "New session should have different ID");
 }
 
@@ -580,8 +614,14 @@ fn lifecycle_session_data_fields_persistence() {
     session.mark_accessed();
 
     // Verify fields are consistent
-    assert_eq!(session.session_id, original_id, "Session ID should not change");
-    assert_eq!(session.created_at, original_created, "Creation time should not change");
+    assert_eq!(
+        session.session_id, original_id,
+        "Session ID should not change"
+    );
+    assert_eq!(
+        session.created_at, original_created,
+        "Creation time should not change"
+    );
     assert!(session.last_accessed >= session.created_at);
     assert_eq!(session.reuse_count, 1);
 }
@@ -598,7 +638,10 @@ async fn lifecycle_session_manager_persistence_across_operations() {
         .unwrap();
     let id = session.session_id.clone();
     let file_path = session.file_path.clone();
-    assert_eq!(session.reuse_count, 0, "New session should have reuse_count of 0");
+    assert_eq!(
+        session.reuse_count, 0,
+        "New session should have reuse_count of 0"
+    );
 
     // Verify file exists
     assert!(file_path.exists());
@@ -606,7 +649,10 @@ async fn lifecycle_session_manager_persistence_across_operations() {
     // Load session (load_session marks as accessed, so reuse_count = 1)
     let loaded = manager.load_session(&id).await.unwrap().unwrap();
     assert_eq!(loaded.session_id, id);
-    assert_eq!(loaded.reuse_count, 1, "load_session should increment reuse_count");
+    assert_eq!(
+        loaded.reuse_count, 1,
+        "load_session should increment reuse_count"
+    );
 
     // Mark as accessed and save (reuse_count = 2)
     {
@@ -618,7 +664,10 @@ async fn lifecycle_session_manager_persistence_across_operations() {
 
     // Load again and verify updated reuse_count (load_session marks as accessed again, so reuse_count = 3)
     let reloaded = manager.load_session(&id).await.unwrap().unwrap();
-    assert_eq!(reloaded.reuse_count, 3, "Reuse count should increment with each load");
+    assert_eq!(
+        reloaded.reuse_count, 3,
+        "Reuse count should increment with each load"
+    );
 
     // Delete session
     let deleted = manager.delete_session(&id).await.unwrap();
@@ -635,11 +684,17 @@ fn lifecycle_full_session_workflow() {
     let mut pool = SessionPool::new();
 
     // 1. Create session
-    let id = pool.get_or_create("claude", "claude-sonnet-4-6").session_id().to_string();
+    let id = pool
+        .get_or_create("claude", "claude-sonnet-4-6")
+        .session_id()
+        .to_string();
     assert_eq!(pool.len(), 1);
 
     // 2. Access/reuse session
-    let reused_id = pool.get_or_create("claude", "claude-sonnet-4-6").session_id().to_string();
+    let reused_id = pool
+        .get_or_create("claude", "claude-sonnet-4-6")
+        .session_id()
+        .to_string();
     assert_eq!(reused_id, id);
     assert_eq!(pool.len(), 1);
 
@@ -677,10 +732,16 @@ fn lifecycle_multiple_agents_with_session_reuse() {
     assert_eq!(pool.len(), 2);
 
     // Reuse sessions
-    let claude_reused_id = pool.get_or_create("claude", "claude-sonnet-4-6").session_id().to_string();
+    let claude_reused_id = pool
+        .get_or_create("claude", "claude-sonnet-4-6")
+        .session_id()
+        .to_string();
     assert_eq!(claude_reused_id, claude_id);
 
-    let opencode_reused_id = pool.get_or_create("opencode", "gpt-4").session_id().to_string();
+    let opencode_reused_id = pool
+        .get_or_create("opencode", "gpt-4")
+        .session_id()
+        .to_string();
     assert_eq!(opencode_reused_id, opencode_id);
 
     // Still only 2 sessions
@@ -719,6 +780,12 @@ fn lifecycle_session_staleness_affects_get_or_create() {
     }
 
     // get_or_create should create new session instead of reusing stale one
-    let new_id = pool.get_or_create("claude", "claude-sonnet-4-6").session_id().to_string();
-    assert_ne!(new_id, id, "Should create new session when old one is stale");
+    let new_id = pool
+        .get_or_create("claude", "claude-sonnet-4-6")
+        .session_id()
+        .to_string();
+    assert_ne!(
+        new_id, id,
+        "Should create new session when old one is stale"
+    );
 }

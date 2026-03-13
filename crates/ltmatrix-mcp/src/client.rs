@@ -64,17 +64,15 @@
 use crate::protocol::errors::{McpError, McpErrorCode, McpResult};
 use crate::protocol::messages::RequestId;
 use crate::protocol::methods::{
-    ClientCapabilities, ImplementationInfo, InitializeParams, InitializeResult,
-    Prompt, PromptContent, PromptMessage, PromptsGetParams, PromptsGetResult,
-    PromptsListParams, PromptsListResult,
-    Resource, ResourceReadParams, ResourceReadResult,
-    ResourcesListParams, ResourcesListResult, ServerCapabilities, Tool, ToolCallParams,
-    ToolCallResult, ToolContent, ToolsListParams, ToolsListResult,
-    MCP_PROTOCOL_VERSION,
+    ClientCapabilities, ImplementationInfo, InitializeParams, InitializeResult, Prompt,
+    PromptContent, PromptMessage, PromptsGetParams, PromptsGetResult, PromptsListParams,
+    PromptsListResult, Resource, ResourceReadParams, ResourceReadResult, ResourcesListParams,
+    ResourcesListResult, ServerCapabilities, Tool, ToolCallParams, ToolCallResult, ToolContent,
+    ToolsListParams, ToolsListResult, MCP_PROTOCOL_VERSION,
 };
 use crate::protocol::wrappers::{
-    Initialize, McpMethod, McpNotification, NotificationsInitialized,
-    Ping, PingParams, PromptsGet, PromptsList, ResourcesList, ResourcesRead, ToolsList, ToolsCall,
+    Initialize, McpMethod, McpNotification, NotificationsInitialized, Ping, PingParams, PromptsGet,
+    PromptsList, ResourcesList, ResourcesRead, ToolsCall, ToolsList,
 };
 use crate::transport::{create_transport, Transport, TransportConfig, TransportMessage};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -157,7 +155,10 @@ impl ConnectionState {
     /// [`ConnectionState::Connecting`].
     #[inline]
     pub fn can_disconnect(&self) -> bool {
-        matches!(self, ConnectionState::Connected | ConnectionState::Connecting)
+        matches!(
+            self,
+            ConnectionState::Connected | ConnectionState::Connecting
+        )
     }
 
     /// Check if the client is in a transitional state
@@ -166,7 +167,10 @@ impl ConnectionState {
     /// [`ConnectionState::Disconnecting`].
     #[inline]
     pub fn is_transitioning(&self) -> bool {
-        matches!(self, ConnectionState::Connecting | ConnectionState::Disconnecting)
+        matches!(
+            self,
+            ConnectionState::Connecting | ConnectionState::Disconnecting
+        )
     }
 
     /// Get a human-readable name for the state
@@ -475,7 +479,11 @@ impl McpClient {
     ///
     /// Returns `None` if not connected.
     pub async fn server_capabilities(&self) -> Option<ServerCapabilities> {
-        self.server_info.read().await.as_ref().map(|i| i.capabilities.clone())
+        self.server_info
+            .read()
+            .await
+            .as_ref()
+            .map(|i| i.capabilities.clone())
     }
 
     /// Generate the next request ID
@@ -524,7 +532,8 @@ impl McpClient {
                     current: *state,
                     action: "connect",
                     required_states: &[ConnectionState::Disconnected],
-                }.into());
+                }
+                .into());
             }
 
             // Transition to Connecting
@@ -609,18 +618,20 @@ impl McpClient {
 
         // Send the request
         {
-            let transport = self.transport.as_ref().ok_or_else(|| {
-                McpError::communication("Transport not available")
-            })?;
+            let transport = self
+                .transport
+                .as_ref()
+                .ok_or_else(|| McpError::communication("Transport not available"))?;
             transport.send_request(request).await?;
         }
 
         // Wait for response with timeout
         let response = tokio::time::timeout(
             self.config.connect_timeout,
-            self.wait_for_response(&request_id)
-        ).await
-            .map_err(|_| McpError::timeout("initialize", self.config.connect_timeout))??;
+            self.wait_for_response(&request_id),
+        )
+        .await
+        .map_err(|_| McpError::timeout("initialize", self.config.connect_timeout))??;
 
         // Parse the initialize result
         let init_result = Initialize::parse_response(response)?;
@@ -631,9 +642,10 @@ impl McpClient {
 
         // Send initialized notification
         {
-            let transport = self.transport.as_ref().ok_or_else(|| {
-                McpError::communication("Transport not available")
-            })?;
+            let transport = self
+                .transport
+                .as_ref()
+                .ok_or_else(|| McpError::communication("Transport not available"))?;
             let notification = NotificationsInitialized::build_notification_empty();
             transport.send_notification(notification).await?;
         }
@@ -648,10 +660,14 @@ impl McpClient {
     }
 
     /// Wait for a response with a specific request ID
-    async fn wait_for_response(&self, expected_id: &RequestId) -> McpResult<crate::JsonRpcResponse> {
-        let transport = self.transport.as_ref().ok_or_else(|| {
-            McpError::communication("Transport not available")
-        })?;
+    async fn wait_for_response(
+        &self,
+        expected_id: &RequestId,
+    ) -> McpResult<crate::JsonRpcResponse> {
+        let transport = self
+            .transport
+            .as_ref()
+            .ok_or_else(|| McpError::communication("Transport not available"))?;
 
         loop {
             let message = transport.receive().await?;
@@ -664,12 +680,16 @@ impl McpClient {
                     // Unexpected response ID - this shouldn't happen in normal operation
                     tracing::warn!(
                         "Received response with unexpected ID: {:?} (expected: {:?})",
-                        response.id, expected_id
+                        response.id,
+                        expected_id
                     );
                 }
                 TransportMessage::Notification(notification) => {
                     // Log notification but continue waiting for response
-                    tracing::debug!("Received notification during handshake: {}", notification.method);
+                    tracing::debug!(
+                        "Received notification during handshake: {}",
+                        notification.method
+                    );
                 }
                 TransportMessage::Error(error) => {
                     return Err(error.into());
@@ -719,7 +739,8 @@ impl McpClient {
                     current: current_state,
                     action: "disconnect",
                     required_states: &[ConnectionState::Connected, ConnectionState::Connecting],
-                }.into());
+                }
+                .into());
             }
 
             // Transition to Disconnecting
@@ -830,18 +851,20 @@ impl McpClient {
 
         // Send the request
         {
-            let transport = self.transport.as_ref().ok_or_else(|| {
-                McpError::communication("Transport not available")
-            })?;
+            let transport = self
+                .transport
+                .as_ref()
+                .ok_or_else(|| McpError::communication("Transport not available"))?;
             transport.send_request(request).await?;
         }
 
         // Wait for response with timeout
         let response = tokio::time::timeout(
             self.config.request_timeout,
-            self.wait_for_response(&request_id)
-        ).await
-            .map_err(|_| McpError::timeout(M::METHOD_NAME, self.config.request_timeout))??;
+            self.wait_for_response(&request_id),
+        )
+        .await
+        .map_err(|_| McpError::timeout(M::METHOD_NAME, self.config.request_timeout))??;
 
         if self.config.debug_logging {
             tracing::debug!("Received {} response: {:?}", M::METHOD_NAME, response);
@@ -1310,7 +1333,8 @@ impl McpClient {
             return Err(McpError::new(
                 McpErrorCode::ToolNotFound,
                 format!("Tool '{}' not found", name),
-            ).with_data(serde_json::json!({ "tool": name })));
+            )
+            .with_data(serde_json::json!({ "tool": name })));
         }
 
         // Basic validation: if arguments provided, ensure they're an object
@@ -1342,7 +1366,9 @@ impl McpClient {
     ///
     /// A string containing all text content joined by newlines.
     pub fn extract_text_from_result(result: &ToolCallResult) -> String {
-        result.content.iter()
+        result
+            .content
+            .iter()
             .filter_map(|c| match c {
                 ToolContent::Text { text } => Some(text.clone()),
                 _ => None,
@@ -1361,7 +1387,9 @@ impl McpClient {
     ///
     /// A vector of (data, mime_type) tuples for each image.
     pub fn extract_images_from_result(result: &ToolCallResult) -> Vec<(String, String)> {
-        result.content.iter()
+        result
+            .content
+            .iter()
             .filter_map(|c| match c {
                 ToolContent::Image { data, mime_type } => Some((data.clone(), mime_type.clone())),
                 _ => None,
@@ -1379,11 +1407,11 @@ impl McpClient {
     ///
     /// A vector of (uri, mime_type) tuples for each resource reference.
     pub fn extract_resources_from_result(result: &ToolCallResult) -> Vec<(String, Option<String>)> {
-        result.content.iter()
+        result
+            .content
+            .iter()
             .filter_map(|c| match c {
-                ToolContent::Resource { uri, mime_type } => {
-                    Some((uri.clone(), mime_type.clone()))
-                }
+                ToolContent::Resource { uri, mime_type } => Some((uri.clone(), mime_type.clone())),
                 _ => None,
             })
             .collect()
@@ -1665,7 +1693,10 @@ impl McpClient {
         arguments: Option<&serde_json::Value>,
     ) -> McpResult<()> {
         let prompt = self.find_prompt(name).await?.ok_or_else(|| {
-            McpError::new(McpErrorCode::InvalidParams, format!("Prompt '{}' not found", name))
+            McpError::new(
+                McpErrorCode::InvalidParams,
+                format!("Prompt '{}' not found", name),
+            )
         })?;
 
         // Check required arguments
@@ -1677,7 +1708,10 @@ impl McpClient {
                 if arg.required && !provided_args.contains_key(&arg.name) {
                     return Err(McpError::new(
                         McpErrorCode::InvalidParams,
-                        format!("Missing required argument '{}' for prompt '{}'", arg.name, name),
+                        format!(
+                            "Missing required argument '{}' for prompt '{}'",
+                            arg.name, name
+                        ),
                     ));
                 }
             }
@@ -1711,7 +1745,8 @@ impl McpClient {
         arguments: Option<serde_json::Value>,
     ) -> McpResult<PromptsGetResult> {
         // Validate arguments
-        self.validate_prompt_arguments(name, arguments.as_ref()).await?;
+        self.validate_prompt_arguments(name, arguments.as_ref())
+            .await?;
 
         // Get the prompt
         self.get_prompt(name, arguments).await
@@ -1727,7 +1762,9 @@ impl McpClient {
     ///
     /// A vector of (role, text) tuples for each text message.
     pub fn extract_text_messages(result: &PromptsGetResult) -> Vec<(String, String)> {
-        result.messages.iter()
+        result
+            .messages
+            .iter()
             .filter_map(|m| match &m.content {
                 PromptContent::Text { text } => Some((m.role.clone(), text.clone())),
                 _ => None,
@@ -1745,7 +1782,9 @@ impl McpClient {
     ///
     /// All text content concatenated with newlines.
     pub fn extract_all_text(result: &PromptsGetResult) -> String {
-        result.messages.iter()
+        result
+            .messages
+            .iter()
             .filter_map(|m| match &m.content {
                 PromptContent::Text { text } => Some(text.as_str()),
                 _ => None,
@@ -1764,9 +1803,10 @@ impl McpClient {
     ///
     /// `true` if all messages contain only text content.
     pub fn is_text_only(result: &PromptsGetResult) -> bool {
-        result.messages.iter().all(|m| {
-            matches!(m.content, PromptContent::Text { .. })
-        })
+        result
+            .messages
+            .iter()
+            .all(|m| matches!(m.content, PromptContent::Text { .. }))
     }
 
     /// Get a summary of prompt result content types

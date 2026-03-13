@@ -8,12 +8,11 @@
 //! - Memory extraction from task results
 
 use ltmatrix::memory::{
-    MemoryStore, MemoryEntry, MemoryIntegration, MemoryCategory,
-    extract_memory_from_task, extract_task_summary,
-    format_memory_for_prompt, should_inject_memory,
-    calculate_max_memory_size, truncate_memory_context,
+    calculate_max_memory_size, extract_memory_from_task, extract_task_summary,
+    format_memory_for_prompt, should_inject_memory, truncate_memory_context, MemoryCategory,
+    MemoryEntry, MemoryIntegration, MemoryStore,
 };
-use ltmatrix::models::{Task, TaskStatus, TaskComplexity};
+use ltmatrix::models::{Task, TaskComplexity, TaskStatus};
 use std::fs;
 use tempfile::TempDir;
 
@@ -27,8 +26,7 @@ fn create_test_task(id: &str, title: &str, description: &str) -> Task {
 
 /// Helper to create a test memory entry
 fn create_test_entry(task_id: &str, title: &str, content: &str) -> MemoryEntry {
-    MemoryEntry::new(task_id, title, content)
-        .with_category("Test Category")
+    MemoryEntry::new(task_id, title, content).with_category("Test Category")
 }
 
 // ============================================================================
@@ -46,7 +44,10 @@ fn test_memory_file_location() {
 
     // Verify memory file is created in correct location
     let memory_file = temp_dir.path().join(".claude/memory.md");
-    assert!(memory_file.exists(), "Memory file should be created at .claude/memory.md");
+    assert!(
+        memory_file.exists(),
+        "Memory file should be created at .claude/memory.md"
+    );
 
     // Verify directory structure
     let claude_dir = temp_dir.path().join(".claude");
@@ -99,10 +100,19 @@ fn test_memory_file_format() {
     // Verify markdown format
     assert!(content.contains("# Project Memory"), "Should have header");
     // The title includes category prefix: ## [Category] Title
-    assert!(content.contains("Architecture Decision"), "Should have title");
-    assert!(content.contains("**Task**: task-042"), "Should have task reference");
+    assert!(
+        content.contains("Architecture Decision"),
+        "Should have title"
+    );
+    assert!(
+        content.contains("**Task**: task-042"),
+        "Should have task reference"
+    );
     assert!(content.contains("**Date**:"), "Should have timestamp");
-    assert!(content.contains("Use Tokio for async"), "Should have content");
+    assert!(
+        content.contains("Use Tokio for async"),
+        "Should have content"
+    );
     assert!(content.contains("---"), "Should have separator");
 }
 
@@ -124,7 +134,10 @@ fn test_memory_entry_timestamps() {
     store.append_entry(&entry2).unwrap();
 
     let entries = store.get_entries();
-    assert!(entries[1].timestamp > entries[0].timestamp, "Timestamps should be sequential");
+    assert!(
+        entries[1].timestamp > entries[0].timestamp,
+        "Timestamps should be sequential"
+    );
 }
 
 // ============================================================================
@@ -148,8 +161,14 @@ fn test_extract_architectural_decisions() {
         .filter(|e| e.category == MemoryCategory::ArchitectureDecision)
         .collect();
 
-    assert!(!arch_decisions.is_empty(), "Should extract architectural decisions");
-    assert!(arch_decisions.iter().any(|e| e.content.contains("Tokio")), "Should find Tokio decision");
+    assert!(
+        !arch_decisions.is_empty(),
+        "Should extract architectural decisions"
+    );
+    assert!(
+        arch_decisions.iter().any(|e| e.content.contains("Tokio")),
+        "Should find Tokio decision"
+    );
 }
 
 #[test]
@@ -169,7 +188,10 @@ fn test_extract_patterns() {
         .collect();
 
     assert!(!patterns.is_empty(), "Should extract patterns");
-    assert!(patterns.iter().any(|e| e.content.contains("Result")), "Should find Result pattern");
+    assert!(
+        patterns.iter().any(|e| e.content.contains("Result")),
+        "Should find Result pattern"
+    );
 }
 
 #[test]
@@ -189,7 +211,10 @@ fn test_extract_important_notes() {
         .collect();
 
     assert!(!notes.is_empty(), "Should extract important notes");
-    assert!(notes.iter().any(|e| e.content.contains("validate")), "Should find validation note");
+    assert!(
+        notes.iter().any(|e| e.content.contains("validate")),
+        "Should find validation note"
+    );
 }
 
 #[test]
@@ -251,8 +276,10 @@ fn test_memory_summarization_trigger_by_size() {
     let content = fs::read_to_string(memory_file).unwrap();
 
     // Summarized file should have summary section
-    assert!(content.contains("Summary of Earlier Work") || content.contains("Summarized"),
-            "File should be summarized when size threshold is exceeded");
+    assert!(
+        content.contains("Summary of Earlier Work") || content.contains("Summarized"),
+        "File should be summarized when size threshold is exceeded"
+    );
 }
 
 #[test]
@@ -274,8 +301,10 @@ fn test_memory_summarization_trigger_by_count() {
     let memory_file = temp_dir.path().join(".claude/memory.md");
     let content = fs::read_to_string(memory_file).unwrap();
 
-    assert!(content.contains("Summary") || content.contains("Recent"),
-            "File should show evidence of summarization");
+    assert!(
+        content.contains("Summary") || content.contains("Recent"),
+        "File should show evidence of summarization"
+    );
 }
 
 #[test]
@@ -299,8 +328,14 @@ fn test_summarization_preserves_recent_entries() {
 
     // Last few entries should have full markdown formatting
     // Note: Category is embedded in title line like ## [Category] Title
-    assert!(content.contains("**Task**:"), "Recent entries should have full formatting");
-    assert!(content.contains("**Date**:"), "Recent entries should have full formatting");
+    assert!(
+        content.contains("**Task**:"),
+        "Recent entries should have full formatting"
+    );
+    assert!(
+        content.contains("**Date**:"),
+        "Recent entries should have full formatting"
+    );
 }
 
 // ============================================================================
@@ -313,8 +348,10 @@ fn test_context_injection_empty_memory() {
     let store = MemoryStore::new(temp_dir.path()).unwrap();
 
     let context = store.get_memory_context().unwrap();
-    assert!(context.contains("No project memory available"),
-            "Empty memory should return appropriate message");
+    assert!(
+        context.contains("No project memory available"),
+        "Empty memory should return appropriate message"
+    );
 }
 
 #[test]
@@ -327,10 +364,22 @@ fn test_context_injection_with_entries() {
 
     let context = store.get_memory_context().unwrap();
 
-    assert!(context.contains("Project Memory Context"), "Should have context header");
-    assert!(context.contains("Total entries:"), "Should show entry count");
-    assert!(context.contains("Architecture"), "Should include entry title");
-    assert!(context.contains("Use async Rust"), "Should include entry content");
+    assert!(
+        context.contains("Project Memory Context"),
+        "Should have context header"
+    );
+    assert!(
+        context.contains("Total entries:"),
+        "Should show entry count"
+    );
+    assert!(
+        context.contains("Architecture"),
+        "Should include entry title"
+    );
+    assert!(
+        context.contains("Use async Rust"),
+        "Should include entry content"
+    );
 }
 
 #[test]
@@ -351,37 +400,62 @@ fn test_context_injection_limits_recent_entries() {
     let context = store.get_memory_context().unwrap();
 
     // Should mention there are older entries
-    assert!(context.contains("older entries") || context.contains("and"),
-            "Should indicate there are more entries than shown");
+    assert!(
+        context.contains("older entries") || context.contains("and"),
+        "Should indicate there are more entries than shown"
+    );
 }
 
 #[test]
 fn test_should_inject_memory_logic() {
     // Short prompts - no injection
-    assert!(!should_inject_memory("Fix bug"), "Very short prompt should not inject");
-    assert!(!should_inject_memory("test"), "Single word should not inject");
+    assert!(
+        !should_inject_memory("Fix bug"),
+        "Very short prompt should not inject"
+    );
+    assert!(
+        !should_inject_memory("test"),
+        "Single word should not inject"
+    );
 
     // Long without keywords - no injection
     let long_no_keywords = "a".repeat(200);
-    assert!(!should_inject_memory(&long_no_keywords),
-            "Long prompt without keywords should not inject");
+    assert!(
+        !should_inject_memory(&long_no_keywords),
+        "Long prompt without keywords should not inject"
+    );
 
     // With keywords - should inject (need to be > 100 chars)
     let arch_prompt = "Refactor the architecture to improve the design and extend existing functionality throughout the entire codebase";
-    assert!(arch_prompt.len() > 100, "Test prompt must be > 100 characters");
-    assert!(should_inject_memory(arch_prompt),
-            "Prompt with architecture keyword should inject");
+    assert!(
+        arch_prompt.len() > 100,
+        "Test prompt must be > 100 characters"
+    );
+    assert!(
+        should_inject_memory(arch_prompt),
+        "Prompt with architecture keyword should inject"
+    );
 
     let pattern_prompt = "Follow best practices and integrate with existing patterns for the implementation across all modules and components";
-    assert!(pattern_prompt.len() > 100, "Test prompt must be > 100 characters");
-    assert!(should_inject_memory(pattern_prompt),
-            "Prompt with pattern keywords should inject");
+    assert!(
+        pattern_prompt.len() > 100,
+        "Test prompt must be > 100 characters"
+    );
+    assert!(
+        should_inject_memory(pattern_prompt),
+        "Prompt with pattern keywords should inject"
+    );
 
     // Must be both long AND have keywords
     let short_with_keyword = "Architecture design system";
-    assert!(short_with_keyword.len() < 100, "Test prompt must be < 100 characters");
-    assert!(!should_inject_memory(short_with_keyword),
-            "Short prompt with keyword should not inject");
+    assert!(
+        short_with_keyword.len() < 100,
+        "Test prompt must be < 100 characters"
+    );
+    assert!(
+        !should_inject_memory(short_with_keyword),
+        "Short prompt with keyword should not inject"
+    );
 }
 
 #[test]
@@ -464,10 +538,7 @@ fn test_memory_integration_multiple_tasks() {
             &format!("Description {}", i),
         );
 
-        let result = format!(
-            "Architecture decision: Decision {} for task {}",
-            i, i
-        );
+        let result = format!("Architecture decision: Decision {} for task {}", i, i);
 
         integration.extract_and_store(&task, &result).unwrap();
     }
@@ -509,8 +580,9 @@ fn test_memory_with_special_characters() {
     let entry = MemoryEntry::new(
         "task-001",
         "Test with **markdown** and `code`",
-        "Content with:\n- Lists\n- **Bold**\n- `code`\n- Links\n\nMultiple paragraphs"
-    ).with_category("Test");
+        "Content with:\n- Lists\n- **Bold**\n- `code`\n- Links\n\nMultiple paragraphs",
+    )
+    .with_category("Test");
 
     store.append_entry(&entry).unwrap();
 
@@ -563,7 +635,7 @@ fn test_memory_with_unicode() {
     let entry = MemoryEntry::new(
         "task-001",
         "国际化 测试 🌍",
-        "Support for emoji 🚀, Chinese 中文, and accents éàü"
+        "Support for emoji 🚀, Chinese 中文, and accents éàü",
     );
 
     store.append_entry(&entry).unwrap();
@@ -627,7 +699,11 @@ fn test_memory_file_corruption_recovery() {
 
     // Create corrupted memory file
     fs::create_dir_all(temp_dir.path().join(".claude")).unwrap();
-    fs::write(memory_file, "This is not valid markdown format\nNo headers here\nJust random text").unwrap();
+    fs::write(
+        memory_file,
+        "This is not valid markdown format\nNo headers here\nJust random text",
+    )
+    .unwrap();
 
     // Should not panic, should handle gracefully
     let store = MemoryStore::new(temp_dir.path()).unwrap();
@@ -654,8 +730,7 @@ fn test_memory_category_organization() {
     ];
 
     for (category, content) in categories {
-        let entry = MemoryEntry::new("task-001", "Test", content)
-            .with_category(category);
+        let entry = MemoryEntry::new("task-001", "Test", content).with_category(category);
         store.append_entry(&entry).unwrap();
     }
 

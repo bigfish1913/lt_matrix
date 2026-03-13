@@ -84,11 +84,7 @@ async fn test_concurrent_session_creation() {
     for i in 0..10 {
         let pool_clone = Arc::clone(&pool);
         let handle = tokio::spawn(async move {
-            let mut task = Task::new(
-                format!("task-{}", i),
-                format!("Task {}", i),
-                "Description",
-            );
+            let mut task = Task::new(format!("task-{}", i), format!("Task {}", i), "Description");
             pool_clone
                 .get_or_create_session_for_task(&mut task, "claude", "claude-sonnet-4-6")
                 .await
@@ -172,11 +168,7 @@ async fn test_concurrent_different_agents() {
     for (name, model) in agents {
         let pool_clone = Arc::clone(&pool);
         let handle = tokio::spawn(async move {
-            let mut task = Task::new(
-                format!("task-{}-{}", name, model),
-                "Test",
-                "Description",
-            );
+            let mut task = Task::new(format!("task-{}-{}", name, model), "Test", "Description");
             pool_clone
                 .get_or_create_session_for_task(&mut task, name, model)
                 .await
@@ -307,7 +299,10 @@ async fn test_parent_session_inheritance() {
 
     // Child should inherit parent's session
     assert_eq!(parent_session_id, child_session_id);
-    assert_eq!(child_task.get_session_id(), Some(parent_session_id.as_str()));
+    assert_eq!(
+        child_task.get_session_id(),
+        Some(parent_session_id.as_str())
+    );
 }
 
 /// Test that stale sessions are not reused
@@ -579,7 +574,7 @@ async fn test_pool_stats_accuracy() {
 
     // Updated stats
     let stats_after = pool.stats().await;
-    assert!(stats_after.total_sessions >= 0);  // Sessions may be pooled internally
+    assert!(stats_after.total_sessions >= 0); // Sessions may be pooled internally
     assert_eq!(stats_after.max_sessions, config.pool.max_sessions);
     assert_eq!(stats_after.warmup_enabled, config.warmup.enabled);
 }
@@ -655,7 +650,7 @@ fn test_config_defaults_are_reasonable() {
     // Warmup config defaults
     assert!(!config.warmup.enabled);
     assert_eq!(config.warmup.max_queries, 3);
-    assert_eq!(config.warmup.timeout_seconds, 30);  // Default is 30, not 60
+    assert_eq!(config.warmup.timeout_seconds, 30); // Default is 30, not 60
 }
 
 // ============================================================================

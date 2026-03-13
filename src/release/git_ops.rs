@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Git operations for release management
 //!
 //! This module provides git operations needed during the release process.
@@ -192,7 +191,10 @@ mod tests {
     #[test]
     fn test_git_error_display() {
         let err = GitError::CommandFailed("fatal: not a git repository".to_string());
-        assert_eq!(err.to_string(), "Git command failed: fatal: not a git repository");
+        assert_eq!(
+            err.to_string(),
+            "Git command failed: fatal: not a git repository"
+        );
 
         let err = GitError::NotARepository;
         assert_eq!(err.to_string(), "Not a git repository");

@@ -158,8 +158,7 @@ fn test_framework_deserialization() {
     let go: Framework = from_str("\"Go\"").expect("Failed to deserialize Go");
     assert_eq!(go, Framework::Go);
 
-    let cargo: Framework =
-        from_str("\"Cargo\"").expect("Failed to deserialize Cargo");
+    let cargo: Framework = from_str("\"Cargo\"").expect("Failed to deserialize Cargo");
     assert_eq!(cargo, Framework::Cargo);
 
     let none: Framework = from_str("\"None\"").expect("Failed to deserialize None");
@@ -179,8 +178,7 @@ fn test_framework_roundtrip_serialization() {
 
     for fw in frameworks {
         let json = to_string(&fw).expect("Failed to serialize");
-        let deserialized: Framework =
-            from_str(&json).expect("Failed to deserialize");
+        let deserialized: Framework = from_str(&json).expect("Failed to deserialize");
         assert_eq!(fw, deserialized);
     }
 }

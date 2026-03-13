@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Log level definitions and utilities
 //!
 //! This module provides log level type definitions and conversions for the logging system.

@@ -13,15 +13,13 @@
 //! - Multi-subscriber broadcasting
 //! - Integration with MCP router
 
-use ltmatrix::mcp::{
-    JsonRpcNotification, NotificationDispatcher, NotificationEvent, NotificationBuilder,
-    LogLevel,
-};
 use ltmatrix::mcp::protocol::wrappers::{
-    McpNotification, NotificationsInitialized, NotificationsToolsListChanged,
-    NotificationsResourcesListChanged, NotificationsPromptsListChanged,
-    NotificationsRootsListChanged, NotificationsProgress, NotificationsMessage,
-    ProgressParams, LogMessageParams,
+    LogMessageParams, McpNotification, NotificationsInitialized, NotificationsMessage,
+    NotificationsProgress, NotificationsPromptsListChanged, NotificationsResourcesListChanged,
+    NotificationsRootsListChanged, NotificationsToolsListChanged, ProgressParams,
+};
+use ltmatrix::mcp::{
+    JsonRpcNotification, LogLevel, NotificationBuilder, NotificationDispatcher, NotificationEvent,
 };
 use serde_json::json;
 use std::sync::{Arc, Mutex};
@@ -106,12 +104,14 @@ mod notification_event_tests {
             progress_token: json!(""),
             progress: 0.0,
             total: None
-        }).is_list_changed());
+        })
+        .is_list_changed());
         assert!(!NotificationEvent::Message(LogMessageParams {
             level: LogLevel::Info,
             logger: None,
             data: "".to_string(),
-        }).is_list_changed());
+        })
+        .is_list_changed());
     }
 }
 
@@ -389,7 +389,8 @@ mod notification_builder_tests {
 
     #[test]
     fn test_builder_message() {
-        let notification = NotificationBuilder::message(LogLevel::Warning, "Warning message").build();
+        let notification =
+            NotificationBuilder::message(LogLevel::Warning, "Warning message").build();
         assert_eq!(notification.method, "notifications/message");
 
         let params = notification.params.unwrap();
@@ -492,10 +493,14 @@ mod notification_dispatcher_tests {
 
         {
             let called_clone = called.clone();
-            dispatcher.on_initialized(move || {
-                let c = called_clone.clone();
-                async move { c.store(true, std::sync::atomic::Ordering::SeqCst); }
-            }).await;
+            dispatcher
+                .on_initialized(move || {
+                    let c = called_clone.clone();
+                    async move {
+                        c.store(true, std::sync::atomic::Ordering::SeqCst);
+                    }
+                })
+                .await;
         }
 
         let notification = NotificationBuilder::initialized().build();
@@ -511,10 +516,14 @@ mod notification_dispatcher_tests {
 
         {
             let count_clone = count.clone();
-            dispatcher.on_tools_list_changed(move || {
-                let c = count_clone.clone();
-                async move { c.fetch_add(1, std::sync::atomic::Ordering::SeqCst); }
-            }).await;
+            dispatcher
+                .on_tools_list_changed(move || {
+                    let c = count_clone.clone();
+                    async move {
+                        c.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                    }
+                })
+                .await;
         }
 
         let n1 = NotificationBuilder::tools_list_changed().build();
@@ -533,10 +542,14 @@ mod notification_dispatcher_tests {
 
         {
             let called_clone = called.clone();
-            dispatcher.on_resources_list_changed(move || {
-                let c = called_clone.clone();
-                async move { c.store(true, std::sync::atomic::Ordering::SeqCst); }
-            }).await;
+            dispatcher
+                .on_resources_list_changed(move || {
+                    let c = called_clone.clone();
+                    async move {
+                        c.store(true, std::sync::atomic::Ordering::SeqCst);
+                    }
+                })
+                .await;
         }
 
         let notification = NotificationBuilder::resources_list_changed().build();
@@ -552,10 +565,14 @@ mod notification_dispatcher_tests {
 
         {
             let called_clone = called.clone();
-            dispatcher.on_prompts_list_changed(move || {
-                let c = called_clone.clone();
-                async move { c.store(true, std::sync::atomic::Ordering::SeqCst); }
-            }).await;
+            dispatcher
+                .on_prompts_list_changed(move || {
+                    let c = called_clone.clone();
+                    async move {
+                        c.store(true, std::sync::atomic::Ordering::SeqCst);
+                    }
+                })
+                .await;
         }
 
         let notification = JsonRpcNotification::new(NotificationsPromptsListChanged::METHOD_NAME);
@@ -571,10 +588,14 @@ mod notification_dispatcher_tests {
 
         {
             let called_clone = called.clone();
-            dispatcher.on_roots_list_changed(move || {
-                let c = called_clone.clone();
-                async move { c.store(true, std::sync::atomic::Ordering::SeqCst); }
-            }).await;
+            dispatcher
+                .on_roots_list_changed(move || {
+                    let c = called_clone.clone();
+                    async move {
+                        c.store(true, std::sync::atomic::Ordering::SeqCst);
+                    }
+                })
+                .await;
         }
 
         let notification = JsonRpcNotification::new(NotificationsRootsListChanged::METHOD_NAME);
@@ -590,12 +611,14 @@ mod notification_dispatcher_tests {
 
         {
             let progress_clone = progress_value.clone();
-            dispatcher.on_progress(move |params| {
-                let p = progress_clone.clone();
-                async move {
-                    p.store(params.progress as u64, std::sync::atomic::Ordering::SeqCst);
-                }
-            }).await;
+            dispatcher
+                .on_progress(move |params| {
+                    let p = progress_clone.clone();
+                    async move {
+                        p.store(params.progress as u64, std::sync::atomic::Ordering::SeqCst);
+                    }
+                })
+                .await;
         }
 
         let notification = NotificationBuilder::progress("token", 75.0).build();
@@ -611,12 +634,14 @@ mod notification_dispatcher_tests {
 
         {
             let total_clone = total_value.clone();
-            dispatcher.on_progress(move |params| {
-                let t = total_clone.clone();
-                async move {
-                    *t.lock().unwrap() = params.total;
-                }
-            }).await;
+            dispatcher
+                .on_progress(move |params| {
+                    let t = total_clone.clone();
+                    async move {
+                        *t.lock().unwrap() = params.total;
+                    }
+                })
+                .await;
         }
 
         let notification = JsonRpcNotification::with_params(
@@ -639,12 +664,14 @@ mod notification_dispatcher_tests {
 
         {
             let data_clone = message_data.clone();
-            dispatcher.on_message(move |params| {
-                let d = data_clone.clone();
-                async move {
-                    *d.lock().unwrap() = params.data;
-                }
-            }).await;
+            dispatcher
+                .on_message(move |params| {
+                    let d = data_clone.clone();
+                    async move {
+                        *d.lock().unwrap() = params.data;
+                    }
+                })
+                .await;
         }
 
         let notification = NotificationBuilder::message(LogLevel::Error, "Test error").build();
@@ -660,12 +687,14 @@ mod notification_dispatcher_tests {
 
         {
             let level_clone = captured_level.clone();
-            dispatcher.on_message(move |params| {
-                let l = level_clone.clone();
-                async move {
-                    *l.lock().unwrap() = Some(params.level);
-                }
-            }).await;
+            dispatcher
+                .on_message(move |params| {
+                    let l = level_clone.clone();
+                    async move {
+                        *l.lock().unwrap() = Some(params.level);
+                    }
+                })
+                .await;
         }
 
         let notification = NotificationBuilder::message(LogLevel::Debug, "debug msg").build();
@@ -681,10 +710,14 @@ mod notification_dispatcher_tests {
 
         {
             let count_clone = count.clone();
-            dispatcher.on_any_event(move |_| {
-                let c = count_clone.clone();
-                async move { c.fetch_add(1, std::sync::atomic::Ordering::SeqCst); }
-            }).await;
+            dispatcher
+                .on_any_event(move |_| {
+                    let c = count_clone.clone();
+                    async move {
+                        c.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                    }
+                })
+                .await;
         }
 
         let n1 = NotificationBuilder::initialized().build();
@@ -705,12 +738,14 @@ mod notification_dispatcher_tests {
 
         {
             let events_clone = events.clone();
-            dispatcher.on_any_event(move |event| {
-                let e = events_clone.clone();
-                async move {
-                    e.lock().unwrap().push(event.method_name().to_string());
-                }
-            }).await;
+            dispatcher
+                .on_any_event(move |event| {
+                    let e = events_clone.clone();
+                    async move {
+                        e.lock().unwrap().push(event.method_name().to_string());
+                    }
+                })
+                .await;
         }
 
         let n1 = NotificationBuilder::initialized().build();
@@ -807,18 +842,31 @@ mod notification_dispatcher_tests {
 
         let stats = dispatcher.stats().await;
         assert_eq!(stats.by_type.get("notifications/initialized"), Some(&2));
-        assert_eq!(stats.by_type.get("notifications/tools/list_changed"), Some(&1));
+        assert_eq!(
+            stats.by_type.get("notifications/tools/list_changed"),
+            Some(&1)
+        );
     }
 
     #[tokio::test]
     async fn test_dispatcher_stats_includes_all_types() {
         let dispatcher = NotificationDispatcher::new();
 
-        dispatcher.dispatch(NotificationBuilder::initialized().build()).await;
-        dispatcher.dispatch(NotificationBuilder::tools_list_changed().build()).await;
-        dispatcher.dispatch(NotificationBuilder::resources_list_changed().build()).await;
-        dispatcher.dispatch(NotificationBuilder::progress("t", 50.0).build()).await;
-        dispatcher.dispatch(NotificationBuilder::message(LogLevel::Info, "msg").build()).await;
+        dispatcher
+            .dispatch(NotificationBuilder::initialized().build())
+            .await;
+        dispatcher
+            .dispatch(NotificationBuilder::tools_list_changed().build())
+            .await;
+        dispatcher
+            .dispatch(NotificationBuilder::resources_list_changed().build())
+            .await;
+        dispatcher
+            .dispatch(NotificationBuilder::progress("t", 50.0).build())
+            .await;
+        dispatcher
+            .dispatch(NotificationBuilder::message(LogLevel::Info, "msg").build())
+            .await;
 
         let stats = dispatcher.stats().await;
         assert_eq!(stats.by_type.len(), 5);
@@ -831,10 +879,14 @@ mod notification_dispatcher_tests {
 
         {
             let called_clone = called.clone();
-            dispatcher.on_initialized(move || {
-                let c = called_clone.clone();
-                async move { c.store(true, std::sync::atomic::Ordering::SeqCst); }
-            }).await;
+            dispatcher
+                .on_initialized(move || {
+                    let c = called_clone.clone();
+                    async move {
+                        c.store(true, std::sync::atomic::Ordering::SeqCst);
+                    }
+                })
+                .await;
         }
 
         let json = r#"{"jsonrpc":"2.0","method":"notifications/initialized"}"#;
@@ -850,12 +902,14 @@ mod notification_dispatcher_tests {
 
         {
             let progress_clone = progress_value.clone();
-            dispatcher.on_progress(move |params| {
-                let p = progress_clone.clone();
-                async move {
-                    p.store(params.progress as u64, std::sync::atomic::Ordering::SeqCst);
-                }
-            }).await;
+            dispatcher
+                .on_progress(move |params| {
+                    let p = progress_clone.clone();
+                    async move {
+                        p.store(params.progress as u64, std::sync::atomic::Ordering::SeqCst);
+                    }
+                })
+                .await;
         }
 
         let json = r#"{"jsonrpc":"2.0","method":"notifications/progress","params":{"progressToken":"t","progress":42.0}}"#;
@@ -926,7 +980,11 @@ mod notification_dispatcher_tests {
         dispatcher.clear_handlers().await;
 
         assert!(!dispatcher.has_handler("notifications/initialized").await);
-        assert!(!dispatcher.has_handler("notifications/tools/list_changed").await);
+        assert!(
+            !dispatcher
+                .has_handler("notifications/tools/list_changed")
+                .await
+        );
         assert!(!dispatcher.has_handler("notifications/progress").await);
     }
 
@@ -954,10 +1012,14 @@ mod notification_dispatcher_tests {
 
         {
             let called_clone = called.clone();
-            dispatcher.on_custom("custom/event", move |_| {
-                let c = called_clone.clone();
-                async move { c.store(true, std::sync::atomic::Ordering::SeqCst); }
-            }).await;
+            dispatcher
+                .on_custom("custom/event", move |_| {
+                    let c = called_clone.clone();
+                    async move {
+                        c.store(true, std::sync::atomic::Ordering::SeqCst);
+                    }
+                })
+                .await;
         }
 
         let notification = JsonRpcNotification::new("custom/event");
@@ -987,19 +1049,27 @@ mod notification_dispatcher_tests {
         // Register first handler
         {
             let value_clone = value.clone();
-            dispatcher.on_initialized(move || {
-                let v = value_clone.clone();
-                async move { v.store(1, std::sync::atomic::Ordering::SeqCst); }
-            }).await;
+            dispatcher
+                .on_initialized(move || {
+                    let v = value_clone.clone();
+                    async move {
+                        v.store(1, std::sync::atomic::Ordering::SeqCst);
+                    }
+                })
+                .await;
         }
 
         // Replace with second handler
         {
             let value_clone = value.clone();
-            dispatcher.on_initialized(move || {
-                let v = value_clone.clone();
-                async move { v.store(2, std::sync::atomic::Ordering::SeqCst); }
-            }).await;
+            dispatcher
+                .on_initialized(move || {
+                    let v = value_clone.clone();
+                    async move {
+                        v.store(2, std::sync::atomic::Ordering::SeqCst);
+                    }
+                })
+                .await;
         }
 
         let notification = NotificationBuilder::initialized().build();
@@ -1025,14 +1095,16 @@ mod notification_dispatcher_tests {
         {
             let name_clone = captured_name.clone();
             let count_clone = captured_count.clone();
-            dispatcher.on_typed::<CustomParams, _, _>("custom/typed", move |params| {
-                let n = name_clone.clone();
-                let c = count_clone.clone();
-                async move {
-                    *n.lock().unwrap() = params.name;
-                    c.store(params.count, std::sync::atomic::Ordering::SeqCst);
-                }
-            }).await;
+            dispatcher
+                .on_typed::<CustomParams, _, _>("custom/typed", move |params| {
+                    let n = name_clone.clone();
+                    let c = count_clone.clone();
+                    async move {
+                        *n.lock().unwrap() = params.name;
+                        c.store(params.count, std::sync::atomic::Ordering::SeqCst);
+                    }
+                })
+                .await;
         }
 
         let notification = JsonRpcNotification::with_params(
@@ -1061,19 +1133,27 @@ mod multiple_handlers_tests {
         // Register specific handler
         {
             let counter_clone = counter.clone();
-            dispatcher.on_initialized(move || {
-                let c = counter_clone.clone();
-                async move { c.fetch_add(1, std::sync::atomic::Ordering::SeqCst); }
-            }).await;
+            dispatcher
+                .on_initialized(move || {
+                    let c = counter_clone.clone();
+                    async move {
+                        c.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                    }
+                })
+                .await;
         }
 
         // Register generic handler
         {
             let counter_clone = counter.clone();
-            dispatcher.on_any_event(move |_| {
-                let c = counter_clone.clone();
-                async move { c.fetch_add(10, std::sync::atomic::Ordering::SeqCst); }
-            }).await;
+            dispatcher
+                .on_any_event(move |_| {
+                    let c = counter_clone.clone();
+                    async move {
+                        c.fetch_add(10, std::sync::atomic::Ordering::SeqCst);
+                    }
+                })
+                .await;
         }
 
         let notification = NotificationBuilder::initialized().build();
@@ -1091,26 +1171,38 @@ mod multiple_handlers_tests {
         // Register multiple any_event handlers
         {
             let counter_clone = counter.clone();
-            dispatcher.on_any_event(move |_| {
-                let c = counter_clone.clone();
-                async move { c.fetch_add(1, std::sync::atomic::Ordering::SeqCst); }
-            }).await;
+            dispatcher
+                .on_any_event(move |_| {
+                    let c = counter_clone.clone();
+                    async move {
+                        c.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                    }
+                })
+                .await;
         }
 
         {
             let counter_clone = counter.clone();
-            dispatcher.on_any_event(move |_| {
-                let c = counter_clone.clone();
-                async move { c.fetch_add(2, std::sync::atomic::Ordering::SeqCst); }
-            }).await;
+            dispatcher
+                .on_any_event(move |_| {
+                    let c = counter_clone.clone();
+                    async move {
+                        c.fetch_add(2, std::sync::atomic::Ordering::SeqCst);
+                    }
+                })
+                .await;
         }
 
         {
             let counter_clone = counter.clone();
-            dispatcher.on_any_event(move |_| {
-                let c = counter_clone.clone();
-                async move { c.fetch_add(3, std::sync::atomic::Ordering::SeqCst); }
-            }).await;
+            dispatcher
+                .on_any_event(move |_| {
+                    let c = counter_clone.clone();
+                    async move {
+                        c.fetch_add(3, std::sync::atomic::Ordering::SeqCst);
+                    }
+                })
+                .await;
         }
 
         let notification = NotificationBuilder::initialized().build();
@@ -1127,10 +1219,14 @@ mod multiple_handlers_tests {
 
         {
             let counter_clone = counter.clone();
-            dispatcher.on_initialized(move || {
-                let c = counter_clone.clone();
-                async move { c.fetch_add(1, std::sync::atomic::Ordering::SeqCst); }
-            }).await;
+            dispatcher
+                .on_initialized(move || {
+                    let c = counter_clone.clone();
+                    async move {
+                        c.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                    }
+                })
+                .await;
         }
 
         let mut handles = vec![];
@@ -1158,10 +1254,14 @@ mod multiple_handlers_tests {
 
         {
             let counter_clone = counter.clone();
-            dispatcher.on_any_event(move |_| {
-                let c = counter_clone.clone();
-                async move { c.fetch_add(1, std::sync::atomic::Ordering::SeqCst); }
-            }).await;
+            dispatcher
+                .on_any_event(move |_| {
+                    let c = counter_clone.clone();
+                    async move {
+                        c.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                    }
+                })
+                .await;
         }
 
         let mut handles = vec![];
@@ -1283,10 +1383,7 @@ mod edge_cases_tests {
 
     #[tokio::test]
     async fn test_very_long_progress_value() {
-        let notification = NotificationBuilder::progress(
-            "token",
-            999999999999.999999,
-        ).build();
+        let notification = NotificationBuilder::progress("token", 999999999999.999999).build();
 
         let event = NotificationEvent::from_notification(&notification);
 
@@ -1457,12 +1554,14 @@ mod thread_safety_tests {
         // Register handler
         {
             let results_clone = results.clone();
-            dispatcher.on_progress(move |params| {
-                let r = results_clone.clone();
-                async move {
-                    r.lock().unwrap().push(params.progress as i32);
-                }
-            }).await;
+            dispatcher
+                .on_progress(move |params| {
+                    let r = results_clone.clone();
+                    async move {
+                        r.lock().unwrap().push(params.progress as i32);
+                    }
+                })
+                .await;
         }
 
         // Spawn multiple tasks
@@ -1491,18 +1590,24 @@ mod thread_safety_tests {
 
         {
             let counter_clone = counter.clone();
-            dispatcher.on_any_event(move |_| {
-                let c = counter_clone.clone();
-                async move { c.fetch_add(1, std::sync::atomic::Ordering::SeqCst); }
-            }).await;
+            dispatcher
+                .on_any_event(move |_| {
+                    let c = counter_clone.clone();
+                    async move {
+                        c.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                    }
+                })
+                .await;
         }
 
         // Clone and use from different "threads" (tasks)
         let d1 = Arc::clone(&dispatcher);
         let d2 = Arc::clone(&dispatcher);
 
-        d1.dispatch(NotificationBuilder::initialized().build()).await;
-        d2.dispatch(NotificationBuilder::tools_list_changed().build()).await;
+        d1.dispatch(NotificationBuilder::initialized().build())
+            .await;
+        d2.dispatch(NotificationBuilder::tools_list_changed().build())
+            .await;
 
         assert_eq!(counter.load(std::sync::atomic::Ordering::SeqCst), 2);
     }

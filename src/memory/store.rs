@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! High-level memory store integration
 //!
 //! This module provides integration between the memory system and the pipeline,
@@ -13,9 +12,9 @@ use anyhow::Result;
 use std::path::Path;
 use tracing::{debug, info};
 
-use ltmatrix_core::Task;
-use super::memory::{MemoryEntry, MemoryStore};
 use super::extractor::{extract_memory_from_task, extract_task_summary};
+use super::memory::{MemoryEntry, MemoryStore};
+use ltmatrix_core::Task;
 
 /// Memory integration for pipeline stages
 pub struct MemoryIntegration {
@@ -47,7 +46,10 @@ impl MemoryIntegration {
         }
 
         if count > 0 {
-            info!("Extracted and stored {} memory entries from task {}", count, task.id);
+            info!(
+                "Extracted and stored {} memory entries from task {}",
+                count, task.id
+            );
         }
 
         Ok(count)
@@ -108,7 +110,9 @@ pub fn should_inject_memory(prompt: &str) -> bool {
     let prompt_lower = prompt.to_lowercase();
 
     // Inject if any keyword is found
-    memory_keywords.iter().any(|keyword| prompt_lower.contains(keyword))
+    memory_keywords
+        .iter()
+        .any(|keyword| prompt_lower.contains(keyword))
 }
 
 /// Calculate the maximum memory size that can be injected given remaining context
@@ -132,10 +136,7 @@ pub fn truncate_memory_context(context: &str, max_size: usize) -> String {
     // Find the last newline before the cutoff
     if let Some(last_newline) = truncated.rfind('\n') {
         let result = &context[..last_newline];
-        format!(
-            "{}\n\n... (memory truncated for context limits)",
-            result
-        )
+        format!("{}\n\n... (memory truncated for context limits)", result)
     } else {
         format!(
             "{}...\n\n... (memory truncated for context limits)",
@@ -147,7 +148,7 @@ pub fn truncate_memory_context(context: &str, max_size: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ltmatrix_core::{Task, TaskStatus, TaskComplexity};
+    use ltmatrix_core::{Task, TaskComplexity, TaskStatus};
     use tempfile::TempDir;
 
     fn create_test_task() -> Task {
@@ -256,7 +257,12 @@ mod tests {
 
         // Add entry using a pattern that the extractor will recognize
         let task = create_test_task();
-        integration.extract_and_store(&task, "Architecture decision: Use Tokio runtime for async operations").unwrap();
+        integration
+            .extract_and_store(
+                &task,
+                "Architecture decision: Use Tokio runtime for async operations",
+            )
+            .unwrap();
 
         let context = integration.get_context_for_prompt().unwrap();
         assert!(context.contains("Project Memory Context"));

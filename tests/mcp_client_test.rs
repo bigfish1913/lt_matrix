@@ -11,11 +11,11 @@
 //! - State machine validation
 //! - Error handling for invalid transitions
 
+use ltmatrix::mcp::transport::TransportConfig;
 use ltmatrix::mcp::{
     ClientCapabilities, ConnectionState, ImplementationInfo, McpClient, McpClientConfig,
     ServerCapabilities, ServerInfo, MCP_PROTOCOL_VERSION,
 };
-use ltmatrix::mcp::transport::TransportConfig;
 use std::time::Duration;
 
 // ============================================================================
@@ -70,7 +70,10 @@ mod connection_state_tests {
         assert_eq!(format!("{}", ConnectionState::Connected), "connected");
         assert_eq!(format!("{}", ConnectionState::Disconnected), "disconnected");
         assert_eq!(format!("{}", ConnectionState::Connecting), "connecting");
-        assert_eq!(format!("{}", ConnectionState::Disconnecting), "disconnecting");
+        assert_eq!(
+            format!("{}", ConnectionState::Disconnecting),
+            "disconnecting"
+        );
     }
 
     #[test]
@@ -143,19 +146,19 @@ mod client_config_tests {
     #[test]
     fn test_config_with_transport() {
         let transport_config = TransportConfig::stdio_command("test-server");
-        let config = McpClientConfig::new("test", "1.0")
-            .with_transport(transport_config.clone());
+        let config = McpClientConfig::new("test", "1.0").with_transport(transport_config.clone());
 
         // Verify transport config is set
-        assert!(matches!(config.transport_config.transport_type,
-            ltmatrix::mcp::transport::TransportType::Stdio(_)));
+        assert!(matches!(
+            config.transport_config.transport_type,
+            ltmatrix::mcp::transport::TransportType::Stdio(_)
+        ));
     }
 
     #[test]
     fn test_config_with_capabilities() {
         let capabilities = ClientCapabilities::default();
-        let config = McpClientConfig::new("test", "1.0")
-            .with_capabilities(capabilities.clone());
+        let config = McpClientConfig::new("test", "1.0").with_capabilities(capabilities.clone());
 
         assert_eq!(config.capabilities, capabilities);
     }
@@ -172,16 +175,14 @@ mod client_config_tests {
 
     #[test]
     fn test_config_with_protocol_version() {
-        let config = McpClientConfig::new("test", "1.0")
-            .with_protocol_version("2024-01-01");
+        let config = McpClientConfig::new("test", "1.0").with_protocol_version("2024-01-01");
 
         assert_eq!(config.protocol_version, "2024-01-01");
     }
 
     #[test]
     fn test_config_with_debug_logging() {
-        let config = McpClientConfig::new("test", "1.0")
-            .with_debug_logging(true);
+        let config = McpClientConfig::new("test", "1.0").with_debug_logging(true);
 
         assert!(config.debug_logging);
 
@@ -352,7 +353,10 @@ mod server_info_tests {
         assert_eq!(server_info.info.name, "test-server");
         assert_eq!(server_info.info.version, "1.0.0");
         assert_eq!(server_info.protocol_version, "2025-11-25");
-        assert_eq!(server_info.instructions, Some("Welcome to the server!".to_string()));
+        assert_eq!(
+            server_info.instructions,
+            Some("Welcome to the server!".to_string())
+        );
     }
 
     #[test]
@@ -450,8 +454,7 @@ mod edge_case_tests {
     #[test]
     fn test_very_long_timeout() {
         let long_timeout = Duration::from_secs(86400); // 1 day
-        let config = McpClientConfig::new("test", "1.0")
-            .with_connect_timeout(long_timeout);
+        let config = McpClientConfig::new("test", "1.0").with_connect_timeout(long_timeout);
 
         assert_eq!(config.connect_timeout, long_timeout);
     }

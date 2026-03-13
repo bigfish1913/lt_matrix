@@ -13,8 +13,9 @@
 //! - Error handling for malformed responses
 //! - Serialization/deserialization roundtrips
 
+use ltmatrix::mcp::protocol::{McpError, McpResult};
 use ltmatrix::mcp::{
-    ClientCapabilities, InitializeParams, InitializeResult, ImplementationInfo, JsonRpcResponse,
+    ClientCapabilities, ImplementationInfo, InitializeParams, InitializeResult, JsonRpcResponse,
     LogLevel, PromptMessage, PromptsGetParams, PromptsGetResult, PromptsListParams,
     PromptsListResult, RequestId, ResourceContents, ResourceReadParams, ResourceReadResult,
     ResourcesListParams, ResourcesListResult, Root, RootsListParams, RootsListResult,
@@ -22,21 +23,17 @@ use ltmatrix::mcp::{
     ToolsListResult,
 };
 use ltmatrix::mcp::{
-    CompletionArgument, CompletionComplete, CompletionCompleteParams,
-    CompletionReference, Initialize, JsonRpcNotification,
-    LogMessageParams, LoggingSetLevel, LoggingSetLevelParams,
+    CompletionArgument, CompletionComplete, CompletionCompleteParams, CompletionReference,
+    Initialize, JsonRpcNotification, LogMessageParams, LoggingSetLevel, LoggingSetLevelParams,
     McpMethod, McpMethodKind, McpNotification, ModelHint, ModelPreferences,
     NotificationsInitialized, NotificationsMessage, NotificationsProgress,
-    NotificationsPromptsListChanged, NotificationsResourcesListChanged, NotificationsRootsListChanged,
-    NotificationsToolsListChanged, PaginatedMethod, Ping, PingParams, PingResult,
-    ProgressParams, PromptsGet, PromptsList,
-    ResourcesList, ResourcesRead, ResourcesSubscribe, ResourcesSubscribeParams,
-    ResourcesUnsubscribe, ResourcesUnsubscribeParams,
-    RootsList, SamplingContent, SamplingCreateMessage,
-    SamplingCreateMessageParams, SamplingMessage, ToolsCall,
-    ToolsList,
+    NotificationsPromptsListChanged, NotificationsResourcesListChanged,
+    NotificationsRootsListChanged, NotificationsToolsListChanged, PaginatedMethod, Ping,
+    PingParams, PingResult, ProgressParams, PromptsGet, PromptsList, ResourcesList, ResourcesRead,
+    ResourcesSubscribe, ResourcesSubscribeParams, ResourcesUnsubscribe, ResourcesUnsubscribeParams,
+    RootsList, SamplingContent, SamplingCreateMessage, SamplingCreateMessageParams,
+    SamplingMessage, ToolsCall, ToolsList,
 };
-use ltmatrix::mcp::protocol::{McpError, McpResult};
 use serde_json::json;
 
 // ============================================================================
@@ -340,7 +337,12 @@ mod request_building_tests {
 
     #[test]
     fn test_logging_set_level_all_levels() {
-        for level in [LogLevel::Debug, LogLevel::Info, LogLevel::Warning, LogLevel::Error] {
+        for level in [
+            LogLevel::Debug,
+            LogLevel::Info,
+            LogLevel::Warning,
+            LogLevel::Error,
+        ] {
             let params = LoggingSetLevel::params(level);
             let request = LoggingSetLevel::build_request(RequestId::Number(1), params);
             let params_value = request.params.unwrap();
@@ -974,7 +976,10 @@ mod notification_tests {
 
     #[test]
     fn test_notifications_initialized_method_name() {
-        assert_eq!(NotificationsInitialized::METHOD_NAME, "notifications/initialized");
+        assert_eq!(
+            NotificationsInitialized::METHOD_NAME,
+            "notifications/initialized"
+        );
     }
 
     #[test]
@@ -1116,8 +1121,14 @@ mod method_kind_tests {
     fn test_method_kind_method_name_resources() {
         assert_eq!(McpMethodKind::ResourcesList.method_name(), "resources/list");
         assert_eq!(McpMethodKind::ResourcesRead.method_name(), "resources/read");
-        assert_eq!(McpMethodKind::ResourcesSubscribe.method_name(), "resources/subscribe");
-        assert_eq!(McpMethodKind::ResourcesUnsubscribe.method_name(), "resources/unsubscribe");
+        assert_eq!(
+            McpMethodKind::ResourcesSubscribe.method_name(),
+            "resources/subscribe"
+        );
+        assert_eq!(
+            McpMethodKind::ResourcesUnsubscribe.method_name(),
+            "resources/unsubscribe"
+        );
     }
 
     #[test]
@@ -1133,12 +1144,18 @@ mod method_kind_tests {
 
     #[test]
     fn test_method_kind_method_name_logging() {
-        assert_eq!(McpMethodKind::LoggingSetLevel.method_name(), "logging/setLevel");
+        assert_eq!(
+            McpMethodKind::LoggingSetLevel.method_name(),
+            "logging/setLevel"
+        );
     }
 
     #[test]
     fn test_method_kind_method_name_completion() {
-        assert_eq!(McpMethodKind::CompletionComplete.method_name(), "completion/complete");
+        assert_eq!(
+            McpMethodKind::CompletionComplete.method_name(),
+            "completion/complete"
+        );
     }
 
     #[test]
@@ -1443,10 +1460,8 @@ mod integration_tests {
         assert_eq!(list_result.tools.len(), 1);
 
         // 2. Call the tool
-        let call_params = ToolsCall::params_with_args(
-            "browser_navigate",
-            json!({"url": "https://example.com"}),
-        );
+        let call_params =
+            ToolsCall::params_with_args("browser_navigate", json!({"url": "https://example.com"}));
         let call_request = ToolsCall::build_request(RequestId::Number(2), call_params);
 
         let call_response_json = json!({
@@ -1494,7 +1509,11 @@ mod integration_tests {
         let result = ResourcesRead::parse_response(response).unwrap();
 
         assert_eq!(result.contents.len(), 1);
-        assert!(result.contents[0].text.as_ref().unwrap().contains("ltmatrix"));
+        assert!(result.contents[0]
+            .text
+            .as_ref()
+            .unwrap()
+            .contains("ltmatrix"));
     }
 
     /// Test pagination flow
@@ -1531,10 +1550,19 @@ mod integration_tests {
     #[test]
     fn test_method_dispatch() {
         let method_names = [
-            "initialize", "ping", "tools/list", "tools/call",
-            "resources/list", "resources/read", "resources/subscribe",
-            "resources/unsubscribe", "prompts/list", "prompts/get",
-            "roots/list", "logging/setLevel", "completion/complete",
+            "initialize",
+            "ping",
+            "tools/list",
+            "tools/call",
+            "resources/list",
+            "resources/read",
+            "resources/subscribe",
+            "resources/unsubscribe",
+            "prompts/list",
+            "prompts/get",
+            "roots/list",
+            "logging/setLevel",
+            "completion/complete",
             "sampling/createMessage",
         ];
 
@@ -1645,12 +1673,13 @@ mod edge_case_tests {
     #[test]
     fn test_string_request_id() {
         let params = Initialize::params("test", "1.0");
-        let request = Initialize::build_request(
-            RequestId::String("uuid-12345-abcde".to_string()),
-            params,
-        );
+        let request =
+            Initialize::build_request(RequestId::String("uuid-12345-abcde".to_string()), params);
 
-        assert_eq!(request.id, RequestId::String("uuid-12345-abcde".to_string()));
+        assert_eq!(
+            request.id,
+            RequestId::String("uuid-12345-abcde".to_string())
+        );
     }
 
     #[test]

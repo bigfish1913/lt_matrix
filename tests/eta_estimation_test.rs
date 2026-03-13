@@ -26,7 +26,10 @@ fn test_historical_data_record_completion() {
     data.record_completion(TaskComplexity::Simple, duration);
 
     assert_eq!(data.total_completed(), 1);
-    assert_eq!(data.get_average_duration(TaskComplexity::Simple), Some(duration));
+    assert_eq!(
+        data.get_average_duration(TaskComplexity::Simple),
+        Some(duration)
+    );
 }
 
 #[test]
@@ -54,9 +57,18 @@ fn test_historical_data_by_complexity() {
     data.record_completion(TaskComplexity::Moderate, Duration::from_secs(120));
     data.record_completion(TaskComplexity::Complex, Duration::from_secs(300));
 
-    assert_eq!(data.get_average_duration(TaskComplexity::Simple), Some(Duration::from_secs(30)));
-    assert_eq!(data.get_average_duration(TaskComplexity::Moderate), Some(Duration::from_secs(120)));
-    assert_eq!(data.get_average_duration(TaskComplexity::Complex), Some(Duration::from_secs(300)));
+    assert_eq!(
+        data.get_average_duration(TaskComplexity::Simple),
+        Some(Duration::from_secs(30))
+    );
+    assert_eq!(
+        data.get_average_duration(TaskComplexity::Moderate),
+        Some(Duration::from_secs(120))
+    );
+    assert_eq!(
+        data.get_average_duration(TaskComplexity::Complex),
+        Some(Duration::from_secs(300))
+    );
 }
 
 #[test]
@@ -268,7 +280,9 @@ fn test_metrics_collector_by_complexity() {
 
     // Should have metrics for both complexity levels
     assert!(metrics.by_complexity.contains_key(&TaskComplexity::Simple));
-    assert!(metrics.by_complexity.contains_key(&TaskComplexity::Moderate));
+    assert!(metrics
+        .by_complexity
+        .contains_key(&TaskComplexity::Moderate));
 }
 
 // ==================== Elapsed Time Tests ====================
@@ -631,9 +645,18 @@ fn test_historical_data_multiple_complexities_independent() {
     data.record_completion(TaskComplexity::Complex, Duration::from_secs(1000));
 
     // Verify independence
-    assert_eq!(data.get_average_duration(TaskComplexity::Simple), Some(Duration::from_secs(15)));
-    assert_eq!(data.get_average_duration(TaskComplexity::Moderate), Some(Duration::from_secs(200)));
-    assert_eq!(data.get_average_duration(TaskComplexity::Complex), Some(Duration::from_secs(1000)));
+    assert_eq!(
+        data.get_average_duration(TaskComplexity::Simple),
+        Some(Duration::from_secs(15))
+    );
+    assert_eq!(
+        data.get_average_duration(TaskComplexity::Moderate),
+        Some(Duration::from_secs(200))
+    );
+    assert_eq!(
+        data.get_average_duration(TaskComplexity::Complex),
+        Some(Duration::from_secs(1000))
+    );
 
     // Total should be 6
     assert_eq!(data.total_completed(), 6);

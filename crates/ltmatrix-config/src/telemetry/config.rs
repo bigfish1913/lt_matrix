@@ -2,16 +2,15 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Telemetry configuration
 //!
 //! This module handles configuration for telemetry collection and transmission.
 
 use anyhow::{Context, Result};
+use dirs::home_dir;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::str::FromStr;
-use dirs::home_dir;
 use tokio::fs;
 use tracing::{debug, info};
 
@@ -177,17 +176,15 @@ pub async fn load_or_create_session_id() -> Result<uuid::Uuid> {
     // Try to load existing session ID
     if session_file.exists() {
         match fs::read_to_string(&session_file).await {
-            Ok(content) => {
-                match uuid::Uuid::from_str(&content.trim()) {
-                    Ok(uuid) => {
-                        debug!("Loaded existing telemetry session ID");
-                        return Ok(uuid);
-                    }
-                    Err(e) => {
-                        debug!("Invalid session ID in file, will create new one: {}", e);
-                    }
+            Ok(content) => match uuid::Uuid::from_str(&content.trim()) {
+                Ok(uuid) => {
+                    debug!("Loaded existing telemetry session ID");
+                    return Ok(uuid);
                 }
-            }
+                Err(e) => {
+                    debug!("Invalid session ID in file, will create new one: {}", e);
+                }
+            },
             Err(e) => {
                 debug!("Failed to read session ID file: {}", e);
             }
@@ -199,7 +196,8 @@ pub async fn load_or_create_session_id() -> Result<uuid::Uuid> {
 
     // Ensure directory exists
     if let Some(parent) = session_file.parent() {
-        fs::create_dir_all(parent).await
+        fs::create_dir_all(parent)
+            .await
             .context("Failed to create telemetry directory")?;
     }
 
@@ -214,8 +212,7 @@ pub async fn load_or_create_session_id() -> Result<uuid::Uuid> {
 
 /// Get the path to the session ID file
 fn get_session_id_file_path() -> Result<PathBuf> {
-    let home = home_dir()
-        .context("Could not determine home directory")?;
+    let home = home_dir().context("Could not determine home directory")?;
 
     Ok(home.join(".ltmatrix").join("telemetry_session_id"))
 }
@@ -249,9 +246,7 @@ mod tests {
 
     #[test]
     fn test_builder_enabled() {
-        let config = TelemetryConfig::builder()
-            .enabled()
-            .build();
+        let config = TelemetryConfig::builder().enabled().build();
         assert!(config.enabled);
     }
 

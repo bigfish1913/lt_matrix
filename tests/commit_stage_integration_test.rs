@@ -31,14 +31,7 @@ fn create_test_repo() -> Result<(TempDir, Repository)> {
         let tree_oid = index.write_tree()?;
         let tree = repo.find_tree(tree_oid)?;
 
-        repo.commit(
-            Some("HEAD"),
-            &sig,
-            &sig,
-            "Initial commit",
-            &tree,
-            &[],
-        )?;
+        repo.commit(Some("HEAD"), &sig, &sig, "Initial commit", &tree, &[])?;
     }
 
     Ok((temp_dir, repo))
@@ -123,8 +116,14 @@ async fn test_commit_stage_creates_per_task_branch() {
 
     // Assert: Verify branch was created
     let repo = Repository::open(work_dir).unwrap();
-    assert!(branch_exists(&repo, "task-task-001"), "Task branch should be created");
-    assert_eq!(summary.branches_created, 1, "Should report 1 branch created");
+    assert!(
+        branch_exists(&repo, "task-task-001"),
+        "Task branch should be created"
+    );
+    assert_eq!(
+        summary.branches_created, 1,
+        "Should report 1 branch created"
+    );
     assert_eq!(summary.committed_tasks, 1, "Should commit 1 task");
 }
 
@@ -189,7 +188,10 @@ async fn test_commit_stage_conventional_commit_message() {
     let message = get_head_message(&repo).unwrap();
 
     assert!(message.contains("feat:"), "Should contain commit type");
-    assert!(message.contains("[task-123]"), "Should contain task ID in brackets");
+    assert!(
+        message.contains("[task-123]"),
+        "Should contain task ID in brackets"
+    );
     assert!(
         message.contains("Add authentication"),
         "Should contain task title"
@@ -227,16 +229,25 @@ async fn test_commit_stage_squash_merge_to_base_branch() {
     assert!(current_branch == "main" || current_branch == "master");
 
     // Task branch should be deleted after successful merge
-    assert!(!branch_exists(&repo, "task-task-003"), "Task branch should be deleted after merge");
+    assert!(
+        !branch_exists(&repo, "task-task-003"),
+        "Task branch should be deleted after merge"
+    );
 
     // TODO: Bug - branches_deleted counter is not incremented in implementation
     // See COMMIT_STAGE_TEST_REPORT.md for details
     // assert_eq!(summary.branches_deleted, 1, "Should report 1 branch deleted");
-    assert_eq!(summary.branches_deleted, 0, "Currently reports 0 (known bug)");
+    assert_eq!(
+        summary.branches_deleted, 0,
+        "Currently reports 0 (known bug)"
+    );
 
     // Verify task was committed successfully
     assert_eq!(summary.committed_tasks, 1, "Should commit 1 task");
-    assert_eq!(summary.branches_created, 1, "Should report 1 branch created");
+    assert_eq!(
+        summary.branches_created, 1,
+        "Should report 1 branch created"
+    );
 
     // Verify a commit was made
     assert_eq!(summary.total_commits, 1, "Should have 1 commit");
@@ -269,9 +280,19 @@ async fn test_commit_stage_skips_non_completed_tasks() {
     let (updated_tasks, summary) = commit_tasks(tasks, &config).await.unwrap();
 
     // Assert: Only completed tasks are processed
-    assert_eq!(summary.total_tasks, 1, "Should only process completed tasks");
-    assert_eq!(summary.committed_tasks, 1, "Should commit only the completed task");
-    assert_eq!(updated_tasks.len(), 1, "Should return only the completed task");
+    assert_eq!(
+        summary.total_tasks, 1,
+        "Should only process completed tasks"
+    );
+    assert_eq!(
+        summary.committed_tasks, 1,
+        "Should commit only the completed task"
+    );
+    assert_eq!(
+        updated_tasks.len(),
+        1,
+        "Should return only the completed task"
+    );
 }
 
 #[tokio::test]
@@ -318,7 +339,10 @@ async fn test_commit_stage_errors_when_not_git_repo_and_skip_disabled() {
     let result = commit_tasks(vec![task], &config).await;
 
     // Assert: Should return error
-    assert!(result.is_err(), "Should error when not in git repo and skip_if_no_repo is false");
+    assert!(
+        result.is_err(),
+        "Should error when not in git repo and skip_if_no_repo is false"
+    );
     let err = result.unwrap_err();
     assert!(
         err.to_string().contains("Not in a git repository"),
@@ -345,7 +369,10 @@ async fn test_commit_stage_handles_no_changes_gracefully() {
     let (updated_tasks, summary) = commit_tasks(vec![task], &config).await.unwrap();
 
     // Assert: Should handle gracefully
-    assert_eq!(summary.committed_tasks, 1, "Should still report as committed");
+    assert_eq!(
+        summary.committed_tasks, 1,
+        "Should still report as committed"
+    );
     assert_eq!(summary.total_commits, 0, "Should have 0 actual commits");
 }
 
@@ -375,7 +402,10 @@ async fn test_commit_stage_multiple_tasks() {
     let (updated_tasks, summary) = commit_tasks(tasks, &config).await.unwrap();
 
     // Assert: All tasks should be processed
-    assert_eq!(summary.total_tasks, 3, "Should process all 3 completed tasks");
+    assert_eq!(
+        summary.total_tasks, 3,
+        "Should process all 3 completed tasks"
+    );
     assert_eq!(summary.committed_tasks, 3, "Should commit all 3 tasks");
     assert_eq!(updated_tasks.len(), 3, "Should return all 3 tasks");
 }
@@ -405,7 +435,10 @@ async fn test_commit_stage_direct_commit_strategy() {
     let repo = Repository::open(work_dir).unwrap();
     let branches = list_branches(&repo).unwrap();
 
-    assert_eq!(summary.branches_created, 0, "Should not create branches in direct mode");
+    assert_eq!(
+        summary.branches_created, 0,
+        "Should not create branches in direct mode"
+    );
     assert_eq!(summary.committed_tasks, 1, "Should commit task");
     assert_eq!(summary.total_commits, 1, "Should have 1 commit");
 
@@ -452,8 +485,12 @@ async fn test_commit_stage_custom_base_branch() {
 
     // Rename master to main if needed
     if branch_exists(&repo, "master") {
-        repo.branch("main", &repo.head().unwrap().peel_to_commit().unwrap(), false)
-            .unwrap();
+        repo.branch(
+            "main",
+            &repo.head().unwrap().peel_to_commit().unwrap(),
+            false,
+        )
+        .unwrap();
         ltmatrix::git::checkout(&repo, "main").unwrap();
         ltmatrix::git::delete_branch(&repo, "master").unwrap();
     }
@@ -567,8 +604,14 @@ async fn test_commit_stage_fast_mode_config() {
     let config = ltmatrix::pipeline::commit::CommitConfig::fast_mode();
 
     // Assert: Verify fast mode configuration
-    assert!(!config.use_task_branches, "Fast mode should not use task branches");
-    assert!(!config.delete_after_merge, "Fast mode should not delete branches");
+    assert!(
+        !config.use_task_branches,
+        "Fast mode should not use task branches"
+    );
+    assert!(
+        !config.delete_after_merge,
+        "Fast mode should not delete branches"
+    );
     assert!(config.skip_if_no_repo, "Fast mode should skip if no repo");
     assert!(config.enabled, "Fast mode should be enabled");
 }
@@ -579,9 +622,18 @@ async fn test_commit_stage_expert_mode_config() {
     let config = ltmatrix::pipeline::commit::CommitConfig::expert_mode();
 
     // Assert: Verify expert mode configuration
-    assert!(config.use_task_branches, "Expert mode should use task branches");
-    assert!(config.delete_after_merge, "Expert mode should delete branches after merge");
-    assert!(!config.skip_if_no_repo, "Expert mode should not skip if no repo (fail explicitly)");
+    assert!(
+        config.use_task_branches,
+        "Expert mode should use task branches"
+    );
+    assert!(
+        config.delete_after_merge,
+        "Expert mode should delete branches after merge"
+    );
+    assert!(
+        !config.skip_if_no_repo,
+        "Expert mode should not skip if no repo (fail explicitly)"
+    );
     assert!(config.enabled, "Expert mode should be enabled");
 }
 
@@ -613,7 +665,10 @@ async fn test_commit_stage_existing_branch_reuse() {
     let (updated_tasks, summary) = commit_tasks(vec![task], &config).await.unwrap();
 
     // Assert: Should reuse existing branch
-    assert_eq!(summary.committed_tasks, 1, "Should successfully commit using existing branch");
+    assert_eq!(
+        summary.committed_tasks, 1,
+        "Should successfully commit using existing branch"
+    );
     assert!(branch_exists(&repo, "task-task-001"), "Branch should exist");
 }
 

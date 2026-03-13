@@ -8,11 +8,11 @@
 //! 5. Custom MemoryConfig usage with MemoryStore
 //! 6. Size detection logic with configurable thresholds
 
-use ltmatrix::memory::{MemoryEntry, MemoryStore, MemoryCategory, MemoryPriority};
 use ltmatrix::config::settings::MemoryConfig;
-use tempfile::TempDir;
+use ltmatrix::memory::{MemoryCategory, MemoryEntry, MemoryPriority, MemoryStore};
 use std::fs;
 use std::io::Write as IoWrite;
+use tempfile::TempDir;
 
 // ============================================================================
 // Configuration Tests
@@ -68,7 +68,10 @@ mod config_tests {
             ..Default::default()
         };
         assert!(config.validate().is_err());
-        assert!(config.validate().unwrap_err().contains("min_entries_for_summarization"));
+        assert!(config
+            .validate()
+            .unwrap_err()
+            .contains("min_entries_for_summarization"));
     }
 
     #[test]
@@ -126,7 +129,10 @@ mod config_tests {
             ..Default::default()
         };
         assert!(config.validate().is_err());
-        assert!(config.validate().unwrap_err().contains("old_entry_threshold_seconds"));
+        assert!(config
+            .validate()
+            .unwrap_err()
+            .contains("old_entry_threshold_seconds"));
     }
 
     #[test]
@@ -169,7 +175,7 @@ mod threshold_detection_tests {
             let entry = MemoryEntry::new(
                 format!("task-{:03}", i),
                 format!("Large Entry {}", i),
-                "x".repeat(4000) // 4KB of content per entry
+                "x".repeat(4000), // 4KB of content per entry
             );
             write!(file, "{}", entry.to_markdown()).unwrap();
         }
@@ -178,10 +184,17 @@ mod threshold_detection_tests {
 
         // Check file size exceeds threshold
         let metadata = fs::metadata(&memory_file).unwrap();
-        assert!(metadata.len() > 50 * 1024, "File should exceed 50KB threshold");
+        assert!(
+            metadata.len() > 50 * 1024,
+            "File should exceed 50KB threshold"
+        );
 
         // Now add another entry - this should trigger summarization
-        let new_entry = MemoryEntry::new("task-trigger", "Trigger Entry", "This triggers summarization");
+        let new_entry = MemoryEntry::new(
+            "task-trigger",
+            "Trigger Entry",
+            "This triggers summarization",
+        );
         store.append_entry(&new_entry).unwrap();
 
         // After adding, the store should still work correctly
@@ -199,7 +212,10 @@ mod threshold_detection_tests {
             let entry = MemoryEntry::new(
                 format!("task-{:03}", i),
                 format!("Decision {}", i),
-                format!("Content for decision {} with enough text to make it meaningful", i)
+                format!(
+                    "Content for decision {} with enough text to make it meaningful",
+                    i
+                ),
             );
             store.append_entry(&entry).unwrap();
         }
@@ -224,7 +240,7 @@ mod threshold_detection_tests {
             let entry = MemoryEntry::new(
                 format!("task-{:03}", i),
                 format!("Small Entry {}", i),
-                format!("Small content {}", i)
+                format!("Small content {}", i),
             );
             store.append_entry(&entry).unwrap();
         }
@@ -244,11 +260,8 @@ mod threshold_detection_tests {
         // The implementation requires at least 10 entries before summarization
         // Add 9 entries with small content - should not trigger summarization
         for i in 1..=9 {
-            let entry = MemoryEntry::new(
-                format!("task-{:03}", i),
-                format!("Entry {}", i),
-                "Content"
-            );
+            let entry =
+                MemoryEntry::new(format!("task-{:03}", i), format!("Entry {}", i), "Content");
             store.append_entry(&entry).unwrap();
         }
 
@@ -274,7 +287,7 @@ mod summarization_algorithm_tests {
             let entry = MemoryEntry::new(
                 format!("task-{:03}", i),
                 format!("Entry {}", i),
-                format!("Content for entry number {}", i)
+                format!("Content for entry number {}", i),
             );
             store.append_entry(&entry).unwrap();
         }
@@ -283,7 +296,8 @@ mod summarization_algorithm_tests {
 
         // The most recent entries should be preserved in full
         // The summarization keeps half of the entries (10 most recent)
-        let recent_titles: Vec<&str> = entries.iter()
+        let recent_titles: Vec<&str> = entries
+            .iter()
             .rev()
             .take(5)
             .map(|e| e.title.as_str())
@@ -310,8 +324,9 @@ mod summarization_algorithm_tests {
             let entry = MemoryEntry::new(
                 format!("task-{:03}", i),
                 format!("Entry {}", i),
-                format!("Content for entry {}", i)
-            ).with_category_enum(categories[i % categories.len()]);
+                format!("Content for entry {}", i),
+            )
+            .with_category_enum(categories[i % categories.len()]);
 
             store.append_entry(&entry).unwrap();
         }
@@ -343,8 +358,9 @@ mod summarization_algorithm_tests {
             let entry = MemoryEntry::new(
                 format!("task-{:03}", i),
                 format!("{:?} Entry {}", category, i),
-                format!("Content for {} entry", category)
-            ).with_category_enum(category);
+                format!("Content for {} entry", category),
+            )
+            .with_category_enum(category);
 
             store.append_entry(&entry).unwrap();
         }
@@ -353,11 +369,18 @@ mod summarization_algorithm_tests {
         assert!(!entries.is_empty());
 
         // Verify categories are preserved
-        let has_arch = entries.iter().any(|e| e.category == MemoryCategory::ArchitectureDecision);
-        let has_pattern = entries.iter().any(|e| e.category == MemoryCategory::Pattern);
+        let has_arch = entries
+            .iter()
+            .any(|e| e.category == MemoryCategory::ArchitectureDecision);
+        let has_pattern = entries
+            .iter()
+            .any(|e| e.category == MemoryCategory::Pattern);
         let has_bugfix = entries.iter().any(|e| e.category == MemoryCategory::BugFix);
 
-        assert!(has_arch || has_pattern || has_bugfix, "Should have at least some categorized entries");
+        assert!(
+            has_arch || has_pattern || has_bugfix,
+            "Should have at least some categorized entries"
+        );
     }
 
     #[test]
@@ -370,7 +393,7 @@ mod summarization_algorithm_tests {
             let entry = MemoryEntry::new(
                 format!("task-{:03}", i),
                 format!("Entry {:02}", i),
-                format!("Content for entry {:02}", i)
+                format!("Content for entry {:02}", i),
             );
             store.append_entry(&entry).unwrap();
         }
@@ -379,7 +402,10 @@ mod summarization_algorithm_tests {
         let entries = store.get_entries();
 
         // Entry count should be around 10 (could be less due to summarization)
-        assert!(entries.len() <= 20, "Entries should be reduced after summarization");
+        assert!(
+            entries.len() <= 20,
+            "Entries should be reduced after summarization"
+        );
     }
 }
 
@@ -417,8 +443,8 @@ mod memory_entry_tests {
 
     #[test]
     fn test_memory_entry_markdown_format_includes_priority() {
-        let entry = MemoryEntry::new("task-001", "Test", "Content")
-            .with_priority(MemoryPriority::High);
+        let entry =
+            MemoryEntry::new("task-001", "Test", "Content").with_priority(MemoryPriority::High);
 
         let markdown = entry.to_markdown();
         assert!(markdown.contains("**Priority**: High"));
@@ -426,7 +452,11 @@ mod memory_entry_tests {
 
     #[test]
     fn test_memory_entry_summary_format() {
-        let entry = MemoryEntry::new("task-042", "Test Title", "First line of content\nSecond line");
+        let entry = MemoryEntry::new(
+            "task-042",
+            "Test Title",
+            "First line of content\nSecond line",
+        );
 
         let summary = entry.to_summary();
         assert!(summary.contains("Test Title"));
@@ -435,8 +465,12 @@ mod memory_entry_tests {
 
     #[test]
     fn test_memory_entry_matches_search() {
-        let entry = MemoryEntry::new("task-001", "Architecture Decision", "Using Tokio for async runtime")
-            .with_tags(vec!["async".to_string(), "tokio".to_string()]);
+        let entry = MemoryEntry::new(
+            "task-001",
+            "Architecture Decision",
+            "Using Tokio for async runtime",
+        )
+        .with_tags(vec!["async".to_string(), "tokio".to_string()]);
 
         assert!(entry.matches("tokio"));
         assert!(entry.matches("architecture"));
@@ -515,7 +549,7 @@ mod memory_store_tests {
             let entry = MemoryEntry::new(
                 format!("task-{:03}", i),
                 format!("Entry {}", i),
-                format!("Content {}", i)
+                format!("Content {}", i),
             );
             store.append_entry(&entry).unwrap();
         }
@@ -607,8 +641,9 @@ mod integration_tests {
             let entry = MemoryEntry::new(
                 format!("task-{:03}", i),
                 format!("Priority Test {}", i),
-                format!("Content with priority {:?}", priority)
-            ).with_priority(priority);
+                format!("Content with priority {:?}", priority),
+            )
+            .with_priority(priority);
 
             store.append_entry(&entry).unwrap();
         }
@@ -616,10 +651,15 @@ mod integration_tests {
         let entries = store.get_entries();
 
         // Critical and high priority entries should be preserved
-        let has_critical = entries.iter().any(|e| e.priority == MemoryPriority::Critical);
+        let has_critical = entries
+            .iter()
+            .any(|e| e.priority == MemoryPriority::Critical);
         let has_high = entries.iter().any(|e| e.priority == MemoryPriority::High);
 
-        assert!(has_critical || has_high, "High priority entries should be preserved");
+        assert!(
+            has_critical || has_high,
+            "High priority entries should be preserved"
+        );
     }
 }
 
@@ -665,7 +705,7 @@ mod edge_case_tests {
         let entry = MemoryEntry::new(
             "task-001",
             "Special <>&\"' Characters",
-            "Content with **markdown** and `code` and [links](url)"
+            "Content with **markdown** and `code` and [links](url)",
         );
 
         store.append_entry(&entry).unwrap();
@@ -682,7 +722,7 @@ mod edge_case_tests {
         let entry = MemoryEntry::new(
             "task-001",
             "Unicode 标题",
-            "Unicode content: 日本語 🎉 émojis"
+            "Unicode content: 日本語 🎉 émojis",
         );
 
         store.append_entry(&entry).unwrap();
@@ -756,7 +796,7 @@ mod custom_config_tests {
             let entry = MemoryEntry::new(
                 format!("task-{:03}", i),
                 format!("Entry {}", i),
-                format!("Content {}", i)
+                format!("Content {}", i),
             );
             store.append_entry(&entry).unwrap();
         }
@@ -781,14 +821,17 @@ mod custom_config_tests {
             let entry = MemoryEntry::new(
                 format!("task-{:03}", i),
                 format!("Entry {}", i),
-                format!("Content for entry {} with enough text", i)
+                format!("Content for entry {} with enough text", i),
             );
             store.append_entry(&entry).unwrap();
         }
 
         // When summarization is disabled, all entries should be preserved
         // (beyond the default max_entries of 100)
-        assert!(store.entry_count() > 100, "Entries should not be summarized when disabled");
+        assert!(
+            store.entry_count() > 100,
+            "Entries should not be summarized when disabled"
+        );
     }
 
     /// Test custom max_file_size threshold triggers summarization
@@ -812,7 +855,7 @@ mod custom_config_tests {
             let entry = MemoryEntry::new(
                 format!("task-{:03}", i),
                 format!("Large Entry {}", i),
-                "x".repeat(500) // 500 bytes per entry
+                "x".repeat(500), // 500 bytes per entry
             );
             store.append_entry(&entry).unwrap();
         }
@@ -845,7 +888,7 @@ mod custom_config_tests {
             let entry = MemoryEntry::new(
                 format!("task-{:03}", i),
                 format!("Entry {}", i),
-                format!("Content {}", i)
+                format!("Content {}", i),
             );
             store.append_entry(&entry).unwrap();
         }
@@ -877,7 +920,7 @@ mod custom_config_tests {
             let entry = MemoryEntry::new(
                 format!("task-{:03}", i),
                 format!("Entry {}", i),
-                format!("Content {}", i)
+                format!("Content {}", i),
             );
             store.append_entry(&entry).unwrap();
         }
@@ -907,7 +950,7 @@ mod custom_config_tests {
             let entry = MemoryEntry::new(
                 format!("task-{:03}", i),
                 format!("Entry {}", i),
-                "x".repeat(100)
+                "x".repeat(100),
             );
             store.append_entry(&entry).unwrap();
         }
@@ -961,7 +1004,7 @@ mod size_detection_tests {
             let entry = MemoryEntry::new(
                 format!("task-{:03}", i),
                 format!("Entry {}", i),
-                "x".repeat(200) // Each entry ~200 bytes
+                "x".repeat(200), // Each entry ~200 bytes
             );
             store.append_entry(&entry).unwrap();
         }
@@ -993,7 +1036,7 @@ mod size_detection_tests {
             let entry = MemoryEntry::new(
                 format!("task-{:03}", i),
                 format!("Entry {}", i),
-                format!("Content {}", i)
+                format!("Content {}", i),
             );
             store.append_entry(&entry).unwrap();
         }
@@ -1027,7 +1070,7 @@ mod size_detection_tests {
                 let entry = MemoryEntry::new(
                     format!("task-{:03}", i),
                     format!("Entry {}", i),
-                    "x" // Small content
+                    "x", // Small content
                 );
                 store1.append_entry(&entry).unwrap();
             }
@@ -1039,8 +1082,8 @@ mod size_detection_tests {
         {
             let temp_dir2 = TempDir::new().unwrap();
             let config2 = MemoryConfig {
-                max_file_size: 100,   // Will trigger
-                max_entries: 10000,   // Won't trigger
+                max_file_size: 100, // Will trigger
+                max_entries: 10000, // Won't trigger
                 min_entries_for_summarization: 2,
                 enable_summarization: true,
                 ..Default::default()
@@ -1052,7 +1095,7 @@ mod size_detection_tests {
                 let entry = MemoryEntry::new(
                     format!("task-{:03}", i),
                     format!("Entry {}", i),
-                    "x".repeat(100) // Large content
+                    "x".repeat(100), // Large content
                 );
                 store2.append_entry(&entry).unwrap();
             }
@@ -1091,8 +1134,9 @@ mod preserve_high_priority_tests {
             let entry = MemoryEntry::new(
                 format!("task-{:03}", i),
                 format!("Critical Entry {}", i),
-                format!("Critical content {}", i)
-            ).with_priority(MemoryPriority::Critical);
+                format!("Critical content {}", i),
+            )
+            .with_priority(MemoryPriority::Critical);
             store.append_entry(&entry).unwrap();
         }
 
@@ -1101,7 +1145,7 @@ mod preserve_high_priority_tests {
             let entry = MemoryEntry::new(
                 format!("task-{:03}", i),
                 format!("Normal Entry {}", i),
-                format!("Normal content {}", i)
+                format!("Normal content {}", i),
             );
             store.append_entry(&entry).unwrap();
         }
@@ -1114,10 +1158,11 @@ mod preserve_high_priority_tests {
         // 1. A "Preserved High-Priority Entries" section, OR
         // 2. The critical entries themselves in the parsed entries
         let entries = store.get_entries();
-        let has_critical_in_entries = entries.iter()
+        let has_critical_in_entries = entries
+            .iter()
             .any(|e| e.priority == MemoryPriority::Critical);
-        let has_preserved_section = content.contains("Preserved High-Priority") ||
-                                    content.contains("Critical Entry");
+        let has_preserved_section =
+            content.contains("Preserved High-Priority") || content.contains("Critical Entry");
 
         // At least one should be true - entries are preserved somehow
         assert!(
@@ -1147,8 +1192,9 @@ mod preserve_high_priority_tests {
             let entry = MemoryEntry::new(
                 format!("task-{:03}", i),
                 format!("Entry {}", i),
-                format!("Content {}", i)
-            ).with_priority(MemoryPriority::Critical);
+                format!("Content {}", i),
+            )
+            .with_priority(MemoryPriority::Critical);
             store.append_entry(&entry).unwrap();
         }
 
@@ -1281,8 +1327,12 @@ mod summary_format_tests {
             let entry = MemoryEntry::new(
                 format!("task-{:03}", i),
                 format!("Entry {}", i),
-                format!("Detailed content for entry {} with some substantial text", i)
-            ).with_category_enum(category);
+                format!(
+                    "Detailed content for entry {} with some substantial text",
+                    i
+                ),
+            )
+            .with_category_enum(category);
             store.append_entry(&entry).unwrap();
         }
 
@@ -1324,8 +1374,9 @@ mod summary_format_tests {
             let entry = MemoryEntry::new(
                 format!("task-{:03}", i),
                 format!("{:?} Entry {}", category, i),
-                format!("Content for {} entry number {}", category, i)
-            ).with_category_enum(category);
+                format!("Content for {} entry number {}", category, i),
+            )
+            .with_category_enum(category);
             store.append_entry(&entry).unwrap();
         }
 
@@ -1356,8 +1407,9 @@ mod summary_format_tests {
             let entry = MemoryEntry::new(
                 format!("task-{:03}", i),
                 format!("Arch Entry {}", i),
-                format!("Architecture content {}", i)
-            ).with_category_enum(MemoryCategory::ArchitectureDecision);
+                format!("Architecture content {}", i),
+            )
+            .with_category_enum(MemoryCategory::ArchitectureDecision);
             store.append_entry(&entry).unwrap();
         }
 
@@ -1387,7 +1439,7 @@ mod summary_format_tests {
             let entry = MemoryEntry::new(
                 format!("task-{:03}", i),
                 format!("Entry {:02}", i),
-                format!("Content for entry {:02}", i)
+                format!("Content for entry {:02}", i),
             );
             store.append_entry(&entry).unwrap();
         }
@@ -1427,7 +1479,7 @@ mod size_reduction_tests {
             let entry = MemoryEntry::new(
                 format!("task-{:03}", i),
                 format!("Large Entry {}", i),
-                "x".repeat(500) // 500 bytes of content per entry
+                "x".repeat(500), // 500 bytes of content per entry
             );
             store.append_entry(&entry).unwrap();
         }
@@ -1460,13 +1512,14 @@ mod size_reduction_tests {
             let entry = MemoryEntry::new(
                 format!("task-{:03}", i),
                 format!("Entry {}", i),
-                "x".repeat(200)
+                "x".repeat(200),
             );
             store_full.append_entry(&entry).unwrap();
         }
 
         let full_size = fs::metadata(temp_dir_full.path().join(".claude/memory.md"))
-            .unwrap().len();
+            .unwrap()
+            .len();
 
         // Now create with summarization enabled
         let config_with_sum = MemoryConfig {
@@ -1482,16 +1535,20 @@ mod size_reduction_tests {
             let entry = MemoryEntry::new(
                 format!("task-{:03}", i),
                 format!("Entry {}", i),
-                "x".repeat(200)
+                "x".repeat(200),
             );
             store_sum.append_entry(&entry).unwrap();
         }
 
         let sum_size = fs::metadata(temp_dir.path().join(".claude/memory.md"))
-            .unwrap().len();
+            .unwrap()
+            .len();
 
         // Summarized version should be smaller than full version
-        assert!(sum_size < full_size, "Summarized memory should be smaller than full memory");
+        assert!(
+            sum_size < full_size,
+            "Summarized memory should be smaller than full memory"
+        );
     }
 
     /// Test that keep_fraction affects file size after summarization
@@ -1525,22 +1582,24 @@ mod size_reduction_tests {
             let entry1 = MemoryEntry::new(
                 format!("task-{:03}", i),
                 format!("Entry {}", i),
-                "x".repeat(200)
+                "x".repeat(200),
             );
             store1.append_entry(&entry1).unwrap();
 
             let entry2 = MemoryEntry::new(
                 format!("task-{:03}", i),
                 format!("Entry {}", i),
-                "x".repeat(200)
+                "x".repeat(200),
             );
             store2.append_entry(&entry2).unwrap();
         }
 
         let size1 = fs::metadata(temp_dir1.path().join(".claude/memory.md"))
-            .unwrap().len();
+            .unwrap()
+            .len();
         let size2 = fs::metadata(temp_dir2.path().join(".claude/memory.md"))
-            .unwrap().len();
+            .unwrap()
+            .len();
 
         // Lower keep_fraction should generally result in smaller file
         // (though exact relationship depends on summarization implementation)
@@ -1574,7 +1633,7 @@ mod key_info_preservation_tests {
             let entry = MemoryEntry::new(
                 format!("task-{:03}", i),
                 format!("Entry {}", i),
-                format!("Content about decision {} made in this task", i)
+                format!("Content about decision {} made in this task", i),
             );
             store.append_entry(&entry).unwrap();
         }
@@ -1605,7 +1664,7 @@ mod key_info_preservation_tests {
             let entry = MemoryEntry::new(
                 format!("task-{:03}", i),
                 format!("Entry {}", i),
-                format!("First important line for {}\nSecond line\nThird line", i)
+                format!("First important line for {}\nSecond line\nThird line", i),
             );
             store.append_entry(&entry).unwrap();
         }
@@ -1636,7 +1695,7 @@ mod key_info_preservation_tests {
             let entry = MemoryEntry::new(
                 format!("task-{:03}", i),
                 format!("Important Decision {}", i),
-                format!("Content {}", i)
+                format!("Content {}", i),
             );
             store.append_entry(&entry).unwrap();
         }
@@ -1668,8 +1727,9 @@ mod key_info_preservation_tests {
             let entry = MemoryEntry::new(
                 format!("task-{:03}", i),
                 format!("Entry {}", i),
-                format!("Content {}", i)
-            ).with_category_enum(MemoryCategory::ArchitectureDecision);
+                format!("Content {}", i),
+            )
+            .with_category_enum(MemoryCategory::ArchitectureDecision);
             store.append_entry(&entry).unwrap();
         }
 
@@ -1708,7 +1768,7 @@ mod boundary_condition_tests {
             let entry = MemoryEntry::new(
                 format!("task-{:03}", i),
                 format!("Entry {}", i),
-                format!("Content {}", i)
+                format!("Content {}", i),
             );
             store.append_entry(&entry).unwrap();
         }
@@ -1743,7 +1803,7 @@ mod boundary_condition_tests {
             let entry = MemoryEntry::new(
                 format!("task-{:03}", i),
                 format!("Entry {}", i),
-                format!("Content {}", i)
+                format!("Content {}", i),
             );
             store.append_entry(&entry).unwrap();
         }
@@ -1773,8 +1833,9 @@ mod boundary_condition_tests {
             let entry = MemoryEntry::new(
                 format!("task-{:03}", i),
                 format!("Same Category Entry {}", i),
-                format!("Content {}", i)
-            ).with_category_enum(MemoryCategory::Testing);
+                format!("Content {}", i),
+            )
+            .with_category_enum(MemoryCategory::Testing);
             store.append_entry(&entry).unwrap();
         }
 
@@ -1804,7 +1865,7 @@ mod boundary_condition_tests {
             let entry = MemoryEntry::new(
                 format!("task-{:03}", i),
                 format!("Entry {}", i),
-                format!("\n\nContent starts after newlines\nMore content here")
+                format!("\n\nContent starts after newlines\nMore content here"),
             );
             store.append_entry(&entry).unwrap();
         }
@@ -1834,7 +1895,7 @@ mod boundary_condition_tests {
             let entry = MemoryEntry::new(
                 format!("task-{:03}", i),
                 format!("Entry {}", i),
-                format!("Content {}", i)
+                format!("Content {}", i),
             );
             store.append_entry(&entry).unwrap();
         }
@@ -1850,8 +1911,10 @@ mod boundary_condition_tests {
 // ============================================================================
 
 mod store_helper_tests {
-    use ltmatrix::memory::{format_memory_for_prompt, should_inject_memory,
-                           calculate_max_memory_size, truncate_memory_context};
+    use ltmatrix::memory::{
+        calculate_max_memory_size, format_memory_for_prompt, should_inject_memory,
+        truncate_memory_context,
+    };
 
     #[test]
     fn test_format_memory_for_prompt_includes_context() {

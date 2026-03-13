@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Task hierarchy tree visualization
 //!
 //! This module provides ASCII tree visualization for task hierarchies,
@@ -68,7 +67,11 @@ fn format_task_recursive(task: &Task, prefix: &str, output: &mut String) {
             // The child has already been printed above
             for (grandchild_index, grandchild) in subtask.subtasks.iter().enumerate() {
                 let grandchild_is_last = grandchild_index == subtask.subtasks.len() - 1;
-                let grandchild_connector = if grandchild_is_last { "└── " } else { "├── " };
+                let grandchild_connector = if grandchild_is_last {
+                    "└── "
+                } else {
+                    "├── "
+                };
                 let grandchild_prefix = format!("{}{}", child_continuation, grandchild_connector);
                 format_task_recursive(grandchild, &grandchild_prefix, output);
             }
@@ -176,10 +179,7 @@ mod tests {
         ];
 
         let mut parent = Task::new("task-1", "Parent Task", "Parent task");
-        parent.subtasks = vec![
-            Task::new("task-2", "Child 1", "First child"),
-            child2,
-        ];
+        parent.subtasks = vec![Task::new("task-2", "Child 1", "First child"), child2];
 
         let tree = format_tree(&parent);
 

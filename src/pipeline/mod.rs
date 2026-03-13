@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Pipeline execution stages
 //!
 //! This module implements the 6-stage pipeline: Generate, Assess, Execute, Test, Verify, Commit

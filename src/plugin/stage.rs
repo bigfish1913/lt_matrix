@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Pipeline stage plugin trait
 //!
 //! This module defines the trait for custom pipeline stages.
@@ -42,7 +41,10 @@ pub trait PipelineStagePlugin: Plugin {
     ) -> Result<StageResult>;
 
     /// Validate stage configuration
-    fn validate_config(&self, config: &std::collections::HashMap<String, serde_json::Value>) -> Result<()> {
+    fn validate_config(
+        &self,
+        config: &std::collections::HashMap<String, serde_json::Value>,
+    ) -> Result<()> {
         // Default implementation does no validation
         let _ = config;
         Ok(())
@@ -137,24 +139,9 @@ impl PipelineStagePlugin for LoggingStage {
 
         for task in &tasks {
             match log_level {
-                "debug" => tracing::debug!(
-                    "Task {}: {} - {:?}",
-                    task.id,
-                    task.title,
-                    task.status
-                ),
-                "warn" => tracing::warn!(
-                    "Task {}: {} - {:?}",
-                    task.id,
-                    task.title,
-                    task.status
-                ),
-                _ => tracing::info!(
-                    "Task {}: {} - {:?}",
-                    task.id,
-                    task.title,
-                    task.status
-                ),
+                "debug" => tracing::debug!("Task {}: {} - {:?}", task.id, task.title, task.status),
+                "warn" => tracing::warn!("Task {}: {} - {:?}", task.id, task.title, task.status),
+                _ => tracing::info!("Task {}: {} - {:?}", task.id, task.title, task.status),
             }
         }
 
@@ -228,10 +215,7 @@ impl PipelineStagePlugin for DelayStage {
         config: &std::collections::HashMap<String, serde_json::Value>,
         progress: Option<&ProgressBar>,
     ) -> Result<StageResult> {
-        let seconds = config
-            .get("seconds")
-            .and_then(|v| v.as_u64())
-            .unwrap_or(1);
+        let seconds = config.get("seconds").and_then(|v| v.as_u64()).unwrap_or(1);
 
         if let Some(pb) = progress {
             pb.set_message(format!("Waiting {} seconds...", seconds));
