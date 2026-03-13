@@ -212,8 +212,8 @@ impl RunMemory {
             .await
             .context("Failed to read run memory file")?;
 
-        let memory: RunMemory = serde_json::from_str(&content)
-            .context("Failed to parse run memory JSON")?;
+        let memory: RunMemory =
+            serde_json::from_str(&content).context("Failed to parse run memory JSON")?;
 
         info!("Loaded run memory from {:?}", path);
         Ok(memory)
@@ -228,8 +228,8 @@ impl RunMemory {
                 .context("Failed to create memory directory")?;
         }
 
-        let content = serde_json::to_string_pretty(self)
-            .context("Failed to serialize run memory")?;
+        let content =
+            serde_json::to_string_pretty(self).context("Failed to serialize run memory")?;
 
         fs::write(path, content)
             .await
@@ -240,11 +240,7 @@ impl RunMemory {
     }
 
     /// Record an agent session
-    pub fn record_session(
-        &mut self,
-        session_id: impl Into<String>,
-        agent_type: impl Into<String>,
-    ) {
+    pub fn record_session(&mut self, session_id: impl Into<String>, agent_type: impl Into<String>) {
         let session_id = session_id.into();
         let agent_type = agent_type.into();
 
@@ -314,7 +310,11 @@ impl RunMemory {
         }
 
         let total_uses: u32 = self.agent_sessions.values().map(|s| s.use_count).sum();
-        let reused = self.agent_sessions.values().filter(|s| s.use_count > 1).count() as u32;
+        let reused = self
+            .agent_sessions
+            .values()
+            .filter(|s| s.use_count > 1)
+            .count() as u32;
 
         self.session_stats = SessionStats {
             total_sessions: total,
@@ -338,7 +338,10 @@ impl RunMemory {
 
         summary.push_str(&format!("# Run: {}\n\n", self.run_id));
         summary.push_str(&format!("**Status**: {:?}\n", self.status));
-        summary.push_str(&format!("**Started**: {}\n", self.started_at.format("%Y-%m-%d %H:%M:%S")));
+        summary.push_str(&format!(
+            "**Started**: {}\n",
+            self.started_at.format("%Y-%m-%d %H:%M:%S")
+        ));
 
         if let Some(ref mode) = self.execution_mode {
             summary.push_str(&format!("**Mode**: {}\n", mode));
@@ -359,8 +362,16 @@ impl RunMemory {
 
         // Task summary
         if !self.task_history.is_empty() {
-            let completed = self.task_history.iter().filter(|t| t.status == "completed").count();
-            let failed = self.task_history.iter().filter(|t| t.status == "failed").count();
+            let completed = self
+                .task_history
+                .iter()
+                .filter(|t| t.status == "completed")
+                .count();
+            let failed = self
+                .task_history
+                .iter()
+                .filter(|t| t.status == "failed")
+                .count();
             summary.push_str(&format!(
                 "\n## Tasks\n- Total: {}\n- Completed: {}\n- Failed: {}\n",
                 self.task_history.len(),
@@ -371,7 +382,10 @@ impl RunMemory {
 
         // Key decisions
         if !self.context_decisions.is_empty() {
-            summary.push_str(&format!("\n## Decisions ({})\n", self.context_decisions.len()));
+            summary.push_str(&format!(
+                "\n## Decisions ({})\n",
+                self.context_decisions.len()
+            ));
             for decision in self.context_decisions.iter().take(5) {
                 summary.push_str(&format!("- {}\n", decision.decision));
             }
@@ -395,7 +409,10 @@ pub fn get_current_run_memory_path(project_root: &Path) -> PathBuf {
 }
 
 /// Clean up old run memory files (keep last N)
-pub async fn cleanup_old_run_memories(project_root: &Path, keep_count: usize) -> Result<Vec<PathBuf>> {
+pub async fn cleanup_old_run_memories(
+    project_root: &Path,
+    keep_count: usize,
+) -> Result<Vec<PathBuf>> {
     let memory_dir = project_root.join(".ltmatrix").join("memory");
 
     if !memory_dir.exists() {

@@ -188,10 +188,9 @@ impl PendingRequestHandle {
         let result = tokio::time::timeout(remaining, &mut self.receiver)
             .await
             .map_err(|_| {
-                McpError::timeout(&self.method, self.timeout)
-                    .with_data(serde_json::json!({
-                        "request_id": self.id.to_string()
-                    }))
+                McpError::timeout(&self.method, self.timeout).with_data(serde_json::json!({
+                    "request_id": self.id.to_string()
+                }))
             })?;
 
         // Handle channel closure
@@ -344,7 +343,9 @@ impl RequestTracker {
     ) -> (RequestId, PendingRequestHandle) {
         let id = self.generate_id();
         let mut pending = PendingRequest::new(id.clone(), method.to_string(), timeout);
-        let receiver = pending.take_receiver().expect("Receiver should be available");
+        let receiver = pending
+            .take_receiver()
+            .expect("Receiver should be available");
 
         // Store pending request
         {
@@ -391,7 +392,9 @@ impl RequestTracker {
         timeout: Duration,
     ) -> McpResult<PendingRequestHandle> {
         let mut pending = PendingRequest::new(id.clone(), method.to_string(), timeout);
-        let receiver = pending.take_receiver().expect("Receiver should be available");
+        let receiver = pending
+            .take_receiver()
+            .expect("Receiver should be available");
 
         // Check for duplicate ID and insert
         {
@@ -544,19 +547,16 @@ impl RequestTracker {
 
             map.iter()
                 .filter(|(_, pending)| pending.is_timed_out())
-                .map(|(id, pending)| {
-                    (id.clone(), pending.method.clone(), pending.elapsed())
-                })
+                .map(|(id, pending)| (id.clone(), pending.method.clone(), pending.elapsed()))
                 .collect()
         };
 
         let count = timed_out.len();
 
         for (id, method, elapsed) in timed_out {
-            let error = McpError::timeout(&method, elapsed)
-                .with_data(serde_json::json!({
-                    "request_id": id.to_string()
-                }));
+            let error = McpError::timeout(&method, elapsed).with_data(serde_json::json!({
+                "request_id": id.to_string()
+            }));
             self.complete_request(&id, Err(error));
 
             // Update timeout stats
@@ -651,7 +651,8 @@ impl RequestTracker {
 
     /// Async version of `register_request` for use in async context
     pub async fn register_request_async(&self, method: &str) -> (RequestId, PendingRequestHandle) {
-        self.register_with_timeout_async(method, self.default_timeout).await
+        self.register_with_timeout_async(method, self.default_timeout)
+            .await
     }
 
     /// Async version of `register_with_timeout` for use in async context
@@ -662,7 +663,9 @@ impl RequestTracker {
     ) -> (RequestId, PendingRequestHandle) {
         let id = self.generate_id();
         let mut pending = PendingRequest::new(id.clone(), method.to_string(), timeout);
-        let receiver = pending.take_receiver().expect("Receiver should be available");
+        let receiver = pending
+            .take_receiver()
+            .expect("Receiver should be available");
 
         // Store pending request using async lock
         {
@@ -696,7 +699,11 @@ impl RequestTracker {
     }
 
     /// Async version of `complete_request` for use in async context
-    pub async fn complete_request_async(&self, id: &RequestId, response: McpResult<JsonRpcResponse>) -> bool {
+    pub async fn complete_request_async(
+        &self,
+        id: &RequestId,
+        response: McpResult<JsonRpcResponse>,
+    ) -> bool {
         let pending = {
             let mut map = self.pending.lock().await;
             map.remove(id)
@@ -788,14 +795,10 @@ impl Default for RequestTracker {
 #[derive(Debug, Clone)]
 pub enum CorrelationError {
     /// No pending request found for the response ID
-    NoPendingRequest {
-        id: RequestId,
-    },
+    NoPendingRequest { id: RequestId },
 
     /// Request has already been completed
-    AlreadyCompleted {
-        id: RequestId,
-    },
+    AlreadyCompleted { id: RequestId },
 
     /// Request timed out before response arrived
     Timeout {
@@ -814,7 +817,11 @@ impl std::fmt::Display for CorrelationError {
             CorrelationError::AlreadyCompleted { id } => {
                 write!(f, "Request {:?} has already been completed", id)
             }
-            CorrelationError::Timeout { id, method, elapsed } => {
+            CorrelationError::Timeout {
+                id,
+                method,
+                elapsed,
+            } => {
                 write!(
                     f,
                     "Request {:?} ({}) timed out after {:?}",

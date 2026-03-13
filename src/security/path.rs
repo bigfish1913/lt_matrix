@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Path validation and sanitization utilities
 //!
 //! This module provides functions to prevent path traversal attacks
@@ -147,13 +146,7 @@ pub fn sanitize_path_component(component: &str) -> String {
 
     component
         .chars()
-        .map(|c| {
-            if problematic.contains(&c) {
-                '_'
-            } else {
-                c
-            }
-        })
+        .map(|c| if problematic.contains(&c) { '_' } else { c })
         .collect()
 }
 
@@ -252,16 +245,16 @@ pub fn validate_file_extension(ext: &str) -> Result<()> {
     }
 
     if ext.len() > 32 {
-        return Err(anyhow!("File extension too long: {} characters (max 32)", ext.len()));
+        return Err(anyhow!(
+            "File extension too long: {} characters (max 32)",
+            ext.len()
+        ));
     }
 
     // Extensions should be alphanumeric
     for c in ext.chars() {
         if !c.is_alphanumeric() && c != '-' && c != '_' {
-            return Err(anyhow!(
-                "Invalid character '{}' in file extension",
-                c
-            ));
+            return Err(anyhow!("Invalid character '{}' in file extension", c));
         }
     }
 
@@ -296,7 +289,9 @@ pub fn has_dangerous_extension(path: &Path, dangerous_extensions: &[&str]) -> bo
         .and_then(|ext| ext.to_str())
         .map(|ext| {
             let ext_lower = ext.to_lowercase();
-            dangerous_extensions.iter().any(|d| d.to_lowercase() == ext_lower)
+            dangerous_extensions
+                .iter()
+                .any(|d| d.to_lowercase() == ext_lower)
         })
         .unwrap_or(false)
 }

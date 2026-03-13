@@ -201,7 +201,10 @@ pub fn validate_task_graph(tasks: &[Task]) -> ValidationResult {
 
         for dep in &task.depends_on {
             total_edges += 1;
-            dependents.entry(dep.as_str()).or_default().push(task.id.as_str());
+            dependents
+                .entry(dep.as_str())
+                .or_default()
+                .push(task.id.as_str());
         }
     }
 
@@ -232,7 +235,9 @@ pub fn validate_task_graph(tasks: &[Task]) -> ValidationResult {
     if !result.has_unreachable() {
         let cycles = detect_cycles(tasks, &task_ids);
         for cycle in cycles {
-            result.issues.push(ValidationIssue::CycleDetected { path: cycle });
+            result
+                .issues
+                .push(ValidationIssue::CycleDetected { path: cycle });
             result.is_valid = false;
         }
     }
@@ -255,7 +260,11 @@ pub fn validate_task_graph(tasks: &[Task]) -> ValidationResult {
         // AND is not part of a connected component with other tasks
         // For simplicity, we flag tasks that have no deps AND no dependents
         for task in tasks {
-            if task.depends_on.is_empty() && dependents.get(task.id.as_str()).map_or(true, |v| v.is_empty()) {
+            if task.depends_on.is_empty()
+                && dependents
+                    .get(task.id.as_str())
+                    .map_or(true, |v| v.is_empty())
+            {
                 // This is both a root and a leaf - could be orphaned if there are other tasks
                 if tasks.len() > 1 {
                     result.issues.push(ValidationIssue::OrphanedTask {
@@ -310,7 +319,8 @@ fn detect_cycles(tasks: &[Task], task_ids: &HashSet<&str>) -> Vec<Vec<String>> {
 
     for task_id in task_ids {
         if !visited.contains(task_id) {
-            if let Some(cycle) = dfs_cycle(*task_id, &adj, &mut visited, &mut rec_stack, &mut path) {
+            if let Some(cycle) = dfs_cycle(*task_id, &adj, &mut visited, &mut rec_stack, &mut path)
+            {
                 cycles.push(cycle);
             }
         }
@@ -340,7 +350,8 @@ fn dfs_cycle<'a>(
             } else if rec_stack.contains(neighbor) {
                 // Found a cycle - extract it from path
                 let cycle_start = path.iter().position(|&n| n == *neighbor).unwrap_or(0);
-                let cycle: Vec<String> = path[cycle_start..].iter().map(|s| s.to_string()).collect();
+                let cycle: Vec<String> =
+                    path[cycle_start..].iter().map(|s| s.to_string()).collect();
                 return Some(cycle);
             }
         }

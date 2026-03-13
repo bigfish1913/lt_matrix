@@ -73,7 +73,10 @@ fn acceptance_1_3_session_pool_uses_hashmap_storage() {
 #[test]
 fn acceptance_2_1_memory_session_has_session_id() {
     let session = MemorySession::default();
-    assert!(!session.session_id.is_empty(), "Session ID should not be empty");
+    assert!(
+        !session.session_id.is_empty(),
+        "Session ID should not be empty"
+    );
     assert!(
         session.session_id.len() == 36,
         "Session ID should be UUID format (36 chars with dashes)"
@@ -97,8 +100,14 @@ fn acceptance_2_4_memory_session_has_timestamps() {
     let session = MemorySession::default();
     let now = chrono::Utc::now();
 
-    assert!(session.created_at <= now, "Creation time should be in the past");
-    assert!(session.last_accessed <= now, "Last accessed should be in the past");
+    assert!(
+        session.created_at <= now,
+        "Creation time should be in the past"
+    );
+    assert!(
+        session.last_accessed <= now,
+        "Last accessed should be in the past"
+    );
     assert!(
         session.last_accessed >= session.created_at,
         "Last accessed should be after or equal to creation"
@@ -142,7 +151,10 @@ fn acceptance_3_2_old_session_is_stale() {
     let old_time = chrono::Utc::now() - chrono::Duration::seconds(3700);
     session.last_accessed = old_time;
 
-    assert!(session.is_stale(), "Session older than 1 hour should be stale");
+    assert!(
+        session.is_stale(),
+        "Session older than 1 hour should be stale"
+    );
 }
 
 #[test]
@@ -153,7 +165,10 @@ fn acceptance_3_3_exactly_one_hour_is_stale() {
     let old_time = chrono::Utc::now() - chrono::Duration::seconds(3601);
     session.last_accessed = old_time;
 
-    assert!(session.is_stale(), "Session exactly 1 hour + 1 second old should be stale");
+    assert!(
+        session.is_stale(),
+        "Session exactly 1 hour + 1 second old should be stale"
+    );
 }
 
 #[test]
@@ -186,7 +201,10 @@ fn acceptance_3_5_mark_accessed_refreshes_stale_session() {
     session.mark_accessed();
 
     // Should no longer be stale
-    assert!(!session.is_stale(), "Session should be fresh after being marked accessed");
+    assert!(
+        !session.is_stale(),
+        "Session should be fresh after being marked accessed"
+    );
 }
 
 // ============================================================================
@@ -197,8 +215,14 @@ fn acceptance_3_5_mark_accessed_refreshes_stale_session() {
 fn acceptance_4_1_get_or_create_reuses_same_agent_model() {
     let mut pool = SessionPool::new();
 
-    let id1 = pool.get_or_create("claude", "claude-sonnet-4-6").session_id.clone();
-    let id2 = pool.get_or_create("claude", "claude-sonnet-4-6").session_id.clone();
+    let id1 = pool
+        .get_or_create("claude", "claude-sonnet-4-6")
+        .session_id
+        .clone();
+    let id2 = pool
+        .get_or_create("claude", "claude-sonnet-4-6")
+        .session_id
+        .clone();
 
     assert_eq!(
         id1, id2,
@@ -211,13 +235,16 @@ fn acceptance_4_1_get_or_create_reuses_same_agent_model() {
 fn acceptance_4_2_different_models_create_separate_sessions() {
     let mut pool = SessionPool::new();
 
-    let id1 = pool.get_or_create("claude", "claude-sonnet-4-6").session_id.clone();
-    let id2 = pool.get_or_create("claude", "claude-opus-4-6").session_id.clone();
+    let id1 = pool
+        .get_or_create("claude", "claude-sonnet-4-6")
+        .session_id
+        .clone();
+    let id2 = pool
+        .get_or_create("claude", "claude-opus-4-6")
+        .session_id
+        .clone();
 
-    assert_ne!(
-        id1, id2,
-        "Different models should create separate sessions"
-    );
+    assert_ne!(id1, id2, "Different models should create separate sessions");
     assert_eq!(pool.len(), 2);
 }
 
@@ -225,13 +252,13 @@ fn acceptance_4_2_different_models_create_separate_sessions() {
 fn acceptance_4_3_different_agents_create_separate_sessions() {
     let mut pool = SessionPool::new();
 
-    let id1 = pool.get_or_create("claude", "claude-sonnet-4-6").session_id.clone();
+    let id1 = pool
+        .get_or_create("claude", "claude-sonnet-4-6")
+        .session_id
+        .clone();
     let id2 = pool.get_or_create("opencode", "gpt-4").session_id.clone();
 
-    assert_ne!(
-        id1, id2,
-        "Different agents should create separate sessions"
-    );
+    assert_ne!(id1, id2, "Different agents should create separate sessions");
     assert_eq!(pool.len(), 2);
 }
 
@@ -240,7 +267,10 @@ fn acceptance_4_4_stale_sessions_not_reused() {
     let mut pool = SessionPool::new();
 
     // Create first session
-    let id1 = pool.get_or_create("claude", "claude-sonnet-4-6").session_id.clone();
+    let id1 = pool
+        .get_or_create("claude", "claude-sonnet-4-6")
+        .session_id
+        .clone();
 
     // Remove the session and create a stale version
     let stale_session = MemorySession {
@@ -255,7 +285,10 @@ fn acceptance_4_4_stale_sessions_not_reused() {
     pool.register(stale_session);
 
     // get_or_create should create a new session instead of reusing stale one
-    let id2 = pool.get_or_create("claude", "claude-sonnet-4-6").session_id.clone();
+    let id2 = pool
+        .get_or_create("claude", "claude-sonnet-4-6")
+        .session_id
+        .clone();
 
     assert_ne!(id1, id2, "Should not reuse stale session");
 }
@@ -433,7 +466,11 @@ fn acceptance_6_1_session_data_has_required_fields() {
 #[test]
 fn acceptance_6_2_session_data_has_file_path() {
     let session = SessionData::new("claude", "claude-sonnet-4-6");
-    assert_eq!(session.file_path, PathBuf::new(), "Initial file path should be empty");
+    assert_eq!(
+        session.file_path,
+        PathBuf::new(),
+        "Initial file path should be empty"
+    );
 }
 
 #[test]
@@ -461,8 +498,7 @@ fn acceptance_6_5_session_data_serialization() {
 
     // Verify Serialize/Deserialize are implemented
     let json = serde_json::to_string(&session).expect("Should serialize");
-    let deserialized: SessionData =
-        serde_json::from_str(&json).expect("Should deserialize");
+    let deserialized: SessionData = serde_json::from_str(&json).expect("Should deserialize");
 
     assert_eq!(deserialized.session_id, session.session_id);
     assert_eq!(deserialized.agent_name, session.agent_name);
@@ -627,7 +663,10 @@ fn integration_session_reuse_across_tasks() {
     assert_eq!(pool.len(), 1);
 
     let session = pool.get_or_create("claude", "claude-sonnet-4-6");
-    assert_eq!(session.reuse_count, 5, "Session should have been reused 5 times");
+    assert_eq!(
+        session.reuse_count, 5,
+        "Session should have been reused 5 times"
+    );
 }
 
 #[test]
@@ -760,10 +799,7 @@ async fn integration_session_manager_list() {
         .create_session("claude", "claude-sonnet-4-6")
         .await
         .unwrap();
-    manager
-        .create_session("opencode", "gpt-4")
-        .await
-        .unwrap();
+    manager.create_session("opencode", "gpt-4").await.unwrap();
 
     let sessions = manager.list_sessions().await.unwrap();
     assert_eq!(sessions.len(), 2);

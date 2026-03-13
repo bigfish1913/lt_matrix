@@ -6,11 +6,11 @@
 //! 3. Memory clear command
 //! 4. Automatic summarization triggering
 
+use ltmatrix::config::settings::MemoryConfig;
+use ltmatrix::memory::{MemoryCategory, MemoryEntry, MemoryPriority, MemoryStore};
 use std::fs;
 use std::path::PathBuf;
 use tempfile::TempDir;
-use ltmatrix::memory::{MemoryStore, MemoryEntry, MemoryCategory, MemoryPriority};
-use ltmatrix::config::settings::MemoryConfig;
 
 // ============================================================================
 // Helper Functions
@@ -23,7 +23,7 @@ fn create_memory_store_with_entries(temp_dir: &TempDir, count: usize) -> MemoryS
         let entry = MemoryEntry::new(
             format!("task-{:03}", i),
             format!("Decision {}", i),
-            format!("Content for decision {}", i)
+            format!("Content for decision {}", i),
         )
         .with_category_enum(MemoryCategory::ArchitectureDecision);
         store.append_entry(&entry).expect("Failed to append entry");
@@ -48,7 +48,10 @@ mod status_tests {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let memory_file = get_memory_file_path(&temp_dir);
 
-        assert!(!memory_file.exists(), "Memory file should not exist initially");
+        assert!(
+            !memory_file.exists(),
+            "Memory file should not exist initially"
+        );
     }
 
     #[test]
@@ -59,7 +62,10 @@ mod status_tests {
         assert_eq!(store.entry_count(), 5);
 
         let memory_file = get_memory_file_path(&temp_dir);
-        assert!(memory_file.exists(), "Memory file should exist after adding entries");
+        assert!(
+            memory_file.exists(),
+            "Memory file should exist after adding entries"
+        );
     }
 
     #[test]
@@ -107,10 +113,10 @@ mod status_tests {
         // Add entries with different priorities
         let entry1 = MemoryEntry::new("task-001", "Critical", "Content")
             .with_priority(MemoryPriority::Critical);
-        let entry2 = MemoryEntry::new("task-002", "High", "Content")
-            .with_priority(MemoryPriority::High);
-        let entry3 = MemoryEntry::new("task-003", "Normal", "Content")
-            .with_priority(MemoryPriority::Normal);
+        let entry2 =
+            MemoryEntry::new("task-002", "High", "Content").with_priority(MemoryPriority::High);
+        let entry3 =
+            MemoryEntry::new("task-003", "Normal", "Content").with_priority(MemoryPriority::Normal);
 
         store.append_entry(&entry1).unwrap();
         store.append_entry(&entry2).unwrap();
@@ -158,7 +164,7 @@ mod summarize_tests {
             let entry = MemoryEntry::new(
                 format!("task-{:03}", i),
                 format!("Decision {}", i),
-                format!("Content for decision {}", i)
+                format!("Content for decision {}", i),
             );
             store.append_entry(&entry).expect("Failed to append entry");
         }
@@ -166,7 +172,10 @@ mod summarize_tests {
         // Verify summarization was triggered
         // After summarization, entries should be reduced
         let final_count = store.entry_count();
-        assert!(final_count < 10, "Entries should be reduced after summarization");
+        assert!(
+            final_count < 10,
+            "Entries should be reduced after summarization"
+        );
     }
 
     #[test]
@@ -186,7 +195,7 @@ mod summarize_tests {
             let entry = MemoryEntry::new(
                 format!("task-{:03}", i),
                 format!("Decision {}", i),
-                format!("Content for decision {}", i)
+                format!("Content for decision {}", i),
             );
             store.append_entry(&entry).expect("Failed to append entry");
         }
@@ -210,9 +219,13 @@ mod summarize_tests {
             .expect("Failed to create memory store");
 
         // Add high priority entry first
-        let high_priority = MemoryEntry::new("task-critical", "Critical Decision", "Important architectural choice")
-            .with_priority(MemoryPriority::Critical)
-            .with_category_enum(MemoryCategory::ArchitectureDecision);
+        let high_priority = MemoryEntry::new(
+            "task-critical",
+            "Critical Decision",
+            "Important architectural choice",
+        )
+        .with_priority(MemoryPriority::Critical)
+        .with_category_enum(MemoryCategory::ArchitectureDecision);
         store.append_entry(&high_priority).unwrap();
 
         // Add regular entries
@@ -220,7 +233,7 @@ mod summarize_tests {
             let entry = MemoryEntry::new(
                 format!("task-{:03}", i),
                 format!("Decision {}", i),
-                format!("Content for decision {}", i)
+                format!("Content for decision {}", i),
             );
             store.append_entry(&entry).unwrap();
         }
@@ -231,10 +244,16 @@ mod summarize_tests {
         // but critical/high priority entries should be preserved if preserve_high_priority is true
         // The exact behavior depends on the summarization algorithm
         // We verify that the store still has entries after summarization
-        assert!(!entries.is_empty(), "Store should have entries after summarization");
+        assert!(
+            !entries.is_empty(),
+            "Store should have entries after summarization"
+        );
 
         // Verify that at least some entries remain
-        assert!(store.entry_count() <= 11, "Summarization should have occurred");
+        assert!(
+            store.entry_count() <= 11,
+            "Summarization should have occurred"
+        );
     }
 
     #[test]
@@ -253,7 +272,7 @@ mod summarize_tests {
             let entry = MemoryEntry::new(
                 format!("task-{:03}", i),
                 format!("Decision {}", i),
-                format!("Content for decision {}", i)
+                format!("Content for decision {}", i),
             );
             store.append_entry(&entry).unwrap();
         }
@@ -278,14 +297,17 @@ mod summarize_tests {
             let entry = MemoryEntry::new(
                 format!("task-{:03}", i),
                 format!("Decision {}", i),
-                format!("Content for decision {}", i)
+                format!("Content for decision {}", i),
             );
             store.append_entry(&entry).unwrap();
         }
 
         // Entries should be reduced significantly
         let final_count = store.entry_count();
-        assert!(final_count <= 5, "Entries should be reduced with keep_fraction=0.3");
+        assert!(
+            final_count <= 5,
+            "Entries should be reduced with keep_fraction=0.3"
+        );
     }
 }
 
@@ -367,7 +389,7 @@ mod auto_trigger_tests {
             let entry = MemoryEntry::new(
                 format!("task-{:03}", i),
                 format!("Decision {}", i),
-                "This is a longer content to increase file size quickly. ".repeat(10)
+                "This is a longer content to increase file size quickly. ".repeat(10),
             );
             store.append_entry(&entry).expect("Failed to append entry");
         }
@@ -379,7 +401,10 @@ mod auto_trigger_tests {
 
         // After summarization, file should be smaller than it would be without summarization
         // The exact size depends on the summarization algorithm
-        assert!(file_size < 50000, "File size should be controlled by summarization");
+        assert!(
+            file_size < 50000,
+            "File size should be controlled by summarization"
+        );
     }
 
     #[test]
@@ -399,14 +424,17 @@ mod auto_trigger_tests {
             let entry = MemoryEntry::new(
                 format!("task-{:03}", i),
                 format!("Decision {}", i),
-                format!("Content {}", i)
+                format!("Content {}", i),
             );
             store.append_entry(&entry).expect("Failed to append entry");
         }
 
         // Verify summarization was triggered and entries were reduced
         let final_count = store.entry_count();
-        assert!(final_count <= 15, "Entry count should be reduced after summarization");
+        assert!(
+            final_count <= 15,
+            "Entry count should be reduced after summarization"
+        );
     }
 
     #[test]
@@ -423,7 +451,7 @@ mod auto_trigger_tests {
             let entry = MemoryEntry::new(
                 format!("task-{:03}", i),
                 format!("Decision {}", i),
-                format!("Content {}", i)
+                format!("Content {}", i),
             );
             store.append_entry(&entry).expect("Failed to append entry");
         }
@@ -448,7 +476,7 @@ mod auto_trigger_tests {
             let entry = MemoryEntry::new(
                 format!("task-{:03}", i),
                 format!("Decision {}", i),
-                format!("Content {}", i)
+                format!("Content {}", i),
             );
             store.append_entry(&entry).expect("Failed to append entry");
         }
@@ -475,7 +503,7 @@ mod pipeline_integration_tests {
             let entry = MemoryEntry::new(
                 format!("task-{:03}", i),
                 format!("Completed: Feature {}", i),
-                format!("Successfully implemented feature {}", i)
+                format!("Successfully implemented feature {}", i),
             )
             .with_category_enum(MemoryCategory::TaskCompletion);
             store.append_entry(&entry).expect("Failed to append entry");

@@ -4,8 +4,8 @@
 //! the task execution pipeline, including timestamp handling, error recovery,
 //! and state consistency verification.
 
+use ltmatrix::models::{Task, TaskComplexity, TaskStatus};
 use ltmatrix::workspace::WorkspaceState;
-use ltmatrix::models::{Task, TaskStatus, TaskComplexity};
 use std::fs;
 use tempfile::TempDir;
 
@@ -28,8 +28,10 @@ fn test_transform_clears_started_at_for_in_progress() {
     let loaded_state = WorkspaceState::load_with_transform(project_root.to_path_buf()).unwrap();
 
     assert_eq!(loaded_state.tasks[0].status, TaskStatus::Pending);
-    assert!(loaded_state.tasks[0].started_at.is_none(),
-        "started_at should be cleared when resetting InProgress to Pending");
+    assert!(
+        loaded_state.tasks[0].started_at.is_none(),
+        "started_at should be cleared when resetting InProgress to Pending"
+    );
 }
 
 #[test]
@@ -49,8 +51,10 @@ fn test_transform_clears_started_at_for_blocked() {
     let loaded_state = WorkspaceState::load_with_transform(project_root.to_path_buf()).unwrap();
 
     assert_eq!(loaded_state.tasks[0].status, TaskStatus::Pending);
-    assert!(loaded_state.tasks[0].started_at.is_none(),
-        "started_at should be cleared when resetting Blocked to Pending");
+    assert!(
+        loaded_state.tasks[0].started_at.is_none(),
+        "started_at should be cleared when resetting Blocked to Pending"
+    );
 }
 
 #[test]
@@ -71,10 +75,14 @@ fn test_transform_preserves_completed_at_for_completed() {
     let loaded_state = WorkspaceState::load_with_transform(project_root.to_path_buf()).unwrap();
 
     assert_eq!(loaded_state.tasks[0].status, TaskStatus::Completed);
-    assert!(loaded_state.tasks[0].started_at.is_some(),
-        "started_at should be preserved for Completed tasks");
-    assert!(loaded_state.tasks[0].completed_at.is_some(),
-        "completed_at should be preserved for Completed tasks");
+    assert!(
+        loaded_state.tasks[0].started_at.is_some(),
+        "started_at should be preserved for Completed tasks"
+    );
+    assert!(
+        loaded_state.tasks[0].completed_at.is_some(),
+        "completed_at should be preserved for Completed tasks"
+    );
 }
 
 #[test]
@@ -94,8 +102,11 @@ fn test_transform_preserves_error_for_failed() {
     let loaded_state = WorkspaceState::load_with_transform(project_root.to_path_buf()).unwrap();
 
     assert_eq!(loaded_state.tasks[0].status, TaskStatus::Failed);
-    assert_eq!(loaded_state.tasks[0].error, Some("Something went wrong".to_string()),
-        "error should be preserved for Failed tasks");
+    assert_eq!(
+        loaded_state.tasks[0].error,
+        Some("Something went wrong".to_string()),
+        "error should be preserved for Failed tasks"
+    );
 }
 
 #[test]
@@ -115,8 +126,10 @@ fn test_transform_preserves_retry_count() {
     let loaded_state = WorkspaceState::load_with_transform(project_root.to_path_buf()).unwrap();
 
     assert_eq!(loaded_state.tasks[0].status, TaskStatus::Pending);
-    assert_eq!(loaded_state.tasks[0].retry_count, 2,
-        "retry_count should be preserved through transformation");
+    assert_eq!(
+        loaded_state.tasks[0].retry_count, 2,
+        "retry_count should be preserved through transformation"
+    );
 }
 
 #[test]
@@ -136,8 +149,11 @@ fn test_transform_preserves_session_id() {
     let loaded_state = WorkspaceState::load_with_transform(project_root.to_path_buf()).unwrap();
 
     assert_eq!(loaded_state.tasks[0].status, TaskStatus::Pending);
-    assert_eq!(loaded_state.tasks[0].session_id, Some("session-123".to_string()),
-        "session_id should be preserved through transformation");
+    assert_eq!(
+        loaded_state.tasks[0].session_id,
+        Some("session-123".to_string()),
+        "session_id should be preserved through transformation"
+    );
 }
 
 #[test]
@@ -157,8 +173,11 @@ fn test_transform_preserves_parent_session_id() {
     let loaded_state = WorkspaceState::load_with_transform(project_root.to_path_buf()).unwrap();
 
     assert_eq!(loaded_state.tasks[0].status, TaskStatus::Pending);
-    assert_eq!(loaded_state.tasks[0].parent_session_id, Some("parent-session-456".to_string()),
-        "parent_session_id should be preserved through transformation");
+    assert_eq!(
+        loaded_state.tasks[0].parent_session_id,
+        Some("parent-session-456".to_string()),
+        "parent_session_id should be preserved through transformation"
+    );
 }
 
 #[test]
@@ -223,12 +242,20 @@ fn test_transform_deeply_nested_subtasks() {
     assert!(loaded_state.tasks[0].started_at.is_none());
 
     // Check level 2
-    assert_eq!(loaded_state.tasks[0].subtasks[0].status, TaskStatus::Pending);
+    assert_eq!(
+        loaded_state.tasks[0].subtasks[0].status,
+        TaskStatus::Pending
+    );
     assert!(loaded_state.tasks[0].subtasks[0].started_at.is_none());
 
     // Check level 3
-    assert_eq!(loaded_state.tasks[0].subtasks[0].subtasks[0].status, TaskStatus::Pending);
-    assert!(loaded_state.tasks[0].subtasks[0].subtasks[0].started_at.is_none());
+    assert_eq!(
+        loaded_state.tasks[0].subtasks[0].subtasks[0].status,
+        TaskStatus::Pending
+    );
+    assert!(loaded_state.tasks[0].subtasks[0].subtasks[0]
+        .started_at
+        .is_none());
 }
 
 #[test]
@@ -258,10 +285,16 @@ fn test_transform_mixed_status_subtasks() {
     assert_eq!(loaded_state.tasks[0].status, TaskStatus::Pending);
 
     // First subtask should remain Completed (not reset)
-    assert_eq!(loaded_state.tasks[0].subtasks[0].status, TaskStatus::Completed);
+    assert_eq!(
+        loaded_state.tasks[0].subtasks[0].status,
+        TaskStatus::Completed
+    );
 
     // Second subtask should be reset from InProgress to Pending
-    assert_eq!(loaded_state.tasks[0].subtasks[1].status, TaskStatus::Pending);
+    assert_eq!(
+        loaded_state.tasks[0].subtasks[1].status,
+        TaskStatus::Pending
+    );
     assert!(loaded_state.tasks[0].subtasks[1].started_at.is_none());
 }
 
@@ -350,14 +383,22 @@ fn test_state_consistency_with_metadata_updates() {
     let modified2 = state3.metadata.modified_at;
 
     // Verify metadata consistency
-    assert_eq!(state3.metadata.created_at, created_at,
-        "created_at should remain constant");
-    assert_eq!(state3.metadata.modified_at, modified2,
-        "modified_at should be updated");
-    assert!(modified2 > modified1,
-        "modified_at should increase over time");
-    assert_eq!(state3.metadata.version, "1.0",
-        "version should be preserved");
+    assert_eq!(
+        state3.metadata.created_at, created_at,
+        "created_at should remain constant"
+    );
+    assert_eq!(
+        state3.metadata.modified_at, modified2,
+        "modified_at should be updated"
+    );
+    assert!(
+        modified2 > modified1,
+        "modified_at should increase over time"
+    );
+    assert_eq!(
+        state3.metadata.version, "1.0",
+        "version should be preserved"
+    );
 }
 
 // ==================== Error Recovery Tests ====================
@@ -380,14 +421,20 @@ fn test_error_recovery_partial_write() {
 
     // Attempt to load - should fail gracefully
     let result = WorkspaceState::load_with_transform(project_root.to_path_buf());
-    assert!(result.is_err(),
-        "Should fail gracefully when loading truncated JSON");
+    assert!(
+        result.is_err(),
+        "Should fail gracefully when loading truncated JSON"
+    );
 
     // Verify error message is meaningful
     if let Err(e) = result {
         let error_msg = e.to_string().to_lowercase();
-        assert!(error_msg.contains("json") || error_msg.contains("parse") || error_msg.contains("invalid"),
-            "Error message should indicate JSON parsing problem");
+        assert!(
+            error_msg.contains("json")
+                || error_msg.contains("parse")
+                || error_msg.contains("invalid"),
+            "Error message should indicate JSON parsing problem"
+        );
     }
 }
 
@@ -409,8 +456,10 @@ fn test_error_recovery_wrong_file_format() {
 
     if let Err(e) = result {
         let error_msg = e.to_string().to_lowercase();
-        assert!(error_msg.contains("json") || error_msg.contains("parse"),
-            "Error should indicate JSON parsing problem");
+        assert!(
+            error_msg.contains("json") || error_msg.contains("parse"),
+            "Error should indicate JSON parsing problem"
+        );
     }
 }
 
@@ -440,8 +489,10 @@ fn test_error_recovery_extra_fields() {
 
     // Should load successfully, ignoring extra fields
     let result = WorkspaceState::load_with_transform(project_root.to_path_buf());
-    assert!(result.is_ok(),
-        "Should successfully load JSON with extra fields");
+    assert!(
+        result.is_ok(),
+        "Should successfully load JSON with extra fields"
+    );
 }
 
 // ==================== Execute Stage Integration Tests ====================
@@ -468,14 +519,21 @@ fn test_execute_stage_save_after_each_task() {
         // Verify the save persisted
         let verified = WorkspaceState::load(project_root.to_path_buf()).unwrap();
         for j in 0..=i {
-            assert_eq!(verified.tasks[j].status, TaskStatus::Completed,
-                "Task {} should be marked as completed after save", j + 1);
+            assert_eq!(
+                verified.tasks[j].status,
+                TaskStatus::Completed,
+                "Task {} should be marked as completed after save",
+                j + 1
+            );
         }
     }
 
     // Final state should have all tasks completed
     let final_state = WorkspaceState::load(project_root.to_path_buf()).unwrap();
-    assert!(final_state.tasks.iter().all(|t| t.status == TaskStatus::Completed));
+    assert!(final_state
+        .tasks
+        .iter()
+        .all(|t| t.status == TaskStatus::Completed));
 }
 
 #[test]
@@ -501,16 +559,30 @@ fn test_execute_stage_with_failed_tasks() {
     // Load with transform should only reset InProgress/Blocked
     let loaded = WorkspaceState::load_with_transform(project_root.to_path_buf()).unwrap();
 
-    assert_eq!(loaded.tasks[0].status, TaskStatus::Completed,
-        "Completed task should remain completed");
-    assert_eq!(loaded.tasks[1].status, TaskStatus::Failed,
-        "Failed task should remain failed");
-    assert_eq!(loaded.tasks[1].error, Some("Task failed with error".to_string()),
-        "Error message should be preserved");
-    assert_eq!(loaded.tasks[2].status, TaskStatus::Pending,
-        "InProgress task should be reset to Pending");
-    assert!(loaded.tasks[2].started_at.is_none(),
-        "started_at should be cleared");
+    assert_eq!(
+        loaded.tasks[0].status,
+        TaskStatus::Completed,
+        "Completed task should remain completed"
+    );
+    assert_eq!(
+        loaded.tasks[1].status,
+        TaskStatus::Failed,
+        "Failed task should remain failed"
+    );
+    assert_eq!(
+        loaded.tasks[1].error,
+        Some("Task failed with error".to_string()),
+        "Error message should be preserved"
+    );
+    assert_eq!(
+        loaded.tasks[2].status,
+        TaskStatus::Pending,
+        "InProgress task should be reset to Pending"
+    );
+    assert!(
+        loaded.tasks[2].started_at.is_none(),
+        "started_at should be cleared"
+    );
 }
 
 #[test]

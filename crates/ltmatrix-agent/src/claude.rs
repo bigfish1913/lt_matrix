@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Claude agent backend implementation
 //!
 //! This module implements the AgentBackend trait for the Claude Code CLI,
@@ -183,9 +182,7 @@ impl ClaudeAgent {
         }
 
         // Spawn the Claude process
-        let mut child = command
-            .spawn()
-            .context("Failed to spawn Claude process")?;
+        let mut child = command.spawn().context("Failed to spawn Claude process")?;
 
         // Write prompt to stdin
         if let Some(mut stdin) = child.stdin.take() {

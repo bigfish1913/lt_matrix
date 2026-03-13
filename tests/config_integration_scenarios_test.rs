@@ -12,8 +12,8 @@
 use clap::Parser;
 use ltmatrix::cli::Args;
 use ltmatrix::config::settings::{
-    load_config, load_config_file, load_config_with_overrides,
-    merge_configs, CliOverrides, Config, LogLevel, OutputFormat, WarmupConfig,
+    load_config, load_config_file, load_config_with_overrides, merge_configs, CliOverrides, Config,
+    LogLevel, OutputFormat, WarmupConfig,
 };
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -276,7 +276,8 @@ file = "/var/log/ci/ltmatrix.log"
     let overrides = CliOverrides {
         output_format: args.output.as_ref().map(|f| match f {
             ltmatrix::cli::args::OutputFormat::Text => OutputFormat::Text,
-            ltmatrix::cli::args::OutputFormat::Json | ltmatrix::cli::args::OutputFormat::JsonCompact => OutputFormat::Json,
+            ltmatrix::cli::args::OutputFormat::Json
+            | ltmatrix::cli::args::OutputFormat::JsonCompact => OutputFormat::Json,
         }),
         no_color: Some(args.no_color),
         ..Default::default()

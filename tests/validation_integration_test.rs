@@ -86,9 +86,7 @@ fn test_validate_file_permissions_integration() {
     assert!(validate_file_permissions(&file_path, true).is_ok());
 
     // Nonexistent path
-    assert!(
-        validate_file_permissions(&temp_dir.path().join("nonexistent"), false).is_err()
-    );
+    assert!(validate_file_permissions(&temp_dir.path().join("nonexistent"), false).is_err());
 }
 
 #[test]
@@ -122,9 +120,7 @@ fn test_validate_workspace_integration() {
 #[test]
 fn test_validate_agent_available_integration() {
     // These commands are unlikely to exist
-    assert!(
-        validate_agent_available("nonexistent_agent_command_xyz123_abc").is_err()
-    );
+    assert!(validate_agent_available("nonexistent_agent_command_xyz123_abc").is_err());
     assert!(validate_agent_available("another_fake_command_456").is_err());
 
     // The error message should include installation hints

@@ -2,17 +2,16 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Progress management with multi-bar support
 //!
 //! This module provides the ProgressManager for coordinating multiple progress bars,
 //! tracking task progress, and displaying real-time updates.
 
-use ltmatrix_core::{Task, TaskStatus};
-use crate::terminal::ColorConfig;
+use crate::progress::eta::{format_eta, EtaCalculator, HistoricalData, MetricsCollector};
 use crate::progress::tracker::{ProgressTracker, TrackerColorConfig};
-use crate::progress::eta::{EtaCalculator, HistoricalData, MetricsCollector, format_eta};
+use crate::terminal::ColorConfig;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
+use ltmatrix_core::{Task, TaskStatus};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -296,7 +295,9 @@ impl ProgressManager {
         // Store task start time if the task is in progress or about to start
         if status == TaskStatus::InProgress || status == TaskStatus::Pending {
             let mut start_times = self.task_start_times.lock().unwrap();
-            start_times.entry(task_id.clone()).or_insert_with(Instant::now);
+            start_times
+                .entry(task_id.clone())
+                .or_insert_with(Instant::now);
         }
 
         // Add to tracker
@@ -369,7 +370,13 @@ impl ProgressManager {
                 // Create a temporary Task for metrics tracking
                 let task = Task {
                     id: task_id.to_string(),
-                    title: self.task_names.lock().unwrap().get(task_id).cloned().unwrap_or_default(),
+                    title: self
+                        .task_names
+                        .lock()
+                        .unwrap()
+                        .get(task_id)
+                        .cloned()
+                        .unwrap_or_default(),
                     description: String::new(),
                     status: status.clone(),
                     ..Default::default()
@@ -435,7 +442,11 @@ impl ProgressManager {
 
             if !current_tasks.is_empty() {
                 let msg = if stats.in_progress > 3 {
-                    format!("Running: {} (+ {} more)", current_tasks, stats.in_progress.saturating_sub(3))
+                    format!(
+                        "Running: {} (+ {} more)",
+                        current_tasks,
+                        stats.in_progress.saturating_sub(3)
+                    )
                 } else {
                     format!("Running: {}", current_tasks)
                 };

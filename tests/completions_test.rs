@@ -23,7 +23,10 @@ fn test_generate_bash_completion() {
     let mut cmd = Args::command();
     let mut buf = Vec::new();
     clap_complete::generate(Shell::Bash, &mut cmd, "ltmatrix", &mut buf);
-    assert!(!buf.is_empty(), "Should generate bash completion successfully");
+    assert!(
+        !buf.is_empty(),
+        "Should generate bash completion successfully"
+    );
 }
 
 #[test]
@@ -34,7 +37,10 @@ fn test_generate_zsh_completion() {
     let mut cmd = Args::command();
     let mut buf = Vec::new();
     clap_complete::generate(Shell::Zsh, &mut cmd, "ltmatrix", &mut buf);
-    assert!(!buf.is_empty(), "Should generate zsh completion successfully");
+    assert!(
+        !buf.is_empty(),
+        "Should generate zsh completion successfully"
+    );
 }
 
 #[test]
@@ -45,7 +51,10 @@ fn test_generate_fish_completion() {
     let mut cmd = Args::command();
     let mut buf = Vec::new();
     clap_complete::generate(Shell::Fish, &mut cmd, "ltmatrix", &mut buf);
-    assert!(!buf.is_empty(), "Should generate fish completion successfully");
+    assert!(
+        !buf.is_empty(),
+        "Should generate fish completion successfully"
+    );
 }
 
 #[test]
@@ -56,7 +65,10 @@ fn test_generate_powershell_completion() {
     let mut cmd = Args::command();
     let mut buf = Vec::new();
     clap_complete::generate(Shell::PowerShell, &mut cmd, "ltmatrix", &mut buf);
-    assert!(!buf.is_empty(), "Should generate powershell completion successfully");
+    assert!(
+        !buf.is_empty(),
+        "Should generate powershell completion successfully"
+    );
 }
 
 #[test]
@@ -67,7 +79,10 @@ fn test_generate_elvish_completion() {
     let mut cmd = Args::command();
     let mut buf = Vec::new();
     clap_complete::generate(Shell::Elvish, &mut cmd, "ltmatrix", &mut buf);
-    assert!(!buf.is_empty(), "Should generate elvish completion successfully");
+    assert!(
+        !buf.is_empty(),
+        "Should generate elvish completion successfully"
+    );
 }
 
 // =============================================================================
@@ -547,7 +562,10 @@ fn test_completions_with_all_flags_still_works() {
     let mut cmd = Args::command();
     let mut buf = Vec::new();
     clap_complete::generate(Shell::Bash, &mut cmd, "ltmatrix", &mut buf);
-    assert!(!buf.is_empty(), "Completions should work even with other flags defined");
+    assert!(
+        !buf.is_empty(),
+        "Completions should work even with other flags defined"
+    );
 }
 
 #[test]

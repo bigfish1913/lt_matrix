@@ -11,17 +11,21 @@
 //! Task: Create integration test for error handling
 
 use ltmatrix::agent::backend::{
-    AgentConfig, AgentConfigBuilder, AgentError, AgentResponse, ExecutionConfig,
-    AgentSession, MemorySession,
+    AgentConfig, AgentConfigBuilder, AgentError, AgentResponse, AgentSession, ExecutionConfig,
+    MemorySession,
 };
 use ltmatrix::cli::args::BlockedStrategy;
-use ltmatrix::git::repository::{init_repo, checkout, get_current_branch, create_signature};
+use ltmatrix::git::repository::{checkout, create_signature, get_current_branch, init_repo};
 use ltmatrix::models::{
-    ExecutionMode, ModeConfig, Task, TaskComplexity, TaskStatus, PipelineStage,
+    ExecutionMode, ModeConfig, PipelineStage, Task, TaskComplexity, TaskStatus,
 };
 use ltmatrix::pipeline::orchestrator::{OrchestratorConfig, PipelineOrchestrator, PipelineResult};
-use ltmatrix::pipeline::test::{TestConfig, TestFramework, FrameworkDetection, detect_test_framework};
-use ltmatrix::pipeline::verify::{OnBlockedStrategy, VerifyConfig, VerificationResult, VerificationSummary};
+use ltmatrix::pipeline::test::{
+    detect_test_framework, FrameworkDetection, TestConfig, TestFramework,
+};
+use ltmatrix::pipeline::verify::{
+    OnBlockedStrategy, VerificationResult, VerificationSummary, VerifyConfig,
+};
 use ltmatrix::workspace::WorkspaceState;
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -324,8 +328,11 @@ fn test_framework_detection_cargo() {
 
     // Create Cargo.toml
     let cargo_toml = temp_dir.path().join("Cargo.toml");
-    std::fs::write(&cargo_toml, "[package]\nname = \"test\"\nversion = \"0.1.0\"")
-        .expect("Failed to write Cargo.toml");
+    std::fs::write(
+        &cargo_toml,
+        "[package]\nname = \"test\"\nversion = \"0.1.0\"",
+    )
+    .expect("Failed to write Cargo.toml");
 
     // Create tests directory
     std::fs::create_dir(temp_dir.path().join("tests")).expect("Failed to create tests dir");
@@ -438,8 +445,11 @@ async fn test_test_failure_non_blocking() {
 
     // Create a Cargo project without actual tests
     let cargo_toml = temp_dir.path().join("Cargo.toml");
-    std::fs::write(&cargo_toml, "[package]\nname = \"test\"\nversion = \"0.1.0\"")
-        .expect("Failed to write Cargo.toml");
+    std::fs::write(
+        &cargo_toml,
+        "[package]\nname = \"test\"\nversion = \"0.1.0\"",
+    )
+    .expect("Failed to write Cargo.toml");
 
     let task = create_task("task-001", "Test task", vec![]);
 
@@ -566,7 +576,10 @@ fn test_verification_failure_fail_strategy() {
     };
 
     // With Fail strategy and retry_recommended=false, task should be marked Failed
-    if !result.retry_recommended || config.max_retries == 0 || config.on_blocked == OnBlockedStrategy::Fail {
+    if !result.retry_recommended
+        || config.max_retries == 0
+        || config.on_blocked == OnBlockedStrategy::Fail
+    {
         task.status = TaskStatus::Failed;
         task.error = Some(format!("Verification failed: {}", result.reasoning));
     }
@@ -620,7 +633,10 @@ fn test_verification_failure_retry_strategy() {
     };
 
     // With Retry strategy, task should be prepared for retry
-    if result.retry_recommended && config.max_retries > 0 && config.on_blocked == OnBlockedStrategy::Retry {
+    if result.retry_recommended
+        && config.max_retries > 0
+        && config.on_blocked == OnBlockedStrategy::Retry
+    {
         task.prepare_retry();
     }
 
@@ -752,8 +768,8 @@ fn test_git_valid_branch_names() {
 /// Test git signature creation
 #[test]
 fn test_git_signature_creation() {
-    let sig = create_signature("Ltmatrix Agent", "ltmatrix@agent")
-        .expect("Should create signature");
+    let sig =
+        create_signature("Ltmatrix Agent", "ltmatrix@agent").expect("Should create signature");
 
     assert_eq!(sig.name(), Some("Ltmatrix Agent"));
     assert_eq!(sig.email(), Some("ltmatrix@agent"));
@@ -891,10 +907,7 @@ fn test_circular_dependency_detection() {
     let task_b = create_task("task-b", "Task B", vec!["task-a".to_string()]);
     let task_c = create_task("task-c", "Task C", vec!["task-b".to_string()]);
 
-    let state = WorkspaceState::new(
-        temp_dir.path().to_path_buf(),
-        vec![task_a, task_b, task_c],
-    );
+    let state = WorkspaceState::new(temp_dir.path().to_path_buf(), vec![task_a, task_b, task_c]);
 
     let result = state.validate_dependency_graph();
     assert!(result.is_err());
@@ -1104,8 +1117,7 @@ fn test_pipeline_stages_per_mode() {
 /// Test orchestrator creation with invalid directory
 #[tokio::test]
 async fn test_orchestrator_invalid_work_dir() {
-    let config = OrchestratorConfig::default()
-        .with_work_dir("/nonexistent/path");
+    let config = OrchestratorConfig::default().with_work_dir("/nonexistent/path");
 
     let orchestrator = PipelineOrchestrator::new(config);
     assert!(orchestrator.is_err());

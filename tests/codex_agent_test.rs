@@ -380,8 +380,7 @@ fn codex_default_model_is_o4_mini() {
 
 #[test]
 fn parse_structured_data_uses_first_block_only() {
-    let output =
-        "```json\n{\"first\": true}\n```\n```json\n{\"second\": true}\n```";
+    let output = "```json\n{\"first\": true}\n```\n```json\n{\"second\": true}\n```";
     let data = ltmatrix::agent::CodexAgent::parse_structured_data(output);
     assert!(data.is_some());
     assert_eq!(

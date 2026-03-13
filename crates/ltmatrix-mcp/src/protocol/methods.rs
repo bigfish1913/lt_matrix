@@ -206,7 +206,11 @@ pub struct Tool {
 
 impl Tool {
     /// Create a new tool definition
-    pub fn new(name: impl Into<String>, description: impl Into<String>, input_schema: Value) -> Self {
+    pub fn new(
+        name: impl Into<String>,
+        description: impl Into<String>,
+        input_schema: Value,
+    ) -> Self {
         Self {
             name: name.into(),
             description: description.into(),
@@ -447,7 +451,11 @@ impl ResourceContents {
     }
 
     /// Create binary resource contents
-    pub fn blob(uri: impl Into<String>, blob: impl Into<String>, mime_type: impl Into<String>) -> Self {
+    pub fn blob(
+        uri: impl Into<String>,
+        blob: impl Into<String>,
+        mime_type: impl Into<String>,
+    ) -> Self {
         Self {
             uri: uri.into(),
             mime_type: Some(mime_type.into()),
@@ -750,8 +758,8 @@ mod tests {
 
     #[test]
     fn test_initialize_params() {
-        let params = InitializeParams::new("ltmatrix", "0.1.0")
-            .with_capabilities(ClientCapabilities {
+        let params =
+            InitializeParams::new("ltmatrix", "0.1.0").with_capabilities(ClientCapabilities {
                 roots: Some(RootsCapability::with_list_changed(true)),
                 sampling: Some(json!({})),
                 ..Default::default()
@@ -828,7 +836,11 @@ mod tests {
         let json = serde_json::to_string(&contents).unwrap();
         assert!(json.contains("\"text\":\"Hello\""));
 
-        let binary = ResourceContents::blob("file:///binary.bin", "base64data", "application/octet-stream");
+        let binary = ResourceContents::blob(
+            "file:///binary.bin",
+            "base64data",
+            "application/octet-stream",
+        );
         let json = serde_json::to_string(&binary).unwrap();
         assert!(json.contains("\"blob\":\"base64data\""));
     }

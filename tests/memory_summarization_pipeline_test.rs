@@ -6,16 +6,16 @@
 //! 3. CLI command integration for manual summarization
 //! 4. End-to-end pipeline with memory extraction and summarization
 
+use ltmatrix::config::settings::MemoryConfig;
+use ltmatrix::memory::{
+    calculate_max_memory_size, format_memory_for_prompt, should_inject_memory,
+    truncate_memory_context, MemoryCategory, MemoryEntry, MemoryIntegration, MemoryPriority,
+    MemoryStore,
+};
+use ltmatrix::models::{Task, TaskComplexity, TaskStatus};
 use std::fs;
 use std::path::PathBuf;
 use tempfile::TempDir;
-use ltmatrix::memory::{
-    MemoryStore, MemoryEntry, MemoryCategory, MemoryPriority,
-    MemoryIntegration, format_memory_for_prompt, should_inject_memory,
-    truncate_memory_context, calculate_max_memory_size,
-};
-use ltmatrix::config::settings::MemoryConfig;
-use ltmatrix::models::{Task, TaskStatus, TaskComplexity};
 
 // ============================================================================
 // Helper Functions
@@ -150,7 +150,10 @@ mod detection_trigger_integration {
                 store.append_entry(&entry).expect("Failed to append entry");
             }
 
-            assert!(store.entry_count() < 10, "Entry count threshold should trigger");
+            assert!(
+                store.entry_count() < 10,
+                "Entry count threshold should trigger"
+            );
         }
 
         // Test case 2: File size threshold exceeded, entry count OK
@@ -174,7 +177,10 @@ mod detection_trigger_integration {
                 store.append_entry(&entry).expect("Failed to append entry");
             }
 
-            assert!(store.entry_count() <= 3, "File size threshold should trigger");
+            assert!(
+                store.entry_count() <= 3,
+                "File size threshold should trigger"
+            );
         }
     }
 
@@ -389,8 +395,8 @@ mod pipeline_integration {
             .expect("Failed to create memory store");
 
         // Create memory integration
-        let integration = MemoryIntegration::new(temp_dir.path())
-            .expect("Failed to create memory integration");
+        let integration =
+            MemoryIntegration::new(temp_dir.path()).expect("Failed to create memory integration");
 
         // Simulate multiple task completions
         for i in 0..20 {
@@ -402,20 +408,27 @@ mod pipeline_integration {
                 i, i, i
             );
 
-            let count = integration.extract_and_store(&task, &result)
+            let count = integration
+                .extract_and_store(&task, &result)
                 .expect("Failed to extract and store");
 
-            assert!(count >= 1, "Should extract at least one memory from task result");
+            assert!(
+                count >= 1,
+                "Should extract at least one memory from task result"
+            );
         }
 
         // Verify memory was built
         assert!(integration.entry_count() > 0, "Should have memory entries");
 
         // Get context for prompt
-        let context = integration.get_context_for_prompt()
+        let context = integration
+            .get_context_for_prompt()
             .expect("Failed to get context");
 
-        assert!(context.contains("Project Memory Context") || context.contains("No project memory"));
+        assert!(
+            context.contains("Project Memory Context") || context.contains("No project memory")
+        );
     }
 
     /// Test memory extraction with summarization trigger
@@ -432,15 +445,16 @@ mod pipeline_integration {
         let _store = MemoryStore::with_config(temp_dir.path(), config.clone())
             .expect("Failed to create memory store");
 
-        let integration = MemoryIntegration::new(temp_dir.path())
-            .expect("Failed to create memory integration");
+        let integration =
+            MemoryIntegration::new(temp_dir.path()).expect("Failed to create memory integration");
 
         // Add many entries quickly
         for i in 0..15 {
             let task = create_test_task(&format!("task-{:03}", i), &format!("Task {}", i));
             let result = format!("Architecture decision: Pattern {}", i);
 
-            integration.extract_and_store(&task, &result)
+            integration
+                .extract_and_store(&task, &result)
                 .expect("Failed to extract and store");
         }
 
@@ -466,8 +480,8 @@ mod pipeline_integration {
         let _store = MemoryStore::with_config(temp_dir.path(), config.clone())
             .expect("Failed to create memory store");
 
-        let integration = MemoryIntegration::new(temp_dir.path())
-            .expect("Failed to create memory integration");
+        let integration =
+            MemoryIntegration::new(temp_dir.path()).expect("Failed to create memory integration");
 
         // Store task summaries
         for i in 0..15 {
@@ -477,7 +491,8 @@ mod pipeline_integration {
                 format!("tests/test_{}.rs", i),
             ];
 
-            integration.store_task_summary(&task, &files)
+            integration
+                .store_task_summary(&task, &files)
                 .expect("Failed to store task summary");
         }
 
@@ -599,13 +614,21 @@ mod high_priority_preservation {
             .expect("Failed to create memory store");
 
         // Add critical/high priority entries
-        let critical_entry = MemoryEntry::new("task-critical", "Critical Security Decision", "Never store passwords in plain text")
-            .with_priority(MemoryPriority::Critical)
-            .with_category_enum(MemoryCategory::Security);
+        let critical_entry = MemoryEntry::new(
+            "task-critical",
+            "Critical Security Decision",
+            "Never store passwords in plain text",
+        )
+        .with_priority(MemoryPriority::Critical)
+        .with_category_enum(MemoryCategory::Security);
 
-        let high_entry = MemoryEntry::new("task-high", "Important Architecture", "Use async/await for all I/O")
-            .with_priority(MemoryPriority::High)
-            .with_category_enum(MemoryCategory::ArchitectureDecision);
+        let high_entry = MemoryEntry::new(
+            "task-high",
+            "Important Architecture",
+            "Use async/await for all I/O",
+        )
+        .with_priority(MemoryPriority::High)
+        .with_category_enum(MemoryCategory::ArchitectureDecision);
 
         store.append_entry(&critical_entry).unwrap();
         store.append_entry(&high_entry).unwrap();
@@ -623,10 +646,7 @@ mod high_priority_preservation {
         let entries = store.get_entries();
 
         // Verify that summarization occurred but preserved important entries
-        assert!(
-            entries.len() < 20,
-            "Summarization should have occurred"
-        );
+        assert!(entries.len() < 20, "Summarization should have occurred");
 
         // Check for preserved high-priority entries in the file content
         let memory_file = get_memory_file_path(&temp_dir);
@@ -653,8 +673,9 @@ mod high_priority_preservation {
             .expect("Failed to create memory store");
 
         // Add critical entry
-        let critical_entry = MemoryEntry::new("task-critical", "Critical Decision", "Very important")
-            .with_priority(MemoryPriority::Critical);
+        let critical_entry =
+            MemoryEntry::new("task-critical", "Critical Decision", "Very important")
+                .with_priority(MemoryPriority::Critical);
 
         store.append_entry(&critical_entry).unwrap();
 
@@ -670,7 +691,10 @@ mod high_priority_preservation {
 
         // All entries should be subject to summarization
         let final_count = store.entry_count();
-        assert!(final_count <= 10, "Summarization should reduce entries regardless of priority");
+        assert!(
+            final_count <= 10,
+            "Summarization should reduce entries regardless of priority"
+        );
     }
 }
 

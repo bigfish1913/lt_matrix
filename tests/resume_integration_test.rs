@@ -62,8 +62,14 @@ fn test_workspace_state_persists_to_disk() {
 
     // Verify content is valid JSON
     let content = std::fs::read_to_string(&manifest_path).expect("Failed to read manifest");
-    assert!(content.contains("task-001"), "Manifest should contain task-001");
-    assert!(content.contains("task-002"), "Manifest should contain task-002");
+    assert!(
+        content.contains("task-001"),
+        "Manifest should contain task-001"
+    );
+    assert!(
+        content.contains("task-002"),
+        "Manifest should contain task-002"
+    );
 }
 
 /// Test loading workspace state from disk
@@ -105,14 +111,20 @@ fn test_workspace_state_exists_check() {
     let project_path = temp_dir.path().to_path_buf();
 
     // Initially, no state exists
-    assert!(!WorkspaceState::exists(&project_path), "State should not exist initially");
+    assert!(
+        !WorkspaceState::exists(&project_path),
+        "State should not exist initially"
+    );
 
     // Create and save state
     let state = WorkspaceState::new(project_path.clone(), vec![]);
     state.save().expect("Failed to save state");
 
     // Now state should exist
-    assert!(WorkspaceState::exists(&project_path), "State should exist after save");
+    assert!(
+        WorkspaceState::exists(&project_path),
+        "State should exist after save"
+    );
 }
 
 /// Test loading state that doesn't exist fails gracefully
@@ -149,7 +161,10 @@ fn test_load_or_create_creates_new_state() {
 
     // Verify state was created
     assert!(state.tasks.is_empty(), "New state should have no tasks");
-    assert!(WorkspaceState::exists(&project_path), "State file should be created");
+    assert!(
+        WorkspaceState::exists(&project_path),
+        "State file should be created"
+    );
 }
 
 // =============================================================================
@@ -177,13 +192,24 @@ fn test_in_progress_tasks_reset_to_pending_on_resume() {
     state.save().expect("Failed to save state");
 
     // Load with transform (simulates resume)
-    let resumed = WorkspaceState::load_with_transform(project_path)
-        .expect("Failed to load with transform");
+    let resumed =
+        WorkspaceState::load_with_transform(project_path).expect("Failed to load with transform");
 
     // Verify transformation
-    assert_eq!(resumed.tasks[0].status, TaskStatus::Completed, "Completed should stay completed");
-    assert_eq!(resumed.tasks[1].status, TaskStatus::Pending, "InProgress should become Pending");
-    assert!(resumed.tasks[1].started_at.is_none(), "started_at should be cleared");
+    assert_eq!(
+        resumed.tasks[0].status,
+        TaskStatus::Completed,
+        "Completed should stay completed"
+    );
+    assert_eq!(
+        resumed.tasks[1].status,
+        TaskStatus::Pending,
+        "InProgress should become Pending"
+    );
+    assert!(
+        resumed.tasks[1].started_at.is_none(),
+        "started_at should be cleared"
+    );
 }
 
 /// Test that Blocked tasks are reset to Pending on resume
@@ -193,9 +219,11 @@ fn test_blocked_tasks_reset_to_pending_on_resume() {
     let project_path = temp_dir.path().to_path_buf();
 
     // Create tasks with Blocked status
-    let mut tasks = vec![
-        create_task("task-001", "Blocked task", vec!["nonexistent".to_string()]),
-    ];
+    let mut tasks = vec![create_task(
+        "task-001",
+        "Blocked task",
+        vec!["nonexistent".to_string()],
+    )];
 
     tasks[0].status = TaskStatus::Blocked;
 
@@ -204,11 +232,15 @@ fn test_blocked_tasks_reset_to_pending_on_resume() {
     state.save().expect("Failed to save state");
 
     // Load with transform
-    let resumed = WorkspaceState::load_with_transform(project_path)
-        .expect("Failed to load with transform");
+    let resumed =
+        WorkspaceState::load_with_transform(project_path).expect("Failed to load with transform");
 
     // Verify transformation
-    assert_eq!(resumed.tasks[0].status, TaskStatus::Pending, "Blocked should become Pending");
+    assert_eq!(
+        resumed.tasks[0].status,
+        TaskStatus::Pending,
+        "Blocked should become Pending"
+    );
 }
 
 /// Test that Completed tasks remain Completed on resume
@@ -233,8 +265,8 @@ fn test_completed_tasks_remain_completed_on_resume() {
     state.save().expect("Failed to save state");
 
     // Load with transform
-    let resumed = WorkspaceState::load_with_transform(project_path)
-        .expect("Failed to load with transform");
+    let resumed =
+        WorkspaceState::load_with_transform(project_path).expect("Failed to load with transform");
 
     // Verify completed tasks stay completed
     assert_eq!(resumed.tasks[0].status, TaskStatus::Completed);
@@ -250,9 +282,7 @@ fn test_failed_tasks_remain_failed_on_resume() {
     let project_path = temp_dir.path().to_path_buf();
 
     // Create failed task
-    let mut tasks = vec![
-        create_task("task-001", "Failed task", vec![]),
-    ];
+    let mut tasks = vec![create_task("task-001", "Failed task", vec![])];
 
     tasks[0].status = TaskStatus::Failed;
     tasks[0].error = Some("Something went wrong".to_string());
@@ -262,12 +292,15 @@ fn test_failed_tasks_remain_failed_on_resume() {
     state.save().expect("Failed to save state");
 
     // Load with transform
-    let resumed = WorkspaceState::load_with_transform(project_path)
-        .expect("Failed to load with transform");
+    let resumed =
+        WorkspaceState::load_with_transform(project_path).expect("Failed to load with transform");
 
     // Verify failed task stays failed
     assert_eq!(resumed.tasks[0].status, TaskStatus::Failed);
-    assert_eq!(resumed.tasks[0].error, Some("Something went wrong".to_string()));
+    assert_eq!(
+        resumed.tasks[0].error,
+        Some("Something went wrong".to_string())
+    );
 }
 
 /// Test that Pending tasks remain Pending on resume
@@ -287,8 +320,8 @@ fn test_pending_tasks_remain_pending_on_resume() {
     state.save().expect("Failed to save state");
 
     // Load with transform
-    let resumed = WorkspaceState::load_with_transform(project_path)
-        .expect("Failed to load with transform");
+    let resumed =
+        WorkspaceState::load_with_transform(project_path).expect("Failed to load with transform");
 
     // Verify pending tasks stay pending
     assert_eq!(resumed.tasks[0].status, TaskStatus::Pending);
@@ -323,8 +356,8 @@ fn test_mixed_task_states_transform_correctly() {
     state.save().expect("Failed to save state");
 
     // Load with transform
-    let resumed = WorkspaceState::load_with_transform(project_path)
-        .expect("Failed to load with transform");
+    let resumed =
+        WorkspaceState::load_with_transform(project_path).expect("Failed to load with transform");
 
     // Build task map for verification
     let task_map: std::collections::HashMap<&str, TaskStatus> = resumed
@@ -334,12 +367,36 @@ fn test_mixed_task_states_transform_correctly() {
         .collect();
 
     // Verify transformations
-    assert_eq!(task_map["task-001"], TaskStatus::Completed, "Completed should stay completed");
-    assert_eq!(task_map["task-002"], TaskStatus::Pending, "InProgress should become Pending");
-    assert_eq!(task_map["task-003"], TaskStatus::Pending, "Blocked should become Pending");
-    assert_eq!(task_map["task-004"], TaskStatus::Failed, "Failed should stay failed");
-    assert_eq!(task_map["task-005"], TaskStatus::Pending, "Pending should stay pending");
-    assert_eq!(task_map["task-006"], TaskStatus::Pending, "InProgress should become Pending");
+    assert_eq!(
+        task_map["task-001"],
+        TaskStatus::Completed,
+        "Completed should stay completed"
+    );
+    assert_eq!(
+        task_map["task-002"],
+        TaskStatus::Pending,
+        "InProgress should become Pending"
+    );
+    assert_eq!(
+        task_map["task-003"],
+        TaskStatus::Pending,
+        "Blocked should become Pending"
+    );
+    assert_eq!(
+        task_map["task-004"],
+        TaskStatus::Failed,
+        "Failed should stay failed"
+    );
+    assert_eq!(
+        task_map["task-005"],
+        TaskStatus::Pending,
+        "Pending should stay pending"
+    );
+    assert_eq!(
+        task_map["task-006"],
+        TaskStatus::Pending,
+        "InProgress should become Pending"
+    );
 }
 
 // =============================================================================
@@ -375,17 +432,37 @@ fn test_subtasks_are_transformed_correctly() {
     state.save().expect("Failed to save state");
 
     // Load with transform
-    let resumed = WorkspaceState::load_with_transform(project_path)
-        .expect("Failed to load with transform");
+    let resumed =
+        WorkspaceState::load_with_transform(project_path).expect("Failed to load with transform");
 
     // Verify parent transformation
-    assert_eq!(resumed.tasks[0].status, TaskStatus::Pending, "Parent InProgress should become Pending");
+    assert_eq!(
+        resumed.tasks[0].status,
+        TaskStatus::Pending,
+        "Parent InProgress should become Pending"
+    );
 
     // Verify subtask transformations
-    assert_eq!(resumed.tasks[0].subtasks[0].status, TaskStatus::Completed, "Completed subtask should stay completed");
-    assert_eq!(resumed.tasks[0].subtasks[1].status, TaskStatus::Pending, "InProgress subtask should become Pending");
-    assert_eq!(resumed.tasks[0].subtasks[2].status, TaskStatus::Pending, "Blocked subtask should become Pending");
-    assert_eq!(resumed.tasks[0].subtasks[3].status, TaskStatus::Failed, "Failed subtask should stay failed");
+    assert_eq!(
+        resumed.tasks[0].subtasks[0].status,
+        TaskStatus::Completed,
+        "Completed subtask should stay completed"
+    );
+    assert_eq!(
+        resumed.tasks[0].subtasks[1].status,
+        TaskStatus::Pending,
+        "InProgress subtask should become Pending"
+    );
+    assert_eq!(
+        resumed.tasks[0].subtasks[2].status,
+        TaskStatus::Pending,
+        "Blocked subtask should become Pending"
+    );
+    assert_eq!(
+        resumed.tasks[0].subtasks[3].status,
+        TaskStatus::Failed,
+        "Failed subtask should stay failed"
+    );
 }
 
 /// Test nested subtasks are transformed recursively
@@ -411,13 +488,16 @@ fn test_nested_subtasks_transform_recursively() {
     state.save().expect("Failed to save state");
 
     // Load with transform
-    let resumed = WorkspaceState::load_with_transform(project_path)
-        .expect("Failed to load with transform");
+    let resumed =
+        WorkspaceState::load_with_transform(project_path).expect("Failed to load with transform");
 
     // All levels should be reset to Pending
     assert_eq!(resumed.tasks[0].status, TaskStatus::Pending);
     assert_eq!(resumed.tasks[0].subtasks[0].status, TaskStatus::Pending);
-    assert_eq!(resumed.tasks[0].subtasks[0].subtasks[0].status, TaskStatus::Pending);
+    assert_eq!(
+        resumed.tasks[0].subtasks[0].subtasks[0].status,
+        TaskStatus::Pending
+    );
 }
 
 // =============================================================================
@@ -506,7 +586,10 @@ fn test_status_summary_includes_subtasks() {
     let summary = state.status_summary();
 
     // Should count parent and both subtasks
-    assert_eq!(summary.completed, 2, "Parent and subtask1 should be completed");
+    assert_eq!(
+        summary.completed, 2,
+        "Parent and subtask1 should be completed"
+    );
     assert_eq!(summary.pending, 1, "subtask2 should be pending");
     assert_eq!(summary.total(), 3, "Total should include subtasks");
 }
@@ -526,7 +609,11 @@ fn test_session_ids_preserved_on_save_load() {
     task1.status = TaskStatus::InProgress;
     task1.session_id = Some("session-12345".to_string());
 
-    let mut task2 = create_task("task-002", "Task with parent session", vec!["task-001".to_string()]);
+    let mut task2 = create_task(
+        "task-002",
+        "Task with parent session",
+        vec!["task-001".to_string()],
+    );
     task2.parent_session_id = Some("session-12345".to_string());
 
     // Save state
@@ -537,8 +624,14 @@ fn test_session_ids_preserved_on_save_load() {
     let loaded = WorkspaceState::load(project_path).expect("Failed to load state");
 
     // Verify session IDs are preserved
-    assert_eq!(loaded.tasks[0].session_id, Some("session-12345".to_string()));
-    assert_eq!(loaded.tasks[1].parent_session_id, Some("session-12345".to_string()));
+    assert_eq!(
+        loaded.tasks[0].session_id,
+        Some("session-12345".to_string())
+    );
+    assert_eq!(
+        loaded.tasks[1].parent_session_id,
+        Some("session-12345".to_string())
+    );
 }
 
 /// Test that session IDs are cleared when task is reset
@@ -558,12 +651,15 @@ fn test_started_at_cleared_on_transform() {
     state.save().expect("Failed to save state");
 
     // Load with transform
-    let resumed = WorkspaceState::load_with_transform(project_path)
-        .expect("Failed to load with transform");
+    let resumed =
+        WorkspaceState::load_with_transform(project_path).expect("Failed to load with transform");
 
     // started_at should be cleared, session_id should be preserved
     assert_eq!(resumed.tasks[0].status, TaskStatus::Pending);
-    assert!(resumed.tasks[0].started_at.is_none(), "started_at should be cleared");
+    assert!(
+        resumed.tasks[0].started_at.is_none(),
+        "started_at should be cleared"
+    );
     // Note: session_id is preserved for retry reuse
     assert_eq!(resumed.tasks[0].session_id, Some("session-abc".to_string()));
 }
@@ -579,7 +675,10 @@ fn test_cleanup_removes_all_state() {
     let project_path = temp_dir.path().to_path_buf();
 
     // Create workspace state
-    let state = WorkspaceState::new(project_path.clone(), vec![create_task("task-001", "Test", vec![])]);
+    let state = WorkspaceState::new(
+        project_path.clone(),
+        vec![create_task("task-001", "Test", vec![])],
+    );
     state.save().expect("Failed to save state");
 
     // Verify state exists
@@ -645,10 +744,26 @@ fn test_reset_failed_only_resets_failed() {
     assert_eq!(reset_count, 2);
 
     // Verify statuses
-    assert_eq!(state.tasks[0].status, TaskStatus::Completed, "Completed should stay completed");
-    assert_eq!(state.tasks[1].status, TaskStatus::Pending, "Failed should become Pending");
-    assert_eq!(state.tasks[2].status, TaskStatus::Pending, "Failed should become Pending");
-    assert_eq!(state.tasks[3].status, TaskStatus::Pending, "Pending should stay Pending");
+    assert_eq!(
+        state.tasks[0].status,
+        TaskStatus::Completed,
+        "Completed should stay completed"
+    );
+    assert_eq!(
+        state.tasks[1].status,
+        TaskStatus::Pending,
+        "Failed should become Pending"
+    );
+    assert_eq!(
+        state.tasks[2].status,
+        TaskStatus::Pending,
+        "Failed should become Pending"
+    );
+    assert_eq!(
+        state.tasks[3].status,
+        TaskStatus::Pending,
+        "Pending should stay Pending"
+    );
 }
 
 // =============================================================================
@@ -666,7 +781,11 @@ fn test_complete_resume_workflow() {
         create_task("task-001", "Setup project", vec![]),
         create_task("task-002", "Add dependencies", vec!["task-001".to_string()]),
         create_task("task-003", "Write tests", vec!["task-002".to_string()]),
-        create_task("task-004", "Integration tests", vec!["task-003".to_string()]),
+        create_task(
+            "task-004",
+            "Integration tests",
+            vec!["task-003".to_string()],
+        ),
     ];
 
     // Simulate partial completion
@@ -695,10 +814,26 @@ fn test_complete_resume_workflow() {
         .expect("Failed to load with transform");
 
     // Verify transformation
-    assert_eq!(resumed.tasks[0].status, TaskStatus::Completed, "Completed task should stay completed");
-    assert_eq!(resumed.tasks[1].status, TaskStatus::Completed, "Completed task should stay completed");
-    assert_eq!(resumed.tasks[2].status, TaskStatus::Pending, "InProgress should be reset to Pending");
-    assert_eq!(resumed.tasks[3].status, TaskStatus::Pending, "Pending should stay Pending");
+    assert_eq!(
+        resumed.tasks[0].status,
+        TaskStatus::Completed,
+        "Completed task should stay completed"
+    );
+    assert_eq!(
+        resumed.tasks[1].status,
+        TaskStatus::Completed,
+        "Completed task should stay completed"
+    );
+    assert_eq!(
+        resumed.tasks[2].status,
+        TaskStatus::Pending,
+        "InProgress should be reset to Pending"
+    );
+    assert_eq!(
+        resumed.tasks[3].status,
+        TaskStatus::Pending,
+        "Pending should stay Pending"
+    );
 
     // Phase 3: Continue execution - complete remaining tasks
     let mut continued_state = resumed;
@@ -707,7 +842,9 @@ fn test_complete_resume_workflow() {
     continued_state.tasks[3].status = TaskStatus::Completed;
     continued_state.tasks[3].completed_at = Some(chrono::Utc::now());
 
-    continued_state.save().expect("Failed to save continued state");
+    continued_state
+        .save()
+        .expect("Failed to save continued state");
 
     // Verify final state
     let final_state = WorkspaceState::load(project_path).expect("Failed to load final state");
@@ -743,8 +880,8 @@ fn test_resume_preserves_dependency_chain() {
     state.save().expect("Failed to save state");
 
     // Resume
-    let resumed = WorkspaceState::load_with_transform(project_path)
-        .expect("Failed to load with transform");
+    let resumed =
+        WorkspaceState::load_with_transform(project_path).expect("Failed to load with transform");
 
     // Verify dependencies are preserved
     assert_eq!(resumed.tasks[0].depends_on, vec![] as Vec<String>);
@@ -753,9 +890,10 @@ fn test_resume_preserves_dependency_chain() {
     assert_eq!(resumed.tasks[3].depends_on, vec!["task-003".to_string()]);
 
     // Verify dependency checking works
-    let completed: std::collections::HashSet<String> = ["task-001".to_string(), "task-002".to_string()]
-        .into_iter()
-        .collect();
+    let completed: std::collections::HashSet<String> =
+        ["task-001".to_string(), "task-002".to_string()]
+            .into_iter()
+            .collect();
 
     // task-003 should be executable after task-001 and task-002 are completed
     assert!(resumed.tasks[2].can_execute(&completed));
@@ -780,10 +918,13 @@ fn test_multiple_interruptions_resume() {
     state.save().expect("Failed to save initial state");
 
     // First interruption: task-001 completed, task-002 in progress
-    let mut first_interruption = WorkspaceState::load(project_path.clone()).expect("Failed to load");
+    let mut first_interruption =
+        WorkspaceState::load(project_path.clone()).expect("Failed to load");
     first_interruption.tasks[0].status = TaskStatus::Completed;
     first_interruption.tasks[1].status = TaskStatus::InProgress;
-    first_interruption.save().expect("Failed to save first interruption");
+    first_interruption
+        .save()
+        .expect("Failed to save first interruption");
 
     // First resume
     let first_resume = WorkspaceState::load_with_transform(project_path.clone())
@@ -796,16 +937,30 @@ fn test_multiple_interruptions_resume() {
     let mut second_interruption = first_resume;
     second_interruption.tasks[1].status = TaskStatus::Completed;
     second_interruption.tasks[2].status = TaskStatus::InProgress;
-    second_interruption.save().expect("Failed to save second interruption");
+    second_interruption
+        .save()
+        .expect("Failed to save second interruption");
 
     // Second resume
     let second_resume = WorkspaceState::load_with_transform(project_path.clone())
         .expect("Failed to load with transform");
 
     // Verify state after second resume
-    assert_eq!(second_resume.tasks[0].status, TaskStatus::Completed, "First task should stay completed");
-    assert_eq!(second_resume.tasks[1].status, TaskStatus::Completed, "Second task should stay completed");
-    assert_eq!(second_resume.tasks[2].status, TaskStatus::Pending, "Third task should be pending");
+    assert_eq!(
+        second_resume.tasks[0].status,
+        TaskStatus::Completed,
+        "First task should stay completed"
+    );
+    assert_eq!(
+        second_resume.tasks[1].status,
+        TaskStatus::Completed,
+        "Second task should stay completed"
+    );
+    assert_eq!(
+        second_resume.tasks[2].status,
+        TaskStatus::Pending,
+        "Third task should be pending"
+    );
 }
 
 // =============================================================================
@@ -880,7 +1035,10 @@ fn test_workspace_state_with_many_tasks() {
     // Verify all tasks are present
     for i in 0..100 {
         assert!(
-            loaded.tasks.iter().any(|t| t.id == format!("task-{:03}", i)),
+            loaded
+                .tasks
+                .iter()
+                .any(|t| t.id == format!("task-{:03}", i)),
             "Task {:03} should be present",
             i
         );
@@ -909,7 +1067,8 @@ fn test_concurrent_workspace_access() {
             let path = Arc::clone(&project_path);
             thread::spawn(move || {
                 // Use load_or_create to handle potential corruption from concurrent writes
-                let mut state = WorkspaceState::load_or_create((*path).clone()).expect("Failed to load or create");
+                let mut state = WorkspaceState::load_or_create((*path).clone())
+                    .expect("Failed to load or create");
                 let task = create_task(&format!("task-{}", i), &format!("Task {}", i), vec![]);
                 state.tasks.push(task);
                 // Save may fail due to concurrent writes, but that's expected
@@ -924,10 +1083,14 @@ fn test_concurrent_workspace_access() {
     }
 
     // Verify final state - use load_or_create to handle any corruption
-    let final_state = WorkspaceState::load_or_create((*project_path).clone()).expect("Failed to load or create final");
+    let final_state = WorkspaceState::load_or_create((*project_path).clone())
+        .expect("Failed to load or create final");
     // Note: Due to race conditions without file locking, we might have 0 or more tasks
     // This test mainly verifies the application doesn't crash and can recover
-    assert!(final_state.tasks.len() <= 5, "At most 5 tasks should be present");
+    assert!(
+        final_state.tasks.len() <= 5,
+        "At most 5 tasks should be present"
+    );
 }
 
 /// Test corrupted state file handling
@@ -946,6 +1109,10 @@ fn test_corrupted_state_file() {
     assert!(result.is_err(), "Loading corrupted state should fail");
 
     // load_or_create should recover
-    let recovered = WorkspaceState::load_or_create(project_path).expect("load_or_create should recover");
-    assert!(recovered.tasks.is_empty(), "Recovered state should be empty");
+    let recovered =
+        WorkspaceState::load_or_create(project_path).expect("load_or_create should recover");
+    assert!(
+        recovered.tasks.is_empty(),
+        "Recovered state should be empty"
+    );
 }

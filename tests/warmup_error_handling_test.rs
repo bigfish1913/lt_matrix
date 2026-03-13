@@ -8,9 +8,9 @@
 //! - Error recovery and retry
 //! - Error reporting and logging
 
-use ltmatrix::agent::warmup::{WarmupExecutor, WarmupResult};
-use ltmatrix::agent::{AgentSession, pool::SessionPool};
 use ltmatrix::agent::backend::{AgentBackend, AgentConfig, AgentResponse, ExecutionConfig};
+use ltmatrix::agent::warmup::{WarmupExecutor, WarmupResult};
+use ltmatrix::agent::{pool::SessionPool, AgentSession};
 use ltmatrix::config::settings::WarmupConfig;
 use ltmatrix::models::Agent;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
@@ -37,7 +37,11 @@ impl UnavailableAgent {
 
 #[async_trait::async_trait]
 impl AgentBackend for UnavailableAgent {
-    async fn execute(&self, _prompt: &str, _config: &ExecutionConfig) -> anyhow::Result<AgentResponse> {
+    async fn execute(
+        &self,
+        _prompt: &str,
+        _config: &ExecutionConfig,
+    ) -> anyhow::Result<AgentResponse> {
         if !self.is_available.load(Ordering::SeqCst) {
             anyhow::bail!("Agent is currently unavailable");
         }
@@ -79,7 +83,10 @@ impl AgentBackend for UnavailableAgent {
         Ok(self.is_available.load(Ordering::SeqCst))
     }
 
-    async fn validate_config(&self, _config: &AgentConfig) -> Result<(), ltmatrix::agent::backend::AgentError> {
+    async fn validate_config(
+        &self,
+        _config: &AgentConfig,
+    ) -> Result<(), ltmatrix::agent::backend::AgentError> {
         Ok(())
     }
 
@@ -105,7 +112,11 @@ impl ErrorReturningAgent {
 
 #[async_trait::async_trait]
 impl AgentBackend for ErrorReturningAgent {
-    async fn execute(&self, _prompt: &str, _config: &ExecutionConfig) -> anyhow::Result<AgentResponse> {
+    async fn execute(
+        &self,
+        _prompt: &str,
+        _config: &ExecutionConfig,
+    ) -> anyhow::Result<AgentResponse> {
         Ok(AgentResponse {
             output: if self.return_error {
                 String::new()
@@ -159,7 +170,10 @@ impl AgentBackend for ErrorReturningAgent {
         Ok(true)
     }
 
-    async fn validate_config(&self, _config: &AgentConfig) -> Result<(), ltmatrix::agent::backend::AgentError> {
+    async fn validate_config(
+        &self,
+        _config: &AgentConfig,
+    ) -> Result<(), ltmatrix::agent::backend::AgentError> {
         Ok(())
     }
 
@@ -185,7 +199,11 @@ impl EmptyResponseAgent {
 
 #[async_trait::async_trait]
 impl AgentBackend for EmptyResponseAgent {
-    async fn execute(&self, _prompt: &str, _config: &ExecutionConfig) -> anyhow::Result<AgentResponse> {
+    async fn execute(
+        &self,
+        _prompt: &str,
+        _config: &ExecutionConfig,
+    ) -> anyhow::Result<AgentResponse> {
         Ok(AgentResponse {
             output: if self.return_empty {
                 String::new()
@@ -229,7 +247,10 @@ impl AgentBackend for EmptyResponseAgent {
         Ok(true)
     }
 
-    async fn validate_config(&self, _config: &AgentConfig) -> Result<(), ltmatrix::agent::backend::AgentError> {
+    async fn validate_config(
+        &self,
+        _config: &AgentConfig,
+    ) -> Result<(), ltmatrix::agent::backend::AgentError> {
         Ok(())
     }
 
@@ -257,10 +278,17 @@ impl IntermittentFailureAgent {
 
 #[async_trait::async_trait]
 impl AgentBackend for IntermittentFailureAgent {
-    async fn execute(&self, _prompt: &str, _config: &ExecutionConfig) -> anyhow::Result<AgentResponse> {
+    async fn execute(
+        &self,
+        _prompt: &str,
+        _config: &ExecutionConfig,
+    ) -> anyhow::Result<AgentResponse> {
         let current_failures = self.failure_count.fetch_add(1, Ordering::SeqCst);
         if current_failures < self.total_failures {
-            anyhow::bail!("Simulated intermittent failure (attempt {})", current_failures + 1);
+            anyhow::bail!(
+                "Simulated intermittent failure (attempt {})",
+                current_failures + 1
+            );
         }
         Ok(AgentResponse {
             output: "Ready".to_string(),
@@ -276,7 +304,10 @@ impl AgentBackend for IntermittentFailureAgent {
     ) -> anyhow::Result<AgentResponse> {
         let current_failures = self.failure_count.fetch_add(1, Ordering::SeqCst);
         if current_failures < self.total_failures {
-            anyhow::bail!("Simulated intermittent failure (attempt {})", current_failures + 1);
+            anyhow::bail!(
+                "Simulated intermittent failure (attempt {})",
+                current_failures + 1
+            );
         }
         Ok(AgentResponse {
             output: "Ready".to_string(),
@@ -301,7 +332,10 @@ impl AgentBackend for IntermittentFailureAgent {
         Ok(true)
     }
 
-    async fn validate_config(&self, _config: &AgentConfig) -> Result<(), ltmatrix::agent::backend::AgentError> {
+    async fn validate_config(
+        &self,
+        _config: &AgentConfig,
+    ) -> Result<(), ltmatrix::agent::backend::AgentError> {
         Ok(())
     }
 
@@ -333,8 +367,11 @@ async fn warmup_fails_when_agent_unavailable() {
     assert_eq!(result.queries_executed(), Some(0));
 
     if let WarmupResult::Failed { error, .. } = result {
-        assert!(error.contains("unavailable") || error.contains("failed"),
-                "Error message should indicate unavailability: {}", error);
+        assert!(
+            error.contains("unavailable") || error.contains("failed"),
+            "Error message should indicate unavailability: {}",
+            error
+        );
     }
 }
 
@@ -380,8 +417,11 @@ async fn warmup_fails_on_error_response() {
     assert_eq!(result.queries_executed(), Some(0));
 
     if let WarmupResult::Failed { error, .. } = result {
-        assert!(error.contains("error") || error.contains("failed"),
-                "Error should mention response error: {}", error);
+        assert!(
+            error.contains("error") || error.contains("failed"),
+            "Error should mention response error: {}",
+            error
+        );
     }
 }
 
@@ -404,8 +444,11 @@ async fn warmup_fails_on_empty_response() {
     assert_eq!(result.queries_executed(), Some(0));
 
     if let WarmupResult::Failed { error, .. } = result {
-        assert!(error.contains("empty") || error.contains("response"),
-                "Error should mention empty response: {}", error);
+        assert!(
+            error.contains("empty") || error.contains("response"),
+            "Error should mention empty response: {}",
+            error
+        );
     }
 }
 
@@ -453,8 +496,11 @@ async fn warmup_fails_after_max_retries_exhausted() {
     assert_eq!(result.queries_executed(), Some(0));
 
     if let WarmupResult::Failed { error, .. } = result {
-        assert!(error.contains("retry") || error.contains("failed"),
-                "Error should mention retry exhaustion: {}", error);
+        assert!(
+            error.contains("retry") || error.contains("failed"),
+            "Error should mention retry exhaustion: {}",
+            error
+        );
     }
 }
 
@@ -506,7 +552,11 @@ async fn warmup_error_messages_are_descriptive() {
 
     let result = executor.warmup_agent(&agent, &mut pool).await.unwrap();
 
-    if let WarmupResult::Failed { error, queries_executed } = result {
+    if let WarmupResult::Failed {
+        error,
+        queries_executed,
+    } = result
+    {
         assert!(!error.is_empty(), "Error message should not be empty");
         assert!(error.len() > 10, "Error message should be descriptive");
         assert_eq!(queries_executed, 0, "No queries should have executed");
@@ -532,8 +582,14 @@ async fn warmup_error_includes_queries_executed_count() {
     let result = executor.warmup_agent(&agent, &mut pool).await.unwrap();
 
     // Since retry is disabled and agent fails first query, should have 0 executed queries
-    if let WarmupResult::Failed { queries_executed, .. } = result {
-        assert_eq!(queries_executed, 0, "Should have 0 executed queries when first attempt fails and retry disabled");
+    if let WarmupResult::Failed {
+        queries_executed, ..
+    } = result
+    {
+        assert_eq!(
+            queries_executed, 0,
+            "Should have 0 executed queries when first attempt fails and retry disabled"
+        );
     }
 }
 

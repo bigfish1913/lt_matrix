@@ -5,9 +5,7 @@
 
 use clap::Parser;
 use ltmatrix::cli::args::Args;
-use ltmatrix::interactive::clarify::{
-    ClarificationQuestion, ClarificationSession, QuestionType,
-};
+use ltmatrix::interactive::clarify::{ClarificationQuestion, ClarificationSession, QuestionType};
 
 /// E2E Test 1: Complete clarification flow for ambiguous goal
 #[test]
@@ -82,7 +80,11 @@ fn test_e2e_clarification_with_skipped_optionals() {
         id: "logging_level".to_string(),
         question_text: "Logging level?".to_string(),
         question_type: QuestionType::Choice,
-        options: Some(vec!["debug".to_string(), "info".to_string(), "warn".to_string()]),
+        options: Some(vec![
+            "debug".to_string(),
+            "info".to_string(),
+            "warn".to_string(),
+        ]),
         default_value: Some("info".to_string()),
         required: false,
         multi_select: false,
@@ -102,7 +104,10 @@ fn test_e2e_clarification_with_skipped_optionals() {
 
     // Verify defaults were used
     assert_eq!(session.answers.get("caching"), Some(&"no".to_string()));
-    assert_eq!(session.answers.get("logging_level"), Some(&"info".to_string()));
+    assert_eq!(
+        session.answers.get("logging_level"),
+        Some(&"info".to_string())
+    );
 
     session.mark_completed();
     assert!(session.completed);
@@ -242,7 +247,10 @@ fn test_e2e_early_termination_on_decline() {
     session.answer_question("confirm_start", "no").unwrap();
 
     // Verify we can detect the decline
-    assert_eq!(session.answers.get("confirm_start"), Some(&"no".to_string()));
+    assert_eq!(
+        session.answers.get("confirm_start"),
+        Some(&"no".to_string())
+    );
 
     // In a real implementation, this would trigger early termination
     // For now, we verify the answer is captured correctly
@@ -268,7 +276,10 @@ fn test_e2e_clarification_with_validation_errors() {
     let invalid_email = "not-an-email";
     session.answer_question("email", invalid_email).unwrap();
 
-    assert_eq!(session.answers.get("email"), Some(&invalid_email.to_string()));
+    assert_eq!(
+        session.answers.get("email"),
+        Some(&invalid_email.to_string())
+    );
 
     // In real implementation, validation would happen before acceptance
     // and user would be prompted to correct invalid inputs
@@ -405,7 +416,10 @@ fn test_e2e_clarification_accepting_all_defaults() {
     session.skip_question("orm").unwrap();
 
     // Verify defaults were used
-    assert_eq!(session.answers.get("database"), Some(&"PostgreSQL".to_string()));
+    assert_eq!(
+        session.answers.get("database"),
+        Some(&"PostgreSQL".to_string())
+    );
     assert_eq!(session.answers.get("orm"), Some(&"Diesel".to_string()));
     assert!(session.all_required_answered());
 }
@@ -462,7 +476,10 @@ fn test_e2e_integration_with_planning_prompt() {
 
 /// Helper function to simulate question generation with context
 #[allow(dead_code)]
-fn generate_questions_with_context(_goal: &str, previous_answers: &[(&str, &str)]) -> Vec<ClarificationQuestion> {
+fn generate_questions_with_context(
+    _goal: &str,
+    previous_answers: &[(&str, &str)],
+) -> Vec<ClarificationQuestion> {
     let mut questions = Vec::new();
 
     // In a real implementation, previous answers would influence

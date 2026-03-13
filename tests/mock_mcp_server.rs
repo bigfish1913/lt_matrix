@@ -39,16 +39,16 @@ use std::time::Duration;
 use tokio::sync::{mpsc, Mutex, RwLock};
 
 // Import ltmatrix MCP types
-use ltmatrix::mcp::{
-    JsonRpcError, JsonRpcErrorCode, JsonRpcNotification, JsonRpcRequest, JsonRpcResponse,
-    RequestId, Transport, TransportMessage, TransportStats, OutgoingMessage,
-};
+use ltmatrix::mcp::protocol::errors::McpError;
 use ltmatrix::mcp::protocol::methods::{
-    ServerCapabilities, ToolsCapability, ResourcesCapability, PromptsCapability, Tool,
-    ToolCallResult, Resource, ResourceContents, Prompt, PromptArgument, PromptMessage,
+    Prompt, PromptArgument, PromptMessage, PromptsCapability, Resource, ResourceContents,
+    ResourcesCapability, ServerCapabilities, Tool, ToolCallResult, ToolsCapability,
     MCP_PROTOCOL_VERSION,
 };
-use ltmatrix::mcp::protocol::errors::McpError;
+use ltmatrix::mcp::{
+    JsonRpcError, JsonRpcErrorCode, JsonRpcNotification, JsonRpcRequest, JsonRpcResponse,
+    OutgoingMessage, RequestId, Transport, TransportMessage, TransportStats,
+};
 
 // ============================================================================
 // Mock Server Configuration
@@ -94,12 +94,16 @@ pub struct MockServerConfig {
 impl Default for MockServerConfig {
     fn default() -> Self {
         let mut capabilities = ServerCapabilities::default();
-        capabilities.tools = Some(ToolsCapability { list_changed: Some(false) });
+        capabilities.tools = Some(ToolsCapability {
+            list_changed: Some(false),
+        });
         capabilities.resources = Some(ResourcesCapability {
             subscribe: Some(false),
             list_changed: Some(false),
         });
-        capabilities.prompts = Some(PromptsCapability { list_changed: Some(false) });
+        capabilities.prompts = Some(PromptsCapability {
+            list_changed: Some(false),
+        });
 
         Self {
             server_name: "mock-mcp-server".to_string(),
@@ -283,7 +287,10 @@ impl RequestLog {
 
     /// Get requests by method
     pub fn by_method(&self, method: &str) -> Vec<&RequestRecord> {
-        self.requests.iter().filter(|r| r.method == method).collect()
+        self.requests
+            .iter()
+            .filter(|r| r.method == method)
+            .collect()
     }
 
     /// Get the last request
@@ -382,7 +389,10 @@ impl MockMcpServer {
         if self.config.error_methods.contains(&request.method) {
             return JsonRpcResponse::error(
                 request.id,
-                JsonRpcError::new(JsonRpcErrorCode::InternalError, "Simulated error".to_string()),
+                JsonRpcError::new(
+                    JsonRpcErrorCode::InternalError,
+                    "Simulated error".to_string(),
+                ),
             );
         }
 
@@ -399,7 +409,10 @@ impl MockMcpServer {
             _ => {
                 return JsonRpcResponse::error(
                     request.id,
-                    JsonRpcError::new(JsonRpcErrorCode::MethodNotFound, "Method not found".to_string()),
+                    JsonRpcError::new(
+                        JsonRpcErrorCode::MethodNotFound,
+                        "Method not found".to_string(),
+                    ),
                 )
             }
         };
@@ -412,9 +425,9 @@ impl MockMcpServer {
 
     fn handle_initialize(&self, params: Option<Value>) -> Result<Value, JsonRpcError> {
         // Validate params exist
-        let _params = params.as_ref().ok_or_else(|| {
-            JsonRpcError::invalid_params("Missing initialize params")
-        })?;
+        let _params = params
+            .as_ref()
+            .ok_or_else(|| JsonRpcError::invalid_params("Missing initialize params"))?;
 
         Ok(json!({
             "protocolVersion": self.config.protocol_version,
@@ -437,9 +450,8 @@ impl MockMcpServer {
     }
 
     fn handle_tools_call(&self, params: Option<Value>) -> Result<Value, JsonRpcError> {
-        let params = params.ok_or_else(|| {
-            JsonRpcError::invalid_params("Missing tool call params")
-        })?;
+        let params =
+            params.ok_or_else(|| JsonRpcError::invalid_params("Missing tool call params"))?;
 
         let name = params
             .get("name")
@@ -495,9 +507,8 @@ impl MockMcpServer {
     }
 
     fn handle_resources_read(&self, params: Option<Value>) -> Result<Value, JsonRpcError> {
-        let params = params.ok_or_else(|| {
-            JsonRpcError::invalid_params("Missing resource read params")
-        })?;
+        let params =
+            params.ok_or_else(|| JsonRpcError::invalid_params("Missing resource read params"))?;
 
         let uri = params
             .get("uri")
@@ -520,9 +531,8 @@ impl MockMcpServer {
     }
 
     fn handle_prompts_get(&self, params: Option<Value>) -> Result<Value, JsonRpcError> {
-        let params = params.ok_or_else(|| {
-            JsonRpcError::invalid_params("Missing prompts get params")
-        })?;
+        let params =
+            params.ok_or_else(|| JsonRpcError::invalid_params("Missing prompts get params"))?;
 
         let name = params
             .get("name")
@@ -649,7 +659,11 @@ impl Transport for MockTransport {
         let response = self.server.handle_request(request).await;
 
         // Send the response back through the incoming channel
-        let _ = self.server.incoming_tx.send(TransportMessage::Response(response)).await;
+        let _ = self
+            .server
+            .incoming_tx
+            .send(TransportMessage::Response(response))
+            .await;
 
         // Update stats
         let mut stats = self.stats.lock().await;

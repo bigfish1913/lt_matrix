@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! ETA estimation and metrics collection
 //!
 //! This module provides ETA calculation based on historical task performance
@@ -39,10 +38,7 @@ impl HistoricalData {
     /// Returns the total number of completed tasks tracked
     #[must_use]
     pub fn total_completed(&self) -> usize {
-        self.completed_by_complexity
-            .values()
-            .map(|v| v.len())
-            .sum()
+        self.completed_by_complexity.values().map(|v| v.len()).sum()
     }
 
     /// Returns the average duration for a given complexity level
@@ -157,7 +153,8 @@ impl MetricsCollector {
 
     /// Tracks the start of a task
     pub fn track_task_start(&mut self, task: &Task) {
-        self.start_times.insert(task.id.clone(), std::time::Instant::now());
+        self.start_times
+            .insert(task.id.clone(), std::time::Instant::now());
         self.metrics.total_tracked += 1;
     }
 

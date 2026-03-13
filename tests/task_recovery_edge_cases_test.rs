@@ -3,10 +3,10 @@
 //! Tests additional edge cases for state transformation and recovery
 //! that complement the lifecycle integration tests.
 
+use ltmatrix::models::{Task, TaskComplexity, TaskStatus};
 use ltmatrix::workspace::WorkspaceState;
-use ltmatrix::models::{Task, TaskStatus, TaskComplexity};
-use tempfile::TempDir;
 use std::path::PathBuf;
+use tempfile::TempDir;
 
 // ==================== Deep Nesting Tests ====================
 
@@ -39,8 +39,14 @@ fn test_transform_deeply_nested_subtasks() {
 
     // Check all levels reset to Pending
     assert_eq!(loaded_state.tasks[0].status, TaskStatus::Pending);
-    assert_eq!(loaded_state.tasks[0].subtasks[0].status, TaskStatus::Pending);
-    assert_eq!(loaded_state.tasks[0].subtasks[0].subtasks[0].status, TaskStatus::Pending);
+    assert_eq!(
+        loaded_state.tasks[0].subtasks[0].status,
+        TaskStatus::Pending
+    );
+    assert_eq!(
+        loaded_state.tasks[0].subtasks[0].subtasks[0].status,
+        TaskStatus::Pending
+    );
     assert_eq!(
         loaded_state.tasks[0].subtasks[0].subtasks[0].subtasks[0].status,
         TaskStatus::Pending
@@ -96,10 +102,7 @@ fn test_cleanup_preserves_partial_valid_dependencies() {
 
     let task1 = Task::new("task-1", "Task 1", "Base");
 
-    let mut state = WorkspaceState::new(
-        project_root.to_path_buf(),
-        vec![task1, task2, task3]
-    );
+    let mut state = WorkspaceState::new(project_root.to_path_buf(), vec![task1, task2, task3]);
 
     let cleaned_count = state.cleanup_orphaned_dependencies();
 
@@ -221,10 +224,7 @@ fn test_transform_after_partial_write_failure() {
     let mut task2 = Task::new("task-2", "Task 2", "Second");
     task2.status = TaskStatus::Blocked;
 
-    let state = WorkspaceState::new(
-        project_root.to_path_buf(),
-        vec![task1, task2]
-    );
+    let state = WorkspaceState::new(project_root.to_path_buf(), vec![task1, task2]);
     state.save().unwrap();
 
     // Verify recovery by loading with transform
@@ -272,7 +272,10 @@ fn test_transform_preserves_metadata() {
 
     assert_eq!(loaded_state.tasks[0].id, "task-1");
     assert_eq!(loaded_state.tasks[0].title, "Task");
-    assert_eq!(loaded_state.tasks[0].description, "Complex task description");
+    assert_eq!(
+        loaded_state.tasks[0].description,
+        "Complex task description"
+    );
     assert_eq!(loaded_state.tasks[0].complexity, TaskComplexity::Complex);
 }
 
@@ -334,7 +337,7 @@ fn test_validate_with_complex_valid_diamond() {
 
     let state = WorkspaceState::new(
         project_root.to_path_buf(),
-        vec![task_a, task_b, task_c, task_d]
+        vec![task_a, task_b, task_c, task_d],
     );
 
     // Diamond pattern is valid (not a cycle)
@@ -356,10 +359,7 @@ fn test_validate_detects_three_node_cycle() {
     let mut task_a = Task::new("task-a", "A", "First");
     task_a.depends_on = vec!["task-b".to_string()];
 
-    let state = WorkspaceState::new(
-        project_root.to_path_buf(),
-        vec![task_a, task_b, task_c]
-    );
+    let state = WorkspaceState::new(project_root.to_path_buf(), vec![task_a, task_b, task_c]);
 
     let result = state.validate_dependency_graph();
     assert!(result.is_err());
@@ -379,7 +379,9 @@ fn test_workspace_state_with_relative_path() {
     let state = WorkspaceState::new(relative_path.clone(), vec![task]);
 
     assert_eq!(state.project_root, relative_path);
-    assert!(state.manifest_path().ends_with("test-project/.ltmatrix/tasks-manifest.json"));
+    assert!(state
+        .manifest_path()
+        .ends_with("test-project/.ltmatrix/tasks-manifest.json"));
 }
 
 #[test]

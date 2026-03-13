@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Comprehensive tests for formatter implementation
 //!
 //! These tests verify:

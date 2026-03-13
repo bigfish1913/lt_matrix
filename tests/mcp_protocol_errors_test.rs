@@ -260,14 +260,8 @@ mod error_category_tests {
     fn test_all_categories_display() {
         assert_eq!(format!("{}", ErrorCategory::Protocol), "Protocol");
         assert_eq!(format!("{}", ErrorCategory::Serialization), "Serialization");
-        assert_eq!(
-            format!("{}", ErrorCategory::Communication),
-            "Communication"
-        );
-        assert_eq!(
-            format!("{}", ErrorCategory::ToolExecution),
-            "ToolExecution"
-        );
+        assert_eq!(format!("{}", ErrorCategory::Communication), "Communication");
+        assert_eq!(format!("{}", ErrorCategory::ToolExecution), "ToolExecution");
         assert_eq!(
             format!("{}", ErrorCategory::ResourceAccess),
             "ResourceAccess"
@@ -292,7 +286,10 @@ mod json_rpc_error_tests {
 
     #[test]
     fn test_basic_creation() {
-        let error = JsonRpcError::new(JsonRpcErrorCode::InternalError, "Something went wrong".to_string());
+        let error = JsonRpcError::new(
+            JsonRpcErrorCode::InternalError,
+            "Something went wrong".to_string(),
+        );
 
         assert_eq!(error.code, -32603);
         assert_eq!(error.message, "Something went wrong");
@@ -346,10 +343,7 @@ mod json_rpc_error_tests {
 
     #[test]
     fn test_serialization_skip_none_data() {
-        let error = JsonRpcError::new(
-            JsonRpcErrorCode::InternalError,
-            "No data".to_string(),
-        );
+        let error = JsonRpcError::new(JsonRpcErrorCode::InternalError, "No data".to_string());
         let json = serde_json::to_string(&error).unwrap();
 
         assert!(!json.contains("\"data\""));
@@ -481,7 +475,8 @@ mod mcp_error_tests {
 
     #[test]
     fn test_resource_access_denied_error() {
-        let error = McpError::resource_access_denied("file:///secure/file.txt", "Permission denied");
+        let error =
+            McpError::resource_access_denied("file:///secure/file.txt", "Permission denied");
 
         assert_eq!(error.code, McpErrorCode::ResourceAccessDenied);
         assert_eq!(error.category, ErrorCategory::ResourceAccess);
@@ -513,8 +508,7 @@ mod mcp_error_tests {
 
     #[test]
     fn test_with_data_builder() {
-        let error = McpError::tool_not_found("test")
-            .with_data(json!({ "additional": "info" }));
+        let error = McpError::tool_not_found("test").with_data(json!({ "additional": "info" }));
 
         assert!(error.data.is_some());
         assert_eq!(error.data.unwrap()["additional"], "info");
@@ -522,8 +516,7 @@ mod mcp_error_tests {
 
     #[test]
     fn test_with_source_builder() {
-        let error = McpError::communication("Failed")
-            .with_source("transport_layer");
+        let error = McpError::communication("Failed").with_source("transport_layer");
 
         assert_eq!(error.source, Some("transport_layer".to_string()));
     }
@@ -539,8 +532,7 @@ mod mcp_error_tests {
     #[test]
     fn test_with_retry_builder() {
         let duration = Duration::from_secs(5);
-        let error = McpError::communication("Temporary failure")
-            .with_retry(duration);
+        let error = McpError::communication("Temporary failure").with_retry(duration);
 
         assert!(error.is_recoverable());
         assert_eq!(error.retry_delay(), Some(duration));
@@ -594,7 +586,8 @@ mod mcp_error_tests {
 
     #[test]
     fn test_from_io_error_connection_refused() {
-        let io_error = std::io::Error::new(std::io::ErrorKind::ConnectionRefused, "connection refused");
+        let io_error =
+            std::io::Error::new(std::io::ErrorKind::ConnectionRefused, "connection refused");
         let mcp_error: McpError = io_error.into();
 
         assert_eq!(mcp_error.code, McpErrorCode::TransportError);
@@ -795,7 +788,10 @@ mod mcp_error_scenarios_tests {
         // Simulate resource access with permission check
         fn read_resource(uri: &str, has_permission: bool) -> Result<String, McpError> {
             if !has_permission {
-                return Err(McpError::resource_access_denied(uri, "Insufficient permissions"));
+                return Err(McpError::resource_access_denied(
+                    uri,
+                    "Insufficient permissions",
+                ));
             }
             if uri.contains("nonexistent") {
                 return Err(McpError::resource_not_found(uri));
@@ -819,7 +815,10 @@ mod mcp_error_scenarios_tests {
     #[test]
     fn test_timeout_with_retry_scenario() {
         // Simulate an operation that times out
-        fn operation_with_timeout(duration: Duration, timeout: Duration) -> Result<String, McpError> {
+        fn operation_with_timeout(
+            duration: Duration,
+            timeout: Duration,
+        ) -> Result<String, McpError> {
             if duration > timeout {
                 Err(McpError::timeout("long_operation", timeout))
             } else {
@@ -933,25 +932,27 @@ mod edge_case_tests {
                 }
             }
         });
-        let error = McpError::tool_execution("test", "failed")
-            .with_data(nested_data.clone());
+        let error = McpError::tool_execution("test", "failed").with_data(nested_data.clone());
 
         let json = error.to_json();
-        assert_eq!(json["data"]["level1"]["level2"]["level3"], json!(["a", "b", "c"]));
+        assert_eq!(
+            json["data"]["level1"]["level2"]["level3"],
+            json!(["a", "b", "c"])
+        );
     }
 
     #[test]
     fn test_error_with_null_request_id() {
-        let error = McpError::protocol(McpErrorCode::InvalidRequest, "test")
-            .with_request_id(json!(null));
+        let error =
+            McpError::protocol(McpErrorCode::InvalidRequest, "test").with_request_id(json!(null));
 
         assert_eq!(error.request_id, Some(json!(null)));
     }
 
     #[test]
     fn test_error_with_numeric_request_id() {
-        let error = McpError::protocol(McpErrorCode::InvalidRequest, "test")
-            .with_request_id(json!(12345));
+        let error =
+            McpError::protocol(McpErrorCode::InvalidRequest, "test").with_request_id(json!(12345));
 
         assert_eq!(error.request_id, Some(json!(12345)));
     }

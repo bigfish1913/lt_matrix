@@ -16,8 +16,8 @@
 use ltmatrix::mcp::heartbeat::ConnectionHealth;
 use ltmatrix::mcp::protocol::errors::{McpError, McpErrorCode};
 use ltmatrix::mcp::reconnect::{
-    BackoffStrategy, DegradationLevel, RecoveryConfig, RecoveryStrategy, ReconnectConfig,
-    ReconnectStats, ReconnectionManager, Reconnector,
+    BackoffStrategy, DegradationLevel, ReconnectConfig, ReconnectStats, ReconnectionManager,
+    Reconnector, RecoveryConfig, RecoveryStrategy,
 };
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::Arc;
@@ -266,25 +266,37 @@ mod degradation_level_tests {
     #[test]
     fn test_degradation_level_from_health_healthy() {
         let health = ConnectionHealth::Healthy;
-        assert_eq!(DegradationLevel::from_health(&health), DegradationLevel::None);
+        assert_eq!(
+            DegradationLevel::from_health(&health),
+            DegradationLevel::None
+        );
     }
 
     #[test]
     fn test_degradation_level_from_health_degraded_minor() {
         let health = ConnectionHealth::Degraded { missed_pings: 1 };
-        assert_eq!(DegradationLevel::from_health(&health), DegradationLevel::Minor);
+        assert_eq!(
+            DegradationLevel::from_health(&health),
+            DegradationLevel::Minor
+        );
     }
 
     #[test]
     fn test_degradation_level_from_health_degraded_moderate() {
         let health = ConnectionHealth::Degraded { missed_pings: 2 };
-        assert_eq!(DegradationLevel::from_health(&health), DegradationLevel::Moderate);
+        assert_eq!(
+            DegradationLevel::from_health(&health),
+            DegradationLevel::Moderate
+        );
     }
 
     #[test]
     fn test_degradation_level_from_health_stale() {
         let health = ConnectionHealth::Stale { missed_pings: 5 };
-        assert_eq!(DegradationLevel::from_health(&health), DegradationLevel::Critical);
+        assert_eq!(
+            DegradationLevel::from_health(&health),
+            DegradationLevel::Critical
+        );
     }
 
     #[test]
@@ -506,16 +518,14 @@ mod reconnection_manager_tests {
 
     #[tokio::test]
     async fn test_manager_should_reconnect_auto_disabled() {
-        let manager =
-            ReconnectionManager::new(ReconnectConfig::new().with_auto_reconnect(false));
+        let manager = ReconnectionManager::new(ReconnectConfig::new().with_auto_reconnect(false));
 
         assert!(!manager.should_reconnect());
     }
 
     #[tokio::test]
     async fn test_manager_should_reconnect_max_attempts() {
-        let manager =
-            ReconnectionManager::new(ReconnectConfig::new().with_max_attempts(3));
+        let manager = ReconnectionManager::new(ReconnectConfig::new().with_max_attempts(3));
 
         assert!(manager.should_reconnect());
         manager.next_backoff();
@@ -530,8 +540,7 @@ mod reconnection_manager_tests {
 
     #[tokio::test]
     async fn test_manager_should_reconnect_unlimited_attempts() {
-        let manager =
-            ReconnectionManager::new(ReconnectConfig::new().with_max_attempts(0));
+        let manager = ReconnectionManager::new(ReconnectConfig::new().with_max_attempts(0));
 
         // With 0 max_attempts, should always allow reconnect
         for _ in 0..20 {
@@ -583,7 +592,9 @@ mod reconnection_manager_tests {
         manager.next_backoff();
         assert_eq!(manager.current_attempt(), 2);
 
-        manager.record_attempt(true, Duration::from_millis(100)).await;
+        manager
+            .record_attempt(true, Duration::from_millis(100))
+            .await;
 
         let stats = manager.stats().await;
         assert_eq!(stats.successful_reconnects, 1);
@@ -595,7 +606,9 @@ mod reconnection_manager_tests {
     async fn test_manager_record_failed_attempt() {
         let manager = ReconnectionManager::new(ReconnectConfig::default());
 
-        manager.record_attempt(false, Duration::from_millis(50)).await;
+        manager
+            .record_attempt(false, Duration::from_millis(50))
+            .await;
 
         let stats = manager.stats().await;
         assert_eq!(stats.failed_attempts, 1);
@@ -610,8 +623,12 @@ mod reconnection_manager_tests {
         assert!(!manager.is_degraded().await);
 
         // Record failures
-        manager.record_attempt(false, Duration::from_millis(50)).await;
-        manager.record_attempt(false, Duration::from_millis(50)).await;
+        manager
+            .record_attempt(false, Duration::from_millis(50))
+            .await;
+        manager
+            .record_attempt(false, Duration::from_millis(50))
+            .await;
 
         // Should be degraded
         assert!(manager.is_degraded().await);
@@ -626,7 +643,9 @@ mod reconnection_manager_tests {
 
         // Many failures to reach critical
         for _ in 0..6 {
-            manager.record_attempt(false, Duration::from_millis(50)).await;
+            manager
+                .record_attempt(false, Duration::from_millis(50))
+                .await;
         }
 
         // Should be critical
@@ -637,7 +656,9 @@ mod reconnection_manager_tests {
     async fn test_manager_stats_accessor() {
         let manager = ReconnectionManager::new(ReconnectConfig::default());
 
-        manager.record_attempt(true, Duration::from_millis(100)).await;
+        manager
+            .record_attempt(true, Duration::from_millis(100))
+            .await;
 
         let stats = manager.stats().await;
         assert_eq!(stats.total_attempts, 1);
@@ -646,8 +667,7 @@ mod reconnection_manager_tests {
     #[tokio::test]
     async fn test_manager_backoff_with_fixed_strategy() {
         let manager = ReconnectionManager::new(
-            ReconnectConfig::new()
-                .with_backoff(BackoffStrategy::fixed(Duration::from_secs(3))),
+            ReconnectConfig::new().with_backoff(BackoffStrategy::fixed(Duration::from_secs(3))),
         );
 
         let delay1 = manager.next_backoff();
@@ -732,7 +752,10 @@ mod recovery_config_tests {
         let config = RecoveryConfig::new();
         let error = McpError::new(McpErrorCode::InternalError, "Internal issue");
 
-        assert_eq!(config.strategy_for(&error), RecoveryStrategy::RetryWithDelay);
+        assert_eq!(
+            config.strategy_for(&error),
+            RecoveryStrategy::RetryWithDelay
+        );
     }
 
     #[test]
@@ -740,7 +763,10 @@ mod recovery_config_tests {
         let config = RecoveryConfig::new();
         let error = McpError::new(McpErrorCode::ServerStarting, "Server starting");
 
-        assert_eq!(config.strategy_for(&error), RecoveryStrategy::RetryWithDelay);
+        assert_eq!(
+            config.strategy_for(&error),
+            RecoveryStrategy::RetryWithDelay
+        );
     }
 
     #[test]
@@ -929,14 +955,18 @@ mod integration_tests {
         // Record multiple failures
         for i in 1..=3 {
             manager.next_backoff();
-            manager.record_attempt(false, Duration::from_millis(10)).await;
+            manager
+                .record_attempt(false, Duration::from_millis(10))
+                .await;
 
             let stats = manager.stats().await;
             assert_eq!(stats.consecutive_failures, i);
         }
 
         // Final success should reset
-        manager.record_attempt(true, Duration::from_millis(20)).await;
+        manager
+            .record_attempt(true, Duration::from_millis(20))
+            .await;
         let stats = manager.stats().await;
         assert_eq!(stats.consecutive_failures, 0);
         assert_eq!(stats.degradation_level, DegradationLevel::None);
@@ -972,8 +1002,12 @@ mod integration_tests {
         let manager = ReconnectionManager::new(ReconnectConfig::default());
 
         // Record some attempts
-        manager.record_attempt(true, Duration::from_millis(100)).await;
-        manager.record_attempt(false, Duration::from_millis(50)).await;
+        manager
+            .record_attempt(true, Duration::from_millis(100))
+            .await;
+        manager
+            .record_attempt(false, Duration::from_millis(50))
+            .await;
 
         // Get snapshot
         let stats1 = manager.stats().await;
@@ -1167,11 +1201,10 @@ mod monitoring_tests {
 
     #[tokio::test]
     async fn test_start_monitoring_twice_fails() {
-        let reconnect_config = ReconnectConfig::new()
-            .with_backoff(BackoffStrategy::fixed(Duration::from_millis(10)));
+        let reconnect_config =
+            ReconnectConfig::new().with_backoff(BackoffStrategy::fixed(Duration::from_millis(10)));
 
-        let heartbeat_config = HeartbeatConfig::new()
-            .with_interval(Duration::from_millis(100));
+        let heartbeat_config = HeartbeatConfig::new().with_interval(Duration::from_millis(100));
 
         let manager = ReconnectionManager::new(reconnect_config);
         let heartbeat = Arc::new(HeartbeatManager::new(heartbeat_config));
@@ -1195,11 +1228,10 @@ mod monitoring_tests {
 
     #[tokio::test]
     async fn test_reconnect_handle_stop_terminates_task() {
-        let reconnect_config = ReconnectConfig::new()
-            .with_backoff(BackoffStrategy::fixed(Duration::from_millis(10)));
+        let reconnect_config =
+            ReconnectConfig::new().with_backoff(BackoffStrategy::fixed(Duration::from_millis(10)));
 
-        let heartbeat_config = HeartbeatConfig::new()
-            .with_interval(Duration::from_millis(100));
+        let heartbeat_config = HeartbeatConfig::new().with_interval(Duration::from_millis(100));
 
         let manager = Arc::new(ReconnectionManager::new(reconnect_config));
         let heartbeat = Arc::new(HeartbeatManager::new(heartbeat_config));
@@ -1228,11 +1260,8 @@ mod monitoring_tests {
         )
         .await;
 
-        let success = handle2_result.is_ok()
-            && handle2_result
-                .as_ref()
-                .map(|r| r.is_ok())
-                .unwrap_or(false);
+        let success =
+            handle2_result.is_ok() && handle2_result.as_ref().map(|r| r.is_ok()).unwrap_or(false);
         assert!(success, "Should be able to start monitoring after stop");
 
         // Cleanup
@@ -1243,11 +1272,10 @@ mod monitoring_tests {
 
     #[tokio::test]
     async fn test_manager_stop_method() {
-        let reconnect_config = ReconnectConfig::new()
-            .with_backoff(BackoffStrategy::fixed(Duration::from_millis(10)));
+        let reconnect_config =
+            ReconnectConfig::new().with_backoff(BackoffStrategy::fixed(Duration::from_millis(10)));
 
-        let heartbeat_config = HeartbeatConfig::new()
-            .with_interval(Duration::from_millis(100));
+        let heartbeat_config = HeartbeatConfig::new().with_interval(Duration::from_millis(100));
 
         let manager = ReconnectionManager::new(reconnect_config);
         let heartbeat = Arc::new(HeartbeatManager::new(heartbeat_config));
@@ -1385,7 +1413,11 @@ mod comprehensive_tests {
 
         for (health, expected_level) in test_cases {
             let level = DegradationLevel::from_health(&health);
-            assert_eq!(level, expected_level, "Health {:?} should map to {:?}", health, expected_level);
+            assert_eq!(
+                level, expected_level,
+                "Health {:?} should map to {:?}",
+                health, expected_level
+            );
         }
     }
 
@@ -1399,11 +1431,26 @@ mod comprehensive_tests {
             (McpErrorCode::InvalidRequest, RecoveryStrategy::Fail),
             (McpErrorCode::MethodNotFound, RecoveryStrategy::Fail),
             (McpErrorCode::InvalidParams, RecoveryStrategy::Fail),
-            (McpErrorCode::InternalError, RecoveryStrategy::RetryWithDelay),
-            (McpErrorCode::ServerStarting, RecoveryStrategy::RetryWithDelay),
-            (McpErrorCode::TransportError, RecoveryStrategy::ReconnectAndRetry),
-            (McpErrorCode::ServerShutdown, RecoveryStrategy::ReconnectAndRetry),
-            (McpErrorCode::RequestTimeout, RecoveryStrategy::ReconnectAndRetry),
+            (
+                McpErrorCode::InternalError,
+                RecoveryStrategy::RetryWithDelay,
+            ),
+            (
+                McpErrorCode::ServerStarting,
+                RecoveryStrategy::RetryWithDelay,
+            ),
+            (
+                McpErrorCode::TransportError,
+                RecoveryStrategy::ReconnectAndRetry,
+            ),
+            (
+                McpErrorCode::ServerShutdown,
+                RecoveryStrategy::ReconnectAndRetry,
+            ),
+            (
+                McpErrorCode::RequestTimeout,
+                RecoveryStrategy::ReconnectAndRetry,
+            ),
         ];
 
         for (code, expected_strategy) in test_cases {
@@ -1485,8 +1532,8 @@ mod comprehensive_tests {
 
     #[test]
     fn test_config_with_backoff_preserves_other_defaults() {
-        let config = ReconnectConfig::new()
-            .with_backoff(BackoffStrategy::fixed(Duration::from_secs(5)));
+        let config =
+            ReconnectConfig::new().with_backoff(BackoffStrategy::fixed(Duration::from_secs(5)));
 
         // Other defaults should be preserved
         assert_eq!(config.max_attempts, 10);
@@ -1551,8 +1598,8 @@ mod comprehensive_tests {
 
     #[test]
     fn test_peek_vs_next_backoff() {
-        let config = ReconnectConfig::new()
-            .with_backoff(BackoffStrategy::fixed(Duration::from_millis(100)));
+        let config =
+            ReconnectConfig::new().with_backoff(BackoffStrategy::fixed(Duration::from_millis(100)));
         let manager = ReconnectionManager::new(config);
 
         // Peek should not increment counter

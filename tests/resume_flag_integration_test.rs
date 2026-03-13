@@ -8,8 +8,8 @@
 
 use clap::Parser;
 use ltmatrix::cli::args::Args;
-use ltmatrix::workspace::WorkspaceState;
 use ltmatrix::models::{Task, TaskStatus};
+use ltmatrix::workspace::WorkspaceState;
 use std::fs;
 use std::path::PathBuf;
 use tempfile::TempDir;
@@ -35,12 +35,7 @@ fn test_resume_flag_with_goal() {
 #[test]
 fn test_resume_flag_with_other_flags() {
     // Test that --resume works with other flags
-    let args = Args::try_parse_from([
-        "ltmatrix",
-        "--resume",
-        "--fast",
-        "continue work"
-    ]).unwrap();
+    let args = Args::try_parse_from(["ltmatrix", "--resume", "--fast", "continue work"]).unwrap();
     assert!(args.resume, "Resume flag should be true");
     assert!(args.fast, "Fast flag should also be true");
     assert_eq!(args.goal, Some("continue work".to_string()));
@@ -56,11 +51,7 @@ fn test_resume_default_is_false() {
 #[test]
 fn test_resume_flag_with_dry_run() {
     // Test that --resume and --dry-run can be combined
-    let args = Args::try_parse_from([
-        "ltmatrix",
-        "--resume",
-        "--dry-run"
-    ]).unwrap();
+    let args = Args::try_parse_from(["ltmatrix", "--resume", "--dry-run"]).unwrap();
     assert!(args.resume, "Resume flag should be true");
     assert!(args.dry_run, "Dry run flag should also be true");
 }
@@ -68,12 +59,8 @@ fn test_resume_flag_with_dry_run() {
 #[test]
 fn test_resume_flag_with_config() {
     // Test that --resume works with --config flag
-    let args = Args::try_parse_from([
-        "ltmatrix",
-        "--resume",
-        "--config",
-        "custom-config.toml"
-    ]).unwrap();
+    let args =
+        Args::try_parse_from(["ltmatrix", "--resume", "--config", "custom-config.toml"]).unwrap();
     assert!(args.resume, "Resume flag should be true");
     assert_eq!(args.config, Some(PathBuf::from("custom-config.toml")));
 }
@@ -100,8 +87,11 @@ fn test_resume_loads_previous_state() {
     assert_eq!(loaded_state.tasks.len(), 2);
     assert_eq!(loaded_state.tasks[0].id, "task-1");
     assert_eq!(loaded_state.tasks[1].id, "task-2");
-    assert_eq!(loaded_state.tasks[1].status, TaskStatus::Pending,
-        "InProgress task should be reset to Pending on resume");
+    assert_eq!(
+        loaded_state.tasks[1].status,
+        TaskStatus::Pending,
+        "InProgress task should be reset to Pending on resume"
+    );
 }
 
 #[test]
@@ -119,10 +109,7 @@ fn test_resume_preserves_completed_tasks() {
     let mut task3 = Task::new("task-3", "In Progress", "Started but interrupted");
     task3.status = TaskStatus::InProgress;
 
-    let state = WorkspaceState::new(
-        project_root.to_path_buf(),
-        vec![task1, task2, task3]
-    );
+    let state = WorkspaceState::new(project_root.to_path_buf(), vec![task1, task2, task3]);
     state.save().unwrap();
 
     // Resume: load with transform
@@ -130,8 +117,10 @@ fn test_resume_preserves_completed_tasks() {
 
     // Completed tasks should stay completed
     assert_eq!(resumed_state.tasks[0].status, TaskStatus::Completed);
-    assert!(resumed_state.tasks[0].completed_at.is_some(),
-        "Completed timestamp should be preserved");
+    assert!(
+        resumed_state.tasks[0].completed_at.is_some(),
+        "Completed timestamp should be preserved"
+    );
 
     // Pending tasks should stay pending
     assert_eq!(resumed_state.tasks[1].status, TaskStatus::Pending);
@@ -158,8 +147,10 @@ fn test_resume_handles_blocked_tasks() {
 
     // Blocked tasks should be reset to Pending
     assert_eq!(resumed_state.tasks[0].status, TaskStatus::Pending);
-    assert!(resumed_state.tasks[0].started_at.is_none(),
-        "Started timestamp should be cleared on resume");
+    assert!(
+        resumed_state.tasks[0].started_at.is_none(),
+        "Started timestamp should be cleared on resume"
+    );
 }
 
 #[test]
@@ -181,10 +172,14 @@ fn test_resume_preserves_failed_tasks() {
 
     // Failed status and error should be preserved
     assert_eq!(resumed_state.tasks[0].status, TaskStatus::Failed);
-    assert_eq!(resumed_state.tasks[0].error,
-        Some("Something went wrong".to_string()));
-    assert_eq!(resumed_state.tasks[0].retry_count, 2,
-        "Retry count should be preserved");
+    assert_eq!(
+        resumed_state.tasks[0].error,
+        Some("Something went wrong".to_string())
+    );
+    assert_eq!(
+        resumed_state.tasks[0].retry_count, 2,
+        "Retry count should be preserved"
+    );
 }
 
 #[test]
@@ -208,10 +203,7 @@ fn test_resume_with_dependency_chain() {
     task4.status = TaskStatus::Pending;
     task4.depends_on = vec!["task-3".to_string()];
 
-    let state = WorkspaceState::new(
-        project_root.to_path_buf(),
-        vec![task1, task2, task3, task4]
-    );
+    let state = WorkspaceState::new(project_root.to_path_buf(), vec![task1, task2, task3, task4]);
     state.save().unwrap();
 
     // Resume: load with transform
@@ -220,8 +212,11 @@ fn test_resume_with_dependency_chain() {
     // Verify dependency chain preserved
     assert_eq!(resumed_state.tasks[0].status, TaskStatus::Completed);
     assert_eq!(resumed_state.tasks[1].status, TaskStatus::Completed);
-    assert_eq!(resumed_state.tasks[2].status, TaskStatus::Pending,
-        "InProgress task should be reset");
+    assert_eq!(
+        resumed_state.tasks[2].status,
+        TaskStatus::Pending,
+        "InProgress task should be reset"
+    );
     assert_eq!(resumed_state.tasks[3].status, TaskStatus::Pending);
 
     // Verify dependencies intact
@@ -254,10 +249,16 @@ fn test_resume_with_nested_subtasks() {
 
     // Both parent and interrupted subtask should be reset
     assert_eq!(resumed_state.tasks[0].status, TaskStatus::Pending);
-    assert_eq!(resumed_state.tasks[0].subtasks[0].status, TaskStatus::Completed,
-        "Completed subtask should remain completed");
-    assert_eq!(resumed_state.tasks[0].subtasks[1].status, TaskStatus::Pending,
-        "InProgress subtask should be reset");
+    assert_eq!(
+        resumed_state.tasks[0].subtasks[0].status,
+        TaskStatus::Completed,
+        "Completed subtask should remain completed"
+    );
+    assert_eq!(
+        resumed_state.tasks[0].subtasks[1].status,
+        TaskStatus::Pending,
+        "InProgress subtask should be reset"
+    );
 }
 
 #[test]
@@ -268,15 +269,9 @@ fn test_resume_with_orphaned_dependencies() {
     // Create task with orphaned dependencies
     let task1 = Task::new("task-1", "Valid Task", "Exists");
     let mut task2 = Task::new("task-2", "Broken Dependencies", "Has missing deps");
-    task2.depends_on = vec![
-        "task-1".to_string(),
-        "missing-task".to_string(),
-    ];
+    task2.depends_on = vec!["task-1".to_string(), "missing-task".to_string()];
 
-    let state = WorkspaceState::new(
-        project_root.to_path_buf(),
-        vec![task1, task2]
-    );
+    let state = WorkspaceState::new(project_root.to_path_buf(), vec![task1, task2]);
     state.save().unwrap();
 
     // Resume: load and detect orphaned tasks
@@ -301,9 +296,11 @@ fn test_resume_handles_missing_state_file() {
 
     assert!(result.is_err());
     let error_msg = result.unwrap_err().to_string().to_lowercase();
-    assert!(error_msg.contains("failed to read") ||
-            error_msg.contains("not found") ||
-            error_msg.contains("no such file"));
+    assert!(
+        error_msg.contains("failed to read")
+            || error_msg.contains("not found")
+            || error_msg.contains("no such file")
+    );
 }
 
 #[test]
@@ -368,8 +365,14 @@ fn test_resume_preserves_session_ids() {
     let resumed_state = WorkspaceState::load_with_transform(project_root.to_path_buf()).unwrap();
 
     // Session IDs should be preserved
-    assert_eq!(resumed_state.tasks[0].session_id, Some("session-abc123".to_string()));
-    assert_eq!(resumed_state.tasks[1].session_id, Some("session-def456".to_string()));
+    assert_eq!(
+        resumed_state.tasks[0].session_id,
+        Some("session-abc123".to_string())
+    );
+    assert_eq!(
+        resumed_state.tasks[1].session_id,
+        Some("session-def456".to_string())
+    );
 }
 
 #[test]
@@ -427,7 +430,7 @@ fn test_resume_with_large_task_list() {
             let mut task = Task::new(
                 &format!("task-{}", i),
                 &format!("Task {}", i),
-                "Description"
+                "Description",
             );
 
             // Set different statuses
@@ -453,10 +456,16 @@ fn test_resume_with_large_task_list() {
     assert_eq!(resumed_state.tasks.len(), 50);
 
     // Count tasks by status
-    let completed_count = resumed_state.tasks.iter()
-        .filter(|t| t.status == TaskStatus::Completed).count();
-    let pending_count = resumed_state.tasks.iter()
-        .filter(|t| t.status == TaskStatus::Pending).count();
+    let completed_count = resumed_state
+        .tasks
+        .iter()
+        .filter(|t| t.status == TaskStatus::Completed)
+        .count();
+    let pending_count = resumed_state
+        .tasks
+        .iter()
+        .filter(|t| t.status == TaskStatus::Pending)
+        .count();
 
     // All Completed tasks should still be completed (~12-13 tasks)
     assert!(completed_count >= 12);

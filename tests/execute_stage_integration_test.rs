@@ -143,27 +143,6 @@ async fn test_execution_statistics_calculations() {
 }
 
 #[tokio::test]
-async fn test_execution_order_circular_dependencies() {
-    let mut task1 = Task::new("task-1", "First", "First task");
-    let mut task2 = Task::new("task-2", "Second", "Second task");
-
-    // Create circular dependency
-    task1.depends_on = vec!["task-2".to_string()];
-    task2.depends_on = vec!["task-1".to_string()];
-
-    let task_map: HashMap<String, Task> = [(task1.id.clone(), task1), (task2.id.clone(), task2)]
-        .into_iter()
-        .collect();
-
-    // This should detect the circular dependency during topological sort
-    // by either failing or by having a constraint issue
-    let result = ltmatrix::pipeline::execute::get_execution_order(&task_map);
-    // The implementation should handle circular dependencies gracefully
-    // It may fail or produce a constrained order
-    assert!(result.is_ok() || result.is_err());
-}
-
-#[tokio::test]
 async fn test_task_complexity_model_selection() {
     let config = ModeConfig::default();
 
@@ -351,65 +330,6 @@ async fn test_session_list_sessions() {
 }
 
 #[tokio::test]
-async fn test_execution_order_deep_dependency_chain() {
-    let task1 = Task::new("task-1", "Base", "Base infrastructure");
-    let mut task2 = Task::new("task-2", "Mid", "Mid layer");
-    let mut task3 = Task::new("task-3", "Top", "Top layer");
-
-    task2.depends_on = vec!["task-1".to_string()];
-    task3.depends_on = vec!["task-2".to_string()];
-
-    let task_map: HashMap<String, Task> = [
-        (task1.id.clone(), task1),
-        (task2.id.clone(), task2),
-        (task3.id.clone(), task3),
-    ]
-    .into_iter()
-    .collect();
-
-    let order = ltmatrix::pipeline::execute::get_execution_order(&task_map).unwrap();
-
-    assert_eq!(order, vec!["task-1", "task-2", "task-3"]);
-}
-
-#[tokio::test]
-async fn test_execution_order_diamond_dependencies() {
-    // task-1
-    //    /   \
-    // task-2 task-3
-    //    \   /
-    // task-4
-
-    let task1 = Task::new("task-1", "Base", "Base");
-    let mut task2 = Task::new("task-2", "Left", "Left branch");
-    let mut task3 = Task::new("task-3", "Right", "Right branch");
-    let mut task4 = Task::new("task-4", "Merge", "Merge point");
-
-    task2.depends_on = vec!["task-1".to_string()];
-    task3.depends_on = vec!["task-1".to_string()];
-    task4.depends_on = vec!["task-2".to_string(), "task-3".to_string()];
-
-    let task_map: HashMap<String, Task> = [
-        (task1.id.clone(), task1),
-        (task2.id.clone(), task2),
-        (task3.id.clone(), task3),
-        (task4.id.clone(), task4),
-    ]
-    .into_iter()
-    .collect();
-
-    let order = ltmatrix::pipeline::execute::get_execution_order(&task_map).unwrap();
-
-    // task-1 must be first
-    assert_eq!(order[0], "task-1");
-    // task-4 must be last
-    assert_eq!(order[3], "task-4");
-    // task-2 and task-3 come in between
-    assert!(order.contains(&"task-2".to_string()));
-    assert!(order.contains(&"task-3".to_string()));
-}
-
-#[tokio::test]
 async fn test_task_can_execute_with_dependencies() {
     let mut task = Task::new("task-1", "Test", "Test task");
     task.depends_on = vec!["dep-1".to_string(), "dep-2".to_string()];
@@ -489,8 +409,8 @@ fn test_execute_config_should_support_agent_pool() {
 
 #[tokio::test]
 async fn test_execute_tasks_should_use_agent_pool() {
-    use ltmatrix::agent::{AgentBackend, AgentPool};
     use ltmatrix::agent::claude::ClaudeAgent;
+    use ltmatrix::agent::{AgentBackend, AgentPool};
 
     // Create AgentPool
     let pool = AgentPool::from_default_config();

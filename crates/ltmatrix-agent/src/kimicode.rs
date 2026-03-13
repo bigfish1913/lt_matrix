@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! KimiCode agent backend implementation
 //!
 //! This module implements the [`AgentBackend`] trait for the KimiCode CLI tool

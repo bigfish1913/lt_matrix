@@ -7,11 +7,10 @@
 //! 4. Prompt engineering produces JSON output
 //! 5. Task validation works correctly
 
-use ltmatrix::pipeline::generate::{
-    calculate_generation_stats, generate_tasks, GenerateConfig, GenerationResult,
-    ValidationError,
-};
 use ltmatrix::models::{Task, TaskComplexity};
+use ltmatrix::pipeline::generate::{
+    calculate_generation_stats, generate_tasks, GenerateConfig, GenerationResult, ValidationError,
+};
 
 /// Acceptance criterion 1: Basic Generate stage structure is set up
 #[test]
@@ -51,8 +50,14 @@ fn test_acceptance_configuration_modes() {
     assert_eq!(expert_config.generation_model, "claude-opus-4-6");
 
     // Verify they are distinct configurations
-    assert_ne!(fast_config.generation_model, standard_config.generation_model);
-    assert_ne!(standard_config.generation_model, expert_config.generation_model);
+    assert_ne!(
+        fast_config.generation_model,
+        standard_config.generation_model
+    );
+    assert_ne!(
+        standard_config.generation_model,
+        expert_config.generation_model
+    );
 }
 
 /// Acceptance criterion 2: Claude API client integration exists
@@ -123,10 +128,7 @@ fn test_acceptance_task_breakdown_structure() {
     assert_eq!(result.tasks[1].depends_on[0], "task-1");
 
     // Verify complexity is assigned
-    assert!(matches!(
-        result.tasks[0].complexity,
-        TaskComplexity::Simple
-    ));
+    assert!(matches!(result.tasks[0].complexity, TaskComplexity::Simple));
     assert!(matches!(
         result.tasks[1].complexity,
         TaskComplexity::Moderate
@@ -147,13 +149,15 @@ fn test_acceptance_result_structure_supports_json_output() {
 
     let tasks = vec![
         {
-            let mut t = ltmatrix::models::Task::new("task-1", "First Task", "Description of first task");
+            let mut t =
+                ltmatrix::models::Task::new("task-1", "First Task", "Description of first task");
             t.complexity = ltmatrix::models::TaskComplexity::Simple;
             t.depends_on = vec![];
             t
         },
         {
-            let mut t = ltmatrix::models::Task::new("task-2", "Second Task", "Description of second task");
+            let mut t =
+                ltmatrix::models::Task::new("task-2", "Second Task", "Description of second task");
             t.complexity = ltmatrix::models::TaskComplexity::Moderate;
             t.depends_on = vec!["task-1".to_string()];
             t
@@ -218,15 +222,18 @@ fn test_acceptance_validation_errors_exposed_in_result() {
 
     // Verify all validation error types are exposed in the result
     assert_eq!(result_with_errors.validation_errors.len(), 3);
-    assert!(result_with_errors.validation_errors.iter().any(
-        |e| matches!(e, ValidationError::MissingDependency { .. })
-    ));
-    assert!(result_with_errors.validation_errors.iter().any(
-        |e| matches!(e, ValidationError::CircularDependency { .. })
-    ));
-    assert!(result_with_errors.validation_errors.iter().any(
-        |e| matches!(e, ValidationError::DuplicateTaskId { .. })
-    ));
+    assert!(result_with_errors
+        .validation_errors
+        .iter()
+        .any(|e| matches!(e, ValidationError::MissingDependency { .. })));
+    assert!(result_with_errors
+        .validation_errors
+        .iter()
+        .any(|e| matches!(e, ValidationError::CircularDependency { .. })));
+    assert!(result_with_errors
+        .validation_errors
+        .iter()
+        .any(|e| matches!(e, ValidationError::DuplicateTaskId { .. })));
 }
 
 /// Acceptance criterion 5: Valid tasks have no validation errors
@@ -285,7 +292,10 @@ fn test_acceptance_dependency_depth_exposed_in_result() {
         generation_log: None,
     };
 
-    assert_eq!(result.dependency_depth, 2, "Should expose correct dependency depth");
+    assert_eq!(
+        result.dependency_depth, 2,
+        "Should expose correct dependency depth"
+    );
 }
 
 /// Acceptance: Statistics calculation provides useful metrics
@@ -394,7 +404,13 @@ fn test_acceptance_public_api() {
     let _ = GenerateConfig::default;
     let _ = generate_tasks;
     let _ = calculate_generation_stats;
-    let _ = GenerationResult { tasks: vec![], task_count: 0, dependency_depth: 0, validation_errors: vec![], generation_log: None };
+    let _ = GenerationResult {
+        tasks: vec![],
+        task_count: 0,
+        dependency_depth: 0,
+        validation_errors: vec![],
+        generation_log: None,
+    };
     let _ = ValidationError::MissingDependency {
         task: String::new(),
         dependency: String::new(),
@@ -503,10 +519,7 @@ fn test_acceptance_all_validation_error_types() {
         errors[1],
         ValidationError::CircularDependency { .. }
     ));
-    assert!(matches!(
-        errors[2],
-        ValidationError::DuplicateTaskId { .. }
-    ));
+    assert!(matches!(errors[2], ValidationError::DuplicateTaskId { .. }));
     assert!(matches!(
         errors[3],
         ValidationError::InvalidStructure { .. }
@@ -518,13 +531,11 @@ fn test_acceptance_all_validation_error_types() {
 fn test_acceptance_result_ready_for_next_stage() {
     // Verify GenerationResult contains everything needed for Assess stage
     let result = GenerationResult {
-        tasks: vec![
-            {
-                let mut t = Task::new("task-1", "Task", "Desc");
-                t.complexity = TaskComplexity::Simple;
-                t
-            },
-        ],
+        tasks: vec![{
+            let mut t = Task::new("task-1", "Task", "Desc");
+            t.complexity = TaskComplexity::Simple;
+            t
+        }],
         task_count: 1,
         dependency_depth: 0,
         validation_errors: vec![],

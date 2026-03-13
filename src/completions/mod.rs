@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Shell completion generation for ltmatrix
 //!
 //! This module provides functionality to generate shell completion scripts for
@@ -506,10 +505,7 @@ mod tests {
             ShellType::from_clap_shell(Shell::Bash),
             Some(ShellType::Bash)
         );
-        assert_eq!(
-            ShellType::from_clap_shell(Shell::Zsh),
-            Some(ShellType::Zsh)
-        );
+        assert_eq!(ShellType::from_clap_shell(Shell::Zsh), Some(ShellType::Zsh));
         assert_eq!(
             ShellType::from_clap_shell(Shell::Fish),
             Some(ShellType::Fish)
@@ -537,7 +533,10 @@ mod tests {
     fn test_generate_completions_to_stdout() {
         let mut cmd = Args::command();
         let result = generate_completions(ShellType::Bash, &mut cmd);
-        assert!(result.is_ok(), "Should generate bash completions successfully");
+        assert!(
+            result.is_ok(),
+            "Should generate bash completions successfully"
+        );
     }
 
     #[test]
@@ -554,18 +553,11 @@ mod tests {
             result.is_ok(),
             "Should generate bash completions to file successfully"
         );
-        assert!(
-            output_path.exists(),
-            "Completion file should exist"
-        );
+        assert!(output_path.exists(), "Completion file should exist");
 
         // Verify file is not empty
-        let contents = fs::read_to_string(&output_path)
-            .expect("Failed to read completion file");
-        assert!(
-            !contents.is_empty(),
-            "Completion file should not be empty"
-        );
+        let contents = fs::read_to_string(&output_path).expect("Failed to read completion file");
+        assert!(!contents.is_empty(), "Completion file should not be empty");
         assert!(
             contents.contains("ltmatrix"),
             "Completion file should contain 'ltmatrix'"

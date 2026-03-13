@@ -45,7 +45,10 @@ impl std::str::FromStr for Mode {
             "fast" => Ok(Mode::Fast),
             "standard" | "normal" => Ok(Mode::Standard),
             "expert" => Ok(Mode::Expert),
-            _ => Err(format!("Invalid mode: {}. Valid options: fast, standard, expert", s)),
+            _ => Err(format!(
+                "Invalid mode: {}. Valid options: fast, standard, expert",
+                s
+            )),
         }
     }
 }
@@ -66,7 +69,12 @@ impl Mode {
         match self {
             Mode::Fast => vec![AgentType::Plan, AgentType::Dev],
             Mode::Standard => vec![AgentType::Plan, AgentType::Dev, AgentType::Test],
-            Mode::Expert => vec![AgentType::Plan, AgentType::Dev, AgentType::Test, AgentType::Review],
+            Mode::Expert => vec![
+                AgentType::Plan,
+                AgentType::Dev,
+                AgentType::Test,
+                AgentType::Review,
+            ],
         }
     }
 
@@ -105,7 +113,7 @@ impl Mode {
     /// Returns the task execution timeout in seconds
     pub fn task_timeout(&self) -> u64 {
         match self {
-            Mode::Fast => 1800,    // 30 minutes
+            Mode::Fast => 1800,     // 30 minutes
             Mode::Standard => 3600, // 60 minutes
             Mode::Expert => 7200,   // 120 minutes
         }

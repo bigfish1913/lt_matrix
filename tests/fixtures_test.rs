@@ -3,9 +3,9 @@
 //! This test file verifies that all fixtures can be loaded correctly
 //! and that mock agents work as expected.
 
-use std::path::PathBuf;
+use ltmatrix::models::{Task, TaskComplexity, TaskStatus};
 use std::fs;
-use ltmatrix::models::{Task, TaskStatus, TaskComplexity};
+use std::path::PathBuf;
 
 // =============================================================================
 // Fixture Loading Utilities
@@ -20,7 +20,10 @@ fn fixture_path(category: &str, name: &str) -> PathBuf {
 }
 
 /// Load a JSON fixture file
-fn load_json_fixture(category: &str, name: &str) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+fn load_json_fixture(
+    category: &str,
+    name: &str,
+) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
     let path = fixture_path(category, name);
     let content = fs::read_to_string(&path)?;
     let json: serde_json::Value = serde_json::from_str(&content)?;
@@ -52,9 +55,21 @@ fn load_response_fixture(name: &str) -> Result<serde_json::Value, Box<dyn std::e
 
 /// Parse a task from JSON value
 fn parse_task_from_json(json: &serde_json::Value) -> Result<Task, Box<dyn std::error::Error>> {
-    let id = json.get("id").and_then(|v| v.as_str()).ok_or("Missing id")?.to_string();
-    let title = json.get("title").and_then(|v| v.as_str()).ok_or("Missing title")?.to_string();
-    let description = json.get("description").and_then(|v| v.as_str()).ok_or("Missing description")?.to_string();
+    let id = json
+        .get("id")
+        .and_then(|v| v.as_str())
+        .ok_or("Missing id")?
+        .to_string();
+    let title = json
+        .get("title")
+        .and_then(|v| v.as_str())
+        .ok_or("Missing title")?
+        .to_string();
+    let description = json
+        .get("description")
+        .and_then(|v| v.as_str())
+        .ok_or("Missing description")?
+        .to_string();
 
     let mut task = Task::new(id, title, description);
 
@@ -79,7 +94,10 @@ fn parse_task_from_json(json: &serde_json::Value) -> Result<Task, Box<dyn std::e
     }
 
     if let Some(deps) = json.get("depends_on").and_then(|v| v.as_array()) {
-        task.depends_on = deps.iter().filter_map(|v| v.as_str().map(String::from)).collect();
+        task.depends_on = deps
+            .iter()
+            .filter_map(|v| v.as_str().map(String::from))
+            .collect();
     }
 
     if let Some(subtasks) = json.get("subtasks").and_then(|v| v.as_array()) {
@@ -120,7 +138,12 @@ fn list_fixtures(category: &str) -> Vec<String> {
         .map(|entries| {
             entries
                 .filter_map(|e| e.ok())
-                .filter_map(|e| e.path().file_name().and_then(|n| n.to_str()).map(String::from))
+                .filter_map(|e| {
+                    e.path()
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .map(String::from)
+                })
                 .collect()
         })
         .unwrap_or_default()
@@ -142,9 +165,20 @@ fn test_load_simple_task_list() {
     assert_eq!(tasks.len(), 3, "Should have 3 tasks");
 
     // Verify linear dependency chain
-    assert!(tasks[0].depends_on.is_empty(), "First task has no dependencies");
-    assert_eq!(tasks[1].depends_on, vec!["task-001"], "Second task depends on first");
-    assert_eq!(tasks[2].depends_on, vec!["task-002"], "Third task depends on second");
+    assert!(
+        tasks[0].depends_on.is_empty(),
+        "First task has no dependencies"
+    );
+    assert_eq!(
+        tasks[1].depends_on,
+        vec!["task-001"],
+        "Second task depends on first"
+    );
+    assert_eq!(
+        tasks[2].depends_on,
+        vec!["task-002"],
+        "Third task depends on second"
+    );
 }
 
 #[test]
@@ -159,7 +193,10 @@ fn test_load_complex_task_list() {
         .find(|t| !t.subtasks.is_empty())
         .expect("Should have at least one task with subtasks");
 
-    assert!(!task_with_subtasks.subtasks.is_empty(), "Task should have subtasks");
+    assert!(
+        !task_with_subtasks.subtasks.is_empty(),
+        "Task should have subtasks"
+    );
 
     // Verify session IDs are preserved
     let task_with_session = tasks
@@ -180,19 +217,32 @@ fn test_load_failed_tasks_list() {
 
     // Check for tasks with errors
     let tasks_with_errors: Vec<_> = tasks.iter().filter(|t| t.error.is_some()).collect();
-    assert!(!tasks_with_errors.is_empty(), "Should have tasks with errors");
+    assert!(
+        !tasks_with_errors.is_empty(),
+        "Should have tasks with errors"
+    );
 }
 
 #[test]
 fn test_load_circular_dependency() {
-    let tasks = load_tasks_fixture("circular_dependency").expect("Failed to load circular_dependency fixture");
+    let tasks = load_tasks_fixture("circular_dependency")
+        .expect("Failed to load circular_dependency fixture");
 
     assert_eq!(tasks.len(), 3, "Should have 3 tasks in circular chain");
 
     // Verify circular dependency exists
-    let task_a = tasks.iter().find(|t| t.id == "task-a").expect("task-a should exist");
-    let task_b = tasks.iter().find(|t| t.id == "task-b").expect("task-b should exist");
-    let task_c = tasks.iter().find(|t| t.id == "task-c").expect("task-c should exist");
+    let task_a = tasks
+        .iter()
+        .find(|t| t.id == "task-a")
+        .expect("task-a should exist");
+    let task_b = tasks
+        .iter()
+        .find(|t| t.id == "task-b")
+        .expect("task-b should exist");
+    let task_c = tasks
+        .iter()
+        .find(|t| t.id == "task-c")
+        .expect("task-c should exist");
 
     // A depends on C, B depends on A, C depends on B
     assert!(task_a.depends_on.contains(&"task-c".to_string()));
@@ -202,20 +252,45 @@ fn test_load_circular_dependency() {
 
 #[test]
 fn test_load_diamond_dependency() {
-    let tasks = load_tasks_fixture("diamond_dependency").expect("Failed to load diamond_dependency fixture");
+    let tasks = load_tasks_fixture("diamond_dependency")
+        .expect("Failed to load diamond_dependency fixture");
 
     // Find root, left, right, and merge tasks
-    let root = tasks.iter().find(|t| t.id == "task-root").expect("Root task should exist");
-    let left = tasks.iter().find(|t| t.id == "task-left").expect("Left task should exist");
-    let right = tasks.iter().find(|t| t.id == "task-right").expect("Right task should exist");
-    let merge = tasks.iter().find(|t| t.id == "task-merge").expect("Merge task should exist");
+    let root = tasks
+        .iter()
+        .find(|t| t.id == "task-root")
+        .expect("Root task should exist");
+    let left = tasks
+        .iter()
+        .find(|t| t.id == "task-left")
+        .expect("Left task should exist");
+    let right = tasks
+        .iter()
+        .find(|t| t.id == "task-right")
+        .expect("Right task should exist");
+    let merge = tasks
+        .iter()
+        .find(|t| t.id == "task-merge")
+        .expect("Merge task should exist");
 
     // Verify diamond structure
     assert!(root.depends_on.is_empty(), "Root has no dependencies");
-    assert!(left.depends_on.contains(&"task-root".to_string()), "Left depends on root");
-    assert!(right.depends_on.contains(&"task-root".to_string()), "Right depends on root");
-    assert!(merge.depends_on.contains(&"task-left".to_string()), "Merge depends on left");
-    assert!(merge.depends_on.contains(&"task-right".to_string()), "Merge depends on right");
+    assert!(
+        left.depends_on.contains(&"task-root".to_string()),
+        "Left depends on root"
+    );
+    assert!(
+        right.depends_on.contains(&"task-root".to_string()),
+        "Right depends on root"
+    );
+    assert!(
+        merge.depends_on.contains(&"task-left".to_string()),
+        "Merge depends on left"
+    );
+    assert!(
+        merge.depends_on.contains(&"task-right".to_string()),
+        "Merge depends on right"
+    );
 }
 
 // =============================================================================
@@ -224,38 +299,59 @@ fn test_load_diamond_dependency() {
 
 #[test]
 fn test_load_generate_response() {
-    let response = load_response_fixture("generate_success").expect("Failed to load response fixture");
+    let response =
+        load_response_fixture("generate_success").expect("Failed to load response fixture");
 
     assert!(response.get("output").is_some(), "Should have output");
-    assert!(response.get("is_complete").is_some(), "Should have is_complete");
+    assert!(
+        response.get("is_complete").is_some(),
+        "Should have is_complete"
+    );
 }
 
 #[test]
 fn test_load_execute_response() {
-    let response = load_response_fixture("execute_success").expect("Failed to load response fixture");
+    let response =
+        load_response_fixture("execute_success").expect("Failed to load response fixture");
 
     assert!(response.get("output").is_some(), "Should have output");
-    assert!(response.get("structured_data").is_some(), "Should have structured_data");
+    assert!(
+        response.get("structured_data").is_some(),
+        "Should have structured_data"
+    );
 }
 
 #[test]
 fn test_load_verify_success_response() {
-    let response = load_response_fixture("verify_success").expect("Failed to load response fixture");
+    let response =
+        load_response_fixture("verify_success").expect("Failed to load response fixture");
 
-    let structured_data = response.get("structured_data").expect("Should have structured_data");
-    let passed = structured_data.get("passed").and_then(|p| p.as_bool()).unwrap_or(false);
+    let structured_data = response
+        .get("structured_data")
+        .expect("Should have structured_data");
+    let passed = structured_data
+        .get("passed")
+        .and_then(|p| p.as_bool())
+        .unwrap_or(false);
     assert!(passed, "Verification should pass");
 }
 
 #[test]
 fn test_load_verify_failure_response() {
-    let response = load_response_fixture("verify_failure").expect("Failed to load response fixture");
+    let response =
+        load_response_fixture("verify_failure").expect("Failed to load response fixture");
 
-    let structured_data = response.get("structured_data").expect("Should have structured_data");
-    let passed = structured_data.get("passed").and_then(|p: &serde_json::Value| p.as_bool()).unwrap_or(true);
+    let structured_data = response
+        .get("structured_data")
+        .expect("Should have structured_data");
+    let passed = structured_data
+        .get("passed")
+        .and_then(|p: &serde_json::Value| p.as_bool())
+        .unwrap_or(true);
     assert!(!passed, "Verification should fail");
 
-    let unmet = structured_data.get("unmet_criteria")
+    let unmet = structured_data
+        .get("unmet_criteria")
         .and_then(|u: &serde_json::Value| u.as_array())
         .expect("Should have unmet_criteria");
     assert!(!unmet.is_empty(), "Should have unmet criteria");
@@ -277,14 +373,20 @@ fn test_rust_project_fixture_exists() {
 fn test_node_project_fixture_exists() {
     let path = get_project_path("node_basic");
     assert!(path.exists(), "node_basic project should exist");
-    assert!(path.join("package.json").exists(), "package.json should exist");
+    assert!(
+        path.join("package.json").exists(),
+        "package.json should exist"
+    );
 }
 
 #[test]
 fn test_python_project_fixture_exists() {
     let path = get_project_path("python_basic");
     assert!(path.exists(), "python_basic project should exist");
-    assert!(path.join("pyproject.toml").exists(), "pyproject.toml should exist");
+    assert!(
+        path.join("pyproject.toml").exists(),
+        "pyproject.toml should exist"
+    );
 }
 
 // =============================================================================
@@ -326,5 +428,8 @@ fn test_load_nonexistent_fixture() {
 #[test]
 fn test_list_fixtures_empty_category() {
     let fixtures = list_fixtures("nonexistent_category");
-    assert!(fixtures.is_empty(), "Nonexistent category should return empty list");
+    assert!(
+        fixtures.is_empty(),
+        "Nonexistent category should return empty list"
+    );
 }

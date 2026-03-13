@@ -7,13 +7,13 @@
 //! - Production-like usage patterns
 //! - Performance characteristics
 
-use ltmatrix::agent::warmup::{WarmupExecutor, WarmupResult};
-use ltmatrix::agent::{AgentSession, pool::SessionPool};
 use ltmatrix::agent::backend::{AgentBackend, AgentConfig, AgentResponse, ExecutionConfig};
+use ltmatrix::agent::warmup::{WarmupExecutor, WarmupResult};
+use ltmatrix::agent::{pool::SessionPool, AgentSession};
 use ltmatrix::config::settings::{Config, WarmupConfig};
 use ltmatrix::models::Agent;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::Arc;
 
 // ============================================================================
 // Mock Agent for E2E Testing
@@ -47,7 +47,11 @@ impl E2ETestAgent {
 
 #[async_trait::async_trait]
 impl AgentBackend for E2ETestAgent {
-    async fn execute(&self, _prompt: &str, _config: &ExecutionConfig) -> anyhow::Result<AgentResponse> {
+    async fn execute(
+        &self,
+        _prompt: &str,
+        _config: &ExecutionConfig,
+    ) -> anyhow::Result<AgentResponse> {
         self.execute_count.fetch_add(1, Ordering::SeqCst);
         tokio::time::sleep(std::time::Duration::from_millis(self.response_delay_ms)).await;
         Ok(AgentResponse {
@@ -64,7 +68,10 @@ impl AgentBackend for E2ETestAgent {
     ) -> anyhow::Result<AgentResponse> {
         // Check if this is a warmup query (case-insensitive)
         let prompt_lower = prompt.to_lowercase();
-        if prompt_lower.contains("ready") || prompt_lower.contains("hello") || prompt_lower.contains("warmup") {
+        if prompt_lower.contains("ready")
+            || prompt_lower.contains("hello")
+            || prompt_lower.contains("warmup")
+        {
             self.warmup_count.fetch_add(1, Ordering::SeqCst);
         } else {
             self.execute_count.fetch_add(1, Ordering::SeqCst);
@@ -95,7 +102,10 @@ impl AgentBackend for E2ETestAgent {
         Ok(true)
     }
 
-    async fn validate_config(&self, _config: &AgentConfig) -> Result<(), ltmatrix::agent::backend::AgentError> {
+    async fn validate_config(
+        &self,
+        _config: &AgentConfig,
+    ) -> Result<(), ltmatrix::agent::backend::AgentError> {
         Ok(())
     }
 
@@ -131,13 +141,24 @@ async fn e2e_warmup_workflow_with_config() {
 
     // Verify workflow completed successfully
     assert!(result.is_success());
-    assert_eq!(agent.warmup_count(), 1, "Agent should have received 1 warmup query");
-    assert_eq!(agent.execute_count(), 0, "Agent should not have received real queries yet");
+    assert_eq!(
+        agent.warmup_count(),
+        1,
+        "Agent should have received 1 warmup query"
+    );
+    assert_eq!(
+        agent.execute_count(),
+        0,
+        "Agent should not have received real queries yet"
+    );
     assert!(pool.len() >= 1, "Session pool should have a session");
 
     // Verify warmup prepared session for reuse
     let session = pool.get_or_create("e2e-agent", "test-model");
-    assert!(!session.session_id().to_string().is_empty(), "Session should have a valid ID");
+    assert!(
+        !session.session_id().to_string().is_empty(),
+        "Session should have a valid ID"
+    );
 }
 
 #[tokio::test]
@@ -169,12 +190,20 @@ async fn e2e_multi_agent_warmup_scenario() {
     // Verify all agents warmed up successfully
     assert_eq!(results.len(), 3);
     for (i, result) in results.iter().enumerate() {
-        assert!(result.is_success(), "Agent {} should have warmed up successfully", i);
+        assert!(
+            result.is_success(),
+            "Agent {} should have warmed up successfully",
+            i
+        );
     }
 
     // Verify each agent received exactly one warmup query
     for agent in &agents {
-        assert_eq!(agent.warmup_count(), 1, "Each agent should receive 1 warmup query");
+        assert_eq!(
+            agent.warmup_count(),
+            1,
+            "Each agent should receive 1 warmup query"
+        );
     }
 
     // Verify pool has sessions for all agents
@@ -211,7 +240,11 @@ async fn e2e_warmup_to_task_execution_workflow() {
         .unwrap();
 
     assert!(!task_result.output.is_empty());
-    assert_eq!(agent.execute_count(), 1, "Real task should have been executed");
+    assert_eq!(
+        agent.execute_count(),
+        1,
+        "Real task should have been executed"
+    );
 
     // Verify counts
     assert_eq!(agent.warmup_count(), 1, "Warmup count should still be 1");
@@ -229,7 +262,10 @@ async fn e2e_configuration_driven_warmup_behavior() {
     let mut pool1 = SessionPool::new();
     let agent1 = E2ETestAgent::new("disabled-agent", 100);
 
-    let result1 = disabled_executor.warmup_agent(&agent1, &mut pool1).await.unwrap();
+    let result1 = disabled_executor
+        .warmup_agent(&agent1, &mut pool1)
+        .await
+        .unwrap();
     assert!(result1.is_skipped());
     assert_eq!(agent1.warmup_count(), 0, "No warmup queries when disabled");
     assert!(pool1.is_empty(), "No sessions created when warmup disabled");
@@ -245,7 +281,10 @@ async fn e2e_configuration_driven_warmup_behavior() {
     let mut pool2 = SessionPool::new();
     let agent2 = E2ETestAgent::new("retry-agent", 100);
 
-    let result2 = retry_executor.warmup_agent(&agent2, &mut pool2).await.unwrap();
+    let result2 = retry_executor
+        .warmup_agent(&agent2, &mut pool2)
+        .await
+        .unwrap();
     assert!(result2.is_success());
     assert_eq!(agent2.warmup_count(), 1);
 }
@@ -271,8 +310,11 @@ async fn e2e_warmup_performance_characteristics() {
     let warmup_duration = warmup_start.elapsed();
 
     // Warmup should be fast
-    assert!(warmup_duration < std::time::Duration::from_secs(1),
-            "Warmup should complete quickly, took {:?}", warmup_duration);
+    assert!(
+        warmup_duration < std::time::Duration::from_secs(1),
+        "Warmup should complete quickly, took {:?}",
+        warmup_duration
+    );
 
     // Measure task execution time after warmup
     let session = pool.get_or_create("perf-agent", "test-model");
@@ -286,8 +328,11 @@ async fn e2e_warmup_performance_characteristics() {
     let task_duration = task_start.elapsed();
 
     // Task should also be fast (using warmed session)
-    assert!(task_duration < std::time::Duration::from_millis(200),
-            "Task after warmup should be fast, took {:?}", task_duration);
+    assert!(
+        task_duration < std::time::Duration::from_millis(200),
+        "Task after warmup should be fast, took {:?}",
+        task_duration
+    );
 }
 
 #[tokio::test]
@@ -309,7 +354,11 @@ async fn e2e_warmup_with_custom_prompt_template() {
     let result = executor.warmup_agent(&agent, &mut pool).await.unwrap();
 
     assert!(result.is_success());
-    assert_eq!(agent.warmup_count(), 1, "Should have received custom warmup prompt");
+    assert_eq!(
+        agent.warmup_count(),
+        1,
+        "Should have received custom warmup prompt"
+    );
 }
 
 #[tokio::test]
@@ -331,15 +380,24 @@ async fn e2e_warmup_session_reuse_across_operations() {
     let warmup_result = executor.warmup_agent(&agent, &mut pool).await.unwrap();
     assert!(warmup_result.is_success());
 
-    let session_id1 = pool.get_or_create("reuse-agent", "test-model").session_id().to_string();
+    let session_id1 = pool
+        .get_or_create("reuse-agent", "test-model")
+        .session_id()
+        .to_string();
 
     // Warmup again (should reuse session)
     let warmup_result2 = executor.warmup_agent(&agent, &mut pool).await.unwrap();
     assert!(warmup_result2.is_success());
 
-    let session_id2 = pool.get_or_create("reuse-agent", "test-model").session_id().to_string();
+    let session_id2 = pool
+        .get_or_create("reuse-agent", "test-model")
+        .session_id()
+        .to_string();
 
-    assert_eq!(session_id1, session_id2, "Session ID should remain the same");
+    assert_eq!(
+        session_id1, session_id2,
+        "Session ID should remain the same"
+    );
     assert_eq!(pool.len(), 1, "Should still have only 1 session");
 
     // Execute tasks using the session
@@ -354,8 +412,14 @@ async fn e2e_warmup_session_reuse_across_operations() {
     }
 
     // Should still have the same session
-    let session_id3 = pool.get_or_create("reuse-agent", "test-model").session_id().to_string();
-    assert_eq!(session_id1, session_id3, "Session ID should still be the same after tasks");
+    let session_id3 = pool
+        .get_or_create("reuse-agent", "test-model")
+        .session_id()
+        .to_string();
+    assert_eq!(
+        session_id1, session_id3,
+        "Session ID should still be the same after tasks"
+    );
 }
 
 #[tokio::test]
@@ -404,7 +468,11 @@ async fn e2e_warmup_result_tracking_and_reporting() {
     assert!(result.is_success());
     assert_eq!(result.queries_executed(), Some(1));
 
-    if let WarmupResult::Success { queries_executed, duration_ms } = result {
+    if let WarmupResult::Success {
+        queries_executed,
+        duration_ms,
+    } = result
+    {
         assert_eq!(queries_executed, 1);
         assert!(duration_ms > 0, "Duration should be recorded");
         assert!(duration_ms < 10000, "Duration should be reasonable (< 10s)");
@@ -432,7 +500,11 @@ async fn e2e_warmup_multiple_queries_configuration() {
 
     // Implementation breaks after first successful query
     assert!(result.is_success());
-    assert_eq!(result.queries_executed(), Some(1), "Should only execute 1 query (breaks after success)");
+    assert_eq!(
+        result.queries_executed(),
+        Some(1),
+        "Should only execute 1 query (breaks after success)"
+    );
     assert_eq!(agent.warmup_count(), 1);
 }
 

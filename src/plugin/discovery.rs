@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Plugin discovery utilities
 //!
 //! This module provides utilities for discovering plugins in the filesystem.
@@ -63,7 +62,8 @@ impl PluginDiscoveryService {
             if manifest_path.exists() {
                 // Parse manifest and create discovery
                 if let Ok(content) = std::fs::read_to_string(&manifest_path) {
-                    if let Ok(manifest) = toml::from_str::<super::manager::PluginManifest>(&content) {
+                    if let Ok(manifest) = toml::from_str::<super::manager::PluginManifest>(&content)
+                    {
                         discoveries.push(PluginDiscovery {
                             path,
                             plugin_type: manifest.plugin.plugin_type,

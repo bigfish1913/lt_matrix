@@ -48,10 +48,7 @@ fn test_tree_view_nested_subtasks() {
     ];
 
     let mut parent = Task::new("task-1", "Parent Task", "Parent task");
-    parent.subtasks = vec![
-        Task::new("task-2", "Child 1", "First child"),
-        child2,
-    ];
+    parent.subtasks = vec![Task::new("task-2", "Child 1", "First child"), child2];
 
     let tree = ltmatrix::tasks::tree::format_tree(&parent);
 
@@ -83,9 +80,7 @@ fn test_tree_view_with_status() {
 fn test_tree_view_max_depth_respected() {
     // Create a task hierarchy deeper than typical depth
     let mut level3 = Task::new("task-4", "Level 3", "Third level");
-    level3.subtasks = vec![
-        Task::new("task-5", "Level 4", "Fourth level"),
-    ];
+    level3.subtasks = vec![Task::new("task-5", "Level 4", "Fourth level")];
 
     let mut level2 = Task::new("task-3", "Level 2", "Second level");
     level2.subtasks = vec![level3];
@@ -164,7 +159,11 @@ fn test_tree_status_symbols_all_types() {
         let mut task = Task::new("test", "Test", "Test task");
         task.status = status.clone();
         let tree = ltmatrix::tasks::tree::format_tree(&task);
-        assert!(tree.contains(symbol), "Status symbol {:?} not found", status);
+        assert!(
+            tree.contains(symbol),
+            "Status symbol {:?} not found",
+            status
+        );
     }
 }
 
@@ -208,10 +207,7 @@ fn test_tree_branching_with_multiple_nested_children() {
     child2.subtasks = vec![child2_grand1, child2_grand2];
 
     let mut parent = Task::new("task-1", "Parent", "Parent");
-    parent.subtasks = vec![
-        Task::new("task-2", "Child 1", "First child"),
-        child2,
-    ];
+    parent.subtasks = vec![Task::new("task-2", "Child 1", "First child"), child2];
 
     let tree = ltmatrix::tasks::tree::format_tree(&parent);
 
@@ -225,7 +221,7 @@ fn test_tree_branching_with_multiple_nested_children() {
     // Verify tree structure
     assert!(tree.contains("├──")); // First child of parent
     assert!(tree.contains("└──")); // Last child at various levels
-    // Note: Continuation characters depend on the specific tree structure
+                                   // Note: Continuation characters depend on the specific tree structure
 }
 
 #[test]
@@ -260,9 +256,7 @@ fn test_tree_format_output_structure() {
 fn test_tree_no_extra_blank_lines() {
     // Ensure there are no excessive blank lines in output
     let mut parent = Task::new("task-1", "Parent", "Parent");
-    parent.subtasks = vec![
-        Task::new("task-2", "Child", "Child"),
-    ];
+    parent.subtasks = vec![Task::new("task-2", "Child", "Child")];
 
     let tree = ltmatrix::tasks::tree::format_tree(&parent);
 
@@ -277,15 +271,10 @@ fn test_tree_no_extra_blank_lines() {
 fn test_tree_unicode_characters() {
     // Verify all expected Unicode tree characters are present in a complex tree
     let mut child2 = Task::new("task-3", "Child 2", "Second child");
-    child2.subtasks = vec![
-        Task::new("task-4", "Grandchild", "Grandchild"),
-    ];
+    child2.subtasks = vec![Task::new("task-4", "Grandchild", "Grandchild")];
 
     let mut parent = Task::new("task-1", "Parent", "Parent");
-    parent.subtasks = vec![
-        Task::new("task-2", "Child 1", "First child"),
-        child2,
-    ];
+    parent.subtasks = vec![Task::new("task-2", "Child 1", "First child"), child2];
 
     let tree = ltmatrix::tasks::tree::format_tree(&parent);
 

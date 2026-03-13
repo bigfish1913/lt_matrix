@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Telemetry sender
 //!
 //! This module handles sending telemetry events to the analytics endpoint.
@@ -49,11 +48,15 @@ impl TelemetrySender {
             return Ok(());
         }
 
-        debug!("Sending {} telemetry events to {}", events.len(), self.config.endpoint);
+        debug!(
+            "Sending {} telemetry events to {}",
+            events.len(),
+            self.config.endpoint
+        );
 
         // Serialize events to JSON
-        let json_body = serde_json::to_string(&events)
-            .context("Failed to serialize telemetry events")?;
+        let json_body =
+            serde_json::to_string(&events).context("Failed to serialize telemetry events")?;
 
         // Send with retry logic
         self.send_with_retry(&json_body).await
@@ -94,10 +97,14 @@ impl TelemetrySender {
 
     /// Attempt to send telemetry events
     async fn try_send(&self, body: &str) -> Result<()> {
-        let response = self.client
+        let response = self
+            .client
             .post(&self.config.endpoint)
             .header("Content-Type", "application/json")
-            .header("User-Agent", format!("ltmatrix/{}", env!("CARGO_PKG_VERSION")))
+            .header(
+                "User-Agent",
+                format!("ltmatrix/{}", env!("CARGO_PKG_VERSION")),
+            )
             .body(body.to_string())
             .send()
             .await
@@ -105,11 +112,17 @@ impl TelemetrySender {
 
         // Check response status
         if response.status().is_success() {
-            debug!("Telemetry accepted by server (status {})", response.status());
+            debug!(
+                "Telemetry accepted by server (status {})",
+                response.status()
+            );
             Ok(())
         } else {
             let status = response.status();
-            let error_body = response.text().await.unwrap_or_else(|_| "Unable to read error body".to_string());
+            let error_body = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unable to read error body".to_string());
             Err(anyhow::anyhow!(
                 "Telemetry server returned error status {}: {}",
                 status,
@@ -144,15 +157,13 @@ mod tests {
 
     fn create_test_events() -> Vec<TelemetryEvent> {
         let session_id = Uuid::new_v4();
-        vec![
-            TelemetryEvent::SessionStart {
-                session_id,
-                version: "0.1.0".to_string(),
-                os: "linux".to_string(),
-                arch: "x86_64".to_string(),
-                timestamp: Utc::now(),
-            },
-        ]
+        vec![TelemetryEvent::SessionStart {
+            session_id,
+            version: "0.1.0".to_string(),
+            os: "linux".to_string(),
+            arch: "x86_64".to_string(),
+            timestamp: Utc::now(),
+        }]
     }
 
     #[tokio::test]

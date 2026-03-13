@@ -6,7 +6,9 @@
 
 use ltmatrix::models::{ExecutionMode, PipelineStage, Task, TaskStatus};
 use ltmatrix::pipeline::orchestrator::OrchestratorConfig;
-use ltmatrix::pipeline::review::{ReviewConfig, ReviewSummary, CodeIssue, IssueCategory, IssueSeverity};
+use ltmatrix::pipeline::review::{
+    CodeIssue, IssueCategory, IssueSeverity, ReviewConfig, ReviewSummary,
+};
 use tempfile::TempDir;
 
 // =============================================================================
@@ -174,7 +176,10 @@ fn test_review_config_should_run_expert_mode() {
 #[test]
 fn test_review_config_should_not_run_standard_mode() {
     let config = ReviewConfig::default();
-    assert!(!config.should_run(), "Review should not run in standard mode");
+    assert!(
+        !config.should_run(),
+        "Review should not run in standard mode"
+    );
     assert!(!config.is_expert_mode(), "Should not be expert mode");
 }
 
@@ -185,7 +190,10 @@ fn test_review_config_verify_required() {
 
     // If verify is disabled, review should not run
     config.mode_config.verify = false;
-    assert!(!config.should_run(), "Review should not run when verify is disabled");
+    assert!(
+        !config.should_run(),
+        "Review should not run when verify is disabled"
+    );
 }
 
 #[test]
@@ -260,14 +268,8 @@ fn test_review_stage_position_in_pipeline() {
         .expect("Verify stage should exist");
 
     // Review must be after Test and before Verify
-    assert!(
-        review_idx > test_idx,
-        "Review should come after Test"
-    );
-    assert!(
-        review_idx < verify_idx,
-        "Review should come before Verify"
-    );
+    assert!(review_idx > test_idx, "Review should come after Test");
+    assert!(review_idx < verify_idx, "Review should come before Verify");
 }
 
 #[test]
@@ -571,5 +573,12 @@ fn test_review_summary_task_counts() {
     };
 
     assert_eq!(summary.total_tasks, 10);
-    assert_eq!(summary.passed_tasks + summary.warning_tasks + summary.needs_improvements + summary.failed_tasks + summary.skipped_tasks, 10);
+    assert_eq!(
+        summary.passed_tasks
+            + summary.warning_tasks
+            + summary.needs_improvements
+            + summary.failed_tasks
+            + summary.skipped_tasks,
+        10
+    );
 }

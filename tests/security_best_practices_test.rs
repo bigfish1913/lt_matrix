@@ -13,16 +13,33 @@ use std::path::Path;
 
 // Import the security module for direct API testing
 use ltmatrix::security::{
+    contains_traversal,
+    has_dangerous_extension,
+    is_safe_for_command_arg,
+    is_sensitive_env_var,
+    mask_sensitive_value,
+    resolve_safe_path,
+    sanitize_command_arg,
+    sanitize_command_argument_for_display,
+    sanitize_identifier,
+    sanitize_model_name,
+    sanitize_path_component,
+    validate_branch_name,
+    validate_command_arg,
+    validate_command_argument,
     // Command security
-    validate_command_name, validate_command_argument, sanitize_command_argument_for_display,
-    validate_env_var_name, is_sensitive_env_var, mask_sensitive_value, CommandAllowlist,
-    // Path security
-    validate_path, sanitize_path_component, contains_traversal,
-    resolve_safe_path, validate_file_extension, has_dangerous_extension,
+    validate_command_name,
+    validate_commit_message,
+    validate_env_var_name,
+    validate_file_extension,
     // Input validation
-    validate_identifier, sanitize_identifier, is_safe_for_command_arg, validate_command_arg,
-    sanitize_command_arg, validate_task_title, validate_task_description, validate_branch_name,
-    validate_commit_message, validate_model_name, sanitize_model_name,
+    validate_identifier,
+    validate_model_name,
+    // Path security
+    validate_path,
+    validate_task_description,
+    validate_task_title,
+    CommandAllowlist,
 };
 
 // =============================================================================
@@ -36,18 +53,28 @@ fn test_deny_toml_exists_and_valid() {
 
     assert!(deny_path.exists(), "deny.toml should exist in project root");
 
-    let content = fs::read_to_string(&deny_path)
-        .expect("deny.toml should be readable");
+    let content = fs::read_to_string(&deny_path).expect("deny.toml should be readable");
 
     // Verify it's valid TOML by parsing
-    let parsed: toml::Value = toml::from_str(&content)
-        .expect("deny.toml should be valid TOML");
+    let parsed: toml::Value = toml::from_str(&content).expect("deny.toml should be valid TOML");
 
     // Verify required sections exist
-    assert!(parsed.get("advisories").is_some(), "deny.toml should have [advisories] section");
-    assert!(parsed.get("licenses").is_some(), "deny.toml should have [licenses] section");
-    assert!(parsed.get("bans").is_some(), "deny.toml should have [bans] section");
-    assert!(parsed.get("sources").is_some(), "deny.toml should have [sources] section");
+    assert!(
+        parsed.get("advisories").is_some(),
+        "deny.toml should have [advisories] section"
+    );
+    assert!(
+        parsed.get("licenses").is_some(),
+        "deny.toml should have [licenses] section"
+    );
+    assert!(
+        parsed.get("bans").is_some(),
+        "deny.toml should have [bans] section"
+    );
+    assert!(
+        parsed.get("sources").is_some(),
+        "deny.toml should have [sources] section"
+    );
 }
 
 /// Test that deny.toml has proper vulnerability checking configuration
@@ -61,7 +88,10 @@ fn test_deny_toml_vulnerability_settings() {
 
     // Should have advisory database URL configured
     let db_urls = advisories.get("db-urls").and_then(|v| v.as_array());
-    assert!(db_urls.is_some(), "Advisory database URLs should be configured");
+    assert!(
+        db_urls.is_some(),
+        "Advisory database URLs should be configured"
+    );
 
     let urls = db_urls.unwrap();
     assert!(
@@ -92,19 +122,30 @@ fn test_deny_toml_license_settings() {
     let allowed = licenses.get("allow").and_then(|v| v.as_array());
     assert!(allowed.is_some(), "Should have allowed licenses list");
 
-    let allowed_licenses: Vec<&str> = allowed.unwrap()
-        .iter()
-        .filter_map(|v| v.as_str())
-        .collect();
+    let allowed_licenses: Vec<&str> = allowed.unwrap().iter().filter_map(|v| v.as_str()).collect();
 
     // MIT and Apache-2.0 should be allowed (most common Rust licenses)
-    assert!(allowed_licenses.contains(&"MIT"), "MIT license should be allowed");
-    assert!(allowed_licenses.contains(&"Apache-2.0"), "Apache-2.0 license should be allowed");
+    assert!(
+        allowed_licenses.contains(&"MIT"),
+        "MIT license should be allowed"
+    );
+    assert!(
+        allowed_licenses.contains(&"Apache-2.0"),
+        "Apache-2.0 license should be allowed"
+    );
 
     // Should have confidence threshold
-    let confidence = licenses.get("confidence-threshold").and_then(|v| v.as_float());
-    assert!(confidence.is_some(), "Should have confidence threshold for license detection");
-    assert!(confidence.unwrap() >= 0.8, "Confidence threshold should be at least 0.8");
+    let confidence = licenses
+        .get("confidence-threshold")
+        .and_then(|v| v.as_float());
+    assert!(
+        confidence.is_some(),
+        "Should have confidence threshold for license detection"
+    );
+    assert!(
+        confidence.unwrap() >= 0.8,
+        "Confidence threshold should be at least 0.8"
+    );
 }
 
 /// Test that deny.toml restricts crate sources
@@ -149,7 +190,10 @@ fn test_deny_toml_wildcard_ban() {
 #[test]
 fn test_security_md_exists() {
     let security_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("SECURITY.md");
-    assert!(security_path.exists(), "SECURITY.md should exist in project root");
+    assert!(
+        security_path.exists(),
+        "SECURITY.md should exist in project root"
+    );
 }
 
 /// Test that SECURITY.md contains required sections
@@ -184,11 +228,7 @@ fn test_security_md_threat_model() {
     let content = fs::read_to_string(&security_path).unwrap();
 
     // Should document key threat categories
-    let threat_categories = [
-        "Command Injection",
-        "Path Traversal",
-        "Credential",
-    ];
+    let threat_categories = ["Command Injection", "Path Traversal", "Credential"];
 
     for threat in &threat_categories {
         assert!(
@@ -245,8 +285,7 @@ fn test_security_md_unsafe_code_documentation() {
 #[test]
 fn test_git_operations_use_safe_patterns() {
     // Read git_ops.rs to verify safe command patterns
-    let git_ops_path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("src/release/git_ops.rs");
+    let git_ops_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/release/git_ops.rs");
 
     if !git_ops_path.exists() {
         // Skip if module doesn't exist
@@ -351,8 +390,7 @@ fn test_unsafe_main_rs_documented() {
 /// Test that unsafe code in logging is documented
 #[test]
 fn test_unsafe_logging_documented() {
-    let formatter_path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("src/logging/formatter.rs");
+    let formatter_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/logging/formatter.rs");
 
     if !formatter_path.exists() {
         return;
@@ -364,9 +402,9 @@ fn test_unsafe_logging_documented() {
     if content.contains("unsafe {") {
         // Should have safety documentation nearby
         assert!(
-            content.contains("# Safety") ||
-            content.contains("// Safety") ||
-            content.contains("/// # Safety"),
+            content.contains("# Safety")
+                || content.contains("// Safety")
+                || content.contains("/// # Safety"),
             "Unsafe code in formatter.rs should have safety documentation"
         );
     }
@@ -424,7 +462,10 @@ fn test_unsafe_code_count_minimal() {
 #[test]
 fn test_cargo_lock_exists() {
     let lock_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("Cargo.lock");
-    assert!(lock_path.exists(), "Cargo.lock should exist for reproducible builds");
+    assert!(
+        lock_path.exists(),
+        "Cargo.lock should exist for reproducible builds"
+    );
 }
 
 /// Test that no deprecated/insecure dependencies
@@ -466,17 +507,13 @@ fn test_config_input_validation() {
     let content = fs::read_to_string(&config_path).unwrap();
 
     // Should have some form of validation
-    let has_validation =
-        content.contains("validate") ||
-        content.contains("parse") ||
-        content.contains("from_str") ||
-        content.contains("try_from") ||
-        content.contains("Result");
+    let has_validation = content.contains("validate")
+        || content.contains("parse")
+        || content.contains("from_str")
+        || content.contains("try_from")
+        || content.contains("Result");
 
-    assert!(
-        has_validation,
-        "Config module should have input validation"
-    );
+    assert!(has_validation, "Config module should have input validation");
 }
 
 /// Test that plugin validation exists
@@ -573,14 +610,32 @@ fn test_command_allowlist_default() {
     let allowlist = CommandAllowlist::new();
 
     // Default allowed commands
-    assert!(allowlist.is_allowed("git"), "git should be allowed by default");
-    assert!(allowlist.is_allowed("claude"), "claude should be allowed by default");
-    assert!(allowlist.is_allowed("cargo"), "cargo should be allowed by default");
-    assert!(allowlist.is_allowed("npm"), "npm should be allowed by default");
+    assert!(
+        allowlist.is_allowed("git"),
+        "git should be allowed by default"
+    );
+    assert!(
+        allowlist.is_allowed("claude"),
+        "claude should be allowed by default"
+    );
+    assert!(
+        allowlist.is_allowed("cargo"),
+        "cargo should be allowed by default"
+    );
+    assert!(
+        allowlist.is_allowed("npm"),
+        "npm should be allowed by default"
+    );
 
     // Case insensitive
-    assert!(allowlist.is_allowed("GIT"), "Allowlist should be case insensitive");
-    assert!(allowlist.is_allowed("Claude"), "Allowlist should be case insensitive");
+    assert!(
+        allowlist.is_allowed("GIT"),
+        "Allowlist should be case insensitive"
+    );
+    assert!(
+        allowlist.is_allowed("Claude"),
+        "Allowlist should be case insensitive"
+    );
 }
 
 #[test]
@@ -588,15 +643,24 @@ fn test_command_allowlist_modification() {
     let mut allowlist = CommandAllowlist::empty();
 
     // Empty allowlist
-    assert!(!allowlist.is_allowed("git"), "Empty allowlist should not allow any command");
+    assert!(
+        !allowlist.is_allowed("git"),
+        "Empty allowlist should not allow any command"
+    );
 
     // Add command
     allowlist.allow("git");
-    assert!(allowlist.is_allowed("git"), "After allowing, command should be permitted");
+    assert!(
+        allowlist.is_allowed("git"),
+        "After allowing, command should be permitted"
+    );
 
     // Remove command
     allowlist.deny("git");
-    assert!(!allowlist.is_allowed("git"), "After denying, command should not be permitted");
+    assert!(
+        !allowlist.is_allowed("git"),
+        "After denying, command should not be permitted"
+    );
 }
 
 /// Test command name validation
@@ -654,10 +718,22 @@ fn test_validate_command_argument_invalid() {
 /// Test sanitize command argument for display
 #[test]
 fn test_sanitize_command_argument_for_display() {
-    assert_eq!(sanitize_command_argument_for_display("file.txt"), "file.txt");
-    assert_eq!(sanitize_command_argument_for_display("file\nname"), "file_name");
-    assert_eq!(sanitize_command_argument_for_display("file\rname"), "file_name");
-    assert_eq!(sanitize_command_argument_for_display("file\0name"), "file_name");
+    assert_eq!(
+        sanitize_command_argument_for_display("file.txt"),
+        "file.txt"
+    );
+    assert_eq!(
+        sanitize_command_argument_for_display("file\nname"),
+        "file_name"
+    );
+    assert_eq!(
+        sanitize_command_argument_for_display("file\rname"),
+        "file_name"
+    );
+    assert_eq!(
+        sanitize_command_argument_for_display("file\0name"),
+        "file_name"
+    );
 }
 
 /// Test environment variable name validation
@@ -779,9 +855,15 @@ fn test_has_dangerous_extension() {
     assert!(has_dangerous_extension(Path::new("script.bat"), dangerous));
     assert!(has_dangerous_extension(Path::new("script.BAT"), dangerous)); // Case insensitive
     assert!(has_dangerous_extension(Path::new("script.CMD"), dangerous));
-    assert!(!has_dangerous_extension(Path::new("document.pdf"), dangerous));
+    assert!(!has_dangerous_extension(
+        Path::new("document.pdf"),
+        dangerous
+    ));
     assert!(!has_dangerous_extension(Path::new("source.rs"), dangerous));
-    assert!(!has_dangerous_extension(Path::new("config.json"), dangerous));
+    assert!(!has_dangerous_extension(
+        Path::new("config.json"),
+        dangerous
+    ));
 }
 
 // -----------------------------------------------------------------------------
@@ -944,7 +1026,10 @@ fn test_validate_model_name_invalid() {
 /// Test sanitize_model_name
 #[test]
 fn test_sanitize_model_name() {
-    assert_eq!(sanitize_model_name("claude-sonnet-4-6"), "claude-sonnet-4-6");
+    assert_eq!(
+        sanitize_model_name("claude-sonnet-4-6"),
+        "claude-sonnet-4-6"
+    );
     assert_eq!(sanitize_model_name("model/name"), "modelname");
     assert_eq!(sanitize_model_name("model name"), "modelname");
     assert_eq!(sanitize_model_name("model@v1"), "modelv1");
@@ -978,11 +1063,7 @@ fn test_command_injection_prevention() {
     }
 
     // These use validate_command_arg (from input module) which is stricter
-    let input_payloads = [
-        "file$(whoami)",
-        "file$variable",
-        "hello`whoami`",
-    ];
+    let input_payloads = ["file$(whoami)", "file$variable", "hello`whoami`"];
 
     for payload in &input_payloads {
         assert!(
@@ -1023,10 +1104,10 @@ fn test_path_traversal_prevention() {
 fn test_sensitive_data_masking() {
     // Test various sensitive data formats
     let test_cases = [
-        ("sk-1234567890abcdef", "sk-1...cdef"),  // API key
-        ("ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", "ghp_...xxxx"),  // GitHub token
-        ("AKIAIOSFODNN7EXAMPLE", "AKIA...MPLE"),  // AWS key
-        ("supersecret", "su...et"),  // Short secret
+        ("sk-1234567890abcdef", "sk-1...cdef"), // API key
+        ("ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", "ghp_...xxxx"), // GitHub token
+        ("AKIAIOSFODNN7EXAMPLE", "AKIA...MPLE"), // AWS key
+        ("supersecret", "su...et"),             // Short secret
     ];
 
     for (value, _expected) in &test_cases {
@@ -1036,10 +1117,7 @@ fn test_sensitive_data_masking() {
             "Value should be masked with ellipsis"
         );
         // The original should not be fully visible
-        assert_ne!(
-            &masked, value,
-            "Masked value should not equal original"
-        );
+        assert_ne!(&masked, value, "Masked value should not equal original");
     }
 }
 

@@ -26,12 +26,10 @@ use std::time::Duration;
 
 use serde_json::json;
 
+use ltmatrix::mcp::protocol::methods::{Resource, ResourceContents, Tool, MCP_PROTOCOL_VERSION};
 use ltmatrix::mcp::{
     JsonRpcError, JsonRpcErrorCode, JsonRpcNotification, JsonRpcRequest, JsonRpcResponse,
     RequestId, Transport,
-};
-use ltmatrix::mcp::protocol::methods::{
-    MCP_PROTOCOL_VERSION, Resource, ResourceContents, Tool,
 };
 
 // Import mock server types - using the module from tests/mock_mcp_server.rs
@@ -61,7 +59,10 @@ async fn create_started_transport(server: Arc<MockMcpServer>) -> MockTransport {
 
 /// Helper to receive and assert success response
 async fn receive_success_response(transport: &MockTransport) -> JsonRpcResponse {
-    let message = transport.receive().await.expect("Failed to receive message");
+    let message = transport
+        .receive()
+        .await
+        .expect("Failed to receive message");
     let response = message.as_response().expect("Expected response message");
     assert!(response.is_success(), "Expected successful response");
     response.clone()
@@ -69,7 +70,10 @@ async fn receive_success_response(transport: &MockTransport) -> JsonRpcResponse 
 
 /// Helper to receive and assert error response
 async fn receive_error_response(transport: &MockTransport) -> (JsonRpcResponse, JsonRpcError) {
-    let message = transport.receive().await.expect("Failed to receive message");
+    let message = transport
+        .receive()
+        .await
+        .expect("Failed to receive message");
     let response = message.as_response().expect("Expected response message");
     let error = response.error.clone().expect("Expected error in response");
     (response.clone(), error)
@@ -325,17 +329,16 @@ mod tool_tests {
 
     #[tokio::test]
     async fn test_list_tools_with_custom_tools() {
-        let config = MockServerConfig::default()
-            .with_tool(Tool::new(
-                "custom_tool",
-                "A custom test tool",
-                json!({
-                    "type": "object",
-                    "properties": {
-                        "input": { "type": "string" }
-                    }
-                }),
-            ));
+        let config = MockServerConfig::default().with_tool(Tool::new(
+            "custom_tool",
+            "A custom test tool",
+            json!({
+                "type": "object",
+                "properties": {
+                    "input": { "type": "string" }
+                }
+            }),
+        ));
 
         let server = create_custom_server(config);
         let transport = create_started_transport(server).await;
@@ -348,7 +351,8 @@ mod tool_tests {
         let tools = result.get("tools").unwrap().as_array().unwrap();
 
         // Find custom tool
-        let custom_tool = tools.iter()
+        let custom_tool = tools
+            .iter()
             .find(|t| t["name"] == "custom_tool")
             .expect("Custom tool not found");
         assert_eq!(custom_tool["description"], "A custom test tool");
@@ -481,11 +485,10 @@ mod resource_tests {
 
     #[tokio::test]
     async fn test_list_resources_with_custom() {
-        let config = MockServerConfig::default()
-            .with_resource(
-                Resource::new("file:///custom/data.json", "data.json"),
-                ResourceContents::text("file:///custom/data.json", r#"{"key": "value"}"#),
-            );
+        let config = MockServerConfig::default().with_resource(
+            Resource::new("file:///custom/data.json", "data.json"),
+            ResourceContents::text("file:///custom/data.json", r#"{"key": "value"}"#),
+        );
 
         let server = create_custom_server(config);
         let transport = create_started_transport(server).await;
@@ -497,7 +500,8 @@ mod resource_tests {
         let result = response.result.as_ref().unwrap();
         let resources = result.get("resources").unwrap().as_array().unwrap();
 
-        let custom_resource = resources.iter()
+        let custom_resource = resources
+            .iter()
             .find(|r| r["uri"] == "file:///custom/data.json")
             .expect("Custom resource not found");
         assert_eq!(custom_resource["name"], "data.json");
@@ -564,11 +568,8 @@ mod resource_tests {
         let server = create_test_server();
         let transport = create_started_transport(server).await;
 
-        let request = JsonRpcRequest::with_params(
-            RequestId::Number(1),
-            "resources/read",
-            json!({}),
-        );
+        let request =
+            JsonRpcRequest::with_params(RequestId::Number(1), "resources/read", json!({}));
 
         transport.send_request(request).await.unwrap();
         let (_, error) = receive_error_response(&transport).await;
@@ -675,11 +676,7 @@ mod prompt_tests {
         let server = create_test_server();
         let transport = create_started_transport(server).await;
 
-        let request = JsonRpcRequest::with_params(
-            RequestId::Number(1),
-            "prompts/get",
-            json!({}),
-        );
+        let request = JsonRpcRequest::with_params(RequestId::Number(1), "prompts/get", json!({}));
 
         transport.send_request(request).await.unwrap();
         let (_, error) = receive_error_response(&transport).await;
@@ -707,8 +704,7 @@ mod error_scenario_tests {
 
     #[tokio::test]
     async fn test_server_configured_error() {
-        let config = MockServerConfig::default()
-            .with_error_method("tools/list");
+        let config = MockServerConfig::default().with_error_method("tools/list");
 
         let server = create_custom_server(config);
         let transport = create_started_transport(server).await;
@@ -752,8 +748,7 @@ mod configuration_tests {
 
     #[tokio::test]
     async fn test_delayed_response() {
-        let config = MockServerConfig::default()
-            .with_response_delay(Duration::from_millis(50));
+        let config = MockServerConfig::default().with_response_delay(Duration::from_millis(50));
 
         let server = create_custom_server(config);
         let transport = create_started_transport(server).await;
@@ -783,11 +778,7 @@ mod edge_case_tests {
         let transport = create_started_transport(server).await;
 
         // Ping with empty params should work
-        let request = JsonRpcRequest::with_params(
-            RequestId::Number(1),
-            "ping",
-            json!({}),
-        );
+        let request = JsonRpcRequest::with_params(RequestId::Number(1), "ping", json!({}));
 
         transport.send_request(request).await.unwrap();
         let _ = receive_success_response(&transport).await;
@@ -844,16 +835,15 @@ mod edge_case_tests {
         let server = create_test_server();
         let transport = create_started_transport(server).await;
 
-        let request = JsonRpcRequest::with_params(
-            RequestId::Number(1),
-            "ping",
-            json!(null),
-        );
+        let request = JsonRpcRequest::with_params(RequestId::Number(1), "ping", json!(null));
 
         transport.send_request(request).await.unwrap();
 
         // Should handle null params gracefully
-        let message = transport.receive().await.expect("Failed to receive message");
+        let message = transport
+            .receive()
+            .await
+            .expect("Failed to receive message");
         assert!(message.is_response());
     }
 }
@@ -1039,7 +1029,10 @@ mod full_integration_tests {
 
         // Verify notification was logged
         let log = request_log.lock().await;
-        assert!(log.requests.iter().any(|r| r.method == "notifications/initialized"));
+        assert!(log
+            .requests
+            .iter()
+            .any(|r| r.method == "notifications/initialized"));
     }
 }
 
@@ -1096,11 +1089,8 @@ mod request_log_tests {
         let log = server.request_log();
         let transport = create_started_transport(server).await;
 
-        let request = JsonRpcRequest::with_params(
-            RequestId::Number(1),
-            "ping",
-            json!({ "test": "value" }),
-        );
+        let request =
+            JsonRpcRequest::with_params(RequestId::Number(1), "ping", json!({ "test": "value" }));
 
         transport.send_request(request).await.unwrap();
         let _ = transport.receive().await.unwrap();

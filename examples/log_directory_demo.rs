@@ -30,7 +30,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("-------------------------------------------");
     let log_manager = LogManager::new(None::<&Path>);
     println!("✓ Logs directory: {}", log_manager.logs_dir().display());
-    println!("✓ Max files: {}", log_manager.get_log_info().unwrap_or_default().len());
+    println!(
+        "✓ Max files: {}",
+        log_manager.get_log_info().unwrap_or_default().len()
+    );
     println!("✓ Max age: 7 days");
     println!("✓ Max total size: 100 MB");
     println!();
@@ -47,7 +50,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("------------------------------------------");
     for i in 0..3 {
         let log_path = log_manager.generate_log_path();
-        let filename = log_path.file_name()
+        let filename = log_path
+            .file_name()
             .and_then(|n| n.to_str())
             .unwrap_or("<invalid>");
         println!("  {}. {}", i + 1, filename);
@@ -63,7 +67,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut created_files = Vec::new();
     for i in 0..3 {
         let log_path = log_manager.create_log_file()?;
-        let filename = log_path.file_name()
+        let filename = log_path
+            .file_name()
             .and_then(|n| n.to_str())
             .unwrap_or("<invalid>");
         println!("  ✓ Created: {}", filename);
@@ -91,14 +96,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("------------------------");
     let log_info = log_manager.get_log_info()?;
     for (i, info) in log_info.iter().enumerate() {
-        let filename = info.path.file_name()
+        let filename = info
+            .path
+            .file_name()
             .and_then(|n| n.to_str())
             .unwrap_or("<invalid>");
         println!("  File {}:", i + 1);
         println!("    Name: {}", filename);
         println!("    Size: {} bytes", info.size);
         println!("    Age: {} days", info.age_days);
-        println!("    Modified: {}", info.modified_time.format("%Y-%m-%d %H:%M:%S"));
+        println!(
+            "    Modified: {}",
+            info.modified_time.format("%Y-%m-%d %H:%M:%S")
+        );
     }
     println!();
 
@@ -109,7 +119,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Set strict limits for demonstration
     let strict_manager = LogManager::new(None::<&Path>)
         .with_max_files(2)
-        .with_max_age_days(0);  // Remove files older than now
+        .with_max_age_days(0); // Remove files older than now
 
     println!("  Cleanup policy:");
     println!("    - Keep max 2 files");
@@ -126,7 +136,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Demonstrate initialization with logging
     println!("7. Initializing logging with automatic management:");
     println!("----------------------------------------------------");
-    let (_guard, _managed_log) = logger::init_logging_with_management(LogLevel::Info, None::<&Path>)?;
+    let (_guard, _managed_log) =
+        logger::init_logging_with_management(LogLevel::Info, None::<&Path>)?;
     println!("  ✓ Logging initialized with automatic file management");
     println!("  ✓ Log file created in logs/ directory");
     println!("  ✓ Old logs will be cleaned up on completion");
@@ -170,7 +181,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         } else {
             println!("  Log files in logs/ directory:");
             for (i, path) in log_files.iter().enumerate() {
-                let filename = path.file_name()
+                let filename = path
+                    .file_name()
                     .and_then(|n| n.to_str())
                     .unwrap_or("<invalid>");
                 println!("    {}. {}", i + 1, filename);

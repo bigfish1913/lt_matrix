@@ -7,7 +7,7 @@
 //! - Serialization/deserialization roundtrip
 //! - Edge cases in server configuration
 
-use ltmatrix::config::mcp::{McpConfig, McpServers, LoadedMcpConfig};
+use ltmatrix::config::mcp::{LoadedMcpConfig, McpConfig, McpServers};
 use std::fs;
 use tempfile::TempDir;
 
@@ -259,10 +259,7 @@ type = "test"
 
     let config = McpConfig::from_str(config_content).unwrap();
     let server = config.get_server("test").unwrap();
-    assert!(
-        server.command.is_none(),
-        "Default command should be None"
-    );
+    assert!(server.command.is_none(), "Default command should be None");
 }
 
 #[test]
@@ -328,8 +325,14 @@ KEY2 = "value2"
     let reparsed_server = reparsed.get_server("test").unwrap();
 
     assert_eq!(original_server.env.len(), reparsed_server.env.len());
-    assert_eq!(original_server.env.get("KEY1"), reparsed_server.env.get("KEY1"));
-    assert_eq!(original_server.env.get("KEY2"), reparsed_server.env.get("KEY2"));
+    assert_eq!(
+        original_server.env.get("KEY1"),
+        reparsed_server.env.get("KEY1")
+    );
+    assert_eq!(
+        original_server.env.get("KEY2"),
+        reparsed_server.env.get("KEY2")
+    );
 }
 
 // ============================================================================
@@ -648,10 +651,7 @@ timeout = 86400
 "#;
 
     let result = McpConfig::from_str(config_content);
-    assert!(
-        result.is_ok(),
-        "Very large timeout should be valid"
-    );
+    assert!(result.is_ok(), "Very large timeout should be valid");
 
     let config = result.unwrap();
     let server = config.get_server("test").unwrap();
@@ -680,20 +680,34 @@ JSON_VALUE = '{"key": "value"}'
     let server = config.get_server("test").unwrap();
 
     assert_eq!(server.env.get("EMPTY"), Some(&"".to_string()));
-    assert_eq!(server.env.get("WITH_SPACES"), Some(&"value with spaces".to_string()));
-    assert_eq!(server.env.get("WITH_EQUALS"), Some(&"key=value".to_string()));
-    assert_eq!(server.env.get("WITH_QUOTES"), Some(&"has \"quotes\" inside".to_string()));
-    assert_eq!(server.env.get("JSON_VALUE"), Some(&"{\"key\": \"value\"}".to_string()));
+    assert_eq!(
+        server.env.get("WITH_SPACES"),
+        Some(&"value with spaces".to_string())
+    );
+    assert_eq!(
+        server.env.get("WITH_EQUALS"),
+        Some(&"key=value".to_string())
+    );
+    assert_eq!(
+        server.env.get("WITH_QUOTES"),
+        Some(&"has \"quotes\" inside".to_string())
+    );
+    assert_eq!(
+        server.env.get("JSON_VALUE"),
+        Some(&"{\"key\": \"value\"}".to_string())
+    );
 }
 
 #[test]
 fn test_env_variables_with_many_entries() {
-    let mut config_content = String::from(r#"
+    let mut config_content = String::from(
+        r#"
 [mcp.servers.test]
 type = "test"
 
 [mcp.servers.test.env]
-"#);
+"#,
+    );
 
     for i in 0..50 {
         config_content.push_str(&format!("KEY_{} = \"value_{}\"\n", i, i));

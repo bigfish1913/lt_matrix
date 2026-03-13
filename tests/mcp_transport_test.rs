@@ -13,11 +13,9 @@
 //! - Bidirectional streaming support
 
 use ltmatrix::mcp::{
-    JsonRpcNotification, JsonRpcRequest, JsonRpcResponse, RequestId,
-    Transport, TransportConfig, TransportError, TransportMessage, TransportStats,
-    TransportType, StdioConfig, StdioTransport,
-    FramingError, LineDelimitedFramer, ContentLengthFramer, MessageFramer,
-    OutgoingMessage,
+    ContentLengthFramer, FramingError, JsonRpcNotification, JsonRpcRequest, JsonRpcResponse,
+    LineDelimitedFramer, MessageFramer, OutgoingMessage, RequestId, StdioConfig, StdioTransport,
+    Transport, TransportConfig, TransportError, TransportMessage, TransportStats, TransportType,
 };
 use serde_json::json;
 use std::time::Duration;
@@ -49,7 +47,7 @@ mod transport_config_tests {
             TransportType::Stdio(stdio_config) => {
                 assert_eq!(stdio_config.command, "test-server");
                 assert!(stdio_config.args.is_empty());
-            },
+            }
             _ => panic!("Expected Stdio transport type"),
         }
     }
@@ -58,14 +56,14 @@ mod transport_config_tests {
     fn test_transport_config_stdio_command_with_args() {
         let config = TransportConfig::stdio_command_with_args(
             "test-server",
-            vec!["--port".to_string(), "8080".to_string()]
+            vec!["--port".to_string(), "8080".to_string()],
         );
 
         match config.transport_type {
             TransportType::Stdio(stdio_config) => {
                 assert_eq!(stdio_config.command, "test-server");
                 assert_eq!(stdio_config.args, vec!["--port", "8080"]);
-            },
+            }
             _ => panic!("Expected Stdio transport type"),
         }
     }
@@ -95,7 +93,7 @@ mod transport_config_tests {
         match transport_type {
             TransportType::Stdio(config) => {
                 assert_eq!(config.command, "test-server");
-            },
+            }
             TransportType::WebSocket(_) => {
                 // WebSocket variant exists but is not fully implemented
             }
@@ -144,8 +142,7 @@ mod stdio_config_tests {
 
     #[test]
     fn test_stdio_config_builder_with_args_iter() {
-        let config = StdioConfig::new("server")
-            .with_args(["--headless", "--no-sandbox"]);
+        let config = StdioConfig::new("server").with_args(["--headless", "--no-sandbox"]);
 
         assert_eq!(config.args, vec!["--headless", "--no-sandbox"]);
     }
@@ -157,22 +154,27 @@ mod stdio_config_tests {
             .with_env("LOG_LEVEL", "debug");
 
         assert_eq!(config.env.len(), 2);
-        assert!(config.env.contains(&("DEBUG".to_string(), "true".to_string())));
-        assert!(config.env.contains(&("LOG_LEVEL".to_string(), "debug".to_string())));
+        assert!(config
+            .env
+            .contains(&("DEBUG".to_string(), "true".to_string())));
+        assert!(config
+            .env
+            .contains(&("LOG_LEVEL".to_string(), "debug".to_string())));
     }
 
     #[test]
     fn test_stdio_config_builder_with_working_dir() {
-        let config = StdioConfig::new("server")
-            .with_working_dir("/tmp/test");
+        let config = StdioConfig::new("server").with_working_dir("/tmp/test");
 
-        assert_eq!(config.working_dir, Some(std::path::PathBuf::from("/tmp/test")));
+        assert_eq!(
+            config.working_dir,
+            Some(std::path::PathBuf::from("/tmp/test"))
+        );
     }
 
     #[test]
     fn test_stdio_config_builder_inherit_env() {
-        let config = StdioConfig::new("server")
-            .with_inherit_env(false);
+        let config = StdioConfig::new("server").with_inherit_env(false);
 
         assert!(!config.inherit_env);
     }
@@ -333,10 +335,7 @@ mod transport_message_tests {
 
     #[test]
     fn test_transport_message_response_classification() {
-        let response = JsonRpcResponse::success(
-            RequestId::Number(1),
-            json!({"status": "ok"}),
-        );
+        let response = JsonRpcResponse::success(RequestId::Number(1), json!({"status": "ok"}));
         let message = TransportMessage::Response(response);
 
         assert!(message.is_response());
@@ -365,10 +364,7 @@ mod transport_message_tests {
 
     #[test]
     fn test_transport_message_as_response() {
-        let response = JsonRpcResponse::success(
-            RequestId::Number(1),
-            json!({"result": "success"}),
-        );
+        let response = JsonRpcResponse::success(RequestId::Number(1), json!({"result": "success"}));
         let message = TransportMessage::Response(response.clone());
 
         let extracted = message.as_response();
@@ -400,9 +396,8 @@ mod transport_message_tests {
         let message = TransportMessage::Error(TransportError::ConnectionClosed);
         assert!(message.as_notification().is_none());
 
-        let response = TransportMessage::Response(
-            JsonRpcResponse::success(RequestId::Number(1), json!({}))
-        );
+        let response =
+            TransportMessage::Response(JsonRpcResponse::success(RequestId::Number(1), json!({})));
         assert!(response.as_notification().is_none());
     }
 }
@@ -549,7 +544,7 @@ mod line_delimited_framer_tests {
 
         assert!(framed.starts_with(b"Hello World"));
         assert!(framed.ends_with(b"\n"));
-        assert_eq!(&framed[..framed.len()-1], b"Hello World");
+        assert_eq!(&framed[..framed.len() - 1], b"Hello World");
     }
 
     #[test]
@@ -937,7 +932,7 @@ mod outgoing_message_tests {
         match parsed {
             OutgoingMessage::Request(req) => {
                 assert_eq!(req.method, "initialize");
-            },
+            }
             _ => panic!("Expected Request variant"),
         }
     }
@@ -970,10 +965,8 @@ mod stdio_transport_tests {
 
     #[tokio::test]
     async fn test_stdio_transport_with_config() {
-        let stdio_config = StdioConfig::new("test-server")
-            .with_arg("--verbose");
-        let transport_config = TransportConfig::default()
-            .with_debug_logging(true);
+        let stdio_config = StdioConfig::new("test-server").with_arg("--verbose");
+        let transport_config = TransportConfig::default().with_debug_logging(true);
 
         let transport = StdioTransport::with_config(stdio_config, transport_config);
 
@@ -1081,10 +1074,7 @@ mod json_rpc_framing_tests {
     fn test_line_framer_with_json_rpc_response() {
         let framer = LineDelimitedFramer::new();
 
-        let response = JsonRpcResponse::success(
-            RequestId::Number(1),
-            json!({"status": "ok"}),
-        );
+        let response = JsonRpcResponse::success(RequestId::Number(1), json!({"status": "ok"}));
         let json = response.to_json().unwrap();
 
         // Frame and parse
@@ -1156,9 +1146,18 @@ mod json_rpc_framing_tests {
         let mut framer2 = LineDelimitedFramer::new();
         framer2.feed_data(&data);
 
-        assert_eq!(framer2.next_message().unwrap(), request.to_json().unwrap().as_bytes());
-        assert_eq!(framer2.next_message().unwrap(), notification.to_json().unwrap().as_bytes());
-        assert_eq!(framer2.next_message().unwrap(), response.to_json().unwrap().as_bytes());
+        assert_eq!(
+            framer2.next_message().unwrap(),
+            request.to_json().unwrap().as_bytes()
+        );
+        assert_eq!(
+            framer2.next_message().unwrap(),
+            notification.to_json().unwrap().as_bytes()
+        );
+        assert_eq!(
+            framer2.next_message().unwrap(),
+            response.to_json().unwrap().as_bytes()
+        );
         assert!(framer2.next_message().is_none());
     }
 }
@@ -1227,7 +1226,11 @@ mod edge_case_tests {
         let mut framer = ContentLengthFramer::new();
 
         let unicode_msg = "你好世界 🌍";
-        let data = format!("Content-Length: {}\r\n\r\n{}", unicode_msg.len(), unicode_msg);
+        let data = format!(
+            "Content-Length: {}\r\n\r\n{}",
+            unicode_msg.len(),
+            unicode_msg
+        );
 
         framer.feed_data(data.as_bytes());
 
@@ -1239,10 +1242,7 @@ mod edge_case_tests {
 
     #[test]
     fn test_transport_message_clone() {
-        let response = JsonRpcResponse::success(
-            RequestId::Number(1),
-            json!({"test": "value"}),
-        );
+        let response = JsonRpcResponse::success(RequestId::Number(1), json!({"test": "value"}));
         let message = TransportMessage::Response(response);
 
         let cloned = message.clone();

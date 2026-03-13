@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Project memory management
 //!
 //! This module handles persistent memory storage and retrieval for architectural decisions,
@@ -65,27 +64,19 @@ pub mod run_memory;
 pub mod store;
 
 // Re-export main types for convenience
+pub use extractor::{extract_files_affected, extract_memory_from_task, extract_task_summary};
 pub use memory::{
-    MemoryEntry, MemoryStore, MemoryCategory, MemoryPriority,
-    CodeSnippet, MemoryEntryBuilder,
-};
-pub use extractor::{
-    extract_memory_from_task, extract_task_summary,
-    extract_files_affected,
-};
-pub use store::{
-    MemoryIntegration,
-    format_memory_for_prompt,
-    should_inject_memory,
-    calculate_max_memory_size,
-    truncate_memory_context,
+    CodeSnippet, MemoryCategory, MemoryEntry, MemoryEntryBuilder, MemoryPriority, MemoryStore,
 };
 pub use project::{
-    ProjectMemory, ProjectStructure, TechStack, CodingConventions,
-    CompletedTask, ArchitectureDecision, get_project_memory_path,
+    get_project_memory_path, ArchitectureDecision, CodingConventions, CompletedTask, ProjectMemory,
+    ProjectStructure, TechStack,
 };
 pub use run_memory::{
-    RunMemory, RunStatus, AgentSessionInfo, ContextDecision,
-    TaskExecutionRecord, SessionStats,
-    get_run_memory_path, get_current_run_memory_path, cleanup_old_run_memories,
+    cleanup_old_run_memories, get_current_run_memory_path, get_run_memory_path, AgentSessionInfo,
+    ContextDecision, RunMemory, RunStatus, SessionStats, TaskExecutionRecord,
+};
+pub use store::{
+    calculate_max_memory_size, format_memory_for_prompt, should_inject_memory,
+    truncate_memory_context, MemoryIntegration,
 };

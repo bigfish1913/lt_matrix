@@ -3,13 +3,13 @@
 //! This test suite covers edge cases, boundary conditions, and stress scenarios
 //! for the telemetry implementation.
 
+use ltmatrix::models::{ExecutionMode, Task, TaskStatus};
 use ltmatrix::telemetry::{
     collector::TelemetryCollector,
     config::TelemetryConfig,
     event::{ErrorCategory, SessionId, TelemetryEvent},
     sender::TelemetrySender,
 };
-use ltmatrix::models::{ExecutionMode, Task, TaskStatus};
 use std::time::Duration;
 use uuid::Uuid;
 
@@ -30,9 +30,7 @@ mod buffer_management_tests {
 
         // Add 20 events (buffer size is 5)
         for i in 0..20 {
-            collector
-                .record_error(&format!("Error number {}", i))
-                .await;
+            collector.record_error(&format!("Error number {}", i)).await;
         }
 
         // Should only have 5 events
@@ -55,7 +53,9 @@ mod buffer_management_tests {
         let collector = TelemetryCollector::new(config, session_id);
 
         // Add mixed event types
-        collector.record_session_start("1.0.0", "linux", "x86_64").await;
+        collector
+            .record_session_start("1.0.0", "linux", "x86_64")
+            .await;
         collector.record_error("Error 1").await;
         collector
             .record_pipeline_complete(
@@ -84,10 +84,7 @@ mod buffer_management_tests {
             })
             .collect();
 
-        assert_eq!(
-            event_types,
-            vec!["error", "pipeline_complete", "error"]
-        );
+        assert_eq!(event_types, vec!["error", "pipeline_complete", "error"]);
     }
 
     /// Test rapid event collection
@@ -126,9 +123,7 @@ mod buffer_management_tests {
                 let collector = collector.clone();
                 tokio::spawn(async move {
                     for j in 0..100 {
-                        collector
-                            .record_error(&format!("Error {}-{}", i, j))
-                            .await;
+                        collector.record_error(&format!("Error {}-{}", i, j)).await;
                     }
                 })
             })
@@ -324,7 +319,9 @@ mod session_id_tests {
         let collector = TelemetryCollector::new(config, session_id);
 
         // Record multiple events
-        collector.record_session_start("1.0.0", "linux", "x86_64").await;
+        collector
+            .record_session_start("1.0.0", "linux", "x86_64")
+            .await;
         collector.record_error("Error 1").await;
         collector
             .record_pipeline_complete(
@@ -413,7 +410,10 @@ mod configuration_edge_cases {
     #[test]
     fn test_endpoint_with_special_characters() {
         let endpoint = "https://example.com:8080/path/to/endPoint?query=value&other=123#fragment";
-        let config = TelemetryConfig::builder().enabled().endpoint(endpoint).build();
+        let config = TelemetryConfig::builder()
+            .enabled()
+            .endpoint(endpoint)
+            .build();
 
         assert_eq!(config.endpoint, endpoint);
     }
@@ -494,8 +494,7 @@ mod serialization_edge_cases {
         };
 
         let toml = toml::to_string(&config).expect("Failed to serialize");
-        let parsed: TelemetryConfig =
-            toml::from_str(&toml).expect("Failed to deserialize");
+        let parsed: TelemetryConfig = toml::from_str(&toml).expect("Failed to deserialize");
 
         assert_eq!(config.enabled, parsed.enabled);
         assert_eq!(config.endpoint, parsed.endpoint);
@@ -518,7 +517,9 @@ mod disabled_state_tests {
         let collector = TelemetryCollector::new(config, session_id);
 
         // All these should do nothing
-        collector.record_session_start("1.0.0", "linux", "x86_64").await;
+        collector
+            .record_session_start("1.0.0", "linux", "x86_64")
+            .await;
         collector
             .record_pipeline_complete(
                 ExecutionMode::Expert,
@@ -566,11 +567,13 @@ mod disabled_state_tests {
 /// Helper function to create test tasks
 fn create_test_tasks(count: usize) -> Vec<Task> {
     (0..count)
-        .map(|i| Task::new(
-            format!("task-{}", i),
-            format!("Test task {}", i),
-            format!("Description for task {}", i),
-        ))
+        .map(|i| {
+            Task::new(
+                format!("task-{}", i),
+                format!("Test task {}", i),
+                format!("Description for task {}", i),
+            )
+        })
         .collect()
 }
 
@@ -601,18 +604,18 @@ mod stress_tests {
     /// Test event collection with large task counts
     #[tokio::test]
     async fn test_large_task_counts() {
-        let collector = TelemetryCollector::new(
-            TelemetryConfig::builder().enabled().build(),
-            Uuid::new_v4(),
-        );
+        let collector =
+            TelemetryCollector::new(TelemetryConfig::builder().enabled().build(), Uuid::new_v4());
 
         // Create a pipeline with 1000 tasks
         let tasks: Vec<Task> = (0..1000)
-            .map(|i| Task::new(
-                format!("task-{:04}", i),
-                format!("Task {}", i),
-                format!("Description {}", i),
-            ))
+            .map(|i| {
+                Task::new(
+                    format!("task-{:04}", i),
+                    format!("Task {}", i),
+                    format!("Description {}", i),
+                )
+            })
             .collect();
 
         collector
@@ -657,8 +660,12 @@ mod stress_tests {
 
         // Add events and flush multiple times
         for cycle in 0..10 {
-            collector.record_session_start("1.0.0", "linux", "x86_64").await;
-            collector.record_error(&format!("Cycle {} error", cycle)).await;
+            collector
+                .record_session_start("1.0.0", "linux", "x86_64")
+                .await;
+            collector
+                .record_error(&format!("Cycle {} error", cycle))
+                .await;
 
             assert!(collector.should_flush().await);
 

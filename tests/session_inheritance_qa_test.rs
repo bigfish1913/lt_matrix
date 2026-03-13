@@ -4,10 +4,10 @@
 //! and boundary conditions for the session inheritance feature beyond the basic
 //! functionality tests in session_inheritance_test.rs.
 
-use ltmatrix::agent::pool::SessionPool;
 use ltmatrix::agent::backend::MemorySession;
+use ltmatrix::agent::pool::SessionPool;
 use ltmatrix::agent::AgentSession;
-use ltmatrix::models::{Task, TaskStatus, TaskComplexity};
+use ltmatrix::models::{Task, TaskComplexity, TaskStatus};
 
 // ============================================================================
 // Edge Cases - Boundary Conditions
@@ -25,7 +25,10 @@ fn qa_inheritance_with_empty_parent_session_id() {
     let session = pool.get_or_create_for_task(&mut child_task);
 
     assert!(child_task.has_session());
-    assert!(child_task.get_parent_session_id().is_none() || child_task.get_parent_session_id() == Some(""));
+    assert!(
+        child_task.get_parent_session_id().is_none()
+            || child_task.get_parent_session_id() == Some("")
+    );
     assert!(!session.session_id().is_empty());
 }
 
@@ -82,7 +85,10 @@ fn qa_inheritance_with_special_characters_in_session_id() {
     let child_session = pool.get_or_create_for_task(&mut child_task);
 
     assert_eq!(child_session.session_id(), special_session.session_id);
-    assert_eq!(child_task.get_session_id(), Some(special_session.session_id.as_str()));
+    assert_eq!(
+        child_task.get_session_id(),
+        Some(special_session.session_id.as_str())
+    );
 }
 
 // ============================================================================
@@ -107,8 +113,14 @@ fn qa_inheritance_with_stale_parent_session_creates_new() {
 
     // Should create new session, not inherit stale one
     assert_ne!(child_session.session_id(), stale_session_id);
-    assert!(child_task.get_parent_session_id().is_none(), "Parent session ID should be cleared when stale");
-    assert_eq!(child_task.get_session_id(), Some(child_session.session_id()));
+    assert!(
+        child_task.get_parent_session_id().is_none(),
+        "Parent session ID should be cleared when stale"
+    );
+    assert_eq!(
+        child_task.get_session_id(),
+        Some(child_session.session_id())
+    );
 }
 
 #[test]
@@ -134,8 +146,11 @@ fn qa_inheritance_with_exactly_one_hour_old_session() {
     // At exactly 1 hour (3600 seconds), the session is NOT considered stale
     // because the staleness check is > 3600, not >= 3600
     // Therefore, the child should inherit the parent session
-    assert_eq!(child_task.get_session_id(), Some(parent_session_id.as_str()),
-               "Exactly 1-hour-old session should be inherited (not stale yet)");
+    assert_eq!(
+        child_task.get_session_id(),
+        Some(parent_session_id.as_str()),
+        "Exactly 1-hour-old session should be inherited (not stale yet)"
+    );
 }
 
 #[test]
@@ -341,7 +356,11 @@ fn qa_inheritance_with_different_task_complexities() {
     let mut pool = SessionPool::new();
 
     // Test inheritance works regardless of task complexity
-    for complexity in &[TaskComplexity::Simple, TaskComplexity::Moderate, TaskComplexity::Complex] {
+    for complexity in &[
+        TaskComplexity::Simple,
+        TaskComplexity::Moderate,
+        TaskComplexity::Complex,
+    ] {
         let mut parent = Task::new("parent", "Parent", "Parent task");
         parent.complexity = complexity.clone();
         let parent_session = pool.get_or_create_for_task(&mut parent);
@@ -372,10 +391,14 @@ fn qa_inheritance_with_task_serialization_roundtrip() {
 
     // Serialize and deserialize
     let json = serde_json::to_string(&child).expect("Serialization should succeed");
-    let mut deserialized: Task = serde_json::from_str(&json).expect("Deserialization should succeed");
+    let mut deserialized: Task =
+        serde_json::from_str(&json).expect("Deserialization should succeed");
 
     // Deserialized task should preserve parent_session_id
-    assert_eq!(deserialized.get_parent_session_id(), Some(parent_session_id.as_str()));
+    assert_eq!(
+        deserialized.get_parent_session_id(),
+        Some(parent_session_id.as_str())
+    );
 
     // Deserialized task should be able to inherit session
     let child_session = pool.get_or_create_for_task(&mut deserialized);
@@ -398,7 +421,10 @@ fn qa_inheritance_with_task_cloning() {
     let mut child2 = child1.clone();
 
     // Both clones should have the same parent_session_id
-    assert_eq!(child1.get_parent_session_id(), child2.get_parent_session_id());
+    assert_eq!(
+        child1.get_parent_session_id(),
+        child2.get_parent_session_id()
+    );
 
     // Both should be able to inherit the session
     pool.get_or_create_for_task(&mut child1);
@@ -424,7 +450,11 @@ fn qa_inheritance_performance_with_many_tasks() {
     // Create many child tasks that inherit from parent
     let num_children = 100;
     for i in 0..num_children {
-        let mut child = Task::new(&format!("child-{}", i), &format!("Child {}", i), "Child task");
+        let mut child = Task::new(
+            &format!("child-{}", i),
+            &format!("Child {}", i),
+            "Child task",
+        );
         child.set_parent_session_id(&parent_session_id);
         pool.get_or_create_for_task(&mut child);
     }
@@ -447,7 +477,11 @@ fn qa_inheritance_with_rapid_succession_access() {
     // Rapidly create child tasks in succession
     let mut session_ids = Vec::new();
     for i in 0..10 {
-        let mut child = Task::new(&format!("child-{}", i), &format!("Child {}", i), "Child task");
+        let mut child = Task::new(
+            &format!("child-{}", i),
+            &format!("Child {}", i),
+            "Child task",
+        );
         child.set_parent_session_id(&parent_session_id);
         let session = pool.get_or_create_for_task(&mut child);
         session_ids.push(session.session_id().to_string());

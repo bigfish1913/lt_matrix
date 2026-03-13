@@ -18,7 +18,10 @@ fn warmup_config_has_enabled_field() {
     let config = WarmupConfig::default();
 
     // Should have enabled field defaulting to false (warmup disabled by default)
-    assert_eq!(config.enabled, false, "Warmup should be disabled by default");
+    assert_eq!(
+        config.enabled, false,
+        "Warmup should be disabled by default"
+    );
 }
 
 #[test]
@@ -26,10 +29,7 @@ fn warmup_config_has_max_queries_field() {
     let config = WarmupConfig::default();
 
     // Should have max_queries field with reasonable default
-    assert_eq!(
-        config.max_queries, 3,
-        "Default max_queries should be 3"
-    );
+    assert_eq!(config.max_queries, 3, "Default max_queries should be 3");
 }
 
 #[test]
@@ -100,8 +100,7 @@ fn warmup_config_serializes_to_toml() {
     };
 
     // Should serialize to TOML without error
-    let toml_string = toml::to_string(&config)
-        .expect("WarmupConfig should serialize to TOML");
+    let toml_string = toml::to_string(&config).expect("WarmupConfig should serialize to TOML");
 
     assert!(toml_string.contains("enabled"));
     assert!(toml_string.contains("max_queries"));
@@ -119,8 +118,7 @@ fn warmup_config_deserializes_from_toml() {
         prompt_template = "Custom warmup prompt"
     "#;
 
-    let config: WarmupConfig = toml::from_str(toml_str)
-        .expect("Should deserialize from TOML");
+    let config: WarmupConfig = toml::from_str(toml_str).expect("Should deserialize from TOML");
 
     assert_eq!(config.enabled, true);
     assert_eq!(config.max_queries, 4);
@@ -149,14 +147,8 @@ fn warmup_config_roundtrip_serialization() {
     assert_eq!(original.enabled, deserialized.enabled);
     assert_eq!(original.max_queries, deserialized.max_queries);
     assert_eq!(original.timeout_seconds, deserialized.timeout_seconds);
-    assert_eq!(
-        original.retry_on_failure,
-        deserialized.retry_on_failure
-    );
-    assert_eq!(
-        original.prompt_template,
-        deserialized.prompt_template
-    );
+    assert_eq!(original.retry_on_failure, deserialized.retry_on_failure);
+    assert_eq!(original.prompt_template, deserialized.prompt_template);
 }
 
 // ============================================================================
@@ -168,10 +160,7 @@ fn warmup_config_validates_max_queries_positive() {
     let config = WarmupConfig::default();
 
     // max_queries should be validated to be > 0
-    assert!(
-        config.max_queries > 0,
-        "max_queries must be positive"
-    );
+    assert!(config.max_queries > 0, "max_queries must be positive");
 }
 
 #[test]
@@ -195,7 +184,10 @@ fn warmup_config_custom_values_validation() {
         prompt_template: None,
     };
 
-    assert!(config.validate().is_ok(), "Valid warmup config should pass validation");
+    assert!(
+        config.validate().is_ok(),
+        "Valid warmup config should pass validation"
+    );
 }
 
 // ============================================================================
@@ -217,8 +209,7 @@ fn config_has_warmup_field() {
 fn config_serialization_includes_warmup() {
     let config = Config::default();
 
-    let toml_string = toml::to_string(&config)
-        .expect("Config should serialize to TOML");
+    let toml_string = toml::to_string(&config).expect("Config should serialize to TOML");
 
     // Serialized TOML should include warmup section
     assert!(
@@ -237,8 +228,8 @@ fn config_deserialization_includes_warmup() {
         retry_on_failure = true
     "#;
 
-    let config: Config = toml::from_str(toml_str)
-        .expect("Should deserialize config with warmup section");
+    let config: Config =
+        toml::from_str(toml_str).expect("Should deserialize config with warmup section");
 
     assert_eq!(config.warmup.enabled, true);
     assert_eq!(config.warmup.max_queries, 5);

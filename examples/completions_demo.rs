@@ -79,7 +79,9 @@ fn main() {
     println!("Usage Examples:");
     println!();
     println!("1. Generate completion for Bash:");
-    println!("   $ ltmatrix completions bash > ~/.local/share/bash-completion/completions/ltmatrix");
+    println!(
+        "   $ ltmatrix completions bash > ~/.local/share/bash-completion/completions/ltmatrix"
+    );
     println!();
     println!("2. Generate completion with installation instructions:");
     println!("   $ ltmatrix completions zsh --install");

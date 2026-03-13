@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Plugin traits and types
 //!
 //! This module defines the core traits and types for the plugin system.
@@ -301,11 +300,7 @@ fn default_timeout() -> u64 {
 
 impl CustomStageConfig {
     /// Create a new custom stage configuration
-    pub fn new(
-        id: impl Into<String>,
-        name: impl Into<String>,
-        position: StagePosition,
-    ) -> Self {
+    pub fn new(id: impl Into<String>, name: impl Into<String>, position: StagePosition) -> Self {
         Self {
             id: id.into(),
             name: name.into(),
@@ -397,9 +392,14 @@ mod tests {
 
     #[test]
     fn test_plugin_metadata_creation() {
-        let meta = PluginMetadata::new("test-plugin", "Test Plugin", "1.0.0", PluginType::PipelineStage)
-            .with_description("A test plugin")
-            .with_author("Test Author");
+        let meta = PluginMetadata::new(
+            "test-plugin",
+            "Test Plugin",
+            "1.0.0",
+            PluginType::PipelineStage,
+        )
+        .with_description("A test plugin")
+        .with_author("Test Author");
 
         assert_eq!(meta.id, "test-plugin");
         assert_eq!(meta.name, "Test Plugin");
@@ -541,8 +541,8 @@ mod tests {
 
     #[test]
     fn test_stage_result_success() {
-        let result = StageResult::success(vec![])
-            .with_metric("count".to_string(), serde_json::json!(42));
+        let result =
+            StageResult::success(vec![]).with_metric("count".to_string(), serde_json::json!(42));
 
         assert!(result.success);
         assert!(result.error.is_none());
@@ -636,8 +636,7 @@ mod tests {
 
     #[test]
     fn test_custom_stage_config_with_enabled() {
-        let config = CustomStageConfig::new("id", "name", StagePosition::First)
-            .with_enabled(false);
+        let config = CustomStageConfig::new("id", "name", StagePosition::First).with_enabled(false);
 
         assert!(!config.enabled);
     }

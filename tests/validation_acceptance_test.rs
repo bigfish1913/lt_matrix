@@ -83,7 +83,10 @@ fn test_goal_validation_enforces_minimum_length() {
 
     // Empty string should fail (0 characters)
     let result = validate_goal("");
-    assert!(result.is_err(), "Empty goal should fail minimum length check");
+    assert!(
+        result.is_err(),
+        "Empty goal should fail minimum length check"
+    );
 }
 
 #[test]
@@ -103,7 +106,10 @@ fn test_goal_validation_enforces_maximum_length() {
     // Goal exceeding maximum should fail
     let too_long_goal = "a".repeat(MAX_GOAL_LENGTH + 1);
     let result = validate_goal(&too_long_goal);
-    assert!(result.is_err(), "Goal exceeding maximum length should be rejected");
+    assert!(
+        result.is_err(),
+        "Goal exceeding maximum length should be rejected"
+    );
 
     // Verify error message is clear about the limit
     let error_msg = result.unwrap_err().to_string();
@@ -176,15 +182,7 @@ fn test_task_id_format_accepts_valid_patterns() {
 fn test_task_id_format_rejects_invalid_patterns() {
     // Verify that invalid task ID patterns are rejected
     let invalid_ids = vec![
-        "",
-        "task",
-        "Task-1",
-        "task_1",
-        "task-",
-        "task-1-",
-        "task--1",
-        "1-task",
-        "task-abc",
+        "", "task", "Task-1", "task_1", "task-", "task-1-", "task--1", "1-task", "task-abc",
         "task-1a",
     ];
 
@@ -473,10 +471,7 @@ fn test_file_permissions_validates_read_access() {
 
     // Directory should be readable
     let result = validate_file_permissions(temp_dir.path(), false);
-    assert!(
-        result.is_ok(),
-        "Readable directory should pass validation"
-    );
+    assert!(result.is_ok(), "Readable directory should pass validation");
 
     // File should be readable
     let file_path = temp_dir.path().join("test.txt");
@@ -492,10 +487,7 @@ fn test_file_permissions_validates_write_access() {
 
     // Directory should be writable
     let result = validate_file_permissions(temp_dir.path(), true);
-    assert!(
-        result.is_ok(),
-        "Writable directory should pass validation"
-    );
+    assert!(result.is_ok(), "Writable directory should pass validation");
 
     // File should be writable
     let file_path = temp_dir.path().join("test.txt");
@@ -527,7 +519,10 @@ fn test_file_permissions_cleans_up_test_files() {
     let temp_dir = TempDir::new().unwrap();
     let test_file = temp_dir.path().join(".ltmatrix_permission_test");
 
-    assert!(!test_file.exists(), "Test file should not exist before validation");
+    assert!(
+        !test_file.exists(),
+        "Test file should not exist before validation"
+    );
 
     validate_file_permissions(temp_dir.path(), true).unwrap();
 
@@ -682,7 +677,10 @@ fn test_validation_catches_all_invalid_inputs() {
 
     // Invalid goal
     assert!(validate_goal("").is_err(), "Empty goal should be rejected");
-    assert!(validate_goal("!!!").is_err(), "Non-alphanumeric goal should be rejected");
+    assert!(
+        validate_goal("!!!").is_err(),
+        "Non-alphanumeric goal should be rejected"
+    );
 
     // Invalid task ID
     assert!(
@@ -772,7 +770,9 @@ fn test_validation_does_not_have_side_effects() {
         .collect();
 
     assert!(
-        !entries.iter().any(|n| n.to_string_lossy().contains("permission_test")),
+        !entries
+            .iter()
+            .any(|n| n.to_string_lossy().contains("permission_test")),
         "Validation should clean up test files"
     );
 }

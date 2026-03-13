@@ -1,9 +1,7 @@
 //! Tests for the execute stage
 
 use ltmatrix::models::{Task, TaskComplexity};
-use ltmatrix::pipeline::execute::{
-    build_execution_prompt, build_task_context, get_execution_order, ExecuteConfig,
-};
+use ltmatrix::pipeline::execute::{build_execution_prompt, build_task_context, ExecuteConfig};
 use std::collections::{HashMap, HashSet};
 
 #[test]
@@ -56,55 +54,6 @@ fn test_build_task_context_with_dependencies() {
 
     assert!(context.contains("Dependencies"));
     assert!(context.contains("- Setup (completed)"));
-}
-
-#[test]
-fn test_execution_order_preserves_dependencies() {
-    let task1 = Task::new("task-1", "First", "First task");
-    let mut task2 = Task::new("task-2", "Second", "Second task");
-    let mut task3 = Task::new("task-3", "Third", "Third task");
-
-    task2.depends_on = vec!["task-1".to_string()];
-    task3.depends_on = vec!["task-2".to_string()];
-
-    let task_map: HashMap<String, Task> = [
-        (task1.id.clone(), task1),
-        (task2.id.clone(), task2),
-        (task3.id.clone(), task3),
-    ]
-    .into_iter()
-    .collect();
-
-    let order = get_execution_order(&task_map).unwrap();
-
-    assert_eq!(order, vec!["task-1", "task-2", "task-3"]);
-}
-
-#[test]
-fn test_execution_order_with_parallel_tasks() {
-    let task1 = Task::new("task-1", "Setup", "Setup project");
-    let mut task2 = Task::new("task-2", "Feature A", "First feature");
-    let mut task3 = Task::new("task-3", "Feature B", "Second feature");
-
-    task2.depends_on = vec!["task-1".to_string()];
-    task3.depends_on = vec!["task-1".to_string()];
-
-    let task_map: HashMap<String, Task> = [
-        (task1.id.clone(), task1),
-        (task2.id.clone(), task2),
-        (task3.id.clone(), task3),
-    ]
-    .into_iter()
-    .collect();
-
-    let order = get_execution_order(&task_map).unwrap();
-
-    // task-1 must come first
-    assert_eq!(order[0], "task-1");
-
-    // task-2 and task-3 can come in any order after task-1
-    assert!(order.contains(&"task-2".to_string()));
-    assert!(order.contains(&"task-3".to_string()));
 }
 
 #[test]
@@ -163,7 +112,7 @@ fn test_execution_statistics_initialization() {
 }
 
 #[test]
-fn test_task_complexity_integration() {
+fn test_task_complexity_preservation() {
     let mut simple_task = Task::new("simple-1", "Simple Task", "Easy implementation");
     let mut moderate_task = Task::new("moderate-1", "Moderate Task", "Medium complexity");
     let mut complex_task = Task::new("complex-1", "Complex Task", "Hard implementation");
@@ -179,9 +128,6 @@ fn test_task_complexity_integration() {
     ]
     .into_iter()
     .collect();
-
-    let order = get_execution_order(&task_map).unwrap();
-    assert_eq!(order.len(), 3);
 
     // Test that complexity is preserved in the task map
     let retrieved_simple = task_map.get("simple-1").unwrap();

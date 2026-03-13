@@ -120,7 +120,9 @@ async fn agentpool_handles_concurrent_session_creation() {
         let pool_clone = Arc::clone(&pool);
         join_set.spawn(async move {
             let mut task = Task::new(&format!("task-{}", i), "Test", "Description");
-            pool_clone.get_or_create_session_for_task(&mut task, "claude", "claude-sonnet-4-6").await
+            pool_clone
+                .get_or_create_session_for_task(&mut task, "claude", "claude-sonnet-4-6")
+                .await
         });
     }
 
@@ -134,7 +136,10 @@ async fn agentpool_handles_concurrent_session_creation() {
 
     // Should have reused sessions (not created 10 unique ones)
     let stats = pool.stats().await;
-    assert!(stats.active_sessions < 10, "Should reuse sessions concurrently");
+    assert!(
+        stats.active_sessions < 10,
+        "Should reuse sessions concurrently"
+    );
 }
 
 #[tokio::test]
@@ -157,7 +162,9 @@ async fn agentpool_concurrent_access_with_different_agents() {
 
         join_set.spawn(async move {
             let mut task = Task::new(&format!("task-{}", idx), "Test", "Description");
-            pool_clone.get_or_create_session_for_task(&mut task, &agent, &model).await
+            pool_clone
+                .get_or_create_session_for_task(&mut task, &agent, &model)
+                .await
         });
     }
 
@@ -171,7 +178,10 @@ async fn agentpool_concurrent_access_with_different_agents() {
 
     // Should have sessions for different agent/model pairs
     let stats = pool.stats().await;
-    assert!(stats.active_sessions >= 3, "Should have sessions for different agents");
+    assert!(
+        stats.active_sessions >= 3,
+        "Should have sessions for different agents"
+    );
 }
 
 // ============================================================================
@@ -199,7 +209,9 @@ async fn agentpool_auto_cleanup_removes_stale_sessions() {
     // Create some sessions
     for i in 0..5 {
         let mut task = Task::new(&format!("task-{}", i), "Test", "Description");
-        let _session_id = pool.get_or_create_session_for_task(&mut task, "claude", "claude-sonnet-4-6").await;
+        let _session_id = pool
+            .get_or_create_session_for_task(&mut task, "claude", "claude-sonnet-4-6")
+            .await;
     }
 
     let stats_before = pool.stats().await;
@@ -215,7 +227,10 @@ async fn agentpool_auto_cleanup_removes_stale_sessions() {
     let stats_after = pool.stats().await;
     // With fresh sessions, removed should be 0 and all sessions should remain
     assert_eq!(removed, 0, "Fresh sessions should not be removed");
-    assert_eq!(stats_after.active_sessions, stats_before.active_sessions, "Fresh sessions should remain");
+    assert_eq!(
+        stats_after.active_sessions, stats_before.active_sessions,
+        "Fresh sessions should remain"
+    );
 }
 
 #[tokio::test]
@@ -226,7 +241,9 @@ async fn agentpool_manual_cleanup() {
     // Create sessions for the same agent/model (will reuse session)
     for i in 0..3 {
         let mut task = Task::new(&format!("task-{}", i), "Test", "Description");
-        let _session_id = pool.get_or_create_session_for_task(&mut task, "claude", "claude-sonnet-4-6").await;
+        let _session_id = pool
+            .get_or_create_session_for_task(&mut task, "claude", "claude-sonnet-4-6")
+            .await;
     }
 
     let stats_before = pool.stats().await;
@@ -238,7 +255,10 @@ async fn agentpool_manual_cleanup() {
 
     let stats_after = pool.stats().await;
     assert_eq!(removed, 0, "No stale sessions to remove");
-    assert_eq!(stats_after.active_sessions, stats_before.active_sessions, "Session should remain");
+    assert_eq!(
+        stats_after.active_sessions, stats_before.active_sessions,
+        "Session should remain"
+    );
 }
 
 // ============================================================================
@@ -262,14 +282,21 @@ async fn agentpool_reuses_sessions_for_same_agent() {
 
     // Create first task
     let mut task1 = Task::new("task-1", "Test", "Description");
-    let session_id1 = pool.get_or_create_session_for_task(&mut task1, "claude", "claude-sonnet-4-6").await;
+    let session_id1 = pool
+        .get_or_create_session_for_task(&mut task1, "claude", "claude-sonnet-4-6")
+        .await;
 
     // Create second task with same agent/model
     let mut task2 = Task::new("task-2", "Test", "Description");
-    let session_id2 = pool.get_or_create_session_for_task(&mut task2, "claude", "claude-sonnet-4-6").await;
+    let session_id2 = pool
+        .get_or_create_session_for_task(&mut task2, "claude", "claude-sonnet-4-6")
+        .await;
 
     // Should reuse session
-    assert_eq!(session_id1, session_id2, "Should reuse session for same agent/model");
+    assert_eq!(
+        session_id1, session_id2,
+        "Should reuse session for same agent/model"
+    );
 
     let stats = pool.stats().await;
     assert_eq!(stats.active_sessions, 1, "Should only have one session");
@@ -292,10 +319,14 @@ async fn agentpool_no_reuse_when_disabled() {
 
     // Create two tasks
     let mut task1 = Task::new("task-1", "Test", "Description");
-    let session_id1 = pool.get_or_create_session_for_task(&mut task1, "claude", "claude-sonnet-4-6").await;
+    let session_id1 = pool
+        .get_or_create_session_for_task(&mut task1, "claude", "claude-sonnet-4-6")
+        .await;
 
     let mut task2 = Task::new("task-2", "Test", "Description");
-    let session_id2 = pool.get_or_create_session_for_task(&mut task2, "claude", "claude-sonnet-4-6").await;
+    let session_id2 = pool
+        .get_or_create_session_for_task(&mut task2, "claude", "claude-sonnet-4-6")
+        .await;
 
     // Should create separate sessions (or not reuse based on policy)
     let stats = pool.stats().await;
@@ -320,7 +351,9 @@ async fn agentpool_provides_accurate_stats() {
 
     // Create a session
     let mut task = Task::new("task-1", "Test", "Description");
-    let _session_id = pool.get_or_create_session_for_task(&mut task, "claude", "claude-sonnet-4-6").await;
+    let _session_id = pool
+        .get_or_create_session_for_task(&mut task, "claude", "claude-sonnet-4-6")
+        .await;
 
     let after_stats = pool.stats().await;
     assert_eq!(after_stats.active_sessions, 1);
@@ -340,7 +373,9 @@ async fn agentpool_integration_with_task_execution() {
     task.status = TaskStatus::Pending;
 
     // Get session for task
-    let session_id = pool.get_or_create_session_for_task(&mut task, "claude", "claude-sonnet-4-6").await;
+    let session_id = pool
+        .get_or_create_session_for_task(&mut task, "claude", "claude-sonnet-4-6")
+        .await;
 
     // Task should have session_id assigned
     assert_eq!(task.get_session_id(), Some(session_id.as_str()));
@@ -358,14 +393,21 @@ async fn agentpool_handles_retry_scenarios() {
     task.status = TaskStatus::Pending;
 
     // First execution - get session
-    let session_id1 = pool.get_or_create_session_for_task(&mut task, "claude", "claude-sonnet-4-6").await;
+    let session_id1 = pool
+        .get_or_create_session_for_task(&mut task, "claude", "claude-sonnet-4-6")
+        .await;
 
     // Simulate task failure and retry
     task.status = TaskStatus::Failed;
     task.prepare_retry();
 
     // Retry should reuse the same session
-    let session_id2 = pool.get_or_create_session_for_task(&mut task, "claude", "claude-sonnet-4-6").await;
+    let session_id2 = pool
+        .get_or_create_session_for_task(&mut task, "claude", "claude-sonnet-4-6")
+        .await;
 
-    assert_eq!(session_id1, session_id2, "Retry should reuse the same session");
+    assert_eq!(
+        session_id1, session_id2,
+        "Retry should reuse the same session"
+    );
 }

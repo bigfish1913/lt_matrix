@@ -1012,10 +1012,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_heartbeat_manager_health_transitions() {
-        let manager = HeartbeatManager::new(
-            HeartbeatConfig::new()
-                .with_max_missed_pings(3),
-        );
+        let manager = HeartbeatManager::new(HeartbeatConfig::new().with_max_missed_pings(3));
 
         // Initially healthy
         assert!(manager.is_healthy().await);

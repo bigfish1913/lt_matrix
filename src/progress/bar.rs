@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Progress bar implementation with color support
 //!
 //! This module provides progress bars with colorized output for terminals.

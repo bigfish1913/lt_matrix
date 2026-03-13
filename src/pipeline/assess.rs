@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Task assessment stage
 //!
 //! This module implements the Assess stage of the pipeline, which:

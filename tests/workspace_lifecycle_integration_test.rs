@@ -3,8 +3,8 @@
 //! Tests the integration of workspace state persistence with task lifecycle,
 //! including auto-reset of in_progress tasks and error handling.
 
-use ltmatrix::workspace::WorkspaceState;
 use ltmatrix::models::{Task, TaskStatus};
+use ltmatrix::workspace::WorkspaceState;
 use std::fs;
 use tempfile::TempDir;
 
@@ -105,9 +105,10 @@ fn test_load_transforms_mixed_statuses() {
     let mut task5 = Task::new("task-5", "Failed", "Error");
     task5.status = TaskStatus::Failed;
 
-    let state = WorkspaceState::new(project_root.to_path_buf(), vec![
-        task1, task2, task3, task4, task5
-    ]);
+    let state = WorkspaceState::new(
+        project_root.to_path_buf(),
+        vec![task1, task2, task3, task4, task5],
+    );
     state.save().unwrap();
 
     // Load should transform appropriately
@@ -317,7 +318,10 @@ fn test_preserves_subtasks_during_transform() {
     // Verify parent and child both reset to Pending
     assert_eq!(loaded_state.tasks[0].status, TaskStatus::Pending);
     assert_eq!(loaded_state.tasks[0].subtasks.len(), 1);
-    assert_eq!(loaded_state.tasks[0].subtasks[0].status, TaskStatus::Pending);
+    assert_eq!(
+        loaded_state.tasks[0].subtasks[0].status,
+        TaskStatus::Pending
+    );
 }
 
 #[test]
@@ -455,9 +459,9 @@ fn test_cleanup_orphaned_dependencies() {
     // Create task with mix of valid and invalid dependencies
     let mut task2 = Task::new("task-2", "Mixed Deps", "Mixed dependencies");
     task2.depends_on = vec![
-        "task-1".to_string(),      // Valid
-        "missing-1".to_string(),   // Invalid
-        "missing-2".to_string(),   // Invalid
+        "task-1".to_string(),    // Valid
+        "missing-1".to_string(), // Invalid
+        "missing-2".to_string(), // Invalid
     ];
 
     let task1 = Task::new("task-1", "Valid", "Valid dependency");
@@ -507,10 +511,7 @@ fn test_validate_dependency_graph_valid() {
 
     let task1 = Task::new("task-1", "First", "Base task");
 
-    let state = WorkspaceState::new(
-        project_root.to_path_buf(),
-        vec![task1, task2, task3]
-    );
+    let state = WorkspaceState::new(project_root.to_path_buf(), vec![task1, task2, task3]);
 
     // Should validate successfully
     assert!(state.validate_dependency_graph().is_ok());
@@ -530,7 +531,10 @@ fn test_validate_dependency_graph_orphaned() {
     // Should fail validation
     let result = state.validate_dependency_graph();
     assert!(result.is_err());
-    assert!(result.unwrap_err().to_string().contains("orphaned dependencies"));
+    assert!(result
+        .unwrap_err()
+        .to_string()
+        .contains("orphaned dependencies"));
 }
 
 #[test]
@@ -595,7 +599,7 @@ fn test_detect_orphaned_tasks_diamond_pattern() {
     // Create state without task-3 to simulate it being deleted
     let state = WorkspaceState::new(
         project_root.to_path_buf(),
-        vec![task1, task2, task4] // task-3 is missing
+        vec![task1, task2, task4], // task-3 is missing
     );
 
     let orphaned = state.detect_orphaned_tasks();

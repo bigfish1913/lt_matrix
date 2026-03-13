@@ -2,16 +2,15 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! CLI command handling
 //!
 //! This module handles the execution of different CLI commands and subcommands.
 
-use super::args::{Args, Command, CleanupArgs, MemoryArgs};
-use ltmatrix_config::settings::{self, CliOverrides};
+use super::args::{Args, CleanupArgs, Command, MemoryArgs};
 use crate::interactive::{ClarificationRunner, ClarificationSession, NonInteractiveRunner};
 use crate::workspace::WorkspaceState;
 use anyhow::{Context, Result};
+use ltmatrix_config::settings::{self, CliOverrides};
 use std::path::PathBuf;
 use tracing::{info, warn};
 
@@ -86,7 +85,6 @@ fn execute_run(args: &Args) -> Result<()> {
         // TODO: Continue with pipeline execution using enhanced_goal
         // This is where the actual pipeline (Generate -> Assess -> Execute -> Test -> Verify -> Commit)
         // will be invoked with the clarified goal
-
     } else {
         print_help();
     }
@@ -98,8 +96,7 @@ fn execute_run(args: &Args) -> Result<()> {
 fn execute_resume(args: &Args) -> Result<()> {
     use std::env;
 
-    let project_root = env::current_dir()
-        .context("Failed to get current directory")?;
+    let project_root = env::current_dir().context("Failed to get current directory")?;
 
     println!("Resume Mode: Continuing from previous workspace state");
     println!();
@@ -108,7 +105,13 @@ fn execute_resume(args: &Args) -> Result<()> {
     if !WorkspaceState::exists(&project_root) {
         println!("No workspace state found in current directory.");
         println!();
-        println!("Expected file: {}", project_root.join(".ltmatrix").join("tasks-manifest.json").display());
+        println!(
+            "Expected file: {}",
+            project_root
+                .join(".ltmatrix")
+                .join("tasks-manifest.json")
+                .display()
+        );
         println!();
         println!("To start a new task, run: ltmatrix \"your goal\"");
         println!("To clean up any residual state, run: ltmatrix cleanup --remove --force");
@@ -209,7 +212,10 @@ fn run_interactive_clarification(goal: &str, args: &Args) -> Result<String> {
     } else {
         // Non-interactive mode (dry-run or no terminal)
         if args.dry_run {
-            println!("\n[Dry run] Would ask {} clarification questions", session.questions.len());
+            println!(
+                "\n[Dry run] Would ask {} clarification questions",
+                session.questions.len()
+            );
         }
         NonInteractiveRunner::process_session(session)?
     };
@@ -294,7 +300,11 @@ pub fn execute_completions(completions_args: &super::args::CompletionsArgs) -> R
         println!("---");
         println!();
         println!("Quick install command:");
-        println!("  ltmatrix completions {} > {}", shell.name(), shell.default_install_path());
+        println!(
+            "  ltmatrix completions {} > {}",
+            shell.name(),
+            shell.default_install_path()
+        );
         println!();
     } else {
         // Generate completions to stdout
@@ -364,13 +374,18 @@ pub fn execute_cleanup(args: &CleanupArgs) -> Result<()> {
     println!();
 
     // Get current directory as project root
-    let project_root = env::current_dir()
-        .context("Failed to get current directory")?;
+    let project_root = env::current_dir().context("Failed to get current directory")?;
 
     // Check if workspace state exists
     if !WorkspaceState::exists(&project_root) {
         println!("No workspace state found in current directory.");
-        println!("Expected file: {}", project_root.join(".ltmatrix").join("tasks-manifest.json").display());
+        println!(
+            "Expected file: {}",
+            project_root
+                .join(".ltmatrix")
+                .join("tasks-manifest.json")
+                .display()
+        );
         return Ok(());
     }
 
@@ -407,7 +422,13 @@ pub fn execute_cleanup(args: &CleanupArgs) -> Result<()> {
             println!("Use --force to actually perform the cleanup");
         } else if !args.force {
             println!("This will remove all workspace state files including:");
-            println!("  - {}", project_root.join(".ltmatrix").join("tasks-manifest.json").display());
+            println!(
+                "  - {}",
+                project_root
+                    .join(".ltmatrix")
+                    .join("tasks-manifest.json")
+                    .display()
+            );
             println!("  - Any other files in .ltmatrix directory");
             println!();
             println!("Are you sure you want to continue? (yes/no): ");
@@ -417,8 +438,7 @@ pub fn execute_cleanup(args: &CleanupArgs) -> Result<()> {
             println!("Please use --force flag to confirm cleanup");
             return Ok(());
         } else {
-            WorkspaceState::cleanup(&project_root)
-                .context("Failed to cleanup workspace state")?;
+            WorkspaceState::cleanup(&project_root).context("Failed to cleanup workspace state")?;
             println!("✓ Workspace state removed successfully");
         }
     } else if args.reset_all {
@@ -430,12 +450,10 @@ pub fn execute_cleanup(args: &CleanupArgs) -> Result<()> {
             println!("DRY RUN - Would reset all tasks to pending");
             println!("Use --force to actually perform the reset");
         } else {
-            let mut state = WorkspaceState::load(project_root)
-                .context("Failed to load workspace state")?;
-            state.reset_all()
-                .context("Failed to reset tasks")?;
-            state.save()
-                .context("Failed to save workspace state")?;
+            let mut state =
+                WorkspaceState::load(project_root).context("Failed to load workspace state")?;
+            state.reset_all().context("Failed to reset tasks")?;
+            state.save().context("Failed to save workspace state")?;
             println!("✓ All tasks reset to pending status");
         }
     } else if args.reset_failed {
@@ -447,12 +465,12 @@ pub fn execute_cleanup(args: &CleanupArgs) -> Result<()> {
             println!("DRY RUN - Would reset failed tasks");
             println!("Use --force to actually perform the reset");
         } else {
-            let mut state = WorkspaceState::load(project_root)
-                .context("Failed to load workspace state")?;
-            let count = state.reset_failed()
+            let mut state =
+                WorkspaceState::load(project_root).context("Failed to load workspace state")?;
+            let count = state
+                .reset_failed()
                 .context("Failed to reset failed tasks")?;
-            state.save()
-                .context("Failed to save workspace state")?;
+            state.save().context("Failed to save workspace state")?;
             println!("✓ Reset {} failed task(s) to pending status", count);
         }
     } else {
@@ -517,15 +535,9 @@ pub fn execute_memory(args: &MemoryArgs) -> Result<()> {
     use super::args::MemoryAction;
 
     match &args.action {
-        MemoryAction::Summarize(summarize_args) => {
-            execute_memory_summarize(summarize_args)
-        }
-        MemoryAction::Status(status_args) => {
-            execute_memory_status(status_args)
-        }
-        MemoryAction::Clear(clear_args) => {
-            execute_memory_clear(clear_args)
-        }
+        MemoryAction::Summarize(summarize_args) => execute_memory_summarize(summarize_args),
+        MemoryAction::Status(status_args) => execute_memory_status(status_args),
+        MemoryAction::Clear(clear_args) => execute_memory_clear(clear_args),
     }
 }
 
@@ -539,7 +551,9 @@ fn execute_memory_summarize(args: &super::args::MemorySummarizeArgs) -> Result<(
     println!();
 
     // Get project root
-    let project_root = args.project.clone()
+    let project_root = args
+        .project
+        .clone()
         .unwrap_or_else(|| env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
 
     println!("Project root: {}", project_root.display());
@@ -579,9 +593,8 @@ fn execute_memory_summarize(args: &super::args::MemorySummarizeArgs) -> Result<(
     println!();
 
     // Determine if we should summarize
-    let needs_summarization = args.force
-        || file_size > config.max_file_size
-        || entry_count > config.max_entries;
+    let needs_summarization =
+        args.force || file_size > config.max_file_size || entry_count > config.max_entries;
 
     if !needs_summarization {
         println!("Memory is within configured thresholds.");
@@ -598,7 +611,10 @@ fn execute_memory_summarize(args: &super::args::MemorySummarizeArgs) -> Result<(
         println!("DRY RUN - Would summarize memory:");
         println!("  Entries to process: {}", entry_count);
         println!("  Keep fraction: {:.0}%", config.keep_fraction * 100.0);
-        println!("  Estimated entries to keep: {}", (entry_count as f64 * config.keep_fraction) as usize);
+        println!(
+            "  Estimated entries to keep: {}",
+            (entry_count as f64 * config.keep_fraction) as usize
+        );
     } else {
         println!("Summarizing memory...");
         println!("  Keep fraction: {:.0}%", config.keep_fraction * 100.0);
@@ -633,7 +649,9 @@ fn execute_memory_status(args: &super::args::MemoryStatusArgs) -> Result<()> {
     println!();
 
     // Get project root
-    let project_root = args.project.clone()
+    let project_root = args
+        .project
+        .clone()
         .unwrap_or_else(|| env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
 
     let memory_file = project_root.join(".claude/memory.md");
@@ -641,10 +659,13 @@ fn execute_memory_status(args: &super::args::MemoryStatusArgs) -> Result<()> {
     // Check if memory file exists
     if !memory_file.exists() {
         if args.json {
-            println!("{}", serde_json::json!({
-                "exists": false,
-                "project_root": project_root.display().to_string()
-            }));
+            println!(
+                "{}",
+                serde_json::json!({
+                    "exists": false,
+                    "project_root": project_root.display().to_string()
+                })
+            );
         } else {
             println!("No memory file found at: {}", memory_file.display());
             println!();
@@ -654,8 +675,7 @@ fn execute_memory_status(args: &super::args::MemoryStatusArgs) -> Result<()> {
     }
 
     // Load memory store
-    let store = MemoryStore::new(&project_root)
-        .context("Failed to load memory store")?;
+    let store = MemoryStore::new(&project_root).context("Failed to load memory store")?;
 
     let entries = store.get_entries();
     let entry_count = entries.len();
@@ -666,15 +686,19 @@ fn execute_memory_status(args: &super::args::MemoryStatusArgs) -> Result<()> {
         .unwrap_or(0);
 
     // Count by category
-    let mut by_category: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+    let mut by_category: std::collections::HashMap<String, usize> =
+        std::collections::HashMap::new();
     for entry in &entries {
         *by_category.entry(entry.category.to_string()).or_insert(0) += 1;
     }
 
     // Count by priority
-    let mut by_priority: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+    let mut by_priority: std::collections::HashMap<String, usize> =
+        std::collections::HashMap::new();
     for entry in &entries {
-        *by_priority.entry(format!("{:?}", entry.priority)).or_insert(0) += 1;
+        *by_priority
+            .entry(format!("{:?}", entry.priority))
+            .or_insert(0) += 1;
     }
 
     // Count deprecated entries
@@ -733,8 +757,8 @@ fn execute_memory_status(args: &super::args::MemoryStatusArgs) -> Result<()> {
         println!();
 
         // Show summarization status
-        let needs_summarization = file_size as usize > config.max_file_size
-            || entry_count > config.max_entries;
+        let needs_summarization =
+            file_size as usize > config.max_file_size || entry_count > config.max_entries;
 
         if needs_summarization {
             println!("⚠ Memory exceeds configured thresholds.");
@@ -756,7 +780,9 @@ fn execute_memory_clear(args: &super::args::MemoryClearArgs) -> Result<()> {
     println!();
 
     // Get project root
-    let project_root = args.project.clone()
+    let project_root = args
+        .project
+        .clone()
         .unwrap_or_else(|| env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
 
     let memory_file = project_root.join(".claude/memory.md");
@@ -768,8 +794,7 @@ fn execute_memory_clear(args: &super::args::MemoryClearArgs) -> Result<()> {
     }
 
     // Load store to get entry count
-    let store = MemoryStore::new(&project_root)
-        .context("Failed to load memory store")?;
+    let store = MemoryStore::new(&project_root).context("Failed to load memory store")?;
 
     let entry_count = store.entry_count();
     println!("Memory file: {}", memory_file.display());
@@ -796,15 +821,17 @@ fn execute_memory_clear(args: &super::args::MemoryClearArgs) -> Result<()> {
     }
 
     // Remove the memory file
-    std::fs::remove_file(&memory_file)
-        .context("Failed to remove memory file")?;
+    std::fs::remove_file(&memory_file).context("Failed to remove memory file")?;
 
     // Remove the .claude directory if empty
     if let Some(parent) = memory_file.parent() {
         let _ = std::fs::remove_dir(parent); // Ignore error if not empty
     }
 
-    println!("✓ Memory cleared successfully ({} entries removed)", entry_count);
+    println!(
+        "✓ Memory cleared successfully ({} entries removed)",
+        entry_count
+    );
 
     Ok(())
 }
@@ -812,7 +839,7 @@ fn execute_memory_clear(args: &super::args::MemoryClearArgs) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cli::args::{ReleaseArgs, CompletionsArgs, Shell};
+    use crate::cli::args::{CompletionsArgs, ReleaseArgs, Shell};
     use clap::Parser;
     use std::path::PathBuf;
 
@@ -830,7 +857,10 @@ mod tests {
         };
 
         let result = execute_completions(&completions_args);
-        assert!(result.is_ok(), "Should execute completions command successfully");
+        assert!(
+            result.is_ok(),
+            "Should execute completions command successfully"
+        );
     }
 
     #[test]
@@ -841,7 +871,10 @@ mod tests {
         };
 
         let result = execute_completions(&completions_args);
-        assert!(result.is_ok(), "Should execute completions with install flag successfully");
+        assert!(
+            result.is_ok(),
+            "Should execute completions with install flag successfully"
+        );
     }
 
     #[test]
@@ -855,6 +888,7 @@ mod tests {
 
         let args = Args {
             goal: None,
+            file: None,
             agent: None,
             mode: None,
             fast: false,

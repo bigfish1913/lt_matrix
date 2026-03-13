@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Plugin system for ltmatrix extensibility
 //!
 //! This module provides a plugin architecture that allows extending ltmatrix with:
@@ -88,11 +87,11 @@ pub mod validator;
 
 // Re-export commonly used types
 pub use manager::PluginManager;
+pub use stage::PipelineStagePlugin;
 pub use traits::{
     CustomStageConfig, Plugin, PluginMetadata, PluginType, StagePosition, StageResult,
     StandardStage,
 };
-pub use stage::PipelineStagePlugin;
 
 /// Initialize the plugin manager with built-in plugins
 pub async fn initialize() -> std::result::Result<PluginManager, anyhow::Error> {

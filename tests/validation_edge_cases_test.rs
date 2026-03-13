@@ -209,7 +209,9 @@ fn test_agent_availability_known_commands() {
                 // Agent not available - verify error message has installation hint
                 let msg = e.to_string();
                 assert!(
-                    msg.contains("not available") || msg.contains("install") || msg.contains("PATH"),
+                    msg.contains("not available")
+                        || msg.contains("install")
+                        || msg.contains("PATH"),
                     "Error message for '{}' should provide helpful hint: {}",
                     agent,
                     msg

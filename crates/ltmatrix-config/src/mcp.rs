@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! MCP (Model Context Protocol) configuration
 //!
 //! This module handles loading and parsing MCP server configurations
@@ -95,8 +94,10 @@ impl McpConfig {
         // Validate the configuration
         config.validate()?;
 
-        debug!("Successfully loaded MCP configuration with {} servers",
-               config.mcp.servers.len());
+        debug!(
+            "Successfully loaded MCP configuration with {} servers",
+            config.mcp.servers.len()
+        );
 
         Ok(config)
     }
@@ -111,8 +112,7 @@ impl McpConfig {
     ///
     /// Returns the parsed MCP configuration or an error.
     pub fn from_str(content: &str) -> Result<Self> {
-        let config: McpConfig = toml::from_str(content)
-            .context("Failed to parse MCP config")?;
+        let config: McpConfig = toml::from_str(content).context("Failed to parse MCP config")?;
 
         config.validate()?;
 
@@ -128,28 +128,19 @@ impl McpConfig {
         for (name, server) in &self.mcp.servers {
             // Validate server type is not empty
             if server.server_type.trim().is_empty() {
-                return Err(anyhow::anyhow!(
-                    "MCP server '{}' has empty type",
-                    name
-                ));
+                return Err(anyhow::anyhow!("MCP server '{}' has empty type", name));
             }
 
             // Validate command if provided
             if let Some(ref command) = server.command {
                 if command.trim().is_empty() {
-                    return Err(anyhow::anyhow!(
-                        "MCP server '{}' has empty command",
-                        name
-                    ));
+                    return Err(anyhow::anyhow!("MCP server '{}' has empty command", name));
                 }
             }
 
             // Validate timeout is reasonable
             if server.timeout == 0 {
-                return Err(anyhow::anyhow!(
-                    "MCP server '{}' has zero timeout",
-                    name
-                ));
+                return Err(anyhow::anyhow!("MCP server '{}' has zero timeout", name));
             }
 
             // Validate working directory if provided
@@ -175,7 +166,8 @@ impl McpConfig {
     ///
     /// Returns a map of enabled server names to their configurations.
     pub fn enabled_servers(&self) -> HashMap<String, McpServer> {
-        self.mcp.servers
+        self.mcp
+            .servers
             .iter()
             .filter(|(_, server)| server.enabled)
             .map(|(name, server)| (name.clone(), server.clone()))
@@ -205,7 +197,8 @@ impl McpConfig {
     ///
     /// Returns `true` if the server exists and is enabled.
     pub fn is_server_enabled(&self, name: &str) -> bool {
-        self.mcp.servers
+        self.mcp
+            .servers
             .get(name)
             .map(|server| server.enabled)
             .unwrap_or(false)
@@ -267,10 +260,7 @@ impl LoadedMcpConfig {
 
         let config = McpConfig::from_file(&path)?;
 
-        Ok(LoadedMcpConfig {
-            config,
-            path,
-        })
+        Ok(LoadedMcpConfig { config, path })
     }
 
     /// Reload the configuration from the original file
@@ -434,8 +424,14 @@ type = "type3"
         let merged = config1.merge_with(&config2);
 
         assert_eq!(merged.mcp.servers.len(), 3);
-        assert_eq!(merged.get_server("server1").unwrap().command, Some("cmd1".to_string()));
-        assert_eq!(merged.get_server("server2").unwrap().command, Some("cmd2".to_string()));
+        assert_eq!(
+            merged.get_server("server1").unwrap().command,
+            Some("cmd1".to_string())
+        );
+        assert_eq!(
+            merged.get_server("server2").unwrap().command,
+            Some("cmd2".to_string())
+        );
         assert!(merged.get_server("server3").is_some());
     }
 
@@ -515,12 +511,15 @@ DEBUG = "true"
         // Convert path to string with forward slashes for TOML compatibility
         let cwd_str = cwd.to_string_lossy().replace('\\', "/");
 
-        let config_content = format!(r#"
+        let config_content = format!(
+            r#"
 [mcp.servers.server1]
 type = "test"
 command = "cmd"
 cwd = "{}"
-"#, cwd_str);
+"#,
+            cwd_str
+        );
 
         let config = McpConfig::from_str(&config_content).unwrap();
         let server = config.get_server("server1").unwrap();

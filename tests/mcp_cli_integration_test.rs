@@ -7,8 +7,8 @@
 //! - MCP config merges correctly with other config sources
 
 use clap::Parser;
-use ltmatrix::config::mcp::{LoadedMcpConfig, McpConfig};
 use ltmatrix::cli::args::Args;
+use ltmatrix::config::mcp::{LoadedMcpConfig, McpConfig};
 use std::fs;
 use tempfile::TempDir;
 
@@ -108,10 +108,7 @@ timeout = 60
     fs::write(&mcp_config_path, config_content).unwrap();
 
     let result = LoadedMcpConfig::from_file(&mcp_config_path);
-    assert!(
-        result.is_ok(),
-        "Valid MCP config should load successfully"
-    );
+    assert!(result.is_ok(), "Valid MCP config should load successfully");
 
     let loaded = result.unwrap();
     assert_eq!(loaded.path, mcp_config_path);
@@ -155,10 +152,7 @@ fn test_malformed_toml_fails_gracefully() {
     fs::write(&mcp_config_path, "[invalid toml content").unwrap();
 
     let result = LoadedMcpConfig::from_file(&mcp_config_path);
-    assert!(
-        result.is_err(),
-        "Malformed TOML should fail to parse"
-    );
+    assert!(result.is_err(), "Malformed TOML should fail to parse");
 
     let error_msg = result.unwrap_err().to_string();
     assert!(

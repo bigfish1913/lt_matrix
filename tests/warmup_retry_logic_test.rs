@@ -7,9 +7,9 @@
 //! - Retry state is tracked correctly
 //! - Multiple failures lead to eventual abandonment
 
-use ltmatrix::agent::warmup::{WarmupExecutor, WarmupResult};
-use ltmatrix::agent::{AgentSession, pool::SessionPool};
 use ltmatrix::agent::backend::{AgentBackend, AgentConfig, AgentResponse, ExecutionConfig};
+use ltmatrix::agent::warmup::{WarmupExecutor, WarmupResult};
+use ltmatrix::agent::{pool::SessionPool, AgentSession};
 use ltmatrix::config::settings::WarmupConfig;
 use ltmatrix::models::Agent;
 use std::sync::atomic::{AtomicU32, Ordering};
@@ -43,10 +43,18 @@ impl RetryTrackingAgent {
 
 #[async_trait::async_trait]
 impl AgentBackend for RetryTrackingAgent {
-    async fn execute(&self, _prompt: &str, _config: &ExecutionConfig) -> anyhow::Result<AgentResponse> {
+    async fn execute(
+        &self,
+        _prompt: &str,
+        _config: &ExecutionConfig,
+    ) -> anyhow::Result<AgentResponse> {
         let attempt = self.attempt_count.fetch_add(1, Ordering::SeqCst) + 1;
         if attempt < self.succeed_on_attempt {
-            anyhow::bail!("Attempt {} failed (will succeed on attempt {})", attempt, self.succeed_on_attempt);
+            anyhow::bail!(
+                "Attempt {} failed (will succeed on attempt {})",
+                attempt,
+                self.succeed_on_attempt
+            );
         }
         Ok(AgentResponse {
             output: "Ready".to_string(),
@@ -62,7 +70,11 @@ impl AgentBackend for RetryTrackingAgent {
     ) -> anyhow::Result<AgentResponse> {
         let attempt = self.attempt_count.fetch_add(1, Ordering::SeqCst) + 1;
         if attempt < self.succeed_on_attempt {
-            anyhow::bail!("Attempt {} failed (will succeed on attempt {})", attempt, self.succeed_on_attempt);
+            anyhow::bail!(
+                "Attempt {} failed (will succeed on attempt {})",
+                attempt,
+                self.succeed_on_attempt
+            );
         }
         Ok(AgentResponse {
             output: "Ready".to_string(),
@@ -87,7 +99,10 @@ impl AgentBackend for RetryTrackingAgent {
         Ok(true)
     }
 
-    async fn validate_config(&self, _config: &AgentConfig) -> Result<(), ltmatrix::agent::backend::AgentError> {
+    async fn validate_config(
+        &self,
+        _config: &AgentConfig,
+    ) -> Result<(), ltmatrix::agent::backend::AgentError> {
         Ok(())
     }
 
@@ -117,7 +132,11 @@ impl AlwaysFailAgent {
 
 #[async_trait::async_trait]
 impl AgentBackend for AlwaysFailAgent {
-    async fn execute(&self, _prompt: &str, _config: &ExecutionConfig) -> anyhow::Result<AgentResponse> {
+    async fn execute(
+        &self,
+        _prompt: &str,
+        _config: &ExecutionConfig,
+    ) -> anyhow::Result<AgentResponse> {
         self.attempt_count.fetch_add(1, Ordering::SeqCst);
         anyhow::bail!("Always fails");
     }
@@ -149,7 +168,10 @@ impl AgentBackend for AlwaysFailAgent {
         Ok(true)
     }
 
-    async fn validate_config(&self, _config: &AgentConfig) -> Result<(), ltmatrix::agent::backend::AgentError> {
+    async fn validate_config(
+        &self,
+        _config: &AgentConfig,
+    ) -> Result<(), ltmatrix::agent::backend::AgentError> {
         Ok(())
     }
 
@@ -179,7 +201,11 @@ async fn warmup_does_not_retry_when_disabled() {
 
     assert!(result.is_failed());
     assert_eq!(result.queries_executed(), Some(0));
-    assert_eq!(agent.attempt_count(), 1, "Should only make 1 attempt when retry disabled");
+    assert_eq!(
+        agent.attempt_count(),
+        1,
+        "Should only make 1 attempt when retry disabled"
+    );
 }
 
 #[tokio::test]
@@ -199,7 +225,11 @@ async fn warmup_retries_when_enabled() {
 
     assert!(result.is_success());
     assert_eq!(result.queries_executed(), Some(1));
-    assert_eq!(agent.attempt_count(), 2, "Should retry and succeed on 2nd attempt");
+    assert_eq!(
+        agent.attempt_count(),
+        2,
+        "Should retry and succeed on 2nd attempt"
+    );
 }
 
 // ============================================================================
@@ -226,8 +256,13 @@ async fn warmup_respects_max_retry_limit() {
     assert!(result.is_failed());
     // Should make initial attempt + MAX_WARMUP_RETRIES retries
     let expected_attempts = 1 + MAX_WARMUP_RETRIES as u32;
-    assert_eq!(agent.attempt_count(), expected_attempts,
-               "Should make {} attempts total (1 initial + {} retries)", expected_attempts, MAX_WARMUP_RETRIES);
+    assert_eq!(
+        agent.attempt_count(),
+        expected_attempts,
+        "Should make {} attempts total (1 initial + {} retries)",
+        expected_attempts,
+        MAX_WARMUP_RETRIES
+    );
 }
 
 #[tokio::test]
@@ -246,7 +281,11 @@ async fn warmup_stops_retrying_on_success() {
     let result = executor.warmup_agent(&agent, &mut pool).await.unwrap();
 
     assert!(result.is_success());
-    assert_eq!(agent.attempt_count(), 2, "Should stop retrying after success");
+    assert_eq!(
+        agent.attempt_count(),
+        2,
+        "Should stop retrying after success"
+    );
 }
 
 // ============================================================================
@@ -275,8 +314,11 @@ async fn warmup_applies_exponential_backoff() {
     // - Retry 1 (attempt 0): backoff 100 * 2^0 = 100ms, then fails
     // - Retry 2 (attempt 1): no backoff (attempt < MAX_WARMUP_RETRIES - 1 is false)
     // Total minimum backoff: ~100ms
-    assert!(elapsed >= Duration::from_millis(80),
-            "Expected exponential backoff to add delay, but only took {:?}", elapsed);
+    assert!(
+        elapsed >= Duration::from_millis(80),
+        "Expected exponential backoff to add delay, but only took {:?}",
+        elapsed
+    );
 }
 
 #[tokio::test]
@@ -325,7 +367,11 @@ async fn warmup_does_not_retry_after_first_success() {
 
     assert!(result.is_success());
     assert_eq!(result.queries_executed(), Some(1));
-    assert_eq!(agent.attempt_count(), 1, "Should not execute additional queries after first success");
+    assert_eq!(
+        agent.attempt_count(),
+        1,
+        "Should not execute additional queries after first success"
+    );
 }
 
 // ============================================================================
@@ -392,10 +438,13 @@ async fn warmup_retry_error_mentions_failures() {
     let result = executor.warmup_agent(&agent, &mut pool).await.unwrap();
 
     if let WarmupResult::Failed { error, .. } = result {
-        assert!(error.to_lowercase().contains("retry") ||
-                error.to_lowercase().contains("failed") ||
-                error.contains("attempts"),
-                "Error should mention retry failure: {}", error);
+        assert!(
+            error.to_lowercase().contains("retry")
+                || error.to_lowercase().contains("failed")
+                || error.contains("attempts"),
+            "Error should mention retry failure: {}",
+            error
+        );
     } else {
         panic!("Expected Failed result with retry mentioned");
     }
@@ -416,8 +465,14 @@ async fn warmup_retry_includes_query_count_in_failure() {
 
     let result = executor.warmup_agent(&agent, &mut pool).await.unwrap();
 
-    if let WarmupResult::Failed { queries_executed, .. } = result {
-        assert_eq!(queries_executed, 0, "No queries should succeed with always-failing agent");
+    if let WarmupResult::Failed {
+        queries_executed, ..
+    } = result
+    {
+        assert_eq!(
+            queries_executed, 0,
+            "No queries should succeed with always-failing agent"
+        );
     } else {
         panic!("Expected Failed result");
     }
@@ -447,9 +502,18 @@ async fn warmup_multiple_agents_with_retry_enabled() {
     let results = executor.warmup_agents(&backends, &mut pool).await;
 
     assert_eq!(results.len(), 3);
-    assert!(results[0].is_success(), "Agent 1 should succeed immediately");
-    assert!(results[1].is_success(), "Agent 2 should succeed after retry");
-    assert!(results[2].is_failed(), "Agent 3 should fail after all retries");
+    assert!(
+        results[0].is_success(),
+        "Agent 1 should succeed immediately"
+    );
+    assert!(
+        results[1].is_success(),
+        "Agent 2 should succeed after retry"
+    );
+    assert!(
+        results[2].is_failed(),
+        "Agent 3 should fail after all retries"
+    );
 }
 
 // ============================================================================
@@ -462,7 +526,10 @@ fn test_retry_constants_are_reasonable() {
     const MAX_WARMUP_RETRIES: u32 = 2; // From implementation
 
     assert!(MAX_WARMUP_RETRIES >= 1, "Should allow at least 1 retry");
-    assert!(MAX_WARMUP_RETRIES <= 5, "Should not allow excessive retries (max 5)");
+    assert!(
+        MAX_WARMUP_RETRIES <= 5,
+        "Should not allow excessive retries (max 5)"
+    );
 }
 
 #[tokio::test]
@@ -489,6 +556,8 @@ async fn warmup_retry_behavior_with_custom_timeout() {
     // Note: With succeed_on_attempt=2, the retry succeeds immediately
     // without needing backoff. The backoff only occurs if retry attempts fail.
     // This test verifies the retry mechanism works, even if no backoff occurs.
-    assert!(elapsed < Duration::from_secs(1),
-            "With immediate retry success, should complete quickly");
+    assert!(
+        elapsed < Duration::from_secs(1),
+        "With immediate retry success, should complete quickly"
+    );
 }

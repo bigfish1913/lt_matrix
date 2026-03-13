@@ -28,7 +28,12 @@ fn create_task(id: &str, title: &str, depends_on: Vec<&str>) -> Task {
 }
 
 /// Create a task with a specific status
-fn create_task_with_status(id: &str, title: &str, depends_on: Vec<&str>, status: TaskStatus) -> Task {
+fn create_task_with_status(
+    id: &str,
+    title: &str,
+    depends_on: Vec<&str>,
+    status: TaskStatus,
+) -> Task {
     let mut task = create_task(id, title, depends_on);
     task.status = status;
     task
@@ -53,15 +58,31 @@ fn test_linear_dependency_chain() {
     assert_eq!(plan.total_tasks, 3, "Should have 3 tasks");
 
     // Task A should come before Task B
-    let a_pos = plan.execution_order.iter().position(|id| id == "task-a").unwrap();
-    let b_pos = plan.execution_order.iter().position(|id| id == "task-b").unwrap();
-    let c_pos = plan.execution_order.iter().position(|id| id == "task-c").unwrap();
+    let a_pos = plan
+        .execution_order
+        .iter()
+        .position(|id| id == "task-a")
+        .unwrap();
+    let b_pos = plan
+        .execution_order
+        .iter()
+        .position(|id| id == "task-b")
+        .unwrap();
+    let c_pos = plan
+        .execution_order
+        .iter()
+        .position(|id| id == "task-c")
+        .unwrap();
 
     assert!(a_pos < b_pos, "Task A should execute before Task B");
     assert!(b_pos < c_pos, "Task B should execute before Task C");
 
     // Verify critical path is the entire chain
-    assert_eq!(plan.critical_path.len(), 3, "All tasks should be on critical path");
+    assert_eq!(
+        plan.critical_path.len(),
+        3,
+        "All tasks should be on critical path"
+    );
 }
 
 /// Test diamond dependency pattern: A -> B, A -> C, B -> D, C -> D
@@ -77,10 +98,26 @@ fn test_diamond_dependency_pattern() {
     let plan = schedule_tasks(tasks).expect("Should create execution plan");
 
     // Verify execution order respects dependencies
-    let a_pos = plan.execution_order.iter().position(|id| id == "task-a").unwrap();
-    let b_pos = plan.execution_order.iter().position(|id| id == "task-b").unwrap();
-    let c_pos = plan.execution_order.iter().position(|id| id == "task-c").unwrap();
-    let d_pos = plan.execution_order.iter().position(|id| id == "task-d").unwrap();
+    let a_pos = plan
+        .execution_order
+        .iter()
+        .position(|id| id == "task-a")
+        .unwrap();
+    let b_pos = plan
+        .execution_order
+        .iter()
+        .position(|id| id == "task-b")
+        .unwrap();
+    let c_pos = plan
+        .execution_order
+        .iter()
+        .position(|id| id == "task-c")
+        .unwrap();
+    let d_pos = plan
+        .execution_order
+        .iter()
+        .position(|id| id == "task-d")
+        .unwrap();
 
     // A must come before B, C, and D
     assert!(a_pos < b_pos, "A should come before B");
@@ -93,8 +130,10 @@ fn test_diamond_dependency_pattern() {
 
     // Verify parallelizable tasks
     // Either B or C can be parallelized (not both on critical path)
-    assert!(!plan.parallelizable_tasks.is_empty() || plan.critical_path.len() == 4,
-            "Should identify parallelizable tasks or all on critical path");
+    assert!(
+        !plan.parallelizable_tasks.is_empty() || plan.critical_path.len() == 4,
+        "Should identify parallelizable tasks or all on critical path"
+    );
 }
 
 /// Test multiple independent task chains
@@ -117,22 +156,54 @@ fn test_multiple_independent_chains() {
     assert_eq!(plan.total_tasks, 6, "Should have 6 tasks");
 
     // Verify execution levels - should have 3 levels
-    assert_eq!(plan.execution_levels.len(), 3, "Should have 3 execution levels");
+    assert_eq!(
+        plan.execution_levels.len(),
+        3,
+        "Should have 3 execution levels"
+    );
 
     // Level 0 should have chain1-a and chain2-d (no dependencies)
-    assert_eq!(plan.execution_levels[0].len(), 2, "Level 0 should have 2 tasks");
+    assert_eq!(
+        plan.execution_levels[0].len(),
+        2,
+        "Level 0 should have 2 tasks"
+    );
 
     // Verify chain1 dependencies
-    let chain1_a_pos = plan.execution_order.iter().position(|id| id == "chain1-a").unwrap();
-    let chain1_b_pos = plan.execution_order.iter().position(|id| id == "chain1-b").unwrap();
-    let chain1_c_pos = plan.execution_order.iter().position(|id| id == "chain1-c").unwrap();
+    let chain1_a_pos = plan
+        .execution_order
+        .iter()
+        .position(|id| id == "chain1-a")
+        .unwrap();
+    let chain1_b_pos = plan
+        .execution_order
+        .iter()
+        .position(|id| id == "chain1-b")
+        .unwrap();
+    let chain1_c_pos = plan
+        .execution_order
+        .iter()
+        .position(|id| id == "chain1-c")
+        .unwrap();
     assert!(chain1_a_pos < chain1_b_pos, "Chain1-A before Chain1-B");
     assert!(chain1_b_pos < chain1_c_pos, "Chain1-B before Chain1-C");
 
     // Verify chain2 dependencies
-    let chain2_d_pos = plan.execution_order.iter().position(|id| id == "chain2-d").unwrap();
-    let chain2_e_pos = plan.execution_order.iter().position(|id| id == "chain2-e").unwrap();
-    let chain2_f_pos = plan.execution_order.iter().position(|id| id == "chain2-f").unwrap();
+    let chain2_d_pos = plan
+        .execution_order
+        .iter()
+        .position(|id| id == "chain2-d")
+        .unwrap();
+    let chain2_e_pos = plan
+        .execution_order
+        .iter()
+        .position(|id| id == "chain2-e")
+        .unwrap();
+    let chain2_f_pos = plan
+        .execution_order
+        .iter()
+        .position(|id| id == "chain2-f")
+        .unwrap();
     assert!(chain2_d_pos < chain2_e_pos, "Chain2-D before Chain2-E");
     assert!(chain2_e_pos < chain2_f_pos, "Chain2-E before Chain2-F");
 }
@@ -140,17 +211,30 @@ fn test_multiple_independent_chains() {
 /// Test single task with no dependencies
 #[test]
 fn test_single_task_no_dependencies() {
-    let tasks = vec![
-        create_task("solo", "Solo Task", vec![]),
-    ];
+    let tasks = vec![create_task("solo", "Solo Task", vec![])];
 
     let plan = schedule_tasks(tasks).expect("Should create execution plan");
 
     assert_eq!(plan.total_tasks, 1, "Should have 1 task");
-    assert_eq!(plan.execution_order.len(), 1, "Execution order should have 1 task");
-    assert_eq!(plan.execution_order[0], "solo", "Execution order should be [solo]");
-    assert_eq!(plan.execution_levels.len(), 1, "Should have 1 execution level");
-    assert_eq!(plan.critical_path.len(), 1, "Critical path should have 1 task");
+    assert_eq!(
+        plan.execution_order.len(),
+        1,
+        "Execution order should have 1 task"
+    );
+    assert_eq!(
+        plan.execution_order[0], "solo",
+        "Execution order should be [solo]"
+    );
+    assert_eq!(
+        plan.execution_levels.len(),
+        1,
+        "Should have 1 execution level"
+    );
+    assert_eq!(
+        plan.critical_path.len(),
+        1,
+        "Critical path should have 1 task"
+    );
     assert_eq!(plan.max_depth, 1, "Max depth should be 1");
 }
 
@@ -161,8 +245,14 @@ fn test_empty_task_list() {
     let plan = schedule_tasks(tasks).expect("Should create execution plan");
 
     assert_eq!(plan.total_tasks, 0, "Should have 0 tasks");
-    assert!(plan.execution_order.is_empty(), "Execution order should be empty");
-    assert!(plan.execution_levels.is_empty(), "Execution levels should be empty");
+    assert!(
+        plan.execution_order.is_empty(),
+        "Execution order should be empty"
+    );
+    assert!(
+        plan.execution_levels.is_empty(),
+        "Execution levels should be empty"
+    );
 }
 
 // =============================================================================
@@ -204,9 +294,7 @@ fn test_longer_circular_dependency() {
 /// Test self-referential dependency: A -> A
 #[test]
 fn test_self_referential_dependency() {
-    let tasks = vec![
-        create_task("task-a", "Task A", vec!["task-a"]),
-    ];
+    let tasks = vec![create_task("task-a", "Task A", vec!["task-a"])];
 
     let result = schedule_tasks(tasks);
     assert!(result.is_err(), "Should detect self-referential dependency");
@@ -234,9 +322,7 @@ fn test_diamond_with_embedded_cycle() {
 /// Test dependency on non-existent task
 #[test]
 fn test_missing_dependency() {
-    let tasks = vec![
-        create_task("task-a", "Task A", vec!["non-existent"]),
-    ];
+    let tasks = vec![create_task("task-a", "Task A", vec!["non-existent"])];
 
     let result = schedule_tasks(tasks);
     assert!(result.is_err(), "Should detect missing dependency");
@@ -283,25 +369,50 @@ fn test_execution_levels_parallel_tasks() {
     let plan = schedule_tasks(tasks).expect("Should create execution plan");
 
     // Verify 3 execution levels
-    assert_eq!(plan.execution_levels.len(), 3, "Should have 3 execution levels");
+    assert_eq!(
+        plan.execution_levels.len(),
+        3,
+        "Should have 3 execution levels"
+    );
 
     // Level 0: root tasks (3)
-    assert_eq!(plan.execution_levels[0].len(), 3, "Level 0 should have 3 root tasks");
+    assert_eq!(
+        plan.execution_levels[0].len(),
+        3,
+        "Level 0 should have 3 root tasks"
+    );
 
     // Level 1: mid tasks (2)
-    assert_eq!(plan.execution_levels[1].len(), 2, "Level 1 should have 2 mid tasks");
+    assert_eq!(
+        plan.execution_levels[1].len(),
+        2,
+        "Level 1 should have 2 mid tasks"
+    );
 
     // Level 2: final task (1)
-    assert_eq!(plan.execution_levels[2].len(), 1, "Level 2 should have 1 final task");
+    assert_eq!(
+        plan.execution_levels[2].len(),
+        1,
+        "Level 2 should have 1 final task"
+    );
 
     // Verify tasks in each level
     let level_0_ids: HashSet<&str> = plan.execution_levels[0]
         .iter()
         .map(|t| t.id.as_str())
         .collect();
-    assert!(level_0_ids.contains("root-1"), "Level 0 should contain root-1");
-    assert!(level_0_ids.contains("root-2"), "Level 0 should contain root-2");
-    assert!(level_0_ids.contains("root-3"), "Level 0 should contain root-3");
+    assert!(
+        level_0_ids.contains("root-1"),
+        "Level 0 should contain root-1"
+    );
+    assert!(
+        level_0_ids.contains("root-2"),
+        "Level 0 should contain root-2"
+    );
+    assert!(
+        level_0_ids.contains("root-3"),
+        "Level 0 should contain root-3"
+    );
 }
 
 /// Test that tasks in same level have no dependencies on each other
@@ -319,8 +430,11 @@ fn test_same_level_tasks_are_independent() {
     // All tasks in level 0 should have no dependencies on each other
     let level_0 = &plan.execution_levels[0];
     for task in level_0 {
-        assert!(task.depends_on.is_empty(),
-                "Level 0 task {} should have no dependencies", task.id);
+        assert!(
+            task.depends_on.is_empty(),
+            "Level 0 task {} should have no dependencies",
+            task.id
+        );
     }
 }
 
@@ -341,13 +455,29 @@ fn test_critical_path_linear_chain() {
     let plan = schedule_tasks(tasks).expect("Should create execution plan");
 
     // In a linear chain, all tasks are on the critical path
-    assert_eq!(plan.critical_path.len(), 4, "All 4 tasks should be on critical path");
+    assert_eq!(
+        plan.critical_path.len(),
+        4,
+        "All 4 tasks should be on critical path"
+    );
 
     // Critical path should be in order
-    assert_eq!(plan.critical_path[0], "a", "Critical path should start with a");
-    assert_eq!(plan.critical_path[1], "b", "Critical path should continue with b");
-    assert_eq!(plan.critical_path[2], "c", "Critical path should continue with c");
-    assert_eq!(plan.critical_path[3], "d", "Critical path should end with d");
+    assert_eq!(
+        plan.critical_path[0], "a",
+        "Critical path should start with a"
+    );
+    assert_eq!(
+        plan.critical_path[1], "b",
+        "Critical path should continue with b"
+    );
+    assert_eq!(
+        plan.critical_path[2], "c",
+        "Critical path should continue with c"
+    );
+    assert_eq!(
+        plan.critical_path[3], "d",
+        "Critical path should end with d"
+    );
 }
 
 /// Test critical path with parallel branches
@@ -368,13 +498,20 @@ fn test_critical_path_parallel_branches() {
     let plan = schedule_tasks(tasks).expect("Should create execution plan");
 
     // Critical path should follow the longer branch
-    assert!(plan.critical_path.len() >= 4, "Critical path should include the longer branch");
+    assert!(
+        plan.critical_path.len() >= 4,
+        "Critical path should include the longer branch"
+    );
 
     // Root and final should always be on critical path
-    assert!(plan.critical_path.contains(&"root".to_string()),
-            "Root should be on critical path");
-    assert!(plan.critical_path.contains(&"final".to_string()),
-            "Final should be on critical path");
+    assert!(
+        plan.critical_path.contains(&"root".to_string()),
+        "Root should be on critical path"
+    );
+    assert!(
+        plan.critical_path.contains(&"final".to_string()),
+        "Final should be on critical path"
+    );
 }
 
 // =============================================================================
@@ -395,8 +532,10 @@ fn test_parallelizable_tasks_identification() {
     // Task B should be parallelizable (not on critical path if A->C is critical)
     // or at least we should have some identification
     // Note: parallelizable_tasks is a HashSet, so length is always >= 0
-    assert!(!plan.parallelizable_tasks.is_empty() || plan.critical_path.len() == 3,
-            "Should identify parallelizable tasks or all tasks on critical path");
+    assert!(
+        !plan.parallelizable_tasks.is_empty() || plan.critical_path.len() == 3,
+        "Should identify parallelizable tasks or all tasks on critical path"
+    );
 }
 
 /// Test that all tasks are either parallelizable or on critical path
@@ -419,8 +558,11 @@ fn test_tasks_are_parallelizable_or_critical() {
         let is_critical = critical_set.contains(task_id);
         let is_parallelizable = plan.parallelizable_tasks.contains(task_id);
 
-        assert!(is_critical || is_parallelizable,
-                "Task {} should be either critical or parallelizable", task_id);
+        assert!(
+            is_critical || is_parallelizable,
+            "Task {} should be either critical or parallelizable",
+            task_id
+        );
     }
 }
 
@@ -457,9 +599,18 @@ fn test_execution_plan_visualization() {
     let plan = schedule_tasks(tasks).expect("Should create plan");
     let visualization = visualize_execution_plan(&plan, None);
 
-    assert!(visualization.contains("Execution Plan"), "Should contain header");
-    assert!(visualization.contains("Total Tasks: 2"), "Should show total tasks");
-    assert!(visualization.contains("Level"), "Should show execution levels");
+    assert!(
+        visualization.contains("Execution Plan"),
+        "Should contain header"
+    );
+    assert!(
+        visualization.contains("Total Tasks: 2"),
+        "Should show total tasks"
+    );
+    assert!(
+        visualization.contains("Level"),
+        "Should show execution levels"
+    );
 }
 
 /// Test visualization with empty tasks
@@ -468,7 +619,10 @@ fn test_visualization_empty_tasks() {
     let tasks: Vec<Task> = vec![];
     let visualization = visualize_dependency_graph(&tasks, None);
 
-    assert!(visualization.contains("No tasks"), "Should indicate no tasks");
+    assert!(
+        visualization.contains("No tasks"),
+        "Should indicate no tasks"
+    );
 }
 
 /// Test visualization with custom config
@@ -504,24 +658,24 @@ fn test_complex_dependency_graph() {
         // Level 0: Roots
         create_task("setup", "Setup Project", vec![]),
         create_task("docs-plan", "Plan Documentation", vec![]),
-
         // Level 1: Core implementation
         create_task("core", "Core Module", vec!["setup"]),
         create_task("config", "Configuration", vec!["setup"]),
         create_task("docs-setup", "Docs Setup", vec!["docs-plan"]),
-
         // Level 2: Features
         create_task("feature-a", "Feature A", vec!["core", "config"]),
         create_task("feature-b", "Feature B", vec!["core"]),
         create_task("tests-core", "Core Tests", vec!["core"]),
-
         // Level 3: Integration
         create_task("integration", "Integration", vec!["feature-a", "feature-b"]),
         create_task("docs-api", "API Docs", vec!["feature-a", "docs-setup"]),
-
         // Level 4: Final
         create_task("e2e-tests", "E2E Tests", vec!["integration"]),
-        create_task("release", "Release", vec!["integration", "tests-core", "docs-api"]),
+        create_task(
+            "release",
+            "Release",
+            vec!["integration", "tests-core", "docs-api"],
+        ),
     ];
 
     let plan = schedule_tasks(tasks).expect("Should handle complex graph");
@@ -536,19 +690,48 @@ fn test_complex_dependency_graph() {
     assert!(!plan.critical_path.is_empty(), "Should have critical path");
 
     // Verify setup comes before everything that depends on it
-    let setup_pos = plan.execution_order.iter().position(|id| id == "setup").unwrap();
-    let core_pos = plan.execution_order.iter().position(|id| id == "core").unwrap();
-    let feature_a_pos = plan.execution_order.iter().position(|id| id == "feature-a").unwrap();
+    let setup_pos = plan
+        .execution_order
+        .iter()
+        .position(|id| id == "setup")
+        .unwrap();
+    let core_pos = plan
+        .execution_order
+        .iter()
+        .position(|id| id == "core")
+        .unwrap();
+    let feature_a_pos = plan
+        .execution_order
+        .iter()
+        .position(|id| id == "feature-a")
+        .unwrap();
 
     assert!(setup_pos < core_pos, "Setup should come before core");
-    assert!(core_pos < feature_a_pos, "Core should come before feature-a");
+    assert!(
+        core_pos < feature_a_pos,
+        "Core should come before feature-a"
+    );
 
     // Verify integration comes after its dependencies
-    let integration_pos = plan.execution_order.iter().position(|id| id == "integration").unwrap();
-    let feature_b_pos = plan.execution_order.iter().position(|id| id == "feature-b").unwrap();
+    let integration_pos = plan
+        .execution_order
+        .iter()
+        .position(|id| id == "integration")
+        .unwrap();
+    let feature_b_pos = plan
+        .execution_order
+        .iter()
+        .position(|id| id == "feature-b")
+        .unwrap();
 
-    assert!(feature_a_pos < integration_pos, "Feature A should come before integration");
-    assert!(feature_b_pos < integration_pos, "Feature B should come before integration");
+    assert!(
+        feature_a_pos < integration_pos,
+        "Feature A should come before integration"
+    );
+    assert!(
+        feature_b_pos < integration_pos,
+        "Feature B should come before integration"
+    );
 }
 
 /// Test graph with many parallel branches
@@ -562,13 +745,17 @@ fn test_many_parallel_branches() {
     // Create 10 parallel branches from root
     for i in 0..10 {
         let branch_id = format!("branch-{}", i);
-        tasks.push(create_task(&branch_id, &format!("Branch {}", i), vec!["root"]));
+        tasks.push(create_task(
+            &branch_id,
+            &format!("Branch {}", i),
+            vec!["root"],
+        ));
     }
 
     // Create final task that depends on all branches
-    let all_branches: Vec<&str> = (0..10).map(|i| {
-        Box::leak(format!("branch-{}", i).into_boxed_str()) as &str
-    }).collect();
+    let all_branches: Vec<&str> = (0..10)
+        .map(|i| Box::leak(format!("branch-{}", i).into_boxed_str()) as &str)
+        .collect();
     tasks.push(create_task("final", "Final", all_branches));
 
     let plan = schedule_tasks(tasks).expect("Should handle many branches");
@@ -577,7 +764,11 @@ fn test_many_parallel_branches() {
     assert_eq!(plan.execution_levels.len(), 3, "Should have 3 levels");
 
     // Level 1 should have 10 parallel tasks
-    assert_eq!(plan.execution_levels[1].len(), 10, "Level 1 should have 10 parallel branches");
+    assert_eq!(
+        plan.execution_levels[1].len(),
+        10,
+        "Level 1 should have 10 parallel branches"
+    );
 }
 
 // =============================================================================
@@ -599,7 +790,11 @@ fn test_all_depend_on_same_task() {
     assert_eq!(plan.total_tasks, 4, "Should have 4 tasks");
 
     // Common should come first
-    let common_pos = plan.execution_order.iter().position(|id| id == "common").unwrap();
+    let common_pos = plan
+        .execution_order
+        .iter()
+        .position(|id| id == "common")
+        .unwrap();
     for id in &["a", "b", "c"] {
         let pos = plan.execution_order.iter().position(|t| t == *id).unwrap();
         assert!(common_pos < pos, "Common should come before {}", id);
@@ -616,14 +811,22 @@ fn test_deeply_nested_chain() {
     for i in 1..50 {
         let prev_id = format!("task-{}", i - 1);
         let curr_id = format!("task-{}", i);
-        tasks.push(create_task(&curr_id, &format!("Task {}", i), vec![&prev_id]));
+        tasks.push(create_task(
+            &curr_id,
+            &format!("Task {}", i),
+            vec![&prev_id],
+        ));
     }
 
     let plan = schedule_tasks(tasks).expect("Should handle deep chain");
 
     assert_eq!(plan.total_tasks, 50, "Should have 50 tasks");
     assert_eq!(plan.max_depth, 50, "Max depth should be 50");
-    assert_eq!(plan.critical_path.len(), 50, "All tasks should be on critical path");
+    assert_eq!(
+        plan.critical_path.len(),
+        50,
+        "All tasks should be on critical path"
+    );
 }
 
 /// Test task with many dependencies
@@ -633,13 +836,17 @@ fn test_task_with_many_dependencies() {
 
     // Create 20 root tasks
     for i in 0..20 {
-        tasks.push(create_task(&format!("dep-{}", i), &format!("Dep {}", i), vec![]));
+        tasks.push(create_task(
+            &format!("dep-{}", i),
+            &format!("Dep {}", i),
+            vec![],
+        ));
     }
 
     // Create one task that depends on all of them
-    let all_deps: Vec<&str> = (0..20).map(|i| {
-        Box::leak(format!("dep-{}", i).into_boxed_str()) as &str
-    }).collect();
+    let all_deps: Vec<&str> = (0..20)
+        .map(|i| Box::leak(format!("dep-{}", i).into_boxed_str()) as &str)
+        .collect();
     tasks.push(create_task("final", "Final Task", all_deps));
 
     let plan = schedule_tasks(tasks).expect("Should handle many dependencies");
@@ -647,7 +854,9 @@ fn test_task_with_many_dependencies() {
     assert_eq!(plan.total_tasks, 21, "Should have 21 tasks");
 
     // Final should be in last level
-    let final_level = plan.execution_levels.iter()
+    let final_level = plan
+        .execution_levels
+        .iter()
         .position(|level| level.iter().any(|t| t.id == "final"))
         .unwrap();
     assert_eq!(final_level, 1, "Final should be in level 1 (after roots)");
@@ -671,9 +880,21 @@ fn test_completed_tasks_in_graph() {
     assert_eq!(plan.total_tasks, 3, "Should have 3 tasks");
 
     // Order should still respect dependencies regardless of status
-    let a_pos = plan.execution_order.iter().position(|id| id == "a").unwrap();
-    let b_pos = plan.execution_order.iter().position(|id| id == "b").unwrap();
-    let c_pos = plan.execution_order.iter().position(|id| id == "c").unwrap();
+    let a_pos = plan
+        .execution_order
+        .iter()
+        .position(|id| id == "a")
+        .unwrap();
+    let b_pos = plan
+        .execution_order
+        .iter()
+        .position(|id| id == "b")
+        .unwrap();
+    let c_pos = plan
+        .execution_order
+        .iter()
+        .position(|id| id == "c")
+        .unwrap();
 
     assert!(a_pos < b_pos, "A should come before B");
     assert!(b_pos < c_pos, "B should come before C");
@@ -696,14 +917,22 @@ mod performance_tests {
         // Create a graph with 1000 tasks
         // 100 root tasks, each with 10 dependent tasks
         for i in 0..100 {
-            tasks.push(create_task(&format!("root-{}", i), &format!("Root {}", i), vec![]));
+            tasks.push(create_task(
+                &format!("root-{}", i),
+                &format!("Root {}", i),
+                vec![],
+            ));
         }
 
         for i in 0..100 {
             for j in 0..10 {
                 let root_id = format!("root-{}", i);
                 let dep_id = format!("dep-{}-{}", i, j);
-                tasks.push(create_task(&dep_id, &format!("Dep {}-{}", i, j), vec![&root_id]));
+                tasks.push(create_task(
+                    &dep_id,
+                    &format!("Dep {}-{}", i, j),
+                    vec![&root_id],
+                ));
             }
         }
 
@@ -716,8 +945,11 @@ mod performance_tests {
         assert_eq!(plan.total_tasks, 1100, "Should have 1100 tasks");
 
         // Should complete in reasonable time (< 1 second)
-        assert!(duration < std::time::Duration::from_secs(1),
-                "Scheduling 1000 tasks should take < 1s, took {:?}", duration);
+        assert!(
+            duration < std::time::Duration::from_secs(1),
+            "Scheduling 1000 tasks should take < 1s, took {:?}",
+            duration
+        );
     }
 
     /// Benchmark cycle detection in large graphs
@@ -731,7 +963,11 @@ mod performance_tests {
                 tasks.push(create_task("task-0", "Task 0", vec![]));
             } else {
                 let prev = format!("task-{}", i - 1);
-                tasks.push(create_task(&format!("task-{}", i), &format!("Task {}", i), vec![&prev]));
+                tasks.push(create_task(
+                    &format!("task-{}", i),
+                    &format!("Task {}", i),
+                    vec![&prev],
+                ));
             }
         }
 
@@ -746,8 +982,11 @@ mod performance_tests {
         assert!(result.is_err(), "Should detect cycle");
 
         // Should detect cycle in reasonable time
-        assert!(duration < std::time::Duration::from_secs(2),
-                "Cycle detection should take < 2s, took {:?}", duration);
+        assert!(
+            duration < std::time::Duration::from_secs(2),
+            "Cycle detection should take < 2s, took {:?}",
+            duration
+        );
     }
 }
 
@@ -771,8 +1010,16 @@ fn test_identify_blocked_tasks() {
     assert_eq!(plan.total_tasks, 3, "Should have 3 tasks");
 
     // Order should still be valid
-    let a_pos = plan.execution_order.iter().position(|id| id == "a").unwrap();
-    let b_pos = plan.execution_order.iter().position(|id| id == "b").unwrap();
+    let a_pos = plan
+        .execution_order
+        .iter()
+        .position(|id| id == "a")
+        .unwrap();
+    let b_pos = plan
+        .execution_order
+        .iter()
+        .position(|id| id == "b")
+        .unwrap();
     assert!(a_pos < b_pos, "A should come before B");
 }
 
@@ -784,13 +1031,22 @@ fn test_task_can_execute_method() {
     let mut completed = HashSet::new();
 
     // No dependencies completed
-    assert!(!task.can_execute(&completed), "Should not execute without completed deps");
+    assert!(
+        !task.can_execute(&completed),
+        "Should not execute without completed deps"
+    );
 
     // One dependency completed
     completed.insert("prereq-1".to_string());
-    assert!(!task.can_execute(&completed), "Should not execute with partial deps");
+    assert!(
+        !task.can_execute(&completed),
+        "Should not execute with partial deps"
+    );
 
     // All dependencies completed
     completed.insert("prereq-2".to_string());
-    assert!(task.can_execute(&completed), "Should execute with all deps completed");
+    assert!(
+        task.can_execute(&completed),
+        "Should execute with all deps completed"
+    );
 }

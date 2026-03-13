@@ -3,8 +3,8 @@
 //! Tests the WorkspaceState struct and its save/load functionality
 //! for tasks-manifest.json serialization and deserialization.
 
-use ltmatrix::workspace::WorkspaceState;
 use ltmatrix::models::{Task, TaskStatus};
+use ltmatrix::workspace::WorkspaceState;
 use std::fs;
 use tempfile::TempDir;
 
@@ -277,5 +277,8 @@ fn test_workspace_state_round_trip() {
     assert_eq!(loaded_state.tasks[0].status, original_state.tasks[0].status);
     assert_eq!(loaded_state.tasks[1].id, original_state.tasks[1].id);
     assert_eq!(loaded_state.tasks[1].status, original_state.tasks[1].status);
-    assert_eq!(loaded_state.tasks[1].depends_on, original_state.tasks[1].depends_on);
+    assert_eq!(
+        loaded_state.tasks[1].depends_on,
+        original_state.tasks[1].depends_on
+    );
 }

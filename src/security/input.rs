@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Input validation and sanitization utilities
 //!
 //! This module provides functions to validate and sanitize user inputs
@@ -69,10 +68,13 @@ pub fn validate_identifier(id: &str) -> Result<()> {
     }
 
     // First character must be alphanumeric
-    if !id.chars().next().map(|c| c.is_alphanumeric()).unwrap_or(false) {
-        return Err(anyhow!(
-            "Identifier must start with alphanumeric character"
-        ));
+    if !id
+        .chars()
+        .next()
+        .map(|c| c.is_alphanumeric())
+        .unwrap_or(false)
+    {
+        return Err(anyhow!("Identifier must start with alphanumeric character"));
     }
 
     // Check all characters
@@ -81,7 +83,8 @@ pub fn validate_identifier(id: &str) -> Result<()> {
             return Err(anyhow!(
                 "Invalid character '{}' at position {} in identifier. \
                  Only alphanumeric, dash, and underscore allowed",
-                c, i
+                c,
+                i
             ));
         }
     }
@@ -243,7 +246,10 @@ pub fn validate_task_title(title: &str) -> Result<()> {
     }
 
     if title.len() > 500 {
-        return Err(anyhow!("Task title too long: {} characters (max 500)", title.len()));
+        return Err(anyhow!(
+            "Task title too long: {} characters (max 500)",
+            title.len()
+        ));
     }
 
     // Check for control characters
@@ -309,7 +315,10 @@ pub fn validate_branch_name(name: &str) -> Result<()> {
     }
 
     if name.len() > 250 {
-        return Err(anyhow!("Branch name too long: {} characters (max 250)", name.len()));
+        return Err(anyhow!(
+            "Branch name too long: {} characters (max 250)",
+            name.len()
+        ));
     }
 
     // Git branch name rules
@@ -327,10 +336,7 @@ pub fn validate_branch_name(name: &str) -> Result<()> {
     let forbidden = ['~', '^', ':', ' ', '\t', '\n', '\r', '\\', '*'];
     for c in name.chars() {
         if forbidden.contains(&c) || c.is_control() {
-            return Err(anyhow!(
-                "Branch name contains forbidden character: '{}'",
-                c
-            ));
+            return Err(anyhow!("Branch name contains forbidden character: '{}'", c));
         }
     }
 
@@ -514,7 +520,10 @@ mod tests {
 
     #[test]
     fn test_sanitize_model_name() {
-        assert_eq!(sanitize_model_name("claude-sonnet-4-6"), "claude-sonnet-4-6");
+        assert_eq!(
+            sanitize_model_name("claude-sonnet-4-6"),
+            "claude-sonnet-4-6"
+        );
         assert_eq!(sanitize_model_name("model/name"), "modelname");
         assert_eq!(sanitize_model_name("model name"), "modelname");
     }

@@ -17,10 +17,7 @@ fn test_app_state_creation() {
     use ltmatrix::cli::args::Args;
     use ltmatrix::config::settings::Config;
 
-    let args = Args::try_parse_from([
-        "ltmatrix",
-        "test goal"
-    ]).expect("Failed to parse args");
+    let args = Args::try_parse_from(["ltmatrix", "test goal"]).expect("Failed to parse args");
 
     let config = Config::default();
 
@@ -52,9 +49,9 @@ fn test_app_state_with_agent_pool() {
 #[test]
 fn test_orchestrator_fast_mode_config() {
     // Test fast mode orchestrator configuration
-    use ltmatrix::pipeline::orchestrator::OrchestratorConfig;
     use ltmatrix::agent::AgentPool;
     use ltmatrix::config::settings::Config;
+    use ltmatrix::pipeline::orchestrator::OrchestratorConfig;
 
     let work_dir = std::env::current_dir().expect("Failed to get current dir");
     let config = Config::default();
@@ -72,9 +69,9 @@ fn test_orchestrator_fast_mode_config() {
 #[test]
 fn test_orchestrator_expert_mode_config() {
     // Test expert mode orchestrator configuration
-    use ltmatrix::pipeline::orchestrator::OrchestratorConfig;
     use ltmatrix::agent::AgentPool;
     use ltmatrix::config::settings::Config;
+    use ltmatrix::pipeline::orchestrator::OrchestratorConfig;
 
     let work_dir = std::env::current_dir().expect("Failed to get current dir");
     let config = Config::default();
@@ -92,9 +89,9 @@ fn test_orchestrator_expert_mode_config() {
 #[test]
 fn test_orchestrator_standard_mode_config() {
     // Test standard mode orchestrator configuration
-    use ltmatrix::pipeline::orchestrator::OrchestratorConfig;
     use ltmatrix::agent::AgentPool;
     use ltmatrix::config::settings::Config;
+    use ltmatrix::pipeline::orchestrator::OrchestratorConfig;
 
     let work_dir = std::env::current_dir().expect("Failed to get current dir");
     let config = Config::default();
@@ -120,28 +117,19 @@ fn test_execution_mode_conversion() {
     use ltmatrix::models::ExecutionMode;
 
     // Test Fast mode conversion
-    let args = Args::try_parse_from([
-        "ltmatrix",
-        "--fast",
-        "test goal"
-    ]).expect("Failed to parse args");
+    let args =
+        Args::try_parse_from(["ltmatrix", "--fast", "test goal"]).expect("Failed to parse args");
     let mode = args.get_execution_mode().to_model();
     assert_eq!(mode, ExecutionMode::Fast);
 
     // Test Expert mode conversion
-    let args = Args::try_parse_from([
-        "ltmatrix",
-        "--expert",
-        "test goal"
-    ]).expect("Failed to parse args");
+    let args =
+        Args::try_parse_from(["ltmatrix", "--expert", "test goal"]).expect("Failed to parse args");
     let mode = args.get_execution_mode().to_model();
     assert_eq!(mode, ExecutionMode::Expert);
 
     // Test Standard mode conversion
-    let args = Args::try_parse_from([
-        "ltmatrix",
-        "test goal"
-    ]).expect("Failed to parse args");
+    let args = Args::try_parse_from(["ltmatrix", "test goal"]).expect("Failed to parse args");
     let mode = args.get_execution_mode().to_model();
     assert_eq!(mode, ExecutionMode::Standard);
 }
@@ -159,7 +147,7 @@ fn test_logging_with_invalid_path() {
     let invalid_path = PathBuf::from("/nonexistent/directory/that/cannot/be/created/test.log");
     let result = logger::init_logging(
         ltmatrix::logging::level::LogLevel::Info,
-        Some(&invalid_path)
+        Some(&invalid_path),
     );
 
     // This might fail, but it should handle the error gracefully
@@ -173,10 +161,7 @@ fn test_logging_level_default() {
     use ltmatrix::cli::args::Args;
     use ltmatrix::logging::level::LogLevel as LoggingLevel;
 
-    let args = Args::try_parse_from([
-        "ltmatrix",
-        "test goal"
-    ]).expect("Failed to parse args");
+    let args = Args::try_parse_from(["ltmatrix", "test goal"]).expect("Failed to parse args");
 
     // When log_level is None, it should default to Info
     let log_level = args.log_level.map_or(LoggingLevel::Info, |lvl| match lvl {
@@ -202,7 +187,10 @@ fn test_config_loading_without_overrides() {
     let result = settings::load_config_with_overrides(None);
 
     // Should succeed with defaults
-    assert!(result.is_ok(), "Config loading should succeed with defaults");
+    assert!(
+        result.is_ok(),
+        "Config loading should succeed with defaults"
+    );
 
     if let Ok(config) = result {
         // Verify default config has reasonable values
@@ -237,7 +225,10 @@ fn test_agent_backend_empty_string() {
     let factory = AgentFactory::new();
 
     // Empty string should not be supported
-    assert!(!factory.is_supported(""), "Empty string should not be a valid backend");
+    assert!(
+        !factory.is_supported(""),
+        "Empty string should not be a valid backend"
+    );
 }
 
 #[test]
@@ -248,7 +239,10 @@ fn test_agent_backend_case_sensitivity() {
     let factory = AgentFactory::new();
 
     // Test lowercase
-    assert!(factory.is_supported("claude"), "lowercase 'claude' should be supported");
+    assert!(
+        factory.is_supported("claude"),
+        "lowercase 'claude' should be supported"
+    );
 
     // Test uppercase (should not be supported if case-sensitive)
     let uppercase_supported = factory.is_supported("CLAUDE");
@@ -303,10 +297,8 @@ fn test_command_with_multiple_goals() {
     // Test that goal can contain multiple words when passed as one argument
     use ltmatrix::cli::args::Args;
 
-    let args = Args::try_parse_from([
-        "ltmatrix",
-        "test goal with spaces"
-    ]).expect("Failed to parse args");
+    let args =
+        Args::try_parse_from(["ltmatrix", "test goal with spaces"]).expect("Failed to parse args");
 
     // clap should treat the single argument as the goal
     assert_eq!(args.goal, Some("test goal with spaces".to_string()));
@@ -317,9 +309,7 @@ fn test_command_with_empty_goal() {
     // Test command without a goal (should show help)
     use ltmatrix::cli::args::Args;
 
-    let args = Args::try_parse_from([
-        "ltmatrix"
-    ]).expect("Failed to parse args");
+    let args = Args::try_parse_from(["ltmatrix"]).expect("Failed to parse args");
 
     assert!(args.goal.is_none(), "Goal should be None when not provided");
     assert!(args.command.is_none(), "No subcommand should be present");
@@ -330,11 +320,8 @@ fn test_release_command_with_options() {
     // Test release command with valid options
     use ltmatrix::cli::args::{Args, Command};
 
-    let args = Args::try_parse_from([
-        "ltmatrix",
-        "release",
-        "--archive"
-    ]).expect("Failed to parse args");
+    let args =
+        Args::try_parse_from(["ltmatrix", "release", "--archive"]).expect("Failed to parse args");
 
     assert!(args.command.is_some());
 
@@ -351,11 +338,8 @@ fn test_cleanup_command_with_force() {
     // Test cleanup command with force flag
     use ltmatrix::cli::args::{Args, Command};
 
-    let args = Args::try_parse_from([
-        "ltmatrix",
-        "cleanup",
-        "--force"
-    ]).expect("Failed to parse args");
+    let args =
+        Args::try_parse_from(["ltmatrix", "cleanup", "--force"]).expect("Failed to parse args");
 
     assert!(args.command.is_some());
 
@@ -404,12 +388,8 @@ fn test_dry_run_with_fast_mode() {
     // Test that dry-run can be combined with fast mode
     use ltmatrix::cli::args::Args;
 
-    let args = Args::try_parse_from([
-        "ltmatrix",
-        "--fast",
-        "--dry-run",
-        "test goal"
-    ]).expect("Failed to parse args");
+    let args = Args::try_parse_from(["ltmatrix", "--fast", "--dry-run", "test goal"])
+        .expect("Failed to parse args");
 
     assert!(args.fast, "Fast flag should be set");
     assert!(args.dry_run, "Dry-run flag should be set");
@@ -420,12 +400,8 @@ fn test_dry_run_with_expert_mode() {
     // Test that dry-run can be combined with expert mode
     use ltmatrix::cli::args::Args;
 
-    let args = Args::try_parse_from([
-        "ltmatrix",
-        "--expert",
-        "--dry-run",
-        "test goal"
-    ]).expect("Failed to parse args");
+    let args = Args::try_parse_from(["ltmatrix", "--expert", "--dry-run", "test goal"])
+        .expect("Failed to parse args");
 
     assert!(args.expert, "Expert flag should be set");
     assert!(args.dry_run, "Dry-run flag should be set");
@@ -440,11 +416,8 @@ fn test_output_format_text() {
     // Test text output format
     use ltmatrix::cli::args::{Args, OutputFormat};
 
-    let args = Args::try_parse_from([
-        "ltmatrix",
-        "test goal",
-        "--output", "text"
-    ]).expect("Failed to parse args");
+    let args = Args::try_parse_from(["ltmatrix", "test goal", "--output", "text"])
+        .expect("Failed to parse args");
 
     assert_eq!(args.output, Some(OutputFormat::Text));
 }
@@ -454,11 +427,8 @@ fn test_output_format_json() {
     // Test JSON output format
     use ltmatrix::cli::args::{Args, OutputFormat};
 
-    let args = Args::try_parse_from([
-        "ltmatrix",
-        "test goal",
-        "--output", "json"
-    ]).expect("Failed to parse args");
+    let args = Args::try_parse_from(["ltmatrix", "test goal", "--output", "json"])
+        .expect("Failed to parse args");
 
     assert_eq!(args.output, Some(OutputFormat::Json));
 }
@@ -478,8 +448,10 @@ fn test_log_file_absolute_path() {
     let args = Args::try_parse_from([
         "ltmatrix",
         "test goal",
-        "--log-file", log_path.to_str().unwrap()
-    ]).expect("Failed to parse args");
+        "--log-file",
+        log_path.to_str().unwrap(),
+    ])
+    .expect("Failed to parse args");
 
     assert_eq!(args.log_file, Some(log_path));
 }
@@ -489,11 +461,8 @@ fn test_log_file_relative_path() {
     // Test logging with relative path
     use ltmatrix::cli::args::Args;
 
-    let args = Args::try_parse_from([
-        "ltmatrix",
-        "test goal",
-        "--log-file", "./logs/test.log"
-    ]).expect("Failed to parse args");
+    let args = Args::try_parse_from(["ltmatrix", "test goal", "--log-file", "./logs/test.log"])
+        .expect("Failed to parse args");
 
     assert_eq!(args.log_file, Some(PathBuf::from("./logs/test.log")));
 }
@@ -507,11 +476,8 @@ fn test_agent_selection_cli_priority() {
     // Test that CLI agent flag takes priority over config
     use ltmatrix::cli::args::Args;
 
-    let args = Args::try_parse_from([
-        "ltmatrix",
-        "--agent", "claude",
-        "test goal"
-    ]).expect("Failed to parse args");
+    let args = Args::try_parse_from(["ltmatrix", "--agent", "claude", "test goal"])
+        .expect("Failed to parse args");
 
     assert_eq!(args.agent, Some("claude".to_string()));
 }
@@ -526,25 +492,16 @@ fn test_banner_conditions() {
     use ltmatrix::cli::args::Args;
 
     // No banner for subcommands
-    let args = Args::try_parse_from([
-        "ltmatrix",
-        "completions",
-        "bash"
-    ]).expect("Failed to parse args");
+    let args =
+        Args::try_parse_from(["ltmatrix", "completions", "bash"]).expect("Failed to parse args");
     assert!(args.command.is_some(), "Should have subcommand");
 
     // No banner for man
-    let args = Args::try_parse_from([
-        "ltmatrix",
-        "man"
-    ]).expect("Failed to parse args");
+    let args = Args::try_parse_from(["ltmatrix", "man"]).expect("Failed to parse args");
     assert!(args.command.is_some(), "Should have subcommand");
 
     // Banner for run command (no subcommand)
-    let args = Args::try_parse_from([
-        "ltmatrix",
-        "test goal"
-    ]).expect("Failed to parse args");
+    let args = Args::try_parse_from(["ltmatrix", "test goal"]).expect("Failed to parse args");
     assert!(args.command.is_none(), "Should not have subcommand");
 }
 
@@ -577,42 +534,27 @@ fn test_completions_all_shells() {
     use ltmatrix::cli::args::{Args, Command};
 
     // Test bash
-    let args = Args::try_parse_from([
-        "ltmatrix",
-        "completions",
-        "bash"
-    ]).expect("Failed to parse args");
+    let args =
+        Args::try_parse_from(["ltmatrix", "completions", "bash"]).expect("Failed to parse args");
     assert!(matches!(args.command, Some(Command::Completions(_))));
 
     // Test zsh
-    let args = Args::try_parse_from([
-        "ltmatrix",
-        "completions",
-        "zsh"
-    ]).expect("Failed to parse args");
+    let args =
+        Args::try_parse_from(["ltmatrix", "completions", "zsh"]).expect("Failed to parse args");
     assert!(matches!(args.command, Some(Command::Completions(_))));
 
     // Test fish
-    let args = Args::try_parse_from([
-        "ltmatrix",
-        "completions",
-        "fish"
-    ]).expect("Failed to parse args");
+    let args =
+        Args::try_parse_from(["ltmatrix", "completions", "fish"]).expect("Failed to parse args");
     assert!(matches!(args.command, Some(Command::Completions(_))));
 
     // Test powershell
-    let args = Args::try_parse_from([
-        "ltmatrix",
-        "completions",
-        "powershell"
-    ]).expect("Failed to parse args");
+    let args = Args::try_parse_from(["ltmatrix", "completions", "powershell"])
+        .expect("Failed to parse args");
     assert!(matches!(args.command, Some(Command::Completions(_))));
 
     // Test elvish
-    let args = Args::try_parse_from([
-        "ltmatrix",
-        "completions",
-        "elvish"
-    ]).expect("Failed to parse args");
+    let args =
+        Args::try_parse_from(["ltmatrix", "completions", "elvish"]).expect("Failed to parse args");
     assert!(matches!(args.command, Some(Command::Completions(_))));
 }

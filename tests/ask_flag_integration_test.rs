@@ -56,19 +56,10 @@ mod cli_integration_tests {
     /// Test --ask with config file
     #[test]
     fn test_ask_flag_with_config() {
-        let args = Args::parse_from([
-            "ltmatrix",
-            "--ask",
-            "--config",
-            "custom.toml",
-            "test goal",
-        ]);
+        let args = Args::parse_from(["ltmatrix", "--ask", "--config", "custom.toml", "test goal"]);
 
         assert!(args.ask, "ask flag should be true");
-        assert_eq!(
-            args.config,
-            Some(std::path::PathBuf::from("custom.toml"))
-        );
+        assert_eq!(args.config, Some(std::path::PathBuf::from("custom.toml")));
     }
 }
 
@@ -449,19 +440,18 @@ mod edge_case_tests {
             multi_select: false,
         });
 
-        let special_answer = "Answer with 'quotes', \"double quotes\", & symbols, and\nnewlines\ttabs";
+        let special_answer =
+            "Answer with 'quotes', \"double quotes\", & symbols, and\nnewlines\ttabs";
         session.answer_question("q1", special_answer).unwrap();
 
-        assert_eq!(
-            session.answers.get("q1"),
-            Some(&special_answer.to_string())
-        );
+        assert_eq!(session.answers.get("q1"), Some(&special_answer.to_string()));
     }
 
     /// Test clear goal generates minimal questions
     #[test]
     fn test_clear_goal_generates_minimal_questions() {
-        let goal = "Add unit tests for the UserService.login() method using mockito for HTTP mocking";
+        let goal =
+            "Add unit tests for the UserService.login() method using mockito for HTTP mocking";
         let session = ClarificationSession::new(goal);
         assert_eq!(session.goal, goal);
     }
@@ -472,7 +462,10 @@ mod edge_case_tests {
         let session = ClarificationSession::new("test");
         let injection = session.generate_prompt_injection();
 
-        assert!(injection.is_empty(), "Should return empty string when no answers");
+        assert!(
+            injection.is_empty(),
+            "Should return empty string when no answers"
+        );
     }
 
     /// Test multi-select answer format
@@ -493,9 +486,6 @@ mod edge_case_tests {
         // Multi-select answers stored as comma-separated string
         session.answer_question("features", "A, C").unwrap();
 
-        assert_eq!(
-            session.answers.get("features"),
-            Some(&"A, C".to_string())
-        );
+        assert_eq!(session.answers.get("features"), Some(&"A, C".to_string()));
     }
 }

@@ -3,18 +3,16 @@
 //! This test file verifies the complete fixtures system works correctly
 //! and tests the mock agent implementations in integration scenarios.
 
-use std::path::PathBuf;
+use ltmatrix::agent::backend::{AgentBackend, AgentConfig, AgentError, ExecutionConfig};
+use ltmatrix::models::{Task, TaskComplexity, TaskStatus};
 use std::fs;
-use ltmatrix::models::{Task, TaskStatus, TaskComplexity};
-use ltmatrix::agent::backend::{
-    AgentBackend, AgentConfig, AgentError, ExecutionConfig,
-};
+use std::path::PathBuf;
 
 // Include the local mocks module
 #[path = "fixtures/mocks/mod.rs"]
 mod mocks;
 
-use mocks::{MockAgent, MockResponse, MockAgentBuilder, FailingMockAgent, DelayedMockAgent};
+use mocks::{DelayedMockAgent, FailingMockAgent, MockAgent, MockAgentBuilder, MockResponse};
 
 // =============================================================================
 // Fixture Loading Utilities
@@ -29,7 +27,10 @@ fn fixture_path(category: &str, name: &str) -> PathBuf {
 }
 
 /// Load a JSON fixture file
-fn load_json_fixture(category: &str, name: &str) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+fn load_json_fixture(
+    category: &str,
+    name: &str,
+) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
     let path = fixture_path(category, name);
     let content = fs::read_to_string(&path)?;
     let json: serde_json::Value = serde_json::from_str(&content)?;
@@ -61,9 +62,21 @@ fn load_response_fixture(name: &str) -> Result<serde_json::Value, Box<dyn std::e
 
 /// Parse a task from JSON value
 fn parse_task_from_json(json: &serde_json::Value) -> Result<Task, Box<dyn std::error::Error>> {
-    let id = json.get("id").and_then(|v| v.as_str()).ok_or("Missing id")?.to_string();
-    let title = json.get("title").and_then(|v| v.as_str()).ok_or("Missing title")?.to_string();
-    let description = json.get("description").and_then(|v| v.as_str()).ok_or("Missing description")?.to_string();
+    let id = json
+        .get("id")
+        .and_then(|v| v.as_str())
+        .ok_or("Missing id")?
+        .to_string();
+    let title = json
+        .get("title")
+        .and_then(|v| v.as_str())
+        .ok_or("Missing title")?
+        .to_string();
+    let description = json
+        .get("description")
+        .and_then(|v| v.as_str())
+        .ok_or("Missing description")?
+        .to_string();
 
     let mut task = Task::new(id, title, description);
 
@@ -88,7 +101,10 @@ fn parse_task_from_json(json: &serde_json::Value) -> Result<Task, Box<dyn std::e
     }
 
     if let Some(deps) = json.get("depends_on").and_then(|v| v.as_array()) {
-        task.depends_on = deps.iter().filter_map(|v| v.as_str().map(String::from)).collect();
+        task.depends_on = deps
+            .iter()
+            .filter_map(|v| v.as_str().map(String::from))
+            .collect();
     }
 
     if let Some(subtasks) = json.get("subtasks").and_then(|v| v.as_array()) {
@@ -129,7 +145,12 @@ fn list_fixtures(category: &str) -> Vec<String> {
         .map(|entries| {
             entries
                 .filter_map(|e| e.ok())
-                .filter_map(|e| e.path().file_name().and_then(|n| n.to_str()).map(String::from))
+                .filter_map(|e| {
+                    e.path()
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .map(String::from)
+                })
                 .collect()
         })
         .unwrap_or_default()
@@ -149,9 +170,15 @@ fn test_load_error_timeout_response() {
     let response = load_response_fixture("error_timeout").expect("Failed to load response fixture");
 
     assert!(response.get("output").is_some(), "Should have output");
-    assert!(response.get("is_complete").is_some(), "Should have is_complete");
+    assert!(
+        response.get("is_complete").is_some(),
+        "Should have is_complete"
+    );
 
-    let is_complete = response.get("is_complete").and_then(|v| v.as_bool()).unwrap();
+    let is_complete = response
+        .get("is_complete")
+        .and_then(|v| v.as_bool())
+        .unwrap();
     assert!(!is_complete, "Timeout response should not be complete");
 
     let error = response.get("error").and_then(|v| v.as_str());
@@ -214,12 +241,18 @@ async fn test_mock_agent_in_pipeline_scenario() {
     let mut mock = MockAgent::new();
 
     // Simulate a typical pipeline flow
-    mock.set_response("generate", MockResponse::success("Tasks generated successfully"));
+    mock.set_response(
+        "generate",
+        MockResponse::success("Tasks generated successfully"),
+    );
     mock.set_response("execute", MockResponse::success("Task executed"));
-    mock.set_response("verify", MockResponse::success_with_data(
-        "Verification passed",
-        serde_json::json!({ "passed": true }),
-    ));
+    mock.set_response(
+        "verify",
+        MockResponse::success_with_data(
+            "Verification passed",
+            serde_json::json!({ "passed": true }),
+        ),
+    );
 
     let config = ExecutionConfig::default();
 
@@ -416,14 +449,20 @@ fn test_rust_project_has_source_directory() {
 fn test_node_project_has_entry_point() {
     let path = get_project_path("node_basic");
 
-    assert!(path.join("index.js").exists(), "Node project should have index.js");
+    assert!(
+        path.join("index.js").exists(),
+        "Node project should have index.js"
+    );
 }
 
 #[test]
 fn test_python_project_has_pyproject() {
     let path = get_project_path("python_basic");
 
-    assert!(path.join("pyproject.toml").exists(), "Python project should have pyproject.toml");
+    assert!(
+        path.join("pyproject.toml").exists(),
+        "Python project should have pyproject.toml"
+    );
 }
 
 // =============================================================================
@@ -432,8 +471,8 @@ fn test_python_project_has_pyproject() {
 
 #[tokio::test]
 async fn test_mock_agent_records_session_id() {
+    use chrono::{Duration, Utc};
     use ltmatrix::agent::backend::AgentSession;
-    use chrono::{Utc, Duration};
 
     struct TestSession {
         id: String,
@@ -478,7 +517,10 @@ async fn test_mock_agent_records_session_id() {
     }
 
     let mut mock = MockAgent::new();
-    mock.set_response("execute_with_session", MockResponse::success("Session response"));
+    mock.set_response(
+        "execute_with_session",
+        MockResponse::success("Session response"),
+    );
 
     let config = ExecutionConfig::default();
     let now = Utc::now();
@@ -489,12 +531,20 @@ async fn test_mock_agent_records_session_id() {
         reuse_count: 0,
     };
 
-    let _ = mock.execute_with_session("test prompt", &config, &session).await;
+    let _ = mock
+        .execute_with_session("test prompt", &config, &session)
+        .await;
 
     let calls = mock.get_calls();
-    let session_call = calls.iter().find(|c| c.session_id.is_some()).expect("Should have call with session");
+    let session_call = calls
+        .iter()
+        .find(|c| c.session_id.is_some())
+        .expect("Should have call with session");
 
-    assert_eq!(session_call.session_id, Some("test-session-123".to_string()));
+    assert_eq!(
+        session_call.session_id,
+        Some("test-session-123".to_string())
+    );
 }
 
 #[tokio::test]

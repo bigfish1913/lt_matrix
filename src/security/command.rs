@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Command execution security utilities
 //!
 //! This module provides utilities for safely executing external commands,
@@ -128,7 +127,9 @@ pub fn validate_command_name(command: &str) -> Result<()> {
     }
 
     // Check for dangerous characters
-    let dangerous = ['|', '&', ';', '$', '`', '(', ')', '<', '>', '\n', '\r', '\0', ' '];
+    let dangerous = [
+        '|', '&', ';', '$', '`', '(', ')', '<', '>', '\n', '\r', '\0', ' ',
+    ];
     for c in command.chars() {
         if dangerous.contains(&c) {
             return Err(anyhow!(

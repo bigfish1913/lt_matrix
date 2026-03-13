@@ -62,7 +62,10 @@ fn mock_tool_execution_response(result: &str) -> JsonRpcResponse {
 
 /// Simulates an error response from an MCP server
 fn mock_tool_error_response(code: JsonRpcErrorCode, message: &str) -> JsonRpcResponse {
-    JsonRpcResponse::error(RequestId::Number(1), JsonRpcError::new(code, message.to_string()))
+    JsonRpcResponse::error(
+        RequestId::Number(1),
+        JsonRpcError::new(code, message.to_string()),
+    )
 }
 
 #[test]
@@ -104,7 +107,10 @@ fn test_mock_mcp_server_tool_execution_response() {
     let content = result.get("content").unwrap().as_array().unwrap();
     assert_eq!(content.len(), 1);
     assert_eq!(content[0]["type"], "text");
-    assert!(content[0]["text"].as_str().unwrap().contains("Successfully"));
+    assert!(content[0]["text"]
+        .as_str()
+        .unwrap()
+        .contains("Successfully"));
 }
 
 #[test]
@@ -342,8 +348,10 @@ impl MockToolRegistry {
     }
 
     fn register_server(&mut self, name: &str, tools: Vec<&str>) {
-        self.servers
-            .insert(name.to_string(), tools.iter().map(|s| s.to_string()).collect());
+        self.servers.insert(
+            name.to_string(),
+            tools.iter().map(|s| s.to_string()).collect(),
+        );
     }
 
     fn get_tools(&self, server: &str) -> Option<&Vec<String>> {
@@ -358,7 +366,10 @@ impl MockToolRegistry {
     }
 
     fn all_tools(&self) -> Vec<&String> {
-        self.servers.values().flat_map(|tools| tools.iter()).collect()
+        self.servers
+            .values()
+            .flat_map(|tools| tools.iter())
+            .collect()
     }
 }
 
@@ -394,11 +405,11 @@ fn test_tool_registry_playwright_tools() {
 fn test_tool_registry_multiple_servers() {
     let mut registry = MockToolRegistry::new();
 
+    registry.register_server("playwright", vec!["browser_click", "browser_navigate"]);
     registry.register_server(
-        "playwright",
-        vec!["browser_click", "browser_navigate"],
+        "filesystem",
+        vec!["read_file", "write_file", "list_directory"],
     );
-    registry.register_server("filesystem", vec!["read_file", "write_file", "list_directory"]);
     registry.register_server("fetch", vec!["fetch_url", "fetch_json"]);
 
     // Verify tools across servers
@@ -439,7 +450,12 @@ fn test_playwright_browser_automation_tools() {
     registry.register_server("playwright", playwright_tools.clone());
 
     // Verify core browser automation tools
-    let core_tools = ["browser_navigate", "browser_click", "browser_type", "browser_snapshot"];
+    let core_tools = [
+        "browser_navigate",
+        "browser_click",
+        "browser_type",
+        "browser_snapshot",
+    ];
     for tool in core_tools {
         assert!(
             registry.has_tool("playwright", tool),
@@ -449,7 +465,11 @@ fn test_playwright_browser_automation_tools() {
     }
 
     // Verify advanced tools
-    let advanced_tools = ["browser_evaluate", "browser_file_upload", "browser_wait_for"];
+    let advanced_tools = [
+        "browser_evaluate",
+        "browser_file_upload",
+        "browser_wait_for",
+    ];
     for tool in advanced_tools {
         assert!(
             registry.has_tool("playwright", tool),
@@ -517,7 +537,8 @@ fn test_tool_execution_success() {
 
 #[test]
 fn test_tool_execution_timeout() {
-    let result = ToolExecutionResult::Timeout("Tool execution exceeded 30 second timeout".to_string());
+    let result =
+        ToolExecutionResult::Timeout("Tool execution exceeded 30 second timeout".to_string());
     let response = result.to_response(RequestId::Number(1));
 
     assert!(response.is_error());
@@ -630,7 +651,7 @@ command = "mcp-server-filesystem"
 
     let mut session = MockAgentSession::new("test-session-001");
     assert_eq!(session.id(), "test-session-001");
-        assert!(!session.has_tools_available());
+    assert!(!session.has_tools_available());
 
     // Inject MCP config
     session.inject_mcp_config(config);

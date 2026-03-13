@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Pre-release validation checks
 //!
 //! This module provides pre-release validation to ensure code quality
@@ -130,7 +129,10 @@ impl PreReleaseCheck {
                     CheckResult::passed("Tests")
                 } else {
                     let stderr = String::from_utf8_lossy(&output.stderr);
-                    CheckResult::failed("Tests", stderr.lines().take(10).collect::<Vec<_>>().join("\n"))
+                    CheckResult::failed(
+                        "Tests",
+                        stderr.lines().take(10).collect::<Vec<_>>().join("\n"),
+                    )
                 }
             }
             Err(e) => CheckResult::failed("Tests", format!("Failed to run tests: {}", e)),
@@ -181,7 +183,10 @@ impl PreReleaseCheck {
                     CheckResult::passed("Clippy")
                 } else {
                     let stderr = String::from_utf8_lossy(&output.stderr);
-                    CheckResult::failed("Clippy", stderr.lines().take(20).collect::<Vec<_>>().join("\n"))
+                    CheckResult::failed(
+                        "Clippy",
+                        stderr.lines().take(20).collect::<Vec<_>>().join("\n"),
+                    )
                 }
             }
             Err(e) => CheckResult::warning("Clippy", format!("Failed to run clippy: {}", e)),
@@ -230,7 +235,10 @@ impl PreReleaseCheck {
             if stdout.trim().is_empty() {
                 CheckResult::passed("Clean working tree")
             } else {
-                CheckResult::failed("Clean working tree", "Uncommitted changes detected. Commit or stash them first.")
+                CheckResult::failed(
+                    "Clean working tree",
+                    "Uncommitted changes detected. Commit or stash them first.",
+                )
             }
         } else {
             CheckResult::failed("Clean working tree", "Failed to check git status")
@@ -253,7 +261,13 @@ impl PreReleaseCheck {
             if branch == "main" || branch == "master" {
                 CheckResult::passed("Main branch")
             } else {
-                CheckResult::warning("Main branch", format!("Currently on branch '{}'. Releases should be from main.", branch))
+                CheckResult::warning(
+                    "Main branch",
+                    format!(
+                        "Currently on branch '{}'. Releases should be from main.",
+                        branch
+                    ),
+                )
             }
         } else {
             CheckResult::skipped("Main branch", "Could not determine current branch")
@@ -270,7 +284,10 @@ impl PreReleaseCheck {
         let result = if changelog_path.exists() {
             CheckResult::passed("CHANGELOG.md exists")
         } else {
-            CheckResult::warning("CHANGELOG.md exists", "CHANGELOG.md not found. Consider creating one.")
+            CheckResult::warning(
+                "CHANGELOG.md exists",
+                "CHANGELOG.md not found. Consider creating one.",
+            )
         };
 
         self.results.push(result);
@@ -279,7 +296,9 @@ impl PreReleaseCheck {
 
     /// Check if all checks passed
     pub fn all_passed(&self) -> bool {
-        self.results.iter().all(|r| r.status == CheckStatus::Passed || r.status == CheckStatus::Skipped)
+        self.results
+            .iter()
+            .all(|r| r.status == CheckStatus::Passed || r.status == CheckStatus::Skipped)
     }
 
     /// Get summary of all checks
@@ -287,7 +306,8 @@ impl PreReleaseCheck {
         let mut summary = String::new();
 
         for result in &self.results {
-            summary.push_str(&format!("{} {} ({:.2}s)\n",
+            summary.push_str(&format!(
+                "{} {} ({:.2}s)\n",
                 result.status,
                 result.name,
                 result.duration_ms as f64 / 1000.0

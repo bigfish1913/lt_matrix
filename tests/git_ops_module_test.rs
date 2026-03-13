@@ -7,7 +7,10 @@ use ltmatrix::release::GitError;
 #[test]
 fn test_git_error_display() {
     let err = GitError::CommandFailed("fatal: not a git repository".to_string());
-    assert_eq!(err.to_string(), "Git command failed: fatal: not a git repository");
+    assert_eq!(
+        err.to_string(),
+        "Git command failed: fatal: not a git repository"
+    );
 
     let err = GitError::NotARepository;
     assert_eq!(err.to_string(), "Not a git repository");

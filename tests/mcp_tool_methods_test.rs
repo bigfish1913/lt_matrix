@@ -7,16 +7,15 @@
 //! These tests verify tool discovery and execution functionality,
 //! including parameter validation and result formatting.
 
-use ltmatrix::mcp::{
-    Tool, ToolCallParams, ToolCallResult, ToolContent,
-    ToolsListParams, ToolsListResult, ToolsCapability,
-};
-use ltmatrix::mcp::protocol::wrappers::{
-    McpMethod, PaginatedMethod, ToolsList, ToolsCall,
-    McpMethodKind,
-};
-use ltmatrix::mcp::protocol::messages::{JsonRpcResponse, RequestId};
 use ltmatrix::mcp::client::McpClient;
+use ltmatrix::mcp::protocol::messages::{JsonRpcResponse, RequestId};
+use ltmatrix::mcp::protocol::wrappers::{
+    McpMethod, McpMethodKind, PaginatedMethod, ToolsCall, ToolsList,
+};
+use ltmatrix::mcp::{
+    Tool, ToolCallParams, ToolCallResult, ToolContent, ToolsCapability, ToolsListParams,
+    ToolsListResult,
+};
 use serde_json::json;
 
 // ============================================================================
@@ -117,7 +116,10 @@ mod tools_list_method_tests {
 
         assert_eq!(result.tools.len(), 2);
         assert_eq!(result.tools[0].name, "browser_navigate");
-        assert_eq!(result.tools[0].description, "Navigate to a URL in the browser");
+        assert_eq!(
+            result.tools[0].description,
+            "Navigate to a URL in the browser"
+        );
         assert!(result.tools[0].input_schema["properties"]["url"].is_object());
         assert_eq!(result.tools[1].name, "browser_click");
         assert_eq!(result.next_cursor, Some("more-tools".to_string()));
@@ -171,7 +173,10 @@ mod tools_list_method_tests {
             tools: vec![],
             next_cursor: Some("cursor-value".to_string()),
         };
-        assert_eq!(ToolsList::next_cursor(&result_with_cursor), Some("cursor-value"));
+        assert_eq!(
+            ToolsList::next_cursor(&result_with_cursor),
+            Some("cursor-value")
+        );
 
         let result_without_cursor = ToolsListResult {
             tools: vec![],
@@ -294,10 +299,9 @@ mod tools_call_method_tests {
     /// Test building tools/call request with arguments
     #[test]
     fn test_tools_call_build_request_with_args() {
-        let params = ToolCallParams::new("browser_navigate")
-            .with_arguments(json!({
-                "url": "https://example.com"
-            }));
+        let params = ToolCallParams::new("browser_navigate").with_arguments(json!({
+            "url": "https://example.com"
+        }));
         let request = ToolsCall::build_request(RequestId::Number(1), params);
 
         let params_value = request.params.unwrap();
@@ -320,7 +324,7 @@ mod tools_call_method_tests {
             "browser_click",
             json!({
                 "selector": "#submit-button"
-            })
+            }),
         );
         assert_eq!(params.name, "browser_click");
         assert_eq!(params.arguments.unwrap()["selector"], "#submit-button");
@@ -514,13 +518,18 @@ mod tools_call_method_tests {
             }
         });
 
-        let params = ToolCallParams::new("api_request")
-            .with_arguments(complex_args.clone());
+        let params = ToolCallParams::new("api_request").with_arguments(complex_args.clone());
         let request = ToolsCall::build_request(RequestId::Number(1), params);
 
         let params_value = request.params.unwrap();
         assert_eq!(params_value["arguments"]["options"]["timeout"], 30000);
-        assert_eq!(params_value["arguments"]["data"]["values"].as_array().unwrap().len(), 5);
+        assert_eq!(
+            params_value["arguments"]["data"]["values"]
+                .as_array()
+                .unwrap()
+                .len(),
+            5
+        );
     }
 }
 
@@ -555,8 +564,7 @@ mod parameter_validation_tests {
     /// Test argument validation - empty object
     #[test]
     fn test_empty_arguments() {
-        let params = ToolCallParams::new("test_tool")
-            .with_arguments(json!({}));
+        let params = ToolCallParams::new("test_tool").with_arguments(json!({}));
 
         let request = ToolsCall::build_request(RequestId::Number(1), params);
         let params_value = request.params.unwrap();
@@ -568,31 +576,32 @@ mod parameter_validation_tests {
     /// Test argument validation - nested structures
     #[test]
     fn test_nested_arguments() {
-        let params = ToolCallParams::new("test_tool")
-            .with_arguments(json!({
-                "level1": {
-                    "level2": {
-                        "level3": {
-                            "value": "deep"
-                        }
+        let params = ToolCallParams::new("test_tool").with_arguments(json!({
+            "level1": {
+                "level2": {
+                    "level3": {
+                        "value": "deep"
                     }
                 }
-            }));
+            }
+        }));
 
         let request = ToolsCall::build_request(RequestId::Number(1), params);
         let params_value = request.params.unwrap();
 
-        assert_eq!(params_value["arguments"]["level1"]["level2"]["level3"]["value"], "deep");
+        assert_eq!(
+            params_value["arguments"]["level1"]["level2"]["level3"]["value"],
+            "deep"
+        );
     }
 
     /// Test argument validation - arrays
     #[test]
     fn test_array_arguments() {
-        let params = ToolCallParams::new("batch_tool")
-            .with_arguments(json!({
-                "items": ["item1", "item2", "item3"],
-                "count": 3
-            }));
+        let params = ToolCallParams::new("batch_tool").with_arguments(json!({
+            "items": ["item1", "item2", "item3"],
+            "count": 3
+        }));
 
         let request = ToolsCall::build_request(RequestId::Number(1), params);
         let params_value = request.params.unwrap();
@@ -604,16 +613,15 @@ mod parameter_validation_tests {
     /// Test argument validation - various types
     #[test]
     fn test_various_argument_types() {
-        let params = ToolCallParams::new("multi_type_tool")
-            .with_arguments(json!({
-                "string_val": "text",
-                "number_val": 42,
-                "float_val": 3.14,
-                "bool_val": true,
-                "null_val": null,
-                "array_val": [1, "two", true],
-                "object_val": {"key": "value"}
-            }));
+        let params = ToolCallParams::new("multi_type_tool").with_arguments(json!({
+            "string_val": "text",
+            "number_val": 42,
+            "float_val": 3.14,
+            "bool_val": true,
+            "null_val": null,
+            "array_val": [1, "two", true],
+            "object_val": {"key": "value"}
+        }));
 
         let request = ToolsCall::build_request(RequestId::Number(1), params);
         let params_value = request.params.unwrap();
@@ -652,7 +660,9 @@ mod result_formatting_tests {
 
         let result = ToolsCall::parse_response(response).unwrap();
 
-        let texts: Vec<String> = result.content.iter()
+        let texts: Vec<String> = result
+            .content
+            .iter()
             .filter_map(|c| match c {
                 ToolContent::Text { text } => Some(text.clone()),
                 _ => None,
@@ -707,7 +717,9 @@ mod result_formatting_tests {
 
         let result = ToolsCall::parse_response(response).unwrap();
 
-        let images: Vec<(&str, &str)> = result.content.iter()
+        let images: Vec<(&str, &str)> = result
+            .content
+            .iter()
             .filter_map(|c| match c {
                 ToolContent::Image { data, mime_type } => Some((data.as_str(), mime_type.as_str())),
                 _ => None,
@@ -743,7 +755,9 @@ mod result_formatting_tests {
 
         let result = ToolsCall::parse_response(response).unwrap();
 
-        let uris: Vec<&str> = result.content.iter()
+        let uris: Vec<&str> = result
+            .content
+            .iter()
             .filter_map(|c| match c {
                 ToolContent::Resource { uri, .. } => Some(uri.as_str()),
                 _ => None,
@@ -780,13 +794,19 @@ mod result_formatting_tests {
         assert_eq!(result.content.len(), 4);
 
         // Count content types
-        let text_count = result.content.iter()
+        let text_count = result
+            .content
+            .iter()
             .filter(|c| matches!(c, ToolContent::Text { .. }))
             .count();
-        let image_count = result.content.iter()
+        let image_count = result
+            .content
+            .iter()
             .filter(|c| matches!(c, ToolContent::Image { .. }))
             .count();
-        let resource_count = result.content.iter()
+        let resource_count = result
+            .content
+            .iter()
             .filter(|c| matches!(c, ToolContent::Resource { .. }))
             .count();
 
@@ -892,7 +912,7 @@ mod integration_like_tests {
             "browser_navigate",
             json!({
                 "url": "https://example.com"
-            })
+            }),
         );
         let request = ToolsCall::build_request(RequestId::Number(1), params);
 
@@ -938,7 +958,7 @@ mod integration_like_tests {
             "browser_navigate",
             json!({
                 "url": "not-a-valid-url"
-            })
+            }),
         );
         let request = ToolsCall::build_request(RequestId::Number(1), params);
 
@@ -1068,11 +1088,13 @@ mod serialization_edge_cases {
     #[test]
     fn test_many_tools_in_list() {
         let tools: Vec<serde_json::Value> = (0..100)
-            .map(|i| json!({
-                "name": format!("tool_{}", i),
-                "description": format!("Tool number {}", i),
-                "inputSchema": { "type": "object" }
-            }))
+            .map(|i| {
+                json!({
+                    "name": format!("tool_{}", i),
+                    "description": format!("Tool number {}", i),
+                    "inputSchema": { "type": "object" }
+                })
+            })
             .collect();
 
         let response = JsonRpcResponse::success(
@@ -1323,8 +1345,20 @@ mod client_helper_tests {
 
         let resources = McpClient::extract_resources_from_result(&result);
         assert_eq!(resources.len(), 3);
-        assert_eq!(resources[0], ("file:///output.txt".to_string(), Some("text/plain".to_string())));
-        assert_eq!(resources[1], ("file:///data.json".to_string(), Some("application/json".to_string())));
+        assert_eq!(
+            resources[0],
+            (
+                "file:///output.txt".to_string(),
+                Some("text/plain".to_string())
+            )
+        );
+        assert_eq!(
+            resources[1],
+            (
+                "file:///data.json".to_string(),
+                Some("application/json".to_string())
+            )
+        );
         assert_eq!(resources[2], ("file:///unknown".to_string(), None));
     }
 
@@ -1449,7 +1483,8 @@ mod client_helper_tests {
             is_error: false,
         };
 
-        let (text_count, image_count, resource_count) = McpClient::result_content_summary(&text_only);
+        let (text_count, image_count, resource_count) =
+            McpClient::result_content_summary(&text_only);
 
         assert_eq!(text_count, 3);
         assert_eq!(image_count, 0);

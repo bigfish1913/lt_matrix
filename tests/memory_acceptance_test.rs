@@ -9,11 +9,9 @@
 //! 6. Support memory injection into agent prompts
 
 use ltmatrix::memory::{
-    MemoryStore, MemoryEntry, MemoryIntegration,
-    memory::MemoryCategory,
-    extract_memory_from_task,
+    extract_memory_from_task, memory::MemoryCategory, MemoryEntry, MemoryIntegration, MemoryStore,
 };
-use ltmatrix::models::{Task, TaskStatus, TaskComplexity};
+use ltmatrix::models::{Task, TaskComplexity, TaskStatus};
 use std::fs;
 use std::path::PathBuf;
 use tempfile::TempDir;
@@ -43,12 +41,21 @@ fn test_acceptance_1_module_structure_exists() {
 
     // Verify memory.md file exists after adding an entry
     let memory_file = claude_dir.join("memory.md");
-    assert!(memory_file.exists(), ".claude/memory.md must exist after adding entry");
+    assert!(
+        memory_file.exists(),
+        ".claude/memory.md must exist after adding entry"
+    );
 
     // Verify file is readable and has proper format
     let content = fs::read_to_string(&memory_file).unwrap();
-    assert!(content.contains("# Project Memory"), "File must have header");
-    assert!(content.contains("Test Entry"), "File must contain the entry");
+    assert!(
+        content.contains("# Project Memory"),
+        "File must have header"
+    );
+    assert!(
+        content.contains("Test Entry"),
+        "File must contain the entry"
+    );
 }
 
 #[test]
@@ -88,10 +95,14 @@ fn test_acceptance_2_extract_architectural_decisions() {
         .filter(|e| e.category == MemoryCategory::ArchitectureDecision)
         .collect();
 
-    assert!(!arch_decisions.is_empty(),
-            "Must extract at least one architectural decision");
-    assert!(arch_decisions.iter().any(|e| e.content.contains("Tokio")),
-            "Must capture Tokio decision");
+    assert!(
+        !arch_decisions.is_empty(),
+        "Must extract at least one architectural decision"
+    );
+    assert!(
+        arch_decisions.iter().any(|e| e.content.contains("Tokio")),
+        "Must capture Tokio decision"
+    );
 }
 
 #[test]
@@ -112,10 +123,14 @@ fn test_acceptance_2_extract_key_patterns() {
         .filter(|e| e.category == MemoryCategory::Pattern)
         .collect();
 
-    assert!(!patterns.is_empty(),
-            "Must extract patterns from task results");
-    assert!(patterns.iter().any(|e| e.content.contains("Result")),
-            "Must capture Result pattern");
+    assert!(
+        !patterns.is_empty(),
+        "Must extract patterns from task results"
+    );
+    assert!(
+        patterns.iter().any(|e| e.content.contains("Result")),
+        "Must capture Result pattern"
+    );
 }
 
 #[test]
@@ -136,20 +151,40 @@ fn test_acceptance_2_extract_insights_and_notes() {
         .filter(|e| e.category == MemoryCategory::ImportantNote)
         .collect();
 
-    assert!(!notes.is_empty(),
-            "Must extract important notes from task results");
-    assert!(notes.iter().any(|e| e.content.contains("validate")),
-            "Must capture validation note");
+    assert!(
+        !notes.is_empty(),
+        "Must extract important notes from task results"
+    );
+    assert!(
+        notes.iter().any(|e| e.content.contains("validate")),
+        "Must capture validation note"
+    );
 }
 
 #[test]
 fn test_acceptance_2_extract_from_various_task_types() {
     // Test extraction from different types of tasks
     let task_types = vec![
-        ("task-001", "Architecture", "Architecture decision: Microservices pattern"),
-        ("task-002", "Implementation", "Pattern: Builder pattern for complex objects"),
-        ("task-003", "Bug Fix", "Important: Race condition fixed with mutex"),
-        ("task-004", "Refactoring", "Best practice: Extract to method"),
+        (
+            "task-001",
+            "Architecture",
+            "Architecture decision: Microservices pattern",
+        ),
+        (
+            "task-002",
+            "Implementation",
+            "Pattern: Builder pattern for complex objects",
+        ),
+        (
+            "task-003",
+            "Bug Fix",
+            "Important: Race condition fixed with mutex",
+        ),
+        (
+            "task-004",
+            "Refactoring",
+            "Best practice: Extract to method",
+        ),
         ("task-005", "Testing", "Note: Always test edge cases"),
     ];
 
@@ -158,8 +193,11 @@ fn test_acceptance_2_extract_from_various_task_types() {
         let entries = extract_memory_from_task(&task, result).unwrap();
 
         // Each task type should produce at least one entry
-        assert!(!entries.is_empty(),
-                "Task type '{}' should produce memory entries", title);
+        assert!(
+            !entries.is_empty(),
+            "Task type '{}' should produce memory entries",
+            title
+        );
     }
 }
 
@@ -184,7 +222,10 @@ fn test_acceptance_3_append_with_timestamp() {
 
     let time_diff = now - entry_time;
     assert!(time_diff.num_seconds() < 10, "Timestamp should be recent");
-    assert!(time_diff.num_seconds() >= 0, "Timestamp should not be in the future");
+    assert!(
+        time_diff.num_seconds() >= 0,
+        "Timestamp should not be in the future"
+    );
 }
 
 #[test]
@@ -202,8 +243,10 @@ fn test_acceptance_3_append_with_task_reference() {
     // Verify task reference appears in file
     let memory_file = temp_dir.path().join(".claude/memory.md");
     let content = fs::read_to_string(memory_file).unwrap();
-    assert!(content.contains("**Task**: task-042"),
-            "Task reference must be in memory file");
+    assert!(
+        content.contains("**Task**: task-042"),
+        "Task reference must be in memory file"
+    );
 }
 
 #[test]
@@ -229,8 +272,11 @@ fn test_acceptance_3_append_multiple_entries() {
     let content = fs::read_to_string(memory_file).unwrap();
 
     for i in 1..=10 {
-        assert!(content.contains(&format!("**Task**: task-{:03}", i)),
-                "Task reference {} must be in memory file", i);
+        assert!(
+            content.contains(&format!("**Task**: task-{:03}", i)),
+            "Task reference {} must be in memory file",
+            i
+        );
     }
 }
 
@@ -280,15 +326,19 @@ fn test_acceptance_4_load_existing_memory() {
 This is test content from a previous session.
 
 ---
-"#
-    ).unwrap();
+"#,
+    )
+    .unwrap();
 
     // Load store - should read existing memory
     let store = MemoryStore::new(temp_dir.path()).unwrap();
 
     // Verify existing memory is loaded
-    assert_eq!(store.entry_count(), 1,
-               "Must load existing entries from memory.md");
+    assert_eq!(
+        store.entry_count(),
+        1,
+        "Must load existing entries from memory.md"
+    );
 
     let entries = store.get_entries();
     assert_eq!(entries[0].task_id, "task-001");
@@ -310,10 +360,14 @@ fn test_acceptance_4_context_available_on_creation() {
     let store = MemoryStore::new(temp_dir.path()).unwrap();
     let context = store.get_memory_context().unwrap();
 
-    assert!(context.contains("Setup"),
-            "Context must be available immediately after loading");
-    assert!(context.contains("Tokio"),
-            "Context must contain previously stored memory");
+    assert!(
+        context.contains("Setup"),
+        "Context must be available immediately after loading"
+    );
+    assert!(
+        context.contains("Tokio"),
+        "Context must contain previously stored memory"
+    );
 }
 
 #[test]
@@ -325,8 +379,10 @@ fn test_acceptance_4_empty_memory_no_crash() {
 
     // Should not crash, should return appropriate message
     let context = store.get_memory_context().unwrap();
-    assert!(context.contains("No project memory"),
-            "Should handle empty memory gracefully");
+    assert!(
+        context.contains("No project memory"),
+        "Should handle empty memory gracefully"
+    );
 }
 
 #[test]
@@ -342,12 +398,17 @@ fn test_acceptance_4_integration_loads_on_creation() {
 
     // Create new integration - should load existing memory
     let integration = MemoryIntegration::new(temp_dir.path()).unwrap();
-    assert_eq!(integration.entry_count(), 1,
-               "Integration must load existing memory on creation");
+    assert_eq!(
+        integration.entry_count(),
+        1,
+        "Integration must load existing memory on creation"
+    );
 
     let context = integration.get_context_for_prompt().unwrap();
-    assert!(context.contains("Test"),
-            "Loaded memory must be available for context");
+    assert!(
+        context.contains("Test"),
+        "Loaded memory must be available for context"
+    );
 }
 
 // ============================================================================
@@ -377,14 +438,16 @@ fn test_acceptance_5_summarization_on_size() {
 
     // File should either be summarized or still within reasonable bounds
     // (If it was very large and got summarized, it should be smaller now)
-    assert!(metadata.len() < 100 * 1024, // Should be under 100KB after summarization
-            "File size should be controlled after summarization");
+    assert!(
+        metadata.len() < 100 * 1024, // Should be under 100KB after summarization
+        "File size should be controlled after summarization"
+    );
 
     // Content should show evidence of summarization or organization
-    assert!(content.contains("Summary") ||
-            content.contains("Recent") ||
-            content.contains("entries"),
-            "Content should show organization/summarization");
+    assert!(
+        content.contains("Summary") || content.contains("Recent") || content.contains("entries"),
+        "Content should show organization/summarization"
+    );
 }
 
 #[test]
@@ -407,10 +470,10 @@ fn test_acceptance_5_summarization_on_count() {
     let content = fs::read_to_string(&memory_file).unwrap();
 
     // Should show evidence of summarization
-    assert!(content.contains("Summary") ||
-            content.contains("Recent") ||
-            content.contains("Earlier"),
-            "File should show summarization when count exceeds threshold");
+    assert!(
+        content.contains("Summary") || content.contains("Recent") || content.contains("Earlier"),
+        "File should show summarization when count exceeds threshold"
+    );
 }
 
 #[test]
@@ -433,8 +496,14 @@ fn test_acceptance_5_summarization_preserves_recent() {
 
     // Recent entries should have full formatting
     // Note: Category is embedded in title line like ## [Category] Title
-    assert!(content.contains("**Task**:"), "Recent entries should have full metadata");
-    assert!(content.contains("**Date**:"), "Recent entries should have full metadata");
+    assert!(
+        content.contains("**Task**:"),
+        "Recent entries should have full metadata"
+    );
+    assert!(
+        content.contains("**Date**:"),
+        "Recent entries should have full metadata"
+    );
 }
 
 #[test]
@@ -454,8 +523,9 @@ fn test_acceptance_5_summarization_groups_by_category() {
             let entry = MemoryEntry::new(
                 &format!("task-{}-{:03}", category, i),
                 &format!("Entry {}", i),
-                "Content"
-            ).with_category(category);
+                "Content",
+            )
+            .with_category(category);
             store.append_entry(&entry).unwrap();
         }
     }
@@ -465,11 +535,13 @@ fn test_acceptance_5_summarization_groups_by_category() {
 
     // Summarized content should reference categories
     // (This may be in a summary section or visible through organization)
-    assert!(content.contains("Architecture Decision") ||
-            content.contains("Pattern") ||
-            content.contains("Important Note") ||
-            content.contains("Category"),
-            "Summarization should preserve category information");
+    assert!(
+        content.contains("Architecture Decision")
+            || content.contains("Pattern")
+            || content.contains("Important Note")
+            || content.contains("Category"),
+        "Summarization should preserve category information"
+    );
 }
 
 // ============================================================================
@@ -491,9 +563,14 @@ fn test_acceptance_6_get_context_for_prompt() {
 
     // Verify context is properly formatted
     assert!(!context.is_empty(), "Context must not be empty");
-    assert!(context.contains("Tokio"), "Context must contain stored memory");
-    assert!(context.contains("task-001") || context.contains("Setup"),
-            "Context should reference task");
+    assert!(
+        context.contains("Tokio"),
+        "Context must contain stored memory"
+    );
+    assert!(
+        context.contains("task-001") || context.contains("Setup"),
+        "Context should reference task"
+    );
 }
 
 #[test]
@@ -502,19 +579,25 @@ fn test_acceptance_6_context_formatted_for_injection() {
     let integration = MemoryIntegration::new(temp_dir.path()).unwrap();
 
     let task = create_completed_task("task-001", "Decision", "Important decision");
-    integration.store_task_summary(&task, &["src/main.rs".to_string()]).unwrap();
+    integration
+        .store_task_summary(&task, &["src/main.rs".to_string()])
+        .unwrap();
 
     let context = integration.get_context_for_prompt().unwrap();
 
     // Should be formatted as readable text
-    assert!(context.contains("Project Memory") ||
-            context.contains("entries") ||
-            context.contains("Decision"),
-            "Context should be formatted for readability");
+    assert!(
+        context.contains("Project Memory")
+            || context.contains("entries")
+            || context.contains("Decision"),
+        "Context should be formatted for readability"
+    );
 
     // Should not contain raw JSON or other non-injectable formats
-    assert!(!context.contains("{") || context.contains("##"),
-            "Context should be readable text, not raw data");
+    assert!(
+        !context.contains("{") || context.contains("##"),
+        "Context should be readable text, not raw data"
+    );
 }
 
 #[test]
@@ -534,9 +617,13 @@ fn test_acceptance_6_context_includes_relevant_info() {
     let context = integration.get_context_for_prompt().unwrap();
 
     // Context should include key information
-    assert!(context.contains("async") || context.contains("Repository") ||
-            context.contains("validate") || context.contains("Architecture"),
-            "Context should include stored decision information");
+    assert!(
+        context.contains("async")
+            || context.contains("Repository")
+            || context.contains("validate")
+            || context.contains("Architecture"),
+        "Context should include stored decision information"
+    );
 }
 
 #[test]
@@ -558,14 +645,20 @@ fn test_acceptance_6_context_size_limited() {
 
     // Context should be limited to prevent overwhelming prompts
     // Current implementation shows ~20 recent entries
-    assert!(context.len() < 50_000, // Should be under 50KB
-            "Context should be size-limited to prevent overwhelming prompts");
+    assert!(
+        context.len() < 50_000, // Should be under 50KB
+        "Context should be size-limited to prevent overwhelming prompts"
+    );
 
     // Should indicate if there are more entries
     if integration.entry_count() > 20 {
-        assert!(context.contains("older") || context.contains("more") ||
-                context.contains("...") || context.contains("and"),
-                "Should indicate there are more entries than shown");
+        assert!(
+            context.contains("older")
+                || context.contains("more")
+                || context.contains("...")
+                || context.contains("and"),
+            "Should indicate there are more entries than shown"
+        );
     }
 }
 
@@ -581,6 +674,5 @@ fn create_completed_task(id: &str, title: &str, description: &str) -> Task {
 }
 
 fn create_test_entry(task_id: &str, title: &str, content: &str) -> MemoryEntry {
-    MemoryEntry::new(task_id, title, content)
-        .with_category("Test Category")
+    MemoryEntry::new(task_id, title, content).with_category("Test Category")
 }

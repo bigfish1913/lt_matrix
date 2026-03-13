@@ -13,14 +13,13 @@
 //! - Malformed message detection
 //! - Extra/unknown fields behavior
 
-use ltmatrix::mcp::{
-    ClientCapabilities, ImplementationInfo, InitializeParams, InitializeResult,
-    JsonRpcError, JsonRpcMessage, JsonRpcNotification, JsonRpcRequest, JsonRpcResponse,
-    LogLevel, PromptContent, PromptMessage, Resource, ResourceContents, Root,
-    ServerCapabilities, Tool, ToolCallParams, ToolCallResult, ToolContent,
-    ToolsListParams, ToolsListResult, RequestId,
-};
 use ltmatrix::mcp::protocol::{JsonRpcErrorCode, McpError, McpErrorCode};
+use ltmatrix::mcp::{
+    ClientCapabilities, ImplementationInfo, InitializeParams, InitializeResult, JsonRpcError,
+    JsonRpcMessage, JsonRpcNotification, JsonRpcRequest, JsonRpcResponse, LogLevel, PromptContent,
+    PromptMessage, RequestId, Resource, ResourceContents, Root, ServerCapabilities, Tool,
+    ToolCallParams, ToolCallResult, ToolContent, ToolsListParams, ToolsListResult,
+};
 use serde_json::json;
 
 // ============================================================================
@@ -35,9 +34,9 @@ mod invalid_json_tests {
         let invalid_jsons = [
             r#"{invalid}"#,
             r#"{"jsonrpc": "2.0", "id": 1, "method": "test""#, // Missing closing brace
-            r#"{"jsonrpc": "2.0", "id": 1, "method": }"#, // Missing value
+            r#"{"jsonrpc": "2.0", "id": 1, "method": }"#,      // Missing value
             r#"{"jsonrpc": "2.0", "id": 1, "method": "test",}"#, // Trailing comma
-            r#"{jsonrpc: "2.0", "id": 1, "method": "test"}"#, // Unquoted key
+            r#"{jsonrpc: "2.0", "id": 1, "method": "test"}"#,  // Unquoted key
             r#"{"jsonrpc": '2.0', "id": 1, "method": "test"}"#, // Single quotes
         ];
 
@@ -342,11 +341,7 @@ mod unicode_tests {
             "emoji": "🎉🎊",
             "mixed": "Hello 世界 World"
         });
-        let request = JsonRpcRequest::with_params(
-            RequestId::Number(1),
-            "test",
-            params,
-        );
+        let request = JsonRpcRequest::with_params(RequestId::Number(1), "test", params);
 
         let json = request.to_json().unwrap();
         assert!(json.contains("张三"));
@@ -374,10 +369,7 @@ mod unicode_tests {
     #[test]
     fn test_resource_uri_with_unicode() {
         // URIs can contain percent-encoded unicode
-        let resource = Resource::new(
-            "file:///path/to/%E6%96%87%E4%BB%B6.txt",
-            "文件.txt",
-        );
+        let resource = Resource::new("file:///path/to/%E6%96%87%E4%BB%B6.txt", "文件.txt");
 
         let json = serde_json::to_string(&resource).unwrap();
         let parsed: Resource = serde_json::from_str(&json).unwrap();
@@ -404,7 +396,8 @@ mod unicode_tests {
     #[test]
     fn test_content_with_surrogate_pairs() {
         // Emoji using surrogate pairs
-        let json = r#"{"jsonrpc": "2.0", "id": 1, "method": "test", "params": {"emoji": "\uD83D\uDE00"}}"#;
+        let json =
+            r#"{"jsonrpc": "2.0", "id": 1, "method": "test", "params": {"emoji": "\uD83D\uDE00"}}"#;
         let request = JsonRpcRequest::from_json(json);
         assert!(request.is_ok());
     }
@@ -419,7 +412,10 @@ mod numeric_boundary_tests {
 
     #[test]
     fn test_request_id_max_i64() {
-        let json = format!(r#"{{"jsonrpc": "2.0", "id": {}, "method": "test"}}"#, i64::MAX);
+        let json = format!(
+            r#"{{"jsonrpc": "2.0", "id": {}, "method": "test"}}"#,
+            i64::MAX
+        );
         let request = JsonRpcRequest::from_json(&json);
         assert!(request.is_ok());
         let req = request.unwrap();
@@ -428,7 +424,10 @@ mod numeric_boundary_tests {
 
     #[test]
     fn test_request_id_min_i64() {
-        let json = format!(r#"{{"jsonrpc": "2.0", "id": {}, "method": "test"}}"#, i64::MIN);
+        let json = format!(
+            r#"{{"jsonrpc": "2.0", "id": {}, "method": "test"}}"#,
+            i64::MIN
+        );
         let request = JsonRpcRequest::from_json(&json);
         assert!(request.is_ok());
         let req = request.unwrap();
@@ -476,11 +475,7 @@ mod numeric_boundary_tests {
             "negative": -1.7976931348623157e308,
         });
 
-        let request = JsonRpcRequest::with_params(
-            RequestId::Number(1),
-            "test",
-            params,
-        );
+        let request = JsonRpcRequest::with_params(RequestId::Number(1), "test", params);
         let json = request.to_json().unwrap();
         let parsed = JsonRpcRequest::from_json(&json).unwrap();
         let p = parsed.params.unwrap();
@@ -587,7 +582,8 @@ mod message_type_detection_tests {
     #[test]
     fn test_message_with_both_result_and_error() {
         // Invalid: has both result and error
-        let json = r#"{"jsonrpc":"2.0","id":1,"result":{},"error":{"code":-32600,"message":"err"}}"#;
+        let json =
+            r#"{"jsonrpc":"2.0","id":1,"result":{},"error":{"code":-32600,"message":"err"}}"#;
         let result: Result<JsonRpcResponse, _> = serde_json::from_str(json);
         // This behavior depends on implementation - it might parse but be invalid
         if let Ok(response) = result {
@@ -692,7 +688,9 @@ mod content_type_tests {
 
     #[test]
     fn test_prompt_content_text() {
-        let content = PromptContent::Text { text: "Hello".to_string() };
+        let content = PromptContent::Text {
+            text: "Hello".to_string(),
+        };
         let json = serde_json::to_string(&content).unwrap();
         assert!(json.contains(r#""type":"text""#));
         assert!(json.contains(r#""text":"Hello""#));
@@ -742,7 +740,7 @@ mod resource_contents_tests {
         let contents = ResourceContents::blob(
             "file:///binary.bin",
             "aGVsbG8gd29ybGQ=", // base64 of "hello world"
-            "application/octet-stream"
+            "application/octet-stream",
         );
         let json = serde_json::to_string(&contents).unwrap();
         let parsed: ResourceContents = serde_json::from_str(&json).unwrap();
@@ -792,7 +790,7 @@ mod resource_contents_tests {
 
 mod capability_tests {
     use super::*;
-    use ltmatrix::mcp::{PromptsCapability, ToolsCapability, ResourcesCapability, RootsCapability};
+    use ltmatrix::mcp::{PromptsCapability, ResourcesCapability, RootsCapability, ToolsCapability};
 
     #[test]
     fn test_client_capabilities_empty() {
@@ -805,7 +803,9 @@ mod capability_tests {
     fn test_client_capabilities_all_fields() {
         let caps = ClientCapabilities {
             experimental: Some(json!({"feature": true})),
-            roots: Some(RootsCapability { list_changed: Some(true) }),
+            roots: Some(RootsCapability {
+                list_changed: Some(true),
+            }),
             sampling: Some(json!({})),
         };
 
@@ -821,12 +821,16 @@ mod capability_tests {
             experimental: Some(json!({})),
             logging: Some(json!({})),
             completions: Some(json!({})),
-            prompts: Some(PromptsCapability { list_changed: Some(true) }),
+            prompts: Some(PromptsCapability {
+                list_changed: Some(true),
+            }),
             resources: Some(ResourcesCapability {
                 subscribe: Some(true),
                 list_changed: Some(true),
             }),
-            tools: Some(ToolsCapability { list_changed: Some(true) }),
+            tools: Some(ToolsCapability {
+                list_changed: Some(true),
+            }),
         };
 
         let json = serde_json::to_string(&caps).unwrap();
@@ -967,10 +971,7 @@ mod serialization_format_tests {
 
     #[test]
     fn test_error_data_skip_when_none() {
-        let error = JsonRpcError::new(
-            JsonRpcErrorCode::InternalError,
-            "error".to_string(),
-        );
+        let error = JsonRpcError::new(JsonRpcErrorCode::InternalError, "error".to_string());
         let json = serde_json::to_string(&error).unwrap();
         assert!(!json.contains("data"));
     }
@@ -1014,11 +1015,7 @@ mod large_payload_tests {
             );
         }
 
-        let request = JsonRpcRequest::with_params(
-            RequestId::Number(1),
-            "test",
-            json!(large_obj),
-        );
+        let request = JsonRpcRequest::with_params(RequestId::Number(1), "test", json!(large_obj));
 
         let json = request.to_json().unwrap();
         assert!(json.len() > 50_000); // Should be reasonably large
@@ -1039,10 +1036,7 @@ mod large_payload_tests {
     #[test]
     fn test_long_string_id() {
         let long_id = "x".repeat(10000);
-        let request = JsonRpcRequest::new(
-            RequestId::String(long_id.clone()),
-            "test",
-        );
+        let request = JsonRpcRequest::new(RequestId::String(long_id.clone()), "test");
         let json = request.to_json().unwrap();
         let parsed = JsonRpcRequest::from_json(&json).unwrap();
         assert_eq!(parsed.id, RequestId::String(long_id));

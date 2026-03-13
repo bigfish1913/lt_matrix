@@ -6,11 +6,10 @@
 //! - Configuration options for memory injection
 //! - Memory loading behavior with various file states
 
-use ltmatrix::memory::{MemoryIntegration, MemoryStore, MemoryEntry};
+use ltmatrix::memory::{MemoryEntry, MemoryIntegration, MemoryStore};
 use ltmatrix::models::{Task, TaskComplexity, TaskStatus};
 use ltmatrix::pipeline::execute::{
-    build_task_context, build_execution_prompt, ExecuteConfig,
-    get_execution_order,
+    build_execution_prompt, build_task_context, get_execution_order, ExecuteConfig,
 };
 use std::collections::{HashMap, HashSet};
 use std::fs;
@@ -90,7 +89,8 @@ fn test_memory_loading_empty_file() {
     let integration = MemoryIntegration::new(temp_dir.path()).unwrap();
 
     assert_eq!(
-        integration.entry_count(), 0,
+        integration.entry_count(),
+        0,
         "Empty file should result in no entries"
     );
 }
@@ -109,7 +109,8 @@ fn test_memory_loading_header_only() {
 
     // Header only should result in no parsed entries
     assert_eq!(
-        integration.entry_count(), 0,
+        integration.entry_count(),
+        0,
         "Header-only file should have no entries"
     );
 }
@@ -135,7 +136,8 @@ fn test_memory_loading_large_file() {
     let integration = MemoryIntegration::new(temp_dir.path()).unwrap();
 
     assert_eq!(
-        integration.entry_count(), 50,
+        integration.entry_count(),
+        50,
         "Large file should load all entries"
     );
 
@@ -151,11 +153,7 @@ fn test_memory_loading_unicode_content() {
     // Create store with unicode content
     let store = MemoryStore::new(temp_dir.path()).unwrap();
 
-    let entry = MemoryEntry::new(
-        "task-001",
-        "国际化 测试",
-        "支持中文 🚀 Émojis and accents",
-    );
+    let entry = MemoryEntry::new("task-001", "国际化 测试", "支持中文 🚀 Émojis and accents");
     store.append_entry(&entry).unwrap();
 
     // Reload via MemoryIntegration
@@ -174,7 +172,11 @@ fn test_memory_loading_persistence() {
     // First load - create memory
     {
         let store = MemoryStore::new(temp_dir.path()).unwrap();
-        let entry = MemoryEntry::new("task-001", "Setup", "Architecture decision: Use Rust for performance");
+        let entry = MemoryEntry::new(
+            "task-001",
+            "Setup",
+            "Architecture decision: Use Rust for performance",
+        );
         store.append_entry(&entry).unwrap();
     }
 
@@ -182,7 +184,8 @@ fn test_memory_loading_persistence() {
     {
         let integration = MemoryIntegration::new(temp_dir.path()).unwrap();
         assert_eq!(
-            integration.entry_count(), 1,
+            integration.entry_count(),
+            1,
             "Memory should persist between loads"
         );
 
@@ -205,8 +208,7 @@ fn test_build_task_context_with_memory() {
     let completed_tasks = HashSet::new();
     let project_memory = "## Architecture Decision\n\nUse Tokio runtime for async operations.";
 
-    let context =
-        build_task_context(&task, &task_map, &completed_tasks, project_memory).unwrap();
+    let context = build_task_context(&task, &task_map, &completed_tasks, project_memory).unwrap();
 
     assert!(
         context.contains("Project Memory"),
@@ -229,8 +231,7 @@ fn test_build_task_context_without_memory() {
     let completed_tasks = HashSet::new();
     let project_memory = ""; // Empty memory
 
-    let context =
-        build_task_context(&task, &task_map, &completed_tasks, project_memory).unwrap();
+    let context = build_task_context(&task, &task_map, &completed_tasks, project_memory).unwrap();
 
     assert!(
         !context.contains("Project Memory"),
@@ -252,8 +253,7 @@ fn test_build_task_context_with_dependencies() {
     let completed_tasks = HashSet::from(["task-001".to_string()]);
     let project_memory = "Previous decisions";
 
-    let context =
-        build_task_context(&task2, &task_map, &completed_tasks, project_memory).unwrap();
+    let context = build_task_context(&task2, &task_map, &completed_tasks, project_memory).unwrap();
 
     assert!(
         context.contains("Dependencies"),
@@ -306,9 +306,15 @@ fn test_build_execution_prompt_format() {
     let prompt = build_execution_prompt(&task, context);
 
     // Verify prompt structure
-    assert!(prompt.starts_with("You are implementing"), "Should have intro");
+    assert!(
+        prompt.starts_with("You are implementing"),
+        "Should have intro"
+    );
     assert!(prompt.contains("## Your Task"), "Should have task section");
-    assert!(prompt.contains("## Instructions"), "Should have instructions");
+    assert!(
+        prompt.contains("## Instructions"),
+        "Should have instructions"
+    );
     assert!(
         prompt.contains("Complete the task"),
         "Should have instruction items"
@@ -318,7 +324,10 @@ fn test_build_execution_prompt_format() {
         "Should mention best practices"
     );
     assert!(prompt.contains("Add tests"), "Should mention testing");
-    assert!(prompt.contains("Document changes"), "Should mention documentation");
+    assert!(
+        prompt.contains("Document changes"),
+        "Should mention documentation"
+    );
 }
 
 #[test]
@@ -328,8 +337,7 @@ fn test_context_structure_with_memory() {
     let completed_tasks = HashSet::new();
     let project_memory = "Memory content";
 
-    let context =
-        build_task_context(&task, &task_map, &completed_tasks, project_memory).unwrap();
+    let context = build_task_context(&task, &task_map, &completed_tasks, project_memory).unwrap();
 
     // Memory should appear before task context
     let memory_pos = context.find("Project Memory").unwrap();
@@ -349,8 +357,7 @@ fn test_context_with_task_complexity() {
     let completed_tasks = HashSet::new();
     let project_memory = "";
 
-    let context =
-        build_task_context(&task, &task_map, &completed_tasks, project_memory).unwrap();
+    let context = build_task_context(&task, &task_map, &completed_tasks, project_memory).unwrap();
 
     assert!(
         context.contains("Complexity: Complex"),
@@ -479,7 +486,8 @@ fn test_memory_persistence_across_pipeline_runs() {
     {
         let integration = MemoryIntegration::new(temp_dir.path()).unwrap();
         assert_eq!(
-            integration.entry_count(), 1,
+            integration.entry_count(),
+            1,
             "Memory should persist across runs"
         );
 
@@ -498,7 +506,11 @@ fn test_multiple_memory_entries_in_prompt_context() {
 
     // Store multiple memories
     for i in 1..=5 {
-        let task = create_test_task(&format!("task-{:03}", i), &format!("Task {}", i), "Description");
+        let task = create_test_task(
+            &format!("task-{:03}", i),
+            &format!("Task {}", i),
+            "Description",
+        );
         integration
             .extract_and_store(
                 &task,
@@ -607,9 +619,7 @@ fn test_memory_integration_with_concurrent_tasks() {
         .collect();
 
     for task in &tasks {
-        integration
-            .store_task_summary(task, &[])
-            .unwrap();
+        integration.store_task_summary(task, &[]).unwrap();
     }
 
     // All memories should be stored
@@ -653,8 +663,5 @@ fn create_test_task(id: &str, title: &str, description: &str) -> Task {
 }
 
 fn create_task_map(tasks: &[Task]) -> HashMap<String, Task> {
-    tasks
-        .iter()
-        .map(|t| (t.id.clone(), t.clone()))
-        .collect()
+    tasks.iter().map(|t| (t.id.clone(), t.clone())).collect()
 }

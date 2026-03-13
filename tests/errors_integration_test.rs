@@ -10,10 +10,12 @@
 //! Task: Create integration test for error handling
 
 use ltmatrix::cli::args::BlockedStrategy;
-use ltmatrix::git::repository::{init_repo, checkout, get_current_branch};
-use ltmatrix::models::{Task, TaskComplexity, TaskStatus, ModeConfig};
-use ltmatrix::pipeline::test::{TestConfig, TestFramework, detect_test_framework, test_tasks};
-use ltmatrix::pipeline::verify::{OnBlockedStrategy, VerifyConfig, VerificationResult, VerificationSummary};
+use ltmatrix::git::repository::{checkout, get_current_branch, init_repo};
+use ltmatrix::models::{ModeConfig, Task, TaskComplexity, TaskStatus};
+use ltmatrix::pipeline::test::{detect_test_framework, test_tasks, TestConfig, TestFramework};
+use ltmatrix::pipeline::verify::{
+    OnBlockedStrategy, VerificationResult, VerificationSummary, VerifyConfig,
+};
 use ltmatrix::workspace::WorkspaceState;
 use std::collections::HashSet;
 use tempfile::TempDir;
@@ -59,7 +61,11 @@ fn test_task_retry_count_tracking() {
     task.prepare_retry();
 
     assert_eq!(task.retry_count, 1, "Retry count should increment");
-    assert_eq!(task.status, TaskStatus::Pending, "Status should be reset to Pending");
+    assert_eq!(
+        task.status,
+        TaskStatus::Pending,
+        "Status should be reset to Pending"
+    );
     assert!(task.started_at.is_none(), "started_at should be cleared");
 }
 
@@ -76,7 +82,10 @@ fn test_task_max_retry_limit() {
     }
 
     assert_eq!(task.retry_count, 3, "Should have 3 retries");
-    assert!(!task.can_retry(3), "Should not be able to retry after 3 attempts");
+    assert!(
+        !task.can_retry(3),
+        "Should not be able to retry after 3 attempts"
+    );
     assert!(task.can_retry(4), "Should be able to retry with higher max");
 }
 
@@ -142,12 +151,21 @@ fn test_test_config_fail_on_error() {
     assert!(default_config.fail_on_error, "Default should fail on error");
 
     let fast_config = TestConfig::fast_mode();
-    assert!(!fast_config.fail_on_error, "Fast mode should not fail on error");
+    assert!(
+        !fast_config.fail_on_error,
+        "Fast mode should not fail on error"
+    );
     assert!(!fast_config.enabled, "Fast mode should have tests disabled");
 
     let expert_config = TestConfig::expert_mode();
-    assert!(expert_config.fail_on_error, "Expert mode should fail on error");
-    assert!(expert_config.enabled, "Expert mode should have tests enabled");
+    assert!(
+        expert_config.fail_on_error,
+        "Expert mode should fail on error"
+    );
+    assert!(
+        expert_config.enabled,
+        "Expert mode should have tests enabled"
+    );
 }
 
 /// Test test framework detection handles missing files gracefully
@@ -159,7 +177,11 @@ fn test_framework_detection_missing_files() {
     assert!(result.is_ok(), "Detection should not fail");
 
     let detection = result.unwrap();
-    assert_eq!(detection.framework, TestFramework::None, "Should detect no framework");
+    assert_eq!(
+        detection.framework,
+        TestFramework::None,
+        "Should detect no framework"
+    );
     assert_eq!(detection.confidence, 0.0, "Confidence should be 0");
 }
 
@@ -170,8 +192,11 @@ fn test_framework_detection_cargo_project() {
 
     // Create Cargo.toml
     let cargo_toml = temp_dir.path().join("Cargo.toml");
-    std::fs::write(&cargo_toml, "[package]\nname = \"test\"\nversion = \"0.1.0\"")
-        .expect("Failed to write Cargo.toml");
+    std::fs::write(
+        &cargo_toml,
+        "[package]\nname = \"test\"\nversion = \"0.1.0\"",
+    )
+    .expect("Failed to write Cargo.toml");
 
     // Create tests directory
     std::fs::create_dir(temp_dir.path().join("tests")).expect("Failed to create tests dir");
@@ -287,7 +312,10 @@ fn test_verification_failure_fail_strategy() {
     };
 
     // Simulate the failure handling logic
-    if !result.retry_recommended || config.max_retries == 0 || config.on_blocked == OnBlockedStrategy::Fail {
+    if !result.retry_recommended
+        || config.max_retries == 0
+        || config.on_blocked == OnBlockedStrategy::Fail
+    {
         task.status = TaskStatus::Failed;
         task.error = Some(format!("Verification failed: {}", result.reasoning));
     }
@@ -339,7 +367,10 @@ fn test_verification_failure_retry_strategy() {
     };
 
     // Simulate retry handling
-    if result.retry_recommended && config.max_retries > 0 && config.on_blocked == OnBlockedStrategy::Retry {
+    if result.retry_recommended
+        && config.max_retries > 0
+        && config.on_blocked == OnBlockedStrategy::Retry
+    {
         task.prepare_retry();
     }
 
@@ -378,7 +409,10 @@ fn test_git_init_success() {
     let repo = result.unwrap();
 
     assert!(temp_dir.path().join(".git").exists(), ".git should exist");
-    assert!(temp_dir.path().join(".gitignore").exists(), ".gitignore should exist");
+    assert!(
+        temp_dir.path().join(".gitignore").exists(),
+        ".gitignore should exist"
+    );
 
     // Verify config
     let config = repo.config().expect("Should have config");
@@ -396,7 +430,8 @@ fn test_git_checkout_creates_branch() {
     let sig = git2::Signature::new("Test", "test@test.com", &git2::Time::new(0, 0)).unwrap();
     let tree_oid = repo.treebuilder(None).unwrap().write().unwrap();
     let tree = repo.find_tree(tree_oid).unwrap();
-    repo.commit(Some("HEAD"), &sig, &sig, "Initial commit", &tree, &[]).unwrap();
+    repo.commit(Some("HEAD"), &sig, &sig, "Initial commit", &tree, &[])
+        .unwrap();
 
     // Checkout new branch
     let result = checkout(&repo, "feature-branch");
@@ -446,7 +481,8 @@ fn test_git_branch_names() {
     let sig = git2::Signature::new("Test", "test@test.com", &git2::Time::new(0, 0)).unwrap();
     let tree_oid = repo.treebuilder(None).unwrap().write().unwrap();
     let tree = repo.find_tree(tree_oid).unwrap();
-    repo.commit(Some("HEAD"), &sig, &sig, "Initial commit", &tree, &[]).unwrap();
+    repo.commit(Some("HEAD"), &sig, &sig, "Initial commit", &tree, &[])
+        .unwrap();
 
     // Valid branch names
     let valid_names = vec!["feature", "feature-123", "fix/issue-42", "release_v1.0.0"];
@@ -475,7 +511,9 @@ fn test_workspace_state_error_messages() {
 
     // Error should be informative
     assert!(
-        error_msg.contains("Failed to read") || error_msg.contains("not exist") || error_msg.contains("corrupted"),
+        error_msg.contains("Failed to read")
+            || error_msg.contains("not exist")
+            || error_msg.contains("corrupted"),
         "Error message should explain the issue: {}",
         error_msg
     );
@@ -523,9 +561,15 @@ fn test_load_or_create_recovery_message() {
     // load_or_create should recover gracefully
     let result = WorkspaceState::load_or_create(project_path);
 
-    assert!(result.is_ok(), "load_or_create should recover from corrupted state");
+    assert!(
+        result.is_ok(),
+        "load_or_create should recover from corrupted state"
+    );
     let state = result.unwrap();
-    assert!(state.tasks.is_empty(), "Should return empty state on recovery");
+    assert!(
+        state.tasks.is_empty(),
+        "Should return empty state on recovery"
+    );
 }
 
 /// Test dependency graph validation error messages
@@ -547,7 +591,9 @@ fn test_dependency_graph_error_messages() {
 
     assert!(!orphaned.is_empty(), "Should detect orphaned dependency");
     assert!(
-        orphaned.iter().any(|(id, deps)| id == "task-002" && deps.contains(&"nonexistent-task".to_string())),
+        orphaned
+            .iter()
+            .any(|(id, deps)| id == "task-002" && deps.contains(&"nonexistent-task".to_string())),
         "Should identify task-002 has missing dependency"
     );
 }
@@ -562,10 +608,7 @@ fn test_circular_dependency_detection() {
     let task_b = create_task("task-b", "Task B", vec!["task-a".to_string()]);
     let task_c = create_task("task-c", "Task C", vec!["task-b".to_string()]);
 
-    let state = WorkspaceState::new(
-        temp_dir.path().to_path_buf(),
-        vec![task_a, task_b, task_c],
-    );
+    let state = WorkspaceState::new(temp_dir.path().to_path_buf(), vec![task_a, task_b, task_c]);
 
     // Validate should fail
     let result = state.validate_dependency_graph();
@@ -658,7 +701,10 @@ fn test_mode_config_max_retries() {
     assert_eq!(fast.max_retries, 1, "Fast mode should have 1 retry");
 
     let standard = ModeConfig::default();
-    assert_eq!(standard.max_retries, 3, "Standard mode should have 3 retries");
+    assert_eq!(
+        standard.max_retries, 3,
+        "Standard mode should have 3 retries"
+    );
 
     let expert = ModeConfig::expert_mode();
     assert_eq!(expert.max_retries, 3, "Expert mode should have 3 retries");
@@ -672,12 +718,24 @@ fn test_mode_config_timeouts() {
     assert_eq!(fast.timeout_exec, 1800, "Fast exec timeout should be 1800s");
 
     let standard = ModeConfig::default();
-    assert_eq!(standard.timeout_plan, 120, "Standard plan timeout should be 120s");
-    assert_eq!(standard.timeout_exec, 3600, "Standard exec timeout should be 3600s");
+    assert_eq!(
+        standard.timeout_plan, 120,
+        "Standard plan timeout should be 120s"
+    );
+    assert_eq!(
+        standard.timeout_exec, 3600,
+        "Standard exec timeout should be 3600s"
+    );
 
     let expert = ModeConfig::expert_mode();
-    assert_eq!(expert.timeout_plan, 180, "Expert plan timeout should be 180s");
-    assert_eq!(expert.timeout_exec, 7200, "Expert exec timeout should be 7200s");
+    assert_eq!(
+        expert.timeout_plan, 180,
+        "Expert plan timeout should be 180s"
+    );
+    assert_eq!(
+        expert.timeout_exec, 7200,
+        "Expert exec timeout should be 7200s"
+    );
 }
 
 /// Test verify config should_run logic
@@ -734,13 +792,19 @@ fn test_task_with_failed_dependency() {
     // Task 2 should not be executable because its dependency failed
     // (even though it's not "completed")
     let completed: HashSet<String> = HashSet::new();
-    assert!(!task2.can_execute(&completed), "Should not execute with failed dependency");
+    assert!(
+        !task2.can_execute(&completed),
+        "Should not execute with failed dependency"
+    );
 
     // Failed task is not in completed set
     let mut with_failed: HashSet<String> = HashSet::new();
     with_failed.insert("task-001".to_string());
     // Even if we track failed tasks, can_execute only checks completed
-    assert!(task2.can_execute(&with_failed), "Would need separate logic for failed deps");
+    assert!(
+        task2.can_execute(&with_failed),
+        "Would need separate logic for failed deps"
+    );
 }
 
 /// Test task with blocked dependency
@@ -781,7 +845,10 @@ fn test_workspace_state_recovery() {
     let recovered = WorkspaceState::load_or_create(project_path).expect("Should recover");
 
     // Recovery creates a new empty state
-    assert!(recovered.tasks.is_empty(), "Recovered state should be empty");
+    assert!(
+        recovered.tasks.is_empty(),
+        "Recovered state should be empty"
+    );
 }
 
 /// Test cleanup removes corrupted state
@@ -800,7 +867,10 @@ fn test_cleanup_removes_corrupted_state() {
     let result = WorkspaceState::cleanup(&project_path);
     assert!(result.is_ok(), "Cleanup should succeed");
 
-    assert!(!ltmatrix_dir.exists(), ".ltmatrix directory should be removed");
+    assert!(
+        !ltmatrix_dir.exists(),
+        ".ltmatrix directory should be removed"
+    );
 }
 
 // =============================================================================
@@ -859,10 +929,26 @@ fn test_reset_failed_selective() {
     assert_eq!(reset_count, 2, "Should reset 2 failed tasks");
 
     // Verify states after reset
-    assert_eq!(state.tasks[0].status, TaskStatus::Completed, "Completed should stay");
-    assert_eq!(state.tasks[1].status, TaskStatus::Pending, "Failed should become Pending");
-    assert_eq!(state.tasks[2].status, TaskStatus::Pending, "Pending should stay");
-    assert_eq!(state.tasks[3].status, TaskStatus::Pending, "Failed should become Pending");
+    assert_eq!(
+        state.tasks[0].status,
+        TaskStatus::Completed,
+        "Completed should stay"
+    );
+    assert_eq!(
+        state.tasks[1].status,
+        TaskStatus::Pending,
+        "Failed should become Pending"
+    );
+    assert_eq!(
+        state.tasks[2].status,
+        TaskStatus::Pending,
+        "Pending should stay"
+    );
+    assert_eq!(
+        state.tasks[3].status,
+        TaskStatus::Pending,
+        "Failed should become Pending"
+    );
 }
 
 // =============================================================================

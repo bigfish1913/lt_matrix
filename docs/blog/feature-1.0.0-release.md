@@ -216,6 +216,55 @@ max_retries = 5
 - [ ] 分布式执行支持
 - [ ] 更多代理后端集成
 
+## 🔧 Post-Release Updates (2026-03-14)
+
+After the 1.0.0 release, several integration gaps were identified and fixed. The following features are now fully connected to the pipeline:
+
+### Fixed Issues
+
+1. **Scheduler Integration** - The priority scheduler with blocking boosts and related task grouping is now fully integrated into the execution pipeline. Tasks that block multiple downstream tasks now get priority boosts automatically.
+
+2. **Agent Type Auto-Assignment** - Keyword-based fallback now ensures tasks get the correct agent type even if the LLM omits it. The `from_keywords()` function is now called after task generation to correct any missing assignments.
+
+3. **Unified Memory System** - The new `ProjectMemory` and `RunMemory` systems are now integrated for context injection. Agent prompts include memory from `.ltmatrix/memory/` with fallback to legacy `.claude/memory.md`.
+
+4. **Failure Report Surfacing** - Failed tasks now generate detailed failure reports that are logged prominently and written to `.ltmatrix/failures.log` for post-mortem analysis.
+
+### Technical Details
+
+```rust
+// Scheduler integration with priority boosts
+let priority_config = PriorityConfig {
+    blocking_boost: 1,
+    max_boost: 3,
+    enable_priority_sorting: true,
+    enable_related_grouping: true,
+};
+let execution_plan = schedule_tasks_with_priority(tasks, &priority_config)?;
+
+// Agent type fallback after LLM generation
+for task in &mut tasks {
+    if task.agent_type == AgentType::Dev {
+        let detected = AgentType::from_keywords(&combined);
+        if detected != AgentType::Dev {
+            task.agent_type = detected;
+        }
+    }
+}
+
+// Unified memory loading with fallback
+let project_memory = load_unified_memory(&config.work_dir).await?;
+
+// Failure report surfacing
+if task.error.is_some() {
+    let report = generate_failure_report(&task, &task_map);
+    warn!("=== FAILURE REPORT ===");
+    // ... logs and writes to failures.log
+}
+```
+
+---
+
 ## 🤝 贡献
 
 欢迎贡献！请查看 [CONTRIBUTING.md](CONTRIBUTING.md) 了解详情。

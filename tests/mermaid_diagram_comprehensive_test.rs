@@ -6,7 +6,7 @@
 use ltmatrix::models::{Task, TaskStatus};
 use ltmatrix::tasks::scheduler::schedule_tasks;
 use ltmatrix::tasks::topology::{
-    generate_mermaid_flowchart, generate_mermaid_graph, export_mermaid_to_file,
+    export_mermaid_to_file, generate_mermaid_flowchart, generate_mermaid_graph,
 };
 
 #[test]
@@ -275,7 +275,10 @@ fn test_mermaid_flowchart_without_dependencies() {
 
     // No dependency arrows should be present
     let has_arrow = mermaid.contains("-->");
-    assert!(!has_arrow, "Should not have arrows when no dependencies exist");
+    assert!(
+        !has_arrow,
+        "Should not have arrows when no dependencies exist"
+    );
 }
 
 #[test]
@@ -421,7 +424,11 @@ fn test_export_mermaid_nested_directory_creation() {
     let tasks = vec![task];
 
     let temp_dir = std::env::temp_dir();
-    let nested_path = temp_dir.join("level1").join("level2").join("level3").join("test.mmd");
+    let nested_path = temp_dir
+        .join("level1")
+        .join("level2")
+        .join("level3")
+        .join("test.mmd");
 
     export_mermaid_to_file(&tasks, &nested_path, None).unwrap();
 

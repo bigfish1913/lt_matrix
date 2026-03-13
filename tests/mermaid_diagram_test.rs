@@ -5,7 +5,9 @@
 
 use ltmatrix::models::{Task, TaskStatus};
 use ltmatrix::tasks::scheduler::schedule_tasks;
-use ltmatrix::tasks::topology::{generate_mermaid_flowchart, generate_mermaid_graph, export_mermaid_to_file};
+use ltmatrix::tasks::topology::{
+    export_mermaid_to_file, generate_mermaid_flowchart, generate_mermaid_graph,
+};
 
 #[test]
 fn test_generate_mermaid_flowchart_empty_tasks() {
@@ -193,11 +195,17 @@ fn test_generate_mermaid_without_status() {
 
     // Should not include status when disabled
     // (Status symbols or text should not appear)
-    let has_status = mermaid.contains("○") || mermaid.contains("⚙")
-        || mermaid.contains("✓") || mermaid.contains("✗")
-        || mermaid.contains("Pending") || mermaid.contains("InProgress");
+    let has_status = mermaid.contains("○")
+        || mermaid.contains("⚙")
+        || mermaid.contains("✓")
+        || mermaid.contains("✗")
+        || mermaid.contains("Pending")
+        || mermaid.contains("InProgress");
 
-    assert!(!has_status, "Should not contain status indicators when disabled");
+    assert!(
+        !has_status,
+        "Should not contain status indicators when disabled"
+    );
 }
 
 #[test]

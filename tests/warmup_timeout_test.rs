@@ -8,13 +8,13 @@
 //! - Timeout behavior with retry enabled
 //! - Timeout aborts long-running queries
 
-use ltmatrix::agent::warmup::{WarmupExecutor, WarmupResult};
-use ltmatrix::agent::{AgentSession, pool::SessionPool};
 use ltmatrix::agent::backend::{AgentBackend, AgentConfig, AgentResponse, ExecutionConfig};
+use ltmatrix::agent::warmup::{WarmupExecutor, WarmupResult};
+use ltmatrix::agent::{pool::SessionPool, AgentSession};
 use ltmatrix::config::settings::WarmupConfig;
 use ltmatrix::models::Agent;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::time::Duration;
 
 // ============================================================================
@@ -38,7 +38,11 @@ impl SlowAgent {
 
 #[async_trait::async_trait]
 impl AgentBackend for SlowAgent {
-    async fn execute(&self, _prompt: &str, _config: &ExecutionConfig) -> anyhow::Result<AgentResponse> {
+    async fn execute(
+        &self,
+        _prompt: &str,
+        _config: &ExecutionConfig,
+    ) -> anyhow::Result<AgentResponse> {
         tokio::time::sleep(Duration::from_millis(self.delay_ms)).await;
         Ok(AgentResponse {
             output: "Ready".to_string(),
@@ -76,7 +80,10 @@ impl AgentBackend for SlowAgent {
         Ok(true)
     }
 
-    async fn validate_config(&self, _config: &AgentConfig) -> Result<(), ltmatrix::agent::backend::AgentError> {
+    async fn validate_config(
+        &self,
+        _config: &AgentConfig,
+    ) -> Result<(), ltmatrix::agent::backend::AgentError> {
         Ok(())
     }
 
@@ -108,7 +115,11 @@ impl TimeoutAgent {
 
 #[async_trait::async_trait]
 impl AgentBackend for TimeoutAgent {
-    async fn execute(&self, _prompt: &str, _config: &ExecutionConfig) -> anyhow::Result<AgentResponse> {
+    async fn execute(
+        &self,
+        _prompt: &str,
+        _config: &ExecutionConfig,
+    ) -> anyhow::Result<AgentResponse> {
         tokio::time::sleep(Duration::from_millis(self.delay_ms)).await;
         Ok(AgentResponse {
             output: "Ready".to_string(),
@@ -154,7 +165,10 @@ impl AgentBackend for TimeoutAgent {
         Ok(true)
     }
 
-    async fn validate_config(&self, _config: &AgentConfig) -> Result<(), ltmatrix::agent::backend::AgentError> {
+    async fn validate_config(
+        &self,
+        _config: &AgentConfig,
+    ) -> Result<(), ltmatrix::agent::backend::AgentError> {
         Ok(())
     }
 
@@ -178,7 +192,11 @@ impl AlwaysTimeoutAgent {
 
 #[async_trait::async_trait]
 impl AgentBackend for AlwaysTimeoutAgent {
-    async fn execute(&self, _prompt: &str, _config: &ExecutionConfig) -> anyhow::Result<AgentResponse> {
+    async fn execute(
+        &self,
+        _prompt: &str,
+        _config: &ExecutionConfig,
+    ) -> anyhow::Result<AgentResponse> {
         tokio::time::sleep(Duration::from_secs(100)).await;
         Ok(AgentResponse {
             output: "Ready".to_string(),
@@ -216,7 +234,10 @@ impl AgentBackend for AlwaysTimeoutAgent {
         Ok(true)
     }
 
-    async fn validate_config(&self, _config: &AgentConfig) -> Result<(), ltmatrix::agent::backend::AgentError> {
+    async fn validate_config(
+        &self,
+        _config: &AgentConfig,
+    ) -> Result<(), ltmatrix::agent::backend::AgentError> {
         Ok(())
     }
 
@@ -248,7 +269,10 @@ async fn warmup_succeeds_within_timeout() {
     let elapsed = start.elapsed();
 
     assert!(result.is_success());
-    assert!(elapsed < Duration::from_secs(1), "Should complete quickly (< 1s)");
+    assert!(
+        elapsed < Duration::from_secs(1),
+        "Should complete quickly (< 1s)"
+    );
 }
 
 #[tokio::test]
@@ -271,13 +295,21 @@ async fn warmup_times_out_on_slow_agent() {
 
     assert!(result.is_failed());
     // Should timeout in approximately 1 second (with some tolerance)
-    assert!(elapsed >= Duration::from_millis(900), "Should take at least 900ms");
-    assert!(elapsed < Duration::from_secs(2), "Should timeout before 2 seconds");
+    assert!(
+        elapsed >= Duration::from_millis(900),
+        "Should take at least 900ms"
+    );
+    assert!(
+        elapsed < Duration::from_secs(2),
+        "Should timeout before 2 seconds"
+    );
 
     if let WarmupResult::Failed { error, .. } = result {
-        assert!(error.to_lowercase().contains("timeout") ||
-                error.to_lowercase().contains("timed out"),
-                "Error should mention timeout: {}", error);
+        assert!(
+            error.to_lowercase().contains("timeout") || error.to_lowercase().contains("timed out"),
+            "Error should mention timeout: {}",
+            error
+        );
     }
 }
 
@@ -303,8 +335,14 @@ async fn warmup_respects_custom_timeout() {
     let elapsed = start.elapsed();
 
     // Should timeout in approximately 2 seconds
-    assert!(elapsed >= Duration::from_millis(1800), "Should take at least 1.8s with 2s timeout");
-    assert!(elapsed < Duration::from_secs(3), "Should timeout before 3 seconds");
+    assert!(
+        elapsed >= Duration::from_millis(1800),
+        "Should take at least 1.8s with 2s timeout"
+    );
+    assert!(
+        elapsed < Duration::from_secs(3),
+        "Should timeout before 3 seconds"
+    );
 }
 
 #[tokio::test]
@@ -325,7 +363,10 @@ async fn warmup_very_short_timeout() {
     let elapsed = start.elapsed();
 
     assert!(result.is_failed());
-    assert!(elapsed < Duration::from_secs(2), "Should timeout before 2 seconds");
+    assert!(
+        elapsed < Duration::from_secs(2),
+        "Should timeout before 2 seconds"
+    );
 }
 
 // ============================================================================
@@ -353,8 +394,14 @@ async fn warmup_timeout_with_retry_enabled() {
 
     // With retry, should take longer (timeout + retries)
     // Initial attempt + 2 retries with exponential backoff
-    assert!(elapsed >= Duration::from_secs(1), "Should take at least 1 second");
-    assert!(elapsed < Duration::from_secs(5), "Should complete within 5 seconds even with retries");
+    assert!(
+        elapsed >= Duration::from_secs(1),
+        "Should take at least 1 second"
+    );
+    assert!(
+        elapsed < Duration::from_secs(5),
+        "Should complete within 5 seconds even with retries"
+    );
 }
 
 #[tokio::test]
@@ -398,9 +445,11 @@ async fn timeout_error_message_is_descriptive() {
 
     if let WarmupResult::Failed { error, .. } = result {
         assert!(!error.is_empty(), "Error message should not be empty");
-        assert!(error.to_lowercase().contains("timeout") ||
-                error.to_lowercase().contains("timed out"),
-                "Error should mention timeout: {}", error);
+        assert!(
+            error.to_lowercase().contains("timeout") || error.to_lowercase().contains("timed out"),
+            "Error should mention timeout: {}",
+            error
+        );
     } else {
         panic!("Expected Failed result");
     }
@@ -449,7 +498,10 @@ fn test_timeout_configuration_validation() {
         prompt_template: None,
     };
 
-    assert!(config1.validate().is_err(), "Timeout of 0 should fail validation");
+    assert!(
+        config1.validate().is_err(),
+        "Timeout of 0 should fail validation"
+    );
 
     let config2 = WarmupConfig {
         enabled: true,
@@ -459,7 +511,10 @@ fn test_timeout_configuration_validation() {
         prompt_template: None,
     };
 
-    assert!(config2.validate().is_ok(), "Timeout of 1 second should be valid");
+    assert!(
+        config2.validate().is_ok(),
+        "Timeout of 1 second should be valid"
+    );
 }
 
 #[tokio::test]
@@ -503,8 +558,10 @@ async fn warmup_duration_includes_timeout_time() {
 
     if let WarmupResult::Failed { .. } = result {
         // The warmup should have taken approximately the timeout duration
-        assert!(elapsed >= Duration::from_millis(900),
-                "Duration should reflect timeout wait time");
+        assert!(
+            elapsed >= Duration::from_millis(900),
+            "Duration should reflect timeout wait time"
+        );
     } else {
         panic!("Expected timeout failure");
     }
@@ -533,8 +590,14 @@ async fn warmup_succeeds_for_slow_but_within_timeout_agent() {
     let elapsed = start.elapsed();
 
     assert!(result.is_success());
-    assert!(elapsed >= Duration::from_millis(1400), "Should take at least 1.4s");
-    assert!(elapsed < Duration::from_secs(3), "Should complete within 3 seconds");
+    assert!(
+        elapsed >= Duration::from_millis(1400),
+        "Should take at least 1.4s"
+    );
+    assert!(
+        elapsed < Duration::from_secs(3),
+        "Should complete within 3 seconds"
+    );
 }
 
 #[tokio::test]
@@ -555,7 +618,10 @@ async fn warmup_with_varied_response_times() {
     let slow_agent = SlowAgent::new("slow", 1500);
 
     let results1 = executor.warmup_agent(&fast_agent, &mut pool).await.unwrap();
-    let results2 = executor.warmup_agent(&medium_agent, &mut pool).await.unwrap();
+    let results2 = executor
+        .warmup_agent(&medium_agent, &mut pool)
+        .await
+        .unwrap();
     let results3 = executor.warmup_agent(&slow_agent, &mut pool).await.unwrap();
 
     assert!(results1.is_success());

@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Testing framework detection and execution
 //!
 //! This module provides automatic detection and execution of testing frameworks

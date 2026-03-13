@@ -108,7 +108,10 @@ fn test_can_retry_respects_max_retries() {
     // After 3rd retry
     task.prepare_retry();
     task.status = TaskStatus::Failed;
-    assert!(!task.can_retry(3), "Should not be able to retry after max_retries");
+    assert!(
+        !task.can_retry(3),
+        "Should not be able to retry after max_retries"
+    );
 }
 
 #[test]
@@ -127,7 +130,11 @@ fn test_prepare_retry_resets_status_and_started_at() {
 
     assert_eq!(task.status, TaskStatus::Pending);
     assert!(task.started_at.is_none(), "started_at should be reset");
-    assert_eq!(task.get_session_id(), Some("test-session-123"), "session_id should be preserved");
+    assert_eq!(
+        task.get_session_id(),
+        Some("test-session-123"),
+        "session_id should be preserved"
+    );
 }
 
 #[test]
@@ -176,11 +183,20 @@ fn test_different_agents_have_separate_sessions() {
     // Get sessions for different agents
     // Note: Currently hardcoded to "claude" and "claude-sonnet-4-6" in get_or_create_for_task
     // This test will verify they share sessions (current behavior)
-    let session1_id = pool.get_or_create_for_task(&mut task1).session_id().to_string();
-    let session2_id = pool.get_or_create_for_task(&mut task2).session_id().to_string();
+    let session1_id = pool
+        .get_or_create_for_task(&mut task1)
+        .session_id()
+        .to_string();
+    let session2_id = pool
+        .get_or_create_for_task(&mut task2)
+        .session_id()
+        .to_string();
 
     // Currently both tasks use the same agent/model (hardcoded)
-    assert_eq!(session1_id, session2_id, "Tasks share session (same agent/model)");
+    assert_eq!(
+        session1_id, session2_id,
+        "Tasks share session (same agent/model)"
+    );
 }
 
 #[test]
@@ -269,9 +285,18 @@ fn test_pool_with_multiple_tasks_same_session() {
     let mut task3 = Task::new("task-3", "Task 3", "Third");
 
     // All tasks should share the same session
-    let session1_id = pool.get_or_create_for_task(&mut task1).session_id().to_string();
-    let session2_id = pool.get_or_create_for_task(&mut task2).session_id().to_string();
-    let session3_id = pool.get_or_create_for_task(&mut task3).session_id().to_string();
+    let session1_id = pool
+        .get_or_create_for_task(&mut task1)
+        .session_id()
+        .to_string();
+    let session2_id = pool
+        .get_or_create_for_task(&mut task2)
+        .session_id()
+        .to_string();
+    let session3_id = pool
+        .get_or_create_for_task(&mut task3)
+        .session_id()
+        .to_string();
 
     assert_eq!(session2_id, session1_id);
     assert_eq!(session3_id, session1_id);

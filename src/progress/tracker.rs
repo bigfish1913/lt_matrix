@@ -6,8 +6,8 @@
 //!
 //! This module provides progress tracking functionality with colorized output.
 
-use ltmatrix_core::TaskStatus;
 use crate::terminal::{self, ColorConfig};
+use ltmatrix_core::TaskStatus;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
@@ -250,21 +250,21 @@ impl TaskStats {
         if self.completed > 0 {
             parts.push(terminal::success(
                 &format!("{} completed", self.completed),
-                config
+                config,
             ));
         }
 
         if self.in_progress > 0 {
             parts.push(terminal::info(
                 &format!("{} in progress", self.in_progress),
-                config
+                config,
             ));
         }
 
         if self.pending > 0 {
             parts.push(terminal::warning(
                 &format!("{} pending", self.pending),
-                config
+                config,
             ));
         }
 
@@ -275,15 +275,12 @@ impl TaskStats {
             parts.push(terminal::style_text(
                 &format!("{} blocked", self.blocked),
                 terminal::Color::BrightMagenta,
-                config
+                config,
             ));
         }
 
         if self.skipped > 0 {
-            parts.push(terminal::dim(
-                &format!("{} skipped", self.skipped),
-                config
-            ));
+            parts.push(terminal::dim(&format!("{} skipped", self.skipped), config));
         }
 
         parts.join(", ")

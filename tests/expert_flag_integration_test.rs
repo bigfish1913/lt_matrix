@@ -14,27 +14,32 @@
 //! 6. Mode-specific settings are applied when using --expert
 
 use clap::Parser;
-use ltmatrix::cli::Args;
 use ltmatrix::cli::args::ExecutionModeArg;
-use ltmatrix::config::settings::{CliOverrides, Config, load_config_with_overrides};
+use ltmatrix::cli::Args;
+use ltmatrix::config::settings::{load_config_with_overrides, CliOverrides, Config};
 use std::fs;
 use tempfile::TempDir;
 
 // Helper function to convert Args to CliOverrides
 fn args_to_overrides(args: &Args) -> CliOverrides {
-    use ltmatrix::config::settings::{OutputFormat as ConfigOutputFormat, LogLevel as ConfigLogLevel};
+    use ltmatrix::config::settings::{
+        LogLevel as ConfigLogLevel, OutputFormat as ConfigOutputFormat,
+    };
 
     let mode = if args.fast {
         Some("fast".to_string())
     } else if args.expert {
         Some("expert".to_string())
     } else {
-        args.mode.as_ref().map(|m| format!("{:?}", m).to_lowercase())
+        args.mode
+            .as_ref()
+            .map(|m| format!("{:?}", m).to_lowercase())
     };
 
     let output_format = args.output.as_ref().map(|f| match f {
         ltmatrix::cli::args::OutputFormat::Text => ConfigOutputFormat::Text,
-        ltmatrix::cli::args::OutputFormat::Json | ltmatrix::cli::args::OutputFormat::JsonCompact => ConfigOutputFormat::Json,
+        ltmatrix::cli::args::OutputFormat::Json
+        | ltmatrix::cli::args::OutputFormat::JsonCompact => ConfigOutputFormat::Json,
     });
 
     let log_level = args.log_level.as_ref().map(|l| match l {
@@ -71,7 +76,10 @@ fn test_expert_flag_parses_correctly() {
         .expect("Should parse --expert flag successfully");
 
     assert!(args.expert, "expert field should be true");
-    assert!(!args.fast, "fast field should be false when --expert is used");
+    assert!(
+        !args.fast,
+        "fast field should be false when --expert is used"
+    );
     assert_eq!(args.goal, Some("test goal".to_string()));
 }
 
@@ -82,7 +90,11 @@ fn test_expert_flag_sets_execution_mode() {
         .expect("Should parse --expert flag successfully");
 
     let mode = args.get_execution_mode();
-    assert_eq!(mode, ExecutionModeArg::Expert, "Execution mode should be Expert");
+    assert_eq!(
+        mode,
+        ExecutionModeArg::Expert,
+        "Execution mode should be Expert"
+    );
 }
 
 #[test]
@@ -90,7 +102,10 @@ fn test_expert_flag_conflicts_with_fast() {
     // Verify --expert conflicts with --fast
     let result = Args::try_parse_from(["ltmatrix", "--expert", "--fast", "test goal"]);
 
-    assert!(result.is_err(), "Should error when both --expert and --fast are specified");
+    assert!(
+        result.is_err(),
+        "Should error when both --expert and --fast are specified"
+    );
     let err = result.unwrap_err();
     let err_msg = err.to_string();
     assert!(
@@ -105,7 +120,10 @@ fn test_expert_flag_conflicts_with_mode() {
     // Verify --expert conflicts with --mode
     let result = Args::try_parse_from(["ltmatrix", "--expert", "--mode", "fast", "test goal"]);
 
-    assert!(result.is_err(), "Should error when both --expert and --mode are specified");
+    assert!(
+        result.is_err(),
+        "Should error when both --expert and --mode are specified"
+    );
     let err = result.unwrap_err();
     let err_msg = err.to_string();
     assert!(
@@ -154,8 +172,7 @@ fn test_no_mode_flag_maps_to_none_in_overrides() {
     let overrides = args_to_overrides(&args);
 
     assert_eq!(
-        overrides.mode,
-        None,
+        overrides.mode, None,
         "No mode flag should result in None in CliOverrides (allows config default)"
     );
 }
@@ -195,8 +212,14 @@ fn test_expert_overrides_other_overrides_fields() {
 
     assert_eq!(overrides.mode, Some("expert".to_string()));
     assert_eq!(overrides.agent, Some("test-agent".to_string()));
-    assert_eq!(overrides.output_format, Some(ltmatrix::config::settings::OutputFormat::Json));
-    assert_eq!(overrides.log_level, Some(ltmatrix::config::settings::LogLevel::Debug));
+    assert_eq!(
+        overrides.output_format,
+        Some(ltmatrix::config::settings::OutputFormat::Json)
+    );
+    assert_eq!(
+        overrides.log_level,
+        Some(ltmatrix::config::settings::LogLevel::Debug)
+    );
 }
 
 // ============================================================================
@@ -446,8 +469,8 @@ fn test_expert_flag_with_all_other_flags() {
 #[test]
 fn test_expert_flag_default_without_other_mode_flags() {
     // Verify default behavior when no mode flags are specified
-    let args = Args::try_parse_from(["ltmatrix", "test goal"])
-        .expect("Should parse without mode flags");
+    let args =
+        Args::try_parse_from(["ltmatrix", "test goal"]).expect("Should parse without mode flags");
 
     assert!(!args.expert, "expert should be false by default");
     assert!(!args.fast, "fast should be false by default");
@@ -527,7 +550,10 @@ level = "info"
     // Restore original directory BEFORE any assertions that might panic
     // This ensures cleanup happens even if assertions fail
     if let Err(e) = std::env::set_current_dir(&original_dir) {
-        panic!("Failed to restore original directory {:?}: {}", original_dir, e);
+        panic!(
+            "Failed to restore original directory {:?}: {}",
+            original_dir, e
+        );
     }
 
     assert!(
@@ -541,8 +567,14 @@ level = "info"
     assert_eq!(args.get_execution_mode(), ExecutionModeArg::Expert);
 
     // Verify overrides were applied
-    assert_eq!(config.output.format, ltmatrix::config::settings::OutputFormat::Json);
-    assert_eq!(config.logging.level, ltmatrix::config::settings::LogLevel::Debug);
+    assert_eq!(
+        config.output.format,
+        ltmatrix::config::settings::OutputFormat::Json
+    );
+    assert_eq!(
+        config.logging.level,
+        ltmatrix::config::settings::LogLevel::Debug
+    );
 
     // Verify the CLI overrides contain expert mode
     assert_eq!(

@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Review stage of the pipeline
 //!
 //! This module handles code review for expert mode execution.
@@ -202,11 +201,11 @@ impl ReviewSeverity {
     /// Get the ANSI color code for terminal display
     pub fn color_code(&self) -> &'static str {
         match self {
-            ReviewSeverity::Info => "\x1b[34m",      // Blue
-            ReviewSeverity::Low => "\x1b[36m",       // Cyan
-            ReviewSeverity::Medium => "\x1b[33m",    // Yellow
-            ReviewSeverity::High => "\x1b[31m",      // Red
-            ReviewSeverity::Critical => "\x1b[35m",  // Magenta
+            ReviewSeverity::Info => "\x1b[34m",     // Blue
+            ReviewSeverity::Low => "\x1b[36m",      // Cyan
+            ReviewSeverity::Medium => "\x1b[33m",   // Yellow
+            ReviewSeverity::High => "\x1b[31m",     // Red
+            ReviewSeverity::Critical => "\x1b[35m", // Magenta
         }
     }
 
@@ -312,14 +311,14 @@ impl ReviewCategory {
     pub fn is_enabled_for_mode(&self, expert_mode: bool) -> bool {
         match self {
             // Always check these categories
-            ReviewCategory::Security
-            | ReviewCategory::ErrorHandling
-            | ReviewCategory::Quality => true,
+            ReviewCategory::Security | ReviewCategory::ErrorHandling | ReviewCategory::Quality => {
+                true
+            }
 
             // Only check in expert mode
-            ReviewCategory::Architecture | ReviewCategory::Documentation | ReviewCategory::Style => {
-                expert_mode
-            }
+            ReviewCategory::Architecture
+            | ReviewCategory::Documentation
+            | ReviewCategory::Style => expert_mode,
 
             // Check in both modes but with different thresholds
             ReviewCategory::Performance
@@ -720,18 +719,8 @@ impl ReviewReport {
             .get("critical")
             .copied()
             .unwrap_or(0);
-        let high_count = self
-            .metrics
-            .by_severity
-            .get("high")
-            .copied()
-            .unwrap_or(0);
-        let medium_count = self
-            .metrics
-            .by_severity
-            .get("medium")
-            .copied()
-            .unwrap_or(0);
+        let high_count = self.metrics.by_severity.get("high").copied().unwrap_or(0);
+        let medium_count = self.metrics.by_severity.get("medium").copied().unwrap_or(0);
 
         self.assessment = if has_blocking || critical_count > 0 {
             ReviewAssessment::Fail
@@ -1217,18 +1206,14 @@ pub async fn review_tasks(
     for issue in &all_issues {
         *issues_by_category_map.entry(issue.category).or_insert(0) += 1;
     }
-    let issues_by_category: Vec<_> = issues_by_category_map
-        .into_iter()
-        .collect();
+    let issues_by_category: Vec<_> = issues_by_category_map.into_iter().collect();
 
     // Aggregate issues by severity
     let mut issues_by_severity_map = std::collections::HashMap::new();
     for issue in &all_issues {
         *issues_by_severity_map.entry(issue.severity).or_insert(0) += 1;
     }
-    let issues_by_severity: Vec<_> = issues_by_severity_map
-        .into_iter()
-        .collect();
+    let issues_by_severity: Vec<_> = issues_by_severity_map.into_iter().collect();
 
     info!(
         "Review stage completed in {}s: {} passed, {} warnings, {} needs improvements, {} failed",
@@ -1236,10 +1221,7 @@ pub async fn review_tasks(
     );
 
     // Collect updated tasks
-    let updated_tasks: Vec<_> = results
-        .iter()
-        .map(|r| r.task.clone())
-        .collect();
+    let updated_tasks: Vec<_> = results.iter().map(|r| r.task.clone()).collect();
 
     let summary = ReviewSummary {
         total_tasks: total,
@@ -1290,12 +1272,11 @@ async fn review_single_task(
     let elapsed = start_time.elapsed().as_secs();
 
     // Parse the review response
-    let (issues, assessment, summary, strengths) =
-        parse_review_response(&response.output, config)?;
+    let (issues, assessment, summary, strengths) = parse_review_response(&response.output, config)?;
 
     // Determine if retry is recommended
-    let retry_recommended = assessment == ReviewAssessment::NeedsImprovements
-        || assessment == ReviewAssessment::Fail;
+    let retry_recommended =
+        assessment == ReviewAssessment::NeedsImprovements || assessment == ReviewAssessment::Fail;
 
     // Check for blocking issues
     let has_blocking_issues = issues.iter().any(|i| i.blocking);
@@ -1322,10 +1303,14 @@ pub fn build_review_prompt(task: &Task, config: &ReviewConfig) -> String {
     let mut checks = Vec::new();
 
     if config.check_security {
-        checks.push("Security vulnerabilities (injection attacks, authentication issues, data exposure)");
+        checks.push(
+            "Security vulnerabilities (injection attacks, authentication issues, data exposure)",
+        );
     }
     if config.check_performance {
-        checks.push("Performance issues (inefficient algorithms, unnecessary allocations, I/O problems)");
+        checks.push(
+            "Performance issues (inefficient algorithms, unnecessary allocations, I/O problems)",
+        );
     }
     if config.check_quality {
         checks.push("Code quality (readability, maintainability, naming, structure)");
@@ -1410,9 +1395,7 @@ fn parse_json_review(
     json: &serde_json::Value,
     config: &ReviewConfig,
 ) -> Result<(Vec<CodeIssue>, ReviewAssessment, String, Vec<String>)> {
-    let assessment_str = json["assessment"]
-        .as_str()
-        .unwrap_or("warning");
+    let assessment_str = json["assessment"].as_str().unwrap_or("warning");
     let assessment = match assessment_str {
         "pass" => ReviewAssessment::Pass,
         "warning" => ReviewAssessment::Warning,
@@ -1504,9 +1487,7 @@ fn parse_text_review(
         || response_lower.contains("should be fixed")
     {
         ReviewAssessment::NeedsImprovements
-    } else if response_lower.contains("warning")
-        || response_lower.contains("minor issues")
-    {
+    } else if response_lower.contains("warning") || response_lower.contains("minor issues") {
         ReviewAssessment::Warning
     } else {
         ReviewAssessment::Pass
@@ -1584,7 +1565,10 @@ mod tests {
     fn test_review_assessment_display() {
         assert_eq!(ReviewAssessment::Pass.to_string(), "pass");
         assert_eq!(ReviewAssessment::Warning.to_string(), "warning");
-        assert_eq!(ReviewAssessment::NeedsImprovements.to_string(), "needs_improvements");
+        assert_eq!(
+            ReviewAssessment::NeedsImprovements.to_string(),
+            "needs_improvements"
+        );
         assert_eq!(ReviewAssessment::Fail.to_string(), "fail");
     }
 
@@ -1665,9 +1649,7 @@ mod tests {
         };
 
         let tasks = vec![Task::new("test-1", "Test", "Description")];
-        let (updated_tasks, summary) = review_tasks(tasks, &config)
-            .await
-            .unwrap();
+        let (updated_tasks, summary) = review_tasks(tasks, &config).await.unwrap();
 
         assert_eq!(updated_tasks.len(), 1);
         assert_eq!(summary.total_tasks, 1);
@@ -1697,8 +1679,14 @@ mod tests {
         assert_eq!(issue.line, Some(42));
         assert_eq!(issue.title, "SQL Injection");
         assert_eq!(issue.description, "User input not sanitized");
-        assert_eq!(issue.suggestion, Some("Use parameterized queries".to_string()));
-        assert_eq!(issue.code_snippet, Some("format!(\"SELECT * FROM users WHERE id = {}\", input)".to_string()));
+        assert_eq!(
+            issue.suggestion,
+            Some("Use parameterized queries".to_string())
+        );
+        assert_eq!(
+            issue.code_snippet,
+            Some("format!(\"SELECT * FROM users WHERE id = {}\", input)".to_string())
+        );
         assert!(issue.blocking);
     }
 
@@ -1743,8 +1731,13 @@ mod tests {
                 "description": "Test description"
             });
 
-            let issue = parse_issue_json(&json).expect(&format!("Should parse category: {}", category_str));
-            assert_eq!(issue.category, expected_category, "Category mismatch for {}", category_str);
+            let issue =
+                parse_issue_json(&json).expect(&format!("Should parse category: {}", category_str));
+            assert_eq!(
+                issue.category, expected_category,
+                "Category mismatch for {}",
+                category_str
+            );
         }
     }
 
@@ -1766,8 +1759,13 @@ mod tests {
                 "description": "Test description"
             });
 
-            let issue = parse_issue_json(&json).expect(&format!("Should parse severity: {}", severity_str));
-            assert_eq!(issue.severity, expected_severity, "Severity mismatch for {}", severity_str);
+            let issue =
+                parse_issue_json(&json).expect(&format!("Should parse severity: {}", severity_str));
+            assert_eq!(
+                issue.severity, expected_severity,
+                "Severity mismatch for {}",
+                severity_str
+            );
         }
     }
 
@@ -1780,7 +1778,10 @@ mod tests {
             "description": "Test"
         });
 
-        assert!(parse_issue_json(&json).is_none(), "Should return None for invalid category");
+        assert!(
+            parse_issue_json(&json).is_none(),
+            "Should return None for invalid category"
+        );
     }
 
     #[test]
@@ -1812,8 +1813,8 @@ mod tests {
         });
 
         let config = ReviewConfig::default();
-        let (issues, assessment, summary, strengths) = parse_json_review(&json, &config)
-            .expect("Should parse valid JSON review");
+        let (issues, assessment, summary, strengths) =
+            parse_json_review(&json, &config).expect("Should parse valid JSON review");
 
         assert_eq!(assessment, ReviewAssessment::Pass);
         assert_eq!(summary, "Code is excellent, no issues found");
@@ -1852,8 +1853,8 @@ mod tests {
             ..Default::default()
         };
 
-        let (issues, assessment, summary, strengths) = parse_json_review(&json, &config)
-            .expect("Should parse JSON review with issues");
+        let (issues, assessment, summary, strengths) =
+            parse_json_review(&json, &config).expect("Should parse JSON review with issues");
 
         assert_eq!(assessment, ReviewAssessment::NeedsImprovements);
         assert_eq!(issues.len(), 2);
@@ -1892,8 +1893,8 @@ mod tests {
             ..Default::default()
         };
 
-        let (issues, _, _, _) = parse_json_review(&json, &config)
-            .expect("Should parse and filter by severity");
+        let (issues, _, _, _) =
+            parse_json_review(&json, &config).expect("Should parse and filter by severity");
 
         // Only include issues with severity >= Low (Low and above, not Info)
         assert_eq!(issues.len(), 1);
@@ -1904,13 +1905,15 @@ mod tests {
     fn test_parse_json_review_limits_issues_per_category() {
         // Create 15 issues in the same category
         let issues: Vec<serde_json::Value> = (0..15)
-            .map(|i| serde_json::json!({
-                "category": "quality",
-                "severity": "medium",
-                "title": format!("Issue {}", i),
-                "description": format!("Description {}", i),
-                "blocking": false
-            }))
+            .map(|i| {
+                serde_json::json!({
+                    "category": "quality",
+                    "severity": "medium",
+                    "title": format!("Issue {}", i),
+                    "description": format!("Description {}", i),
+                    "blocking": false
+                })
+            })
             .collect();
 
         let json = serde_json::json!({
@@ -1926,8 +1929,8 @@ mod tests {
             ..Default::default()
         };
 
-        let (issues, _, _, _) = parse_json_review(&json, &config)
-            .expect("Should parse and limit issues");
+        let (issues, _, _, _) =
+            parse_json_review(&json, &config).expect("Should parse and limit issues");
 
         assert_eq!(issues.len(), 10, "Should limit to max_issues_per_category");
     }
@@ -1942,8 +1945,8 @@ mod tests {
         });
 
         let config = ReviewConfig::default();
-        let (_, assessment, _, _) = parse_json_review(&json, &config)
-            .expect("Should handle invalid assessment gracefully");
+        let (_, assessment, _, _) =
+            parse_json_review(&json, &config).expect("Should handle invalid assessment gracefully");
 
         // Should default to Warning for unknown assessment
         assert_eq!(assessment, ReviewAssessment::Warning);
@@ -1954,8 +1957,8 @@ mod tests {
         let response = "CRITICAL issues found in the code. Security vulnerabilities detected.";
 
         let config = ReviewConfig::default();
-        let (issues, assessment, summary, strengths) = parse_text_review(response, &config)
-            .expect("Should parse text review");
+        let (issues, assessment, summary, strengths) =
+            parse_text_review(response, &config).expect("Should parse text review");
 
         assert_eq!(assessment, ReviewAssessment::Fail);
         assert!(summary.contains("CRITICAL"));
@@ -1967,8 +1970,8 @@ mod tests {
         let response = "The code has some issues that should be fixed. Performance is lacking and needs improvement.";
 
         let config = ReviewConfig::default();
-        let (_, assessment, _, _) = parse_text_review(response, &config)
-            .expect("Should parse text review");
+        let (_, assessment, _, _) =
+            parse_text_review(response, &config).expect("Should parse text review");
 
         assert_eq!(assessment, ReviewAssessment::NeedsImprovements);
     }
@@ -1978,8 +1981,8 @@ mod tests {
         let response = "Code looks good but there are some minor issues and warnings to consider.";
 
         let config = ReviewConfig::default();
-        let (_, assessment, _, _) = parse_text_review(response, &config)
-            .expect("Should parse text review");
+        let (_, assessment, _, _) =
+            parse_text_review(response, &config).expect("Should parse text review");
 
         assert_eq!(assessment, ReviewAssessment::Warning);
     }
@@ -1989,8 +1992,8 @@ mod tests {
         let response = "Excellent implementation! Everything works correctly.";
 
         let config = ReviewConfig::default();
-        let (_, assessment, _, _) = parse_text_review(response, &config)
-            .expect("Should parse text review");
+        let (_, assessment, _, _) =
+            parse_text_review(response, &config).expect("Should parse text review");
 
         assert_eq!(assessment, ReviewAssessment::Pass);
     }
@@ -2000,11 +2003,13 @@ mod tests {
         let response = "Good error handling throughout. The code is well structured and properly documented. Excellent performance characteristics.";
 
         let config = ReviewConfig::default();
-        let (_, _, _, strengths) = parse_text_review(response, &config)
-            .expect("Should parse text review");
+        let (_, _, _, strengths) =
+            parse_text_review(response, &config).expect("Should parse text review");
 
         assert!(!strengths.is_empty());
-        assert!(strengths.iter().any(|s| s.contains("Good") || s.contains("well") || s.contains("Excellent")));
+        assert!(strengths
+            .iter()
+            .any(|s| s.contains("Good") || s.contains("well") || s.contains("Excellent")));
     }
 
     #[test]
@@ -2015,7 +2020,10 @@ mod tests {
         let (_, _, summary, _) = parse_text_review(&long_response, &config)
             .expect("Should parse and truncate long summary");
 
-        assert!(summary.len() <= 203, "Summary should be truncated to ~200 chars plus ellipsis");
+        assert!(
+            summary.len() <= 203,
+            "Summary should be truncated to ~200 chars plus ellipsis"
+        );
         assert!(summary.ends_with("..."));
     }
 
@@ -2141,13 +2149,34 @@ mod tests {
 
     #[test]
     fn test_review_category_default_severity() {
-        assert_eq!(ReviewCategory::Security.default_severity(), ReviewSeverity::High);
-        assert_eq!(ReviewCategory::Architecture.default_severity(), ReviewSeverity::High);
-        assert_eq!(ReviewCategory::Performance.default_severity(), ReviewSeverity::Medium);
-        assert_eq!(ReviewCategory::Quality.default_severity(), ReviewSeverity::Medium);
-        assert_eq!(ReviewCategory::BestPractices.default_severity(), ReviewSeverity::Low);
-        assert_eq!(ReviewCategory::Documentation.default_severity(), ReviewSeverity::Low);
-        assert_eq!(ReviewCategory::Style.default_severity(), ReviewSeverity::Info);
+        assert_eq!(
+            ReviewCategory::Security.default_severity(),
+            ReviewSeverity::High
+        );
+        assert_eq!(
+            ReviewCategory::Architecture.default_severity(),
+            ReviewSeverity::High
+        );
+        assert_eq!(
+            ReviewCategory::Performance.default_severity(),
+            ReviewSeverity::Medium
+        );
+        assert_eq!(
+            ReviewCategory::Quality.default_severity(),
+            ReviewSeverity::Medium
+        );
+        assert_eq!(
+            ReviewCategory::BestPractices.default_severity(),
+            ReviewSeverity::Low
+        );
+        assert_eq!(
+            ReviewCategory::Documentation.default_severity(),
+            ReviewSeverity::Low
+        );
+        assert_eq!(
+            ReviewCategory::Style.default_severity(),
+            ReviewSeverity::Info
+        );
     }
 
     #[test]
@@ -2209,7 +2238,10 @@ mod tests {
 
         assert_eq!(finding.file, Some("src/buffer.rs".to_string()));
         assert_eq!(finding.line, Some(42));
-        assert_eq!(finding.description, "Potential buffer overflow in unsafe block");
+        assert_eq!(
+            finding.description,
+            "Potential buffer overflow in unsafe block"
+        );
         assert_eq!(
             finding.suggestion,
             Some("Use safe abstractions or bounds checking".to_string())
@@ -2241,16 +2273,8 @@ mod tests {
             ReviewSeverity::Critical,
             "Critical",
         );
-        let high = ReviewFinding::new(
-            ReviewCategory::Security,
-            ReviewSeverity::High,
-            "High",
-        );
-        let low = ReviewFinding::new(
-            ReviewCategory::Security,
-            ReviewSeverity::Low,
-            "Low",
-        );
+        let high = ReviewFinding::new(ReviewCategory::Security, ReviewSeverity::High, "High");
+        let low = ReviewFinding::new(ReviewCategory::Security, ReviewSeverity::Low, "Low");
 
         // Critical meets threshold of High
         assert!(critical.meets_severity_threshold(ReviewSeverity::High));
@@ -2329,11 +2353,14 @@ mod tests {
         assert!(!report.retry_recommended);
 
         // Add critical finding = Fail
-        report.add_finding(ReviewFinding::new(
-            ReviewCategory::Security,
-            ReviewSeverity::Critical,
-            "Critical",
-        ).blocking(true));
+        report.add_finding(
+            ReviewFinding::new(
+                ReviewCategory::Security,
+                ReviewSeverity::Critical,
+                "Critical",
+            )
+            .blocking(true),
+        );
         report.calculate_assessment();
         assert_eq!(report.assessment, ReviewAssessment::Fail);
         assert!(report.retry_recommended);
@@ -2431,13 +2458,15 @@ mod tests {
         let mut report = ReviewReport::new("task-123");
         report.summary = "Code review summary".to_string();
         report.strengths.push("Good error handling".to_string());
-        report.add_finding(ReviewFinding::new(
-            ReviewCategory::Security,
-            ReviewSeverity::High,
-            "Security Issue",
-        )
-        .with_file("src/main.rs", 42)
-        .with_description("User input not sanitized"));
+        report.add_finding(
+            ReviewFinding::new(
+                ReviewCategory::Security,
+                ReviewSeverity::High,
+                "Security Issue",
+            )
+            .with_file("src/main.rs", 42)
+            .with_description("User input not sanitized"),
+        );
 
         let md = report.to_markdown();
 
@@ -2517,7 +2546,10 @@ mod tests {
         assert_eq!(finding.line, Some(42));
         assert_eq!(finding.title, "SQL Injection");
         assert_eq!(finding.description, "Unsanitized input");
-        assert_eq!(finding.suggestion, Some("Use parameterized queries".to_string()));
+        assert_eq!(
+            finding.suggestion,
+            Some("Use parameterized queries".to_string())
+        );
         assert!(finding.blocking);
     }
 
@@ -2585,10 +2617,7 @@ mod tests {
     fn test_review_config_snapshot() {
         let snapshot = ReviewConfigSnapshot {
             severity_threshold: ReviewSeverity::Low,
-            categories_checked: vec![
-                ReviewCategory::Security,
-                ReviewCategory::Performance,
-            ],
+            categories_checked: vec![ReviewCategory::Security, ReviewCategory::Performance],
             max_issues_per_category: 15,
             expert_mode: true,
         };

@@ -42,7 +42,11 @@ type = "type3"
     let merged = config1.merge_with(&config2);
 
     // Verify merge behavior
-    assert_eq!(merged.mcp.servers.len(), 3, "Should have 3 servers after merge");
+    assert_eq!(
+        merged.mcp.servers.len(),
+        3,
+        "Should have 3 servers after merge"
+    );
 
     // server1 from config1 (not in config2)
     let server1 = merged.get_server("server1").unwrap();
@@ -184,7 +188,11 @@ fn test_config_without_mcp_still_has_defaults() {
 
     // Should have all default settings
     assert!(config.mcp.is_none(), "MCP config should be None");
-    assert_eq!(config.default, Some("claude".to_string()), "Should have default agent");
+    assert_eq!(
+        config.default,
+        Some("claude".to_string()),
+        "Should have default agent"
+    );
     // Note: modes might be None in default config, so just check the default agent is present
     assert!(config.agents.is_empty() || config.default.is_some());
 }
@@ -360,7 +368,10 @@ type = ""
     );
 
     let config = config.unwrap();
-    assert!(config.mcp.is_none(), "MCP config should be None due to validation errors");
+    assert!(
+        config.mcp.is_none(),
+        "MCP config should be None due to validation errors"
+    );
 
     // Other config should still work
     assert!(

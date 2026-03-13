@@ -10,13 +10,11 @@
 
 use git2::Repository;
 use ltmatrix::git::repository::init_repo;
-use ltmatrix::memory::memory::{MemoryStore, MemoryEntry, MemoryCategory, MemoryPriority};
+use ltmatrix::memory::memory::{MemoryCategory, MemoryEntry, MemoryPriority, MemoryStore};
 use ltmatrix::models::{
     ExecutionMode, ModeConfig, PipelineStage, Task, TaskComplexity, TaskStatus,
 };
-use ltmatrix::pipeline::orchestrator::{
-    OrchestratorConfig, PipelineOrchestrator,
-};
+use ltmatrix::pipeline::orchestrator::{OrchestratorConfig, PipelineOrchestrator};
 use ltmatrix::workspace::WorkspaceState;
 use std::collections::HashSet;
 use std::path::Path;
@@ -45,23 +43,40 @@ fn test_happy_path_workspace_initialization() {
 
     // Step 1: Verify directory exists and is empty
     assert!(project_path.exists(), "Project path should exist");
-    assert!(!is_git_repo(project_path), "Should not be a git repo initially");
+    assert!(
+        !is_git_repo(project_path),
+        "Should not be a git repo initially"
+    );
 
     // Step 2: Initialize git repository
     let repo = init_repo(project_path).expect("Failed to initialize git repository");
-    assert!(is_git_repo(project_path), "Should be a git repo after initialization");
+    assert!(
+        is_git_repo(project_path),
+        "Should be a git repo after initialization"
+    );
 
     // Step 3: Verify .gitignore was created
     let gitignore_path = project_path.join(".gitignore");
     assert!(gitignore_path.exists(), ".gitignore should be created");
-    let gitignore_content = std::fs::read_to_string(&gitignore_path).expect("Failed to read .gitignore");
-    assert!(gitignore_content.contains("node_modules"), ".gitignore should contain node_modules");
-    assert!(gitignore_content.contains("target"), ".gitignore should contain target");
+    let gitignore_content =
+        std::fs::read_to_string(&gitignore_path).expect("Failed to read .gitignore");
+    assert!(
+        gitignore_content.contains("node_modules"),
+        ".gitignore should contain node_modules"
+    );
+    assert!(
+        gitignore_content.contains("target"),
+        ".gitignore should contain target"
+    );
 
     // Step 4: Verify git configuration
     let config = repo.config().expect("Failed to get git config");
-    let user_name = config.get_string("user.name").expect("Failed to get user.name");
-    let user_email = config.get_string("user.email").expect("Failed to get user.email");
+    let user_name = config
+        .get_string("user.name")
+        .expect("Failed to get user.name");
+    let user_email = config
+        .get_string("user.email")
+        .expect("Failed to get user.email");
     assert!(!user_name.is_empty(), "user.name should be set");
     assert!(!user_email.is_empty(), "user.email should be set");
 }
@@ -94,15 +109,25 @@ fn test_happy_path_workspace_state_persistence() {
     let loaded_state = WorkspaceState::load(project_path).expect("Failed to load workspace state");
 
     // Step 5: Verify loaded state matches saved state
-    assert_eq!(loaded_state.tasks.len(), saved_state.tasks.len(), "Task count should match");
-    assert_eq!(loaded_state.project_root, saved_state.project_root, "Project root should match");
+    assert_eq!(
+        loaded_state.tasks.len(),
+        saved_state.tasks.len(),
+        "Task count should match"
+    );
+    assert_eq!(
+        loaded_state.project_root, saved_state.project_root,
+        "Project root should match"
+    );
 
     // Verify each task
     for (original, loaded) in saved_state.tasks.iter().zip(loaded_state.tasks.iter()) {
         assert_eq!(original.id, loaded.id, "Task ID should match");
         assert_eq!(original.title, loaded.title, "Task title should match");
         assert_eq!(original.status, loaded.status, "Task status should match");
-        assert_eq!(original.depends_on, loaded.depends_on, "Task dependencies should match");
+        assert_eq!(
+            original.depends_on, loaded.depends_on,
+            "Task dependencies should match"
+        );
     }
 }
 
@@ -119,39 +144,71 @@ fn test_happy_path_memory_store() {
 
     // Step 2: Verify memory file path
     let memory_path = project_path.join(".claude").join("memory.md");
-    assert!(!memory_path.exists(), "Memory file should not exist initially");
+    assert!(
+        !memory_path.exists(),
+        "Memory file should not exist initially"
+    );
 
     // Step 3: Add a memory entry
-    let entry = MemoryEntry::new("task-001", "Architecture Decision",
-        "Decided to use async Rust with Tokio for all I/O operations")
-        .with_category_enum(MemoryCategory::ArchitectureDecision)
-        .with_files(vec!["src/main.rs".to_string(), "src/lib.rs".to_string()])
-        .with_key_points(vec!["All I/O is async".to_string(), "Use tokio runtime".to_string()]);
+    let entry = MemoryEntry::new(
+        "task-001",
+        "Architecture Decision",
+        "Decided to use async Rust with Tokio for all I/O operations",
+    )
+    .with_category_enum(MemoryCategory::ArchitectureDecision)
+    .with_files(vec!["src/main.rs".to_string(), "src/lib.rs".to_string()])
+    .with_key_points(vec![
+        "All I/O is async".to_string(),
+        "Use tokio runtime".to_string(),
+    ]);
 
-    store.append_entry(&entry).expect("Failed to append memory entry");
+    store
+        .append_entry(&entry)
+        .expect("Failed to append memory entry");
 
     // Step 4: Verify memory file was created
     assert!(memory_path.exists(), "Memory file should be created");
 
     // Step 5: Read and verify content
     let memory_content = std::fs::read_to_string(&memory_path).expect("Failed to read memory.md");
-    assert!(memory_content.contains("Architecture Decision"), "Memory should contain category");
-    assert!(memory_content.contains("task-001"), "Memory should contain task ID");
-    assert!(memory_content.contains("Tokio"), "Memory should contain decision content");
+    assert!(
+        memory_content.contains("Architecture Decision"),
+        "Memory should contain category"
+    );
+    assert!(
+        memory_content.contains("task-001"),
+        "Memory should contain task ID"
+    );
+    assert!(
+        memory_content.contains("Tokio"),
+        "Memory should contain decision content"
+    );
 
     // Step 6: Add another entry
-    let entry2 = MemoryEntry::new("task-002", "Pattern",
-        "Established error handling pattern using anyhow")
-        .with_category_enum(MemoryCategory::Pattern)
-        .with_files(vec!["src/error.rs".to_string()])
-        .with_key_points(vec!["Use anyhow for errors".to_string()]);
+    let entry2 = MemoryEntry::new(
+        "task-002",
+        "Pattern",
+        "Established error handling pattern using anyhow",
+    )
+    .with_category_enum(MemoryCategory::Pattern)
+    .with_files(vec!["src/error.rs".to_string()])
+    .with_key_points(vec!["Use anyhow for errors".to_string()]);
 
-    store.append_entry(&entry2).expect("Failed to append second memory entry");
+    store
+        .append_entry(&entry2)
+        .expect("Failed to append second memory entry");
 
     // Step 7: Verify multiple entries
-    let updated_content = std::fs::read_to_string(&memory_path).expect("Failed to read updated memory.md");
-    assert!(updated_content.contains("task-001"), "Memory should contain first task");
-    assert!(updated_content.contains("task-002"), "Memory should contain second task");
+    let updated_content =
+        std::fs::read_to_string(&memory_path).expect("Failed to read updated memory.md");
+    assert!(
+        updated_content.contains("task-001"),
+        "Memory should contain first task"
+    );
+    assert!(
+        updated_content.contains("task-002"),
+        "Memory should contain second task"
+    );
 }
 
 /// Test pipeline orchestrator with simple workflow
@@ -182,7 +239,10 @@ async fn test_happy_path_simple_pipeline_execution() {
     assert!(result.is_ok(), "Pipeline execution should succeed");
 
     let pipeline_result = result.expect("Expected pipeline result");
-    assert!(pipeline_result.total_time >= Duration::ZERO, "Total time should be non-negative");
+    assert!(
+        pipeline_result.total_time >= Duration::ZERO,
+        "Total time should be non-negative"
+    );
 }
 
 /// Test complete happy path workflow
@@ -237,13 +297,18 @@ async fn test_complete_happy_path_workflow() {
     let memory_store = MemoryStore::new(project_path).expect("Failed to create memory store");
 
     // Add initial memory entry
-    let memory_entry = MemoryEntry::new("task-001", "Project Setup",
-        "Initialized project with standard structure")
-        .with_category_enum(MemoryCategory::CodeOrganization)
-        .with_files(vec!["src/main.rs".to_string()])
-        .with_key_points(vec!["Using standard Rust project layout".to_string()]);
+    let memory_entry = MemoryEntry::new(
+        "task-001",
+        "Project Setup",
+        "Initialized project with standard structure",
+    )
+    .with_category_enum(MemoryCategory::CodeOrganization)
+    .with_files(vec!["src/main.rs".to_string()])
+    .with_key_points(vec!["Using standard Rust project layout".to_string()]);
 
-    memory_store.append_entry(&memory_entry).expect("Failed to append memory entry");
+    memory_store
+        .append_entry(&memory_entry)
+        .expect("Failed to append memory entry");
 
     // Verify memory.md
     let memory_path = project_path.join(".claude").join("memory.md");
@@ -270,13 +335,22 @@ async fn test_complete_happy_path_workflow() {
     // ========================================
 
     // Verify pipeline completed
-    assert!(result.total_time >= Duration::ZERO, "Pipeline should have executed");
+    assert!(
+        result.total_time >= Duration::ZERO,
+        "Pipeline should have executed"
+    );
 
     // Verify workspace state still exists
-    assert!(manifest_path.exists(), "Task manifest should still exist after pipeline");
+    assert!(
+        manifest_path.exists(),
+        "Task manifest should still exist after pipeline"
+    );
 
     // Verify memory still exists
-    assert!(memory_path.exists(), "Memory file should still exist after pipeline");
+    assert!(
+        memory_path.exists(),
+        "Memory file should still exist after pipeline"
+    );
 
     // Verify git repository is still valid
     assert!(is_git_repo(project_path), "Git repo should still be valid");
@@ -329,15 +403,17 @@ fn test_happy_path_task_dependency_resolution() {
     let tasks = vec![
         create_sample_task("task-001", "First task", vec![]),
         create_sample_task("task-002", "Second task", vec!["task-001".to_string()]),
-        create_sample_task("task-003", "Third task", vec!["task-001".to_string(), "task-002".to_string()]),
+        create_sample_task(
+            "task-003",
+            "Third task",
+            vec!["task-001".to_string(), "task-002".to_string()],
+        ),
         create_sample_task("task-004", "Fourth task", vec!["task-003".to_string()]),
     ];
 
     // Build task map
-    let task_map: std::collections::HashMap<&str, &Task> = tasks
-        .iter()
-        .map(|t| (t.id.as_str(), t))
-        .collect();
+    let task_map: std::collections::HashMap<&str, &Task> =
+        tasks.iter().map(|t| (t.id.as_str(), t)).collect();
 
     // Verify dependency chain
     let task1 = task_map.get("task-001").expect("task-001 should exist");
@@ -347,23 +423,44 @@ fn test_happy_path_task_dependency_resolution() {
 
     // Task 1 has no dependencies
     let empty_completed = HashSet::new();
-    assert!(task1.can_execute(&empty_completed), "Task 1 should be executable with no dependencies");
+    assert!(
+        task1.can_execute(&empty_completed),
+        "Task 1 should be executable with no dependencies"
+    );
 
     // Task 2 depends on Task 1
     let mut completed = HashSet::new();
-    assert!(!task2.can_execute(&completed), "Task 2 should not be executable without Task 1");
+    assert!(
+        !task2.can_execute(&completed),
+        "Task 2 should not be executable without Task 1"
+    );
     completed.insert("task-001".to_string());
-    assert!(task2.can_execute(&completed), "Task 2 should be executable after Task 1");
+    assert!(
+        task2.can_execute(&completed),
+        "Task 2 should be executable after Task 1"
+    );
 
     // Task 3 depends on Task 1 and Task 2
-    assert!(!task3.can_execute(&completed), "Task 3 should not be executable without Task 2");
+    assert!(
+        !task3.can_execute(&completed),
+        "Task 3 should not be executable without Task 2"
+    );
     completed.insert("task-002".to_string());
-    assert!(task3.can_execute(&completed), "Task 3 should be executable after Task 1 and 2");
+    assert!(
+        task3.can_execute(&completed),
+        "Task 3 should be executable after Task 1 and 2"
+    );
 
     // Task 4 depends on Task 3
-    assert!(!task4.can_execute(&completed), "Task 4 should not be executable without Task 3");
+    assert!(
+        !task4.can_execute(&completed),
+        "Task 4 should not be executable without Task 3"
+    );
     completed.insert("task-003".to_string());
-    assert!(task4.can_execute(&completed), "Task 4 should be executable after Task 3");
+    assert!(
+        task4.can_execute(&completed),
+        "Task 4 should be executable after Task 3"
+    );
 
     // Save and verify persistence
     let state = WorkspaceState::new(temp_dir.path().to_path_buf(), tasks);
@@ -378,20 +475,42 @@ fn test_happy_path_task_dependency_resolution() {
 fn test_happy_path_pipeline_stages_by_mode() {
     // Fast mode stages
     let fast_stages = PipelineStage::pipeline_for_mode(ExecutionMode::Fast);
-    assert!(!fast_stages.contains(&PipelineStage::Test), "Fast mode should skip Test stage");
-    assert!(!fast_stages.contains(&PipelineStage::Review), "Fast mode should skip Review stage");
+    assert!(
+        !fast_stages.contains(&PipelineStage::Test),
+        "Fast mode should skip Test stage"
+    );
+    assert!(
+        !fast_stages.contains(&PipelineStage::Review),
+        "Fast mode should skip Review stage"
+    );
     assert_eq!(fast_stages.len(), 6, "Fast mode should have 6 stages");
 
     // Standard mode stages
     let standard_stages = PipelineStage::pipeline_for_mode(ExecutionMode::Standard);
-    assert!(standard_stages.contains(&PipelineStage::Test), "Standard mode should include Test stage");
-    assert!(!standard_stages.contains(&PipelineStage::Review), "Standard mode should skip Review stage");
-    assert_eq!(standard_stages.len(), 7, "Standard mode should have 7 stages");
+    assert!(
+        standard_stages.contains(&PipelineStage::Test),
+        "Standard mode should include Test stage"
+    );
+    assert!(
+        !standard_stages.contains(&PipelineStage::Review),
+        "Standard mode should skip Review stage"
+    );
+    assert_eq!(
+        standard_stages.len(),
+        7,
+        "Standard mode should have 7 stages"
+    );
 
     // Expert mode stages
     let expert_stages = PipelineStage::pipeline_for_mode(ExecutionMode::Expert);
-    assert!(expert_stages.contains(&PipelineStage::Test), "Expert mode should include Test stage");
-    assert!(expert_stages.contains(&PipelineStage::Review), "Expert mode should include Review stage");
+    assert!(
+        expert_stages.contains(&PipelineStage::Test),
+        "Expert mode should include Test stage"
+    );
+    assert!(
+        expert_stages.contains(&PipelineStage::Review),
+        "Expert mode should include Review stage"
+    );
     assert_eq!(expert_stages.len(), 8, "Expert mode should have 8 stages");
 
     // Verify stage order for all modes
@@ -406,20 +525,38 @@ fn test_happy_path_mode_config_defaults() {
     // Fast mode config
     let fast_config = ModeConfig::fast_mode();
     assert!(!fast_config.run_tests, "Fast mode should not run tests");
-    assert_eq!(fast_config.max_depth, 2, "Fast mode should have max_depth of 2");
-    assert_eq!(fast_config.max_retries, 1, "Fast mode should have max_retries of 1");
+    assert_eq!(
+        fast_config.max_depth, 2,
+        "Fast mode should have max_depth of 2"
+    );
+    assert_eq!(
+        fast_config.max_retries, 1,
+        "Fast mode should have max_retries of 1"
+    );
 
     // Standard mode config
     let standard_config = ModeConfig::default();
     assert!(standard_config.run_tests, "Standard mode should run tests");
-    assert_eq!(standard_config.max_depth, 3, "Standard mode should have max_depth of 3");
-    assert_eq!(standard_config.max_retries, 3, "Standard mode should have max_retries of 3");
+    assert_eq!(
+        standard_config.max_depth, 3,
+        "Standard mode should have max_depth of 3"
+    );
+    assert_eq!(
+        standard_config.max_retries, 3,
+        "Standard mode should have max_retries of 3"
+    );
 
     // Expert mode config
     let expert_config = ModeConfig::expert_mode();
     assert!(expert_config.run_tests, "Expert mode should run tests");
-    assert_eq!(expert_config.max_depth, 3, "Expert mode should have max_depth of 3");
-    assert_eq!(expert_config.max_retries, 3, "Expert mode should have max_retries of 3");
+    assert_eq!(
+        expert_config.max_depth, 3,
+        "Expert mode should have max_depth of 3"
+    );
+    assert_eq!(
+        expert_config.max_retries, 3,
+        "Expert mode should have max_retries of 3"
+    );
 
     // Verify model selection
     assert_eq!(
@@ -524,13 +661,20 @@ fn test_happy_path_nested_repo_protection() {
     let _repo = init_repo(&nested_path).expect("Failed to initialize nested repo");
 
     // Verify nested repo exists
-    assert!(nested_path.join(".git").exists(), "Nested repo should have .git directory");
+    assert!(
+        nested_path.join(".git").exists(),
+        "Nested repo should have .git directory"
+    );
 
     // Verify parent has nested path in .gitignore
     let parent_gitignore = parent_dir.path().join(".gitignore");
     if parent_gitignore.exists() {
-        let content = std::fs::read_to_string(&parent_gitignore).expect("Failed to read parent .gitignore");
-        assert!(content.contains("nested-project"), "Parent .gitignore should contain nested path");
+        let content =
+            std::fs::read_to_string(&parent_gitignore).expect("Failed to read parent .gitignore");
+        assert!(
+            content.contains("nested-project"),
+            "Parent .gitignore should contain nested path"
+        );
     }
 }
 
@@ -541,20 +685,23 @@ fn test_happy_path_memory_entry_full_metadata() {
     let store = MemoryStore::new(temp_dir.path()).expect("Failed to create memory store");
 
     // Create entry with full metadata
-    let entry = MemoryEntry::new("task-042", "Comprehensive Memory Entry",
-        "This is a detailed memory entry with all possible metadata fields.")
-        .with_category_enum(MemoryCategory::ArchitectureDecision)
-        .with_files(vec![
-            "src/main.rs".to_string(),
-            "src/lib.rs".to_string(),
-            "src/models/mod.rs".to_string(),
-        ])
-        .with_key_points(vec![
-            "Point 1: Use async patterns".to_string(),
-            "Point 2: Implement proper error handling".to_string(),
-            "Point 3: Follow Rust best practices".to_string(),
-        ])
-        .with_priority(MemoryPriority::High);
+    let entry = MemoryEntry::new(
+        "task-042",
+        "Comprehensive Memory Entry",
+        "This is a detailed memory entry with all possible metadata fields.",
+    )
+    .with_category_enum(MemoryCategory::ArchitectureDecision)
+    .with_files(vec![
+        "src/main.rs".to_string(),
+        "src/lib.rs".to_string(),
+        "src/models/mod.rs".to_string(),
+    ])
+    .with_key_points(vec![
+        "Point 1: Use async patterns".to_string(),
+        "Point 2: Implement proper error handling".to_string(),
+        "Point 3: Follow Rust best practices".to_string(),
+    ])
+    .with_priority(MemoryPriority::High);
 
     // Append entry
     store.append_entry(&entry).expect("Failed to append entry");
@@ -564,11 +711,26 @@ fn test_happy_path_memory_entry_full_metadata() {
     let content = std::fs::read_to_string(&memory_path).expect("Failed to read memory.md");
 
     // Verify all components are present
-    assert!(content.contains("task-042"), "Memory should contain task ID");
-    assert!(content.contains("Comprehensive Memory Entry"), "Memory should contain title");
-    assert!(content.contains("Architecture Decision"), "Memory should contain category");
-    assert!(content.contains("src/main.rs"), "Memory should contain file reference");
-    assert!(content.contains("Point 1"), "Memory should contain key point");
+    assert!(
+        content.contains("task-042"),
+        "Memory should contain task ID"
+    );
+    assert!(
+        content.contains("Comprehensive Memory Entry"),
+        "Memory should contain title"
+    );
+    assert!(
+        content.contains("Architecture Decision"),
+        "Memory should contain category"
+    );
+    assert!(
+        content.contains("src/main.rs"),
+        "Memory should contain file reference"
+    );
+    assert!(
+        content.contains("Point 1"),
+        "Memory should contain key point"
+    );
 }
 
 /// Test orchestrator handles concurrent workspace access
@@ -629,9 +791,15 @@ fn test_happy_path_workspace_cleanup() {
     WorkspaceState::cleanup(&project_path).expect("Failed to cleanup");
 
     // Verify cleanup
-    assert!(!manifest_path.exists(), "Manifest should be removed after cleanup");
+    assert!(
+        !manifest_path.exists(),
+        "Manifest should be removed after cleanup"
+    );
     let ltmatrix_dir = project_path.join(".ltmatrix");
-    assert!(!ltmatrix_dir.exists(), ".ltmatrix directory should be removed");
+    assert!(
+        !ltmatrix_dir.exists(),
+        ".ltmatrix directory should be removed"
+    );
 }
 
 // =============================================================================
@@ -715,8 +883,14 @@ mod benchmarks {
         let load_duration = start.elapsed();
 
         // Verify reasonable performance (adjust thresholds as needed)
-        assert!(save_duration < Duration::from_secs(1), "Save should complete in < 1s");
-        assert!(load_duration < Duration::from_secs(1), "Load should complete in < 1s");
+        assert!(
+            save_duration < Duration::from_secs(1),
+            "Save should complete in < 1s"
+        );
+        assert!(
+            load_duration < Duration::from_secs(1),
+            "Load should complete in < 1s"
+        );
     }
 
     /// Benchmark memory entry creation
@@ -729,9 +903,12 @@ mod benchmarks {
 
         // Create 50 memory entries
         for i in 0..50 {
-            let entry = MemoryEntry::new(&format!("task-{:03}", i), &format!("Entry {}", i),
-                format!("Content for entry {}", i))
-                .with_category_enum(MemoryCategory::General);
+            let entry = MemoryEntry::new(
+                &format!("task-{:03}", i),
+                &format!("Entry {}", i),
+                format!("Content for entry {}", i),
+            )
+            .with_category_enum(MemoryCategory::General);
 
             store.append_entry(&entry).expect("Failed to append entry");
         }
@@ -739,6 +916,9 @@ mod benchmarks {
         let duration = start.elapsed();
 
         // Verify reasonable performance
-        assert!(duration < Duration::from_secs(2), "50 entries should be created in < 2s");
+        assert!(
+            duration < Duration::from_secs(2),
+            "50 entries should be created in < 2s"
+        );
     }
 }

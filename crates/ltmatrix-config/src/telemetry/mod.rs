@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Telemetry and analytics module
 //!
 //! This module provides optional anonymous usage telemetry for ltmatrix.
@@ -37,7 +36,7 @@ pub mod config;
 pub mod event;
 pub mod sender;
 
+pub use collector::TelemetryCollector;
 pub use config::{TelemetryConfig, TelemetryConfigBuilder};
 pub use event::{ErrorCategory, TelemetryEvent};
-pub use collector::TelemetryCollector;
 pub use sender::TelemetrySender;

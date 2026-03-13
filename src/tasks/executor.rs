@@ -2,6 +2,5 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Placeholder module for executor
 // TODO: Implement executor

@@ -430,7 +430,11 @@ fn test_pipeline_stage_expert_mode() {
 
     // Expert mode has an extra Review stage compared to Standard
     let standard_pipeline = PipelineStage::pipeline_for_mode(ExecutionMode::Standard);
-    assert_eq!(standard_pipeline.len(), 7, "Standard mode should have 7 stages");
+    assert_eq!(
+        standard_pipeline.len(),
+        7,
+        "Standard mode should have 7 stages"
+    );
 }
 
 #[test]

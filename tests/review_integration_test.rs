@@ -7,12 +7,12 @@
 //! - Blocking issue handling
 //! - Edge cases and malformed inputs
 
+use anyhow::Result;
+use ltmatrix::models::Task;
 use ltmatrix::pipeline::review::{
     build_review_prompt, CodeIssue, IssueCategory, IssueSeverity, ReviewAssessment, ReviewConfig,
 };
-use ltmatrix::models::Task;
 use serde_json::json;
-use anyhow::Result;
 
 /// Helper to create a test task
 fn create_test_task(id: &str, title: &str, description: &str) -> Task {
@@ -50,8 +50,7 @@ fn test_parse_json_review_pass_assessment() {
     });
 
     let config = create_test_config();
-    let (issues, assessment, summary, strengths) =
-        parse_json_review_internal(&response, &config);
+    let (issues, assessment, summary, strengths) = parse_json_review_internal(&response, &config);
 
     assert_eq!(assessment, ReviewAssessment::Pass);
     assert_eq!(summary, "Code is excellent");
@@ -77,8 +76,7 @@ fn test_parse_json_review_warning_assessment() {
     });
 
     let config = create_test_config();
-    let (issues, assessment, summary, strengths) =
-        parse_json_review_internal(&response, &config);
+    let (issues, assessment, summary, strengths) = parse_json_review_internal(&response, &config);
 
     assert_eq!(assessment, ReviewAssessment::Warning);
     assert_eq!(issues.len(), 1);
@@ -103,8 +101,7 @@ fn test_parse_json_review_needs_improvements_assessment() {
     });
 
     let config = create_test_config();
-    let (issues, assessment, _, _) =
-        parse_json_review_internal(&response, &config);
+    let (issues, assessment, _, _) = parse_json_review_internal(&response, &config);
 
     assert_eq!(assessment, ReviewAssessment::NeedsImprovements);
     assert_eq!(issues.len(), 1);
@@ -127,8 +124,7 @@ fn test_parse_json_review_fail_assessment() {
     });
 
     let config = create_test_config();
-    let (issues, assessment, _, _) =
-        parse_json_review_internal(&response, &config);
+    let (issues, assessment, _, _) = parse_json_review_internal(&response, &config);
 
     assert_eq!(assessment, ReviewAssessment::Fail);
     assert_eq!(issues.len(), 1);
@@ -145,8 +141,7 @@ fn test_parse_json_review_invalid_assessment_defaults_to_warning() {
     });
 
     let config = create_test_config();
-    let (_, assessment, _, _) =
-        parse_json_review_internal(&response, &config);
+    let (_, assessment, _, _) = parse_json_review_internal(&response, &config);
 
     assert_eq!(assessment, ReviewAssessment::Warning);
 }
@@ -160,8 +155,7 @@ fn test_parse_json_review_missing_assessment_defaults_to_warning() {
     });
 
     let config = create_test_config();
-    let (_, assessment, _, _) =
-        parse_json_review_internal(&response, &config);
+    let (_, assessment, _, _) = parse_json_review_internal(&response, &config);
 
     assert_eq!(assessment, ReviewAssessment::Warning);
 }
@@ -390,7 +384,10 @@ fn test_parse_issue_with_all_fields() {
     assert_eq!(issue.line, Some(42));
     assert_eq!(issue.title, "SQL Injection");
     assert_eq!(issue.description, "User input not sanitized");
-    assert_eq!(issue.suggestion, Some("Use parameterized queries".to_string()));
+    assert_eq!(
+        issue.suggestion,
+        Some("Use parameterized queries".to_string())
+    );
     assert!(issue.code_snippet.is_some());
     assert!(issue.blocking);
 }
@@ -521,7 +518,11 @@ fn test_parse_all_issue_categories() {
         });
 
         let issue = parse_issue_json_internal(&issue_json).unwrap();
-        assert_eq!(issue.category, expected_cat, "Failed for category: {}", cat_str);
+        assert_eq!(
+            issue.category, expected_cat,
+            "Failed for category: {}",
+            cat_str
+        );
     }
 }
 
@@ -545,7 +546,11 @@ fn test_parse_all_severity_levels() {
         });
 
         let issue = parse_issue_json_internal(&issue_json).unwrap();
-        assert_eq!(issue.severity, expected_sev, "Failed for severity: {}", sev_str);
+        assert_eq!(
+            issue.severity, expected_sev,
+            "Failed for severity: {}",
+            sev_str
+        );
     }
 }
 
@@ -603,8 +608,12 @@ fn test_parse_text_review_extracts_strengths() {
     let (_, _, _, strengths) = parse_text_review_internal(response, &config).unwrap();
 
     assert!(!strengths.is_empty());
-    assert!(strengths.iter().any(|s: &String| s.contains("error handling")));
-    assert!(strengths.iter().any(|s: &String| s.contains("documentation")));
+    assert!(strengths
+        .iter()
+        .any(|s: &String| s.contains("error handling")));
+    assert!(strengths
+        .iter()
+        .any(|s: &String| s.contains("documentation")));
 }
 
 #[test]
@@ -669,8 +678,7 @@ fn test_blocking_issues_cause_fail_assessment() {
     });
 
     let config = create_test_config();
-    let (issues, assessment, _, _) =
-        parse_json_review_internal(&response, &config);
+    let (issues, assessment, _, _) = parse_json_review_internal(&response, &config);
 
     // Even with initial "warning" assessment, blocking issues should cause fail
     assert!(issues.iter().any(|i| i.blocking));
@@ -871,9 +879,7 @@ fn parse_text_review_internal(
         || response_lower.contains("should be fixed")
     {
         ReviewAssessment::NeedsImprovements
-    } else if response_lower.contains("warning")
-        || response_lower.contains("minor issues")
-    {
+    } else if response_lower.contains("warning") || response_lower.contains("minor issues") {
         ReviewAssessment::Warning
     } else {
         ReviewAssessment::Pass

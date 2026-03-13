@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! AgentFactory — create agent backend instances by name
 //!
 //! The factory is the single entry point for constructing any

@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Fix cycle triggering module
 //!
 //! This module implements automatic fix cycle triggering when critical issues
@@ -16,11 +15,11 @@ use std::time::Duration;
 use tokio::time::timeout;
 use tracing::{debug, error, info, warn};
 
-use ltmatrix_agent::backend::{AgentBackend, ExecutionConfig};
-use ltmatrix_agent::claude::ClaudeAgent;
 use crate::pipeline::coverage::{
     AggregatedFindings, IssueDetail, IssueSeverity, SecurityIssue, TestFailure,
 };
+use ltmatrix_agent::backend::{AgentBackend, ExecutionConfig};
+use ltmatrix_agent::claude::ClaudeAgent;
 
 /// Configuration for fix cycle behavior
 #[derive(Debug, Clone)]
@@ -206,7 +205,10 @@ pub async fn execute_fix_cycle(
 ) -> Result<FixCycleSummary> {
     let start_time = std::time::Instant::now();
 
-    info!("Starting fix cycle for {} issues", findings.critical_count + findings.high_count);
+    info!(
+        "Starting fix cycle for {} issues",
+        findings.critical_count + findings.high_count
+    );
 
     if !config.enabled {
         info!("Fix cycle disabled by config");
@@ -483,7 +485,10 @@ async fn attempt_fix_for_test_failure(
     while attempts < config.max_fix_attempts {
         attempts += 1;
 
-        debug!("Fix attempt {} for test failure: {}", attempts, failure.test_name);
+        debug!(
+            "Fix attempt {} for test failure: {}",
+            attempts, failure.test_name
+        );
 
         // Build fix prompt
         let prompt = build_fix_prompt_for_test_failure(failure, strategy);
@@ -609,7 +614,10 @@ async fn attempt_fix_for_security_issue(
     while attempts < config.max_fix_attempts {
         attempts += 1;
 
-        debug!("Fix attempt {} for security issue: {}", attempts, issue.title);
+        debug!(
+            "Fix attempt {} for security issue: {}",
+            attempts, issue.title
+        );
 
         // Build fix prompt
         let prompt = build_fix_prompt_for_security_issue(issue, strategy);
@@ -1007,7 +1015,12 @@ Respond with a structured assessment in the following format:
 
 Begin your fix now. Analyze the security issue, implement the fix, and provide your assessment.
 "#,
-        issue.title, cve_info, issue.description, issue.severity, issue.affected_component, strategy_desc
+        issue.title,
+        cve_info,
+        issue.description,
+        issue.severity,
+        issue.affected_component,
+        strategy_desc
     )
 }
 
@@ -1112,7 +1125,10 @@ pub fn display_fix_cycle_summary(summary: &FixCycleSummary) {
         "Fixed: {} | Failed: {} | Skipped: {}",
         summary.fixed_issues, summary.failed_issues, summary.skipped_issues
     );
-    println!("Total Attempts: {} | Time: {}s", summary.total_attempts, summary.total_time_secs);
+    println!(
+        "Total Attempts: {} | Time: {}s",
+        summary.total_attempts, summary.total_time_secs
+    );
 
     if !summary.attempts.is_empty() {
         println!("\n--- Fix Attempts ---");
@@ -1180,11 +1196,13 @@ mod tests {
     #[test]
     fn test_determine_fix_strategy() {
         // Critical security issue -> Immediate
-        let strategy = determine_fix_strategy(IssueSeverity::Critical, FixCycleTrigger::SecurityIssue);
+        let strategy =
+            determine_fix_strategy(IssueSeverity::Critical, FixCycleTrigger::SecurityIssue);
         assert_eq!(strategy, FixStrategy::Immediate);
 
         // Critical test failure -> Fix and verify
-        let strategy = determine_fix_strategy(IssueSeverity::Critical, FixCycleTrigger::TestFailure);
+        let strategy =
+            determine_fix_strategy(IssueSeverity::Critical, FixCycleTrigger::TestFailure);
         assert_eq!(strategy, FixStrategy::FixAndVerify);
 
         // High test failure -> Fix and test
@@ -1219,8 +1237,14 @@ mod tests {
     #[test]
     fn test_fix_cycle_trigger_equality() {
         assert_eq!(FixCycleTrigger::TestFailure, FixCycleTrigger::TestFailure);
-        assert_eq!(FixCycleTrigger::SecurityIssue, FixCycleTrigger::SecurityIssue);
-        assert_ne!(FixCycleTrigger::TestFailure, FixCycleTrigger::VerificationFailure);
+        assert_eq!(
+            FixCycleTrigger::SecurityIssue,
+            FixCycleTrigger::SecurityIssue
+        );
+        assert_ne!(
+            FixCycleTrigger::TestFailure,
+            FixCycleTrigger::VerificationFailure
+        );
     }
 
     #[test]

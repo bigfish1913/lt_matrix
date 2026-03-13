@@ -51,19 +51,24 @@ impl Drop for DirGuard {
 
 // Helper function to convert Args to CliOverrides
 fn args_to_overrides(args: &Args) -> CliOverrides {
-    use ltmatrix::config::settings::{OutputFormat as ConfigOutputFormat, LogLevel as ConfigLogLevel};
+    use ltmatrix::config::settings::{
+        LogLevel as ConfigLogLevel, OutputFormat as ConfigOutputFormat,
+    };
 
     let mode = if args.fast {
         Some("fast".to_string())
     } else if args.expert {
         Some("expert".to_string())
     } else {
-        args.mode.as_ref().map(|m| format!("{:?}", m).to_lowercase())
+        args.mode
+            .as_ref()
+            .map(|m| format!("{:?}", m).to_lowercase())
     };
 
     let output_format = args.output.as_ref().map(|f| match f {
         ltmatrix::cli::args::OutputFormat::Text => ConfigOutputFormat::Text,
-        ltmatrix::cli::args::OutputFormat::Json | ltmatrix::cli::args::OutputFormat::JsonCompact => ConfigOutputFormat::Json,
+        ltmatrix::cli::args::OutputFormat::Json
+        | ltmatrix::cli::args::OutputFormat::JsonCompact => ConfigOutputFormat::Json,
     });
 
     let log_level = args.log_level.as_ref().map(|l| match l {

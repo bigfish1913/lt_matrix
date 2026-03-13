@@ -8,13 +8,13 @@
 //! TOML files and command-line arguments.
 
 pub mod agent;
+pub mod feature;
 pub mod mcp;
 pub mod modes;
 pub mod settings;
-pub mod feature;
 pub mod telemetry;
 
 // Re-export commonly used types
-pub use settings::Config;
 pub use feature::FeatureConfig;
+pub use settings::Config;
 pub use telemetry::TelemetryConfig;

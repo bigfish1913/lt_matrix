@@ -52,7 +52,10 @@ async fn test_agent_name_validation() {
         let _ = pool.get_or_create("agent\x00name", "model");
     }));
 
-    assert!(result.is_ok(), "Should not panic on null bytes in agent name");
+    assert!(
+        result.is_ok(),
+        "Should not panic on null bytes in agent name"
+    );
 }
 
 /// Test model validation
@@ -68,14 +71,20 @@ async fn test_model_validation() {
         let _ = pool.get_or_create("agent", &long_model);
     }));
 
-    assert!(result.is_ok(), "Should handle long model names without panic");
+    assert!(
+        result.is_ok(),
+        "Should handle long model names without panic"
+    );
 
     // Test with special characters
     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         let _ = pool.get_or_create("agent", "<script>alert('xss')</script>");
     }));
 
-    assert!(result.is_ok(), "Should handle special characters without panic");
+    assert!(
+        result.is_ok(),
+        "Should handle special characters without panic"
+    );
 }
 
 /// Test path traversal in session files
@@ -180,7 +189,10 @@ fn test_prompt_content_validation() {
         let _ = prompt.to_string();
 
         // Length checks should work
-        assert!(prompt.len() < 1_000_000, "Prompt length should be reasonable");
+        assert!(
+            prompt.len() < 1_000_000,
+            "Prompt length should be reasonable"
+        );
     }
 }
 

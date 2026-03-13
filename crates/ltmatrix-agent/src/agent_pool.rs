@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Unified AgentPool integrating session management and warmup
 //!
 //! This module provides the main AgentPool type that combines:
@@ -292,12 +291,15 @@ impl AgentPool {
         // Get the session from the pool
         let session_id = task.get_session_id().unwrap();
         let inner = self.inner.lock().await;
-        let session = inner.sessions.get(session_id).ok_or_else(|| {
-            anyhow::anyhow!("Session {} not found in pool", session_id)
-        })?;
+        let session = inner
+            .sessions
+            .get(session_id)
+            .ok_or_else(|| anyhow::anyhow!("Session {} not found in pool", session_id))?;
 
         // Execute with session
-        let response = backend.execute_with_session(prompt, config, session).await?;
+        let response = backend
+            .execute_with_session(prompt, config, session)
+            .await?;
 
         Ok(response)
     }
@@ -332,7 +334,9 @@ impl AgentPool {
         model: &str,
     ) -> anyhow::Result<String> {
         // Try to get the lock without blocking
-        let mut inner = self.inner.try_lock()
+        let mut inner = self
+            .inner
+            .try_lock()
             .context("AgentPool lock is contended, cannot get session synchronously")?;
 
         // Check for existing session (retry scenario)
@@ -378,7 +382,7 @@ impl AgentPool {
         PoolStats {
             total_sessions,
             active_sessions: total_sessions, // Assume all are active
-            stale_sessions: 0, // Cannot determine without iteration
+            stale_sessions: 0,               // Cannot determine without iteration
             max_sessions: inner.config.max_sessions,
             warmup_enabled: inner.warmup_config.enabled,
             total_created: total_sessions, // Simplified tracking
@@ -685,10 +689,22 @@ mod tests {
         let pool = AgentPool::new_for_mode(&config, Mode::Expert);
 
         // Check models for each agent type
-        assert_eq!(pool.get_model_for_agent_type(AgentType::Plan), "claude-opus-4-6");
-        assert_eq!(pool.get_model_for_agent_type(AgentType::Dev), "claude-sonnet-4-6");
-        assert_eq!(pool.get_model_for_agent_type(AgentType::Test), "claude-sonnet-4-6");
-        assert_eq!(pool.get_model_for_agent_type(AgentType::Review), "claude-opus-4-6");
+        assert_eq!(
+            pool.get_model_for_agent_type(AgentType::Plan),
+            "claude-opus-4-6"
+        );
+        assert_eq!(
+            pool.get_model_for_agent_type(AgentType::Dev),
+            "claude-sonnet-4-6"
+        );
+        assert_eq!(
+            pool.get_model_for_agent_type(AgentType::Test),
+            "claude-sonnet-4-6"
+        );
+        assert_eq!(
+            pool.get_model_for_agent_type(AgentType::Review),
+            "claude-opus-4-6"
+        );
     }
 
     #[tokio::test]

@@ -2,7 +2,8 @@
 
 use ltmatrix::models::Task;
 use ltmatrix::pipeline::review::{
-    build_review_prompt, CodeIssue, IssueCategory, IssueSeverity, ReviewAssessment, ReviewConfig, ReviewSummary,
+    build_review_prompt, CodeIssue, IssueCategory, IssueSeverity, ReviewAssessment, ReviewConfig,
+    ReviewSummary,
 };
 use std::path::PathBuf;
 
@@ -26,7 +27,10 @@ fn test_review_config_expert_mode_enables_review() {
     let config = ReviewConfig::expert_mode();
 
     assert!(config.enabled, "Review should be enabled in expert mode");
-    assert!(config.should_run(), "should_run should return true in expert mode");
+    assert!(
+        config.should_run(),
+        "should_run should return true in expert mode"
+    );
     assert!(config.is_expert_mode(), "is_expert_mode should return true");
     assert_eq!(config.review_model, "claude-opus-4-6");
     assert_eq!(config.max_issues_per_category, 15);
@@ -51,7 +55,10 @@ fn test_review_config_should_run_with_verify_disabled() {
     let mut config = ReviewConfig::expert_mode();
     config.mode_config.verify = false;
 
-    assert!(!config.should_run(), "should_run should return false when verify is disabled");
+    assert!(
+        !config.should_run(),
+        "should_run should return false when verify is disabled"
+    );
 }
 
 #[test]
@@ -86,7 +93,10 @@ fn test_issue_category_display() {
 fn test_review_assessment_display() {
     assert_eq!(ReviewAssessment::Pass.to_string(), "pass");
     assert_eq!(ReviewAssessment::Warning.to_string(), "warning");
-    assert_eq!(ReviewAssessment::NeedsImprovements.to_string(), "needs_improvements");
+    assert_eq!(
+        ReviewAssessment::NeedsImprovements.to_string(),
+        "needs_improvements"
+    );
     assert_eq!(ReviewAssessment::Fail.to_string(), "fail");
 }
 
@@ -100,7 +110,9 @@ fn test_code_issue_all_fields() {
         title: "SQL Injection".to_string(),
         description: "User input not sanitized".to_string(),
         suggestion: Some("Use parameterized queries".to_string()),
-        code_snippet: Some("format!(\"SELECT * FROM users WHERE id = {}\", user_input)".to_string()),
+        code_snippet: Some(
+            "format!(\"SELECT * FROM users WHERE id = {}\", user_input)".to_string(),
+        ),
         blocking: true,
     };
 

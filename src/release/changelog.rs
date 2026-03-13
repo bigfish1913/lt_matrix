@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Changelog generation and management
 //!
 //! This module provides changelog parsing, generation, and updating following
@@ -65,12 +64,14 @@ pub struct ChangelogEntry {
 
 impl fmt::Display for ChangelogEntry {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let scope = self.scope
+        let scope = self
+            .scope
             .as_ref()
             .map(|s| format!("**{}**: ", s))
             .unwrap_or_default();
 
-        let pr = self.pr_number
+        let pr = self
+            .pr_number
             .map(|n| format!(" (#{})", n))
             .unwrap_or_default();
 
@@ -89,7 +90,9 @@ pub struct Changelog {
 impl Changelog {
     /// Create empty changelog
     pub fn new() -> Self {
-        Self { entries: Vec::new() }
+        Self {
+            entries: Vec::new(),
+        }
     }
 
     /// Generate changelog from git commits since a tag
@@ -158,7 +161,11 @@ impl Changelog {
     }
 
     /// Update CHANGELOG.md file
-    pub fn update_file(&self, project_root: impl AsRef<Path>, version: &super::version::Version) -> Result<()> {
+    pub fn update_file(
+        &self,
+        project_root: impl AsRef<Path>,
+        version: &super::version::Version,
+    ) -> Result<()> {
         let changelog_path = project_root.as_ref().join("CHANGELOG.md");
 
         if !changelog_path.exists() {
@@ -181,8 +188,11 @@ impl Changelog {
 
         let mut content = String::new();
         content.push_str("# Changelog\n\n");
-        content.push_str("All notable changes to this project will be documented in this file.\n\n");
-        content.push_str("The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),\n");
+        content
+            .push_str("All notable changes to this project will be documented in this file.\n\n");
+        content.push_str(
+            "The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),\n",
+        );
         content.push_str("and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).\n\n");
         content.push_str("## [Unreleased]\n\n");
         content.push_str(&self.format_version_section(version, &date.to_string()));
@@ -191,7 +201,11 @@ impl Changelog {
     }
 
     /// Insert version section into existing changelog
-    fn insert_version_section(&self, content: &str, version: &super::version::Version) -> Result<String> {
+    fn insert_version_section(
+        &self,
+        content: &str,
+        version: &super::version::Version,
+    ) -> Result<String> {
         let date = chrono::Local::now().format("%Y-%m-%d");
         let new_section = self.format_version_section(version, &date.to_string());
 
@@ -201,10 +215,15 @@ impl Changelog {
         if let Some(pos) = content.find(unreleased_pattern) {
             // Find the next ## heading after Unreleased
             let rest = &content[pos + unreleased_pattern.len()..];
-            let next_section_pos = rest.find("\n## ").map(|p| p + unreleased_pattern.len() + pos);
+            let next_section_pos = rest
+                .find("\n## ")
+                .map(|p| p + unreleased_pattern.len() + pos);
 
             let (before, after) = match next_section_pos {
-                Some(p) => (content[..pos + unreleased_pattern.len()].to_string(), content[p..].to_string()),
+                Some(p) => (
+                    content[..pos + unreleased_pattern.len()].to_string(),
+                    content[p..].to_string(),
+                ),
                 None => (content.to_string(), String::new()),
             };
 
@@ -268,7 +287,10 @@ impl Changelog {
     }
 
     /// Group entries by scope
-    fn group_entries_by_scope(&self, entries: &[&ChangelogEntry]) -> Vec<(Option<String>, Vec<ChangelogEntry>)> {
+    fn group_entries_by_scope(
+        &self,
+        entries: &[&ChangelogEntry],
+    ) -> Vec<(Option<String>, Vec<ChangelogEntry>)> {
         let mut groups: std::collections::HashMap<Option<String>, Vec<ChangelogEntry>> =
             std::collections::HashMap::new();
 
@@ -281,13 +303,11 @@ impl Changelog {
 
         let mut result: Vec<_> = groups.into_iter().collect();
         // Sort: entries without scope last
-        result.sort_by(|a, b| {
-            match (&a.0, &b.0) {
-                (None, None) => std::cmp::Ordering::Equal,
-                (None, Some(_)) => std::cmp::Ordering::Greater,
-                (Some(_), None) => std::cmp::Ordering::Less,
-                (Some(a), Some(b)) => a.cmp(b),
-            }
+        result.sort_by(|a, b| match (&a.0, &b.0) {
+            (None, None) => std::cmp::Ordering::Equal,
+            (None, Some(_)) => std::cmp::Ordering::Greater,
+            (Some(_), None) => std::cmp::Ordering::Less,
+            (Some(a), Some(b)) => a.cmp(b),
         });
 
         result
@@ -307,7 +327,10 @@ fn parse_commit_line(line: &str) -> Option<ChangelogEntry> {
     let (commit_type, scope, description, breaking) = parse_conventional_commit(subject)?;
 
     // Skip certain commit types
-    if matches!(commit_type, "refactor" | "test" | "chore" | "style" | "ci" | "build" | "perf") {
+    if matches!(
+        commit_type,
+        "refactor" | "test" | "chore" | "style" | "ci" | "build" | "perf"
+    ) {
         return None;
     }
 
@@ -324,17 +347,12 @@ fn parse_commit_line(line: &str) -> Option<ChangelogEntry> {
     };
 
     // Extract PR number from body
-    let pr_number = parts.get(2)
-        .and_then(|body| {
-            let body = *body;
-            // Look for PR number in body
-            let re = regex::Regex::new(r"#(\d+)").ok()?;
-            re.captures(body)?
-                .get(1)?
-                .as_str()
-                .parse()
-                .ok()
-        });
+    let pr_number = parts.get(2).and_then(|body| {
+        let body = *body;
+        // Look for PR number in body
+        let re = regex::Regex::new(r"#(\d+)").ok()?;
+        re.captures(body)?.get(1)?.as_str().parse().ok()
+    });
 
     Some(ChangelogEntry {
         section,
@@ -376,13 +394,19 @@ mod tests {
     #[test]
     fn test_parse_conventional_commit() {
         let result = parse_conventional_commit("feat(cli): add new flag");
-        assert_eq!(result, Some(("feat", Some("cli".to_string()), "add new flag", false)));
+        assert_eq!(
+            result,
+            Some(("feat", Some("cli".to_string()), "add new flag", false))
+        );
 
         let result = parse_conventional_commit("fix: correct bug");
         assert_eq!(result, Some(("fix", None, "correct bug", false)));
 
         let result = parse_conventional_commit("feat(api)!: breaking change");
-        assert_eq!(result, Some(("feat", Some("api".to_string()), "breaking change", true)));
+        assert_eq!(
+            result,
+            Some(("feat", Some("api".to_string()), "breaking change", true))
+        );
     }
 
     #[test]

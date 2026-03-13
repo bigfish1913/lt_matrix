@@ -6,10 +6,10 @@
 //! Note: Many low-level edge cases are tested in the module's internal tests.
 //! These tests focus on edge cases accessible through the public API.
 
+use ltmatrix::models::{Task, TaskComplexity, TaskStatus};
 use ltmatrix::pipeline::generate::{
     calculate_generation_stats, GenerateConfig, GenerationResult, ValidationError,
 };
-use ltmatrix::models::{Task, TaskComplexity, TaskStatus};
 
 /// Edge case: Very long task ID
 #[test]
@@ -76,7 +76,11 @@ fn test_edge_case_deep_dependency_chain() {
 
     // Create a chain of 100 tasks
     for i in 1..=100 {
-        let mut t = Task::new(&format!("task-{}", i), &format!("Task {}", i), "Description");
+        let mut t = Task::new(
+            &format!("task-{}", i),
+            &format!("Task {}", i),
+            "Description",
+        );
 
         if i > 1 {
             t.depends_on = vec![format!("task-{}", i - 1)];
@@ -96,7 +100,11 @@ fn test_edge_case_deep_dependency_chain() {
 fn test_edge_case_wide_dependency_graph() {
     let tasks: Vec<Task> = (1..=1000)
         .map(|i| {
-            let mut t = Task::new(&format!("task-{}", i), &format!("Task {}", i), "Description");
+            let mut t = Task::new(
+                &format!("task-{}", i),
+                &format!("Task {}", i),
+                "Description",
+            );
             t.depends_on = vec![];
             t
         })
@@ -351,7 +359,11 @@ fn test_edge_case_statistics_with_empty_result() {
 #[test]
 fn test_edge_case_duplicate_dependencies() {
     let mut task = Task::new("task-1", "Task", "Duplicate dependencies");
-    task.depends_on = vec!["dep-1".to_string(), "dep-1".to_string(), "dep-1".to_string()];
+    task.depends_on = vec![
+        "dep-1".to_string(),
+        "dep-1".to_string(),
+        "dep-1".to_string(),
+    ];
 
     // All three should be present (validation happens separately)
     assert_eq!(task.depends_on.len(), 3);

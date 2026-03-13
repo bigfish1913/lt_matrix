@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Session management for agent backends
 //!
 //! This module provides session file management for agent subprocess communication,
@@ -426,11 +425,19 @@ mod tests {
         assert_eq!(session.reuse_count, 0);
 
         // Load once - increments reuse count
-        let loaded1 = manager.load_session(&session.session_id).await.unwrap().unwrap();
+        let loaded1 = manager
+            .load_session(&session.session_id)
+            .await
+            .unwrap()
+            .unwrap();
         assert_eq!(loaded1.reuse_count, 1);
 
         // Load again - increments reuse count
-        let loaded2 = manager.load_session(&session.session_id).await.unwrap().unwrap();
+        let loaded2 = manager
+            .load_session(&session.session_id)
+            .await
+            .unwrap()
+            .unwrap();
         assert_eq!(loaded2.reuse_count, 2);
     }
 
@@ -478,7 +485,11 @@ mod tests {
         manager.save_session(&session).await.unwrap();
 
         // Reload and verify
-        let loaded = manager.load_session(&session.session_id).await.unwrap().unwrap();
+        let loaded = manager
+            .load_session(&session.session_id)
+            .await
+            .unwrap()
+            .unwrap();
         assert_eq!(loaded.reuse_count, 3); // 2 marks + 1 from load
     }
 
@@ -497,9 +508,15 @@ mod tests {
         let manager = SessionManager::new(temp_dir.path()).unwrap();
 
         // Create multiple sessions
-        let session1 = manager.create_session("claude", "claude-sonnet-4-6").await.unwrap();
+        let session1 = manager
+            .create_session("claude", "claude-sonnet-4-6")
+            .await
+            .unwrap();
         let session2 = manager.create_session("opencode", "gpt-4").await.unwrap();
-        let session3 = manager.create_session("kimi-code", "moonshot-v1").await.unwrap();
+        let session3 = manager
+            .create_session("kimi-code", "moonshot-v1")
+            .await
+            .unwrap();
 
         let sessions = manager.list_sessions().await.unwrap();
         assert_eq!(sessions.len(), 3);
@@ -517,10 +534,16 @@ mod tests {
         let manager = SessionManager::new(temp_dir.path()).unwrap();
 
         // Create a fresh session
-        let fresh_session = manager.create_session("claude", "claude-sonnet-4-6").await.unwrap();
+        let fresh_session = manager
+            .create_session("claude", "claude-sonnet-4-6")
+            .await
+            .unwrap();
 
         // Create a stale session by modifying its last_accessed time
-        let mut stale_session = manager.create_session("claude", "claude-sonnet-4-6").await.unwrap();
+        let mut stale_session = manager
+            .create_session("claude", "claude-sonnet-4-6")
+            .await
+            .unwrap();
         stale_session.last_accessed = chrono::Utc::now() - chrono::Duration::hours(2);
         manager.save_session(&stale_session).await.unwrap();
 
@@ -529,11 +552,17 @@ mod tests {
         assert_eq!(cleaned, 1);
 
         // Verify fresh session still exists
-        let loaded = manager.load_session(&fresh_session.session_id).await.unwrap();
+        let loaded = manager
+            .load_session(&fresh_session.session_id)
+            .await
+            .unwrap();
         assert!(loaded.is_some());
 
         // Verify stale session is gone
-        let loaded = manager.load_session(&stale_session.session_id).await.unwrap();
+        let loaded = manager
+            .load_session(&stale_session.session_id)
+            .await
+            .unwrap();
         assert!(loaded.is_none());
     }
 
@@ -543,7 +572,10 @@ mod tests {
         let manager = SessionManager::new(temp_dir.path()).unwrap();
 
         // Create only fresh sessions
-        manager.create_session("claude", "claude-sonnet-4-6").await.unwrap();
+        manager
+            .create_session("claude", "claude-sonnet-4-6")
+            .await
+            .unwrap();
         manager.create_session("opencode", "gpt-4").await.unwrap();
 
         let cleaned = manager.cleanup_stale_sessions().await.unwrap();
@@ -558,7 +590,10 @@ mod tests {
         let temp_dir = tempfile::tempdir().unwrap();
         let manager = SessionManager::new(temp_dir.path()).unwrap();
 
-        let claude_session = manager.create_session("claude", "claude-sonnet-4-6").await.unwrap();
+        let claude_session = manager
+            .create_session("claude", "claude-sonnet-4-6")
+            .await
+            .unwrap();
         let opencode_session = manager.create_session("opencode", "gpt-4").await.unwrap();
 
         assert_ne!(claude_session.session_id, opencode_session.session_id);

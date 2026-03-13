@@ -24,8 +24,14 @@ async fn test_pool_unwrap_safety() {
 
     // This internally uses unwrap() at line 135 and 147
     // It should never panic if used correctly
-    let id1 = pool.get_or_create("claude", "claude-sonnet-4-6").session_id().to_string();
-    let id2 = pool.get_or_create("claude", "claude-sonnet-4-6").session_id().to_string();
+    let id1 = pool
+        .get_or_create("claude", "claude-sonnet-4-6")
+        .session_id()
+        .to_string();
+    let id2 = pool
+        .get_or_create("claude", "claude-sonnet-4-6")
+        .session_id()
+        .to_string();
 
     assert_eq!(id1, id2);
 }
@@ -68,7 +74,10 @@ async fn test_panic_recovery_session_pool() {
 
     // Pool should still be functional
     let _ = pool.get_or_create("new_agent", "model");
-    assert!(pool.len() >= initial_count, "Pool should still track sessions");
+    assert!(
+        pool.len() >= initial_count,
+        "Pool should still track sessions"
+    );
 }
 
 /// Test AgentPool try_lock() failure handling
@@ -100,7 +109,8 @@ async fn test_agent_pool_lock_contention() {
         let mut task = Task::new("task-2", "Test", "Description");
 
         // This uses try_lock() and should handle contention
-        let result = pool_clone2.get_session_for_task_sync(&mut task, "claude", "claude-sonnet-4-6");
+        let result =
+            pool_clone2.get_session_for_task_sync(&mut task, "claude", "claude-sonnet-4-6");
 
         // Should either succeed or return an error, not panic
         match result {
@@ -230,11 +240,17 @@ async fn test_error_context_preservation() {
 
     // Try to remove non-existent session
     let result = pool.remove("nonexistent-session");
-    assert!(result.is_none(), "Removing non-existent session should return None");
+    assert!(
+        result.is_none(),
+        "Removing non-existent session should return None"
+    );
 
     // Try to get a session that doesn't exist
     let result = pool.get("nonexistent-session");
-    assert!(result.is_none(), "Getting non-existent session should return None");
+    assert!(
+        result.is_none(),
+        "Getting non-existent session should return None"
+    );
 
     // Valid operations should still work
     let session = pool.get(&session_id);
@@ -268,8 +284,7 @@ async fn test_resource_cleanup_on_panic() {
     // After panic, pool should still be accessible
     let stats_after = pool.stats().await;
     assert_eq!(
-        stats_before.total_sessions,
-        stats_after.total_sessions,
+        stats_before.total_sessions, stats_after.total_sessions,
         "Session count should be preserved"
     );
 }

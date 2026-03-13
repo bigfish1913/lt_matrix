@@ -133,8 +133,7 @@ async fn test_mixed_read_write_performance() {
         let pool_clone = Arc::clone(&pool);
         let handle = tokio::spawn(async move {
             for j in 0..20 {
-                let mut task =
-                    Task::new(&format!("write-{}-{}", i, j), "Test", "Description");
+                let mut task = Task::new(&format!("write-{}-{}", i, j), "Test", "Description");
                 let _ = pool_clone
                     .get_or_create_session_for_task(&mut task, "claude", "claude-sonnet-4-6")
                     .await;
@@ -344,7 +343,8 @@ async fn test_sync_operations_during_async_lock() {
         let mut task = Task::new("sync-user", "Test", "Description");
 
         // Should either succeed or fail gracefully, not deadlock
-        let result = pool_clone2.get_session_for_task_sync(&mut task, "claude", "claude-sonnet-4-6");
+        let result =
+            pool_clone2.get_session_for_task_sync(&mut task, "claude", "claude-sonnet-4-6");
 
         match result {
             Ok(_) => {}
@@ -384,8 +384,7 @@ async fn test_cleanup_task_contention() {
         let pool_clone = Arc::clone(&pool);
         let handle = tokio::spawn(async move {
             for j in 0..20 {
-                let mut task =
-                    Task::new(&format!("task-{}-{}", i, j), "Test", "Description");
+                let mut task = Task::new(&format!("task-{}-{}", i, j), "Test", "Description");
                 let _ = pool_clone
                     .get_or_create_session_for_task(&mut task, "claude", "claude-sonnet-4-6")
                     .await;

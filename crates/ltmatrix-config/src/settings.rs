@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Configuration settings for ltmatrix
 //!
 //! This module handles loading configuration from TOML files and merging
@@ -14,8 +13,8 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use tracing::debug;
 
-use crate::mcp::LoadedMcpConfig;
 use crate::feature::FeatureConfig;
+use crate::mcp::LoadedMcpConfig;
 use crate::telemetry::TelemetryConfig;
 use ltmatrix_core::Agent;
 
@@ -446,7 +445,9 @@ impl MemoryConfig {
         }
 
         if self.keep_fraction <= 0.0 || self.keep_fraction > 1.0 {
-            return Err("keep_fraction must be between 0.0 (exclusive) and 1.0 (inclusive)".to_string());
+            return Err(
+                "keep_fraction must be between 0.0 (exclusive) and 1.0 (inclusive)".to_string(),
+            );
         }
 
         if self.max_context_size == 0 {
@@ -836,18 +837,26 @@ pub fn load_config_with_overrides(overrides: Option<CliOverrides>) -> Result<Con
 
         // Load MCP configuration if specified
         if let Some(mcp_config_path) = mcp_config_path {
-            debug!("Loading MCP configuration from: {}", mcp_config_path.display());
+            debug!(
+                "Loading MCP configuration from: {}",
+                mcp_config_path.display()
+            );
             match LoadedMcpConfig::from_file(&mcp_config_path) {
                 Ok(loaded_mcp) => {
-                    debug!("Successfully loaded MCP configuration with {} servers",
-                           loaded_mcp.config.mcp.servers.len());
+                    debug!(
+                        "Successfully loaded MCP configuration with {} servers",
+                        loaded_mcp.config.mcp.servers.len()
+                    );
                     merged.mcp = Some(loaded_mcp);
                 }
                 Err(e) => {
                     // MCP config loading failure should not be fatal
                     // Log the error but continue
-                    debug!("Failed to load MCP config from {}: {}, continuing without MCP",
-                           mcp_config_path.display(), e);
+                    debug!(
+                        "Failed to load MCP config from {}: {}, continuing without MCP",
+                        mcp_config_path.display(),
+                        e
+                    );
                 }
             }
         }

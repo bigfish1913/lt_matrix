@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Git merge operations
 //!
 //! This module provides merge functionality including squash merging,

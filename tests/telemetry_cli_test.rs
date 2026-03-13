@@ -15,7 +15,10 @@ mod cli_tests {
     fn test_telemetry_flag_parsing() {
         let args = Args::try_parse_from(["ltmatrix", "--telemetry", "test goal"]).unwrap();
 
-        assert!(args.telemetry, "Telemetry flag should be true when --telemetry is provided");
+        assert!(
+            args.telemetry,
+            "Telemetry flag should be true when --telemetry is provided"
+        );
         assert_eq!(args.goal, Some("test goal".to_string()));
     }
 
@@ -55,7 +58,10 @@ mod cli_tests {
                 .unwrap();
 
         assert!(args.telemetry);
-        assert_eq!(args.mode, Some(ltmatrix::cli::args::ExecutionModeArg::Expert));
+        assert_eq!(
+            args.mode,
+            Some(ltmatrix::cli::args::ExecutionModeArg::Expert)
+        );
     }
 
     /// Test that --telemetry works with dry-run
@@ -83,10 +89,7 @@ mod cli_tests {
         .unwrap();
 
         assert!(args.telemetry);
-        assert_eq!(
-            args.log_level,
-            Some(ltmatrix::cli::args::LogLevel::Debug)
-        );
+        assert_eq!(args.log_level, Some(ltmatrix::cli::args::LogLevel::Debug));
         assert_eq!(args.output, Some(ltmatrix::cli::args::OutputFormat::Json));
     }
 
@@ -112,7 +115,8 @@ mod cli_tests {
     /// Test that --telemetry works with subcommands
     #[test]
     fn test_telemetry_flag_with_cleanup_subcommand() {
-        let args = Args::try_parse_from(["ltmatrix", "--telemetry", "cleanup", "--dry-run"]).unwrap();
+        let args =
+            Args::try_parse_from(["ltmatrix", "--telemetry", "cleanup", "--dry-run"]).unwrap();
 
         assert!(args.telemetry);
         assert!(args.command.is_some());
@@ -267,17 +271,16 @@ enabled = false
 
 #[cfg(test)]
 mod telemetry_acceptance_tests {
-    /// Test that telemetry meets all acceptance criteria
-
-    use clap::Parser; // Import Parser trait for try_parse_from
     use super::Args; // Import Args from parent module
+    /// Test that telemetry meets all acceptance criteria
+    use clap::Parser; // Import Parser trait for try_parse_from
+    use ltmatrix::models::{ExecutionMode, Task, TaskStatus};
     use ltmatrix::telemetry::{
         collector::TelemetryCollector,
         config::TelemetryConfig,
         event::{ErrorCategory, TelemetryEvent},
         sender::TelemetrySender,
     };
-    use ltmatrix::models::{ExecutionMode, Task, TaskStatus};
     use std::time::Duration;
     use uuid::Uuid;
 
@@ -316,9 +319,7 @@ mod telemetry_acceptance_tests {
         assert_eq!(events.len(), 1);
 
         match &events[0] {
-            TelemetryEvent::PipelineComplete {
-                execution_mode, ..
-            } => {
+            TelemetryEvent::PipelineComplete { execution_mode, .. } => {
                 assert_eq!(*execution_mode, ExecutionMode::Expert);
             }
             _ => panic!("Expected PipelineComplete event"),
@@ -344,9 +345,7 @@ mod telemetry_acceptance_tests {
 
         let events = collector.take_events().await;
         match &events[0] {
-            TelemetryEvent::PipelineComplete {
-                agent_backend, ..
-            } => {
+            TelemetryEvent::PipelineComplete { agent_backend, .. } => {
                 assert_eq!(agent_backend, "opencode");
             }
             _ => panic!("Expected PipelineComplete event"),
@@ -462,7 +461,9 @@ mod telemetry_acceptance_tests {
         let collector = TelemetryCollector::new(config, session_id);
 
         // Record events that might contain sensitive info in real usage
-        collector.record_session_start("1.0.0", "linux", "x86_64").await;
+        collector
+            .record_session_start("1.0.0", "linux", "x86_64")
+            .await;
 
         let tasks = vec![
             Task::new(
@@ -495,7 +496,10 @@ mod telemetry_acceptance_tests {
 
         // Verify no sensitive data in the serialized events
         assert!(!json.contains("password"), "Should not contain passwords");
-        assert!(!json.contains("postgres://"), "Should not contain connection strings");
+        assert!(
+            !json.contains("postgres://"),
+            "Should not contain connection strings"
+        );
         assert!(!json.contains("localhost"), "Should not contain hostnames");
         assert!(!json.contains("/"), "Should not contain file paths");
     }
@@ -536,8 +540,7 @@ mod telemetry_acceptance_tests {
         // Check that the main telemetry module exists by using types from it
         let _config = ltmatrix::telemetry::TelemetryConfig::default();
         let _session_id = uuid::Uuid::new_v4();
-        let _collector =
-            ltmatrix::telemetry::TelemetryCollector::new(_config.clone(), _session_id);
+        let _collector = ltmatrix::telemetry::TelemetryCollector::new(_config.clone(), _session_id);
         let _sender = ltmatrix::telemetry::TelemetrySender::new(_config).unwrap();
 
         // The actual documentation is in src/telemetry/mod.rs
@@ -559,11 +562,26 @@ mod telemetry_acceptance_tests {
 
             // Verify category doesn't contain sensitive info
             let category_str = format!("{:?}", category);
-            assert!(!category_str.contains("password"), "Category should not contain passwords");
-            assert!(!category_str.contains("postgres"), "Category should not contain connection details");
-            assert!(!category_str.contains("/home/"), "Category should not contain file paths");
-            assert!(!category_str.contains("admin"), "Category should not contain usernames");
-            assert!(!category_str.contains("supersecret"), "Category should not contain secrets");
+            assert!(
+                !category_str.contains("password"),
+                "Category should not contain passwords"
+            );
+            assert!(
+                !category_str.contains("postgres"),
+                "Category should not contain connection details"
+            );
+            assert!(
+                !category_str.contains("/home/"),
+                "Category should not contain file paths"
+            );
+            assert!(
+                !category_str.contains("admin"),
+                "Category should not contain usernames"
+            );
+            assert!(
+                !category_str.contains("supersecret"),
+                "Category should not contain secrets"
+            );
         }
     }
 }

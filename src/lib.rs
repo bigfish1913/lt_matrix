@@ -8,14 +8,14 @@
 //! automates software development tasks using AI agents.
 
 // Re-export from sub-crates for backward compatibility
+pub use ltmatrix_agent as agent;
+pub use ltmatrix_config as config;
+pub use ltmatrix_config::feature;
+pub use ltmatrix_config::telemetry;
 pub use ltmatrix_core as models;
 pub use ltmatrix_core::{
     Agent, ExecutionMode, ModeConfig, PipelineStage, Task, TaskComplexity, TaskStatus,
 };
-pub use ltmatrix_config as config;
-pub use ltmatrix_config::feature;
-pub use ltmatrix_config::telemetry;
-pub use ltmatrix_agent as agent;
 pub use ltmatrix_mcp as mcp;
 
 // Modules that remain in the main crate

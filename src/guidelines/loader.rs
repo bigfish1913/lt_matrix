@@ -6,10 +6,10 @@
 //!
 //! Provides functionality for loading guidelines from the filesystem.
 
-use anyhow::{Result, bail};
+use anyhow::{bail, Result};
+use ltmatrix_core::AgentType;
 use std::fs;
 use std::path::PathBuf;
-use ltmatrix_core::AgentType;
 
 /// Loaded guidelines content for each agent type
 #[derive(Debug, Clone, Default)]
@@ -47,9 +47,7 @@ impl Guidelines {
 
         // Combine common + specific guidelines
         match (&self.common, specific) {
-            (Some(common), Some(specific)) => {
-                Some(format!("{}\n\n{}", common, specific))
-            }
+            (Some(common), Some(specific)) => Some(format!("{}\n\n{}", common, specific)),
             (Some(common), None) => Some(common.clone()),
             (None, Some(specific)) => Some(specific.clone()),
             (None, None) => None,
@@ -98,7 +96,8 @@ impl GuidelinesLoader {
     /// ```
     pub fn new(guidelines_path: PathBuf) -> Self {
         // Check if the path points to a file (single file mode)
-        let single_file = guidelines_path.extension()
+        let single_file = guidelines_path
+            .extension()
             .map(|ext| ext == "md")
             .unwrap_or(false);
 

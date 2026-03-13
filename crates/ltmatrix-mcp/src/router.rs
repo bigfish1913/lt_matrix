@@ -55,7 +55,9 @@
 
 use crate::correlation::{PendingRequestHandle, RequestTracker};
 use crate::protocol::errors::{McpError, McpErrorCode, McpResult};
-use crate::protocol::messages::{JsonRpcMessage, JsonRpcNotification, JsonRpcRequest, JsonRpcResponse, RequestId};
+use crate::protocol::messages::{
+    JsonRpcMessage, JsonRpcNotification, JsonRpcRequest, JsonRpcResponse, RequestId,
+};
 use crate::protocol::wrappers::{McpMethod, McpMethodKind};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -119,7 +121,10 @@ impl ResponseParser {
         response
             .result
             .ok_or_else(|| {
-                McpError::protocol(McpErrorCode::InternalError, "Missing result field in response")
+                McpError::protocol(
+                    McpErrorCode::InternalError,
+                    "Missing result field in response",
+                )
             })
             .and_then(|value| self.parse_value(value))
     }
@@ -388,8 +393,7 @@ impl RequestRouter {
                 format!("No handler registered for method: {}", method),
                 crate::protocol::errors::ErrorCategory::Protocol,
             )
-            .with_data(serde_json::json!({ "request_id": request_id })),
-            ),
+            .with_data(serde_json::json!({ "request_id": request_id }))),
         }
     }
 
@@ -660,7 +664,7 @@ impl RequestBuilder {
 mod tests {
     use super::*;
     use crate::protocol::wrappers::{Initialize, Ping, ToolsList};
-    use crate::protocol::{InitializeParams, InitializeResult, ImplementationInfo};
+    use crate::protocol::{ImplementationInfo, InitializeParams, InitializeResult};
     use serde_json::json;
     use std::time::Duration;
 
@@ -757,7 +761,10 @@ mod tests {
         let router = RequestRouter::new();
 
         router
-            .register_handler("test_method", |_req| async move { Ok(json!({"result": "ok"})) })
+            .register_handler(
+                "test_method",
+                |_req| async move { Ok(json!({"result": "ok"})) },
+            )
             .await;
 
         assert!(router.has_handler("test_method").await);
@@ -771,16 +778,14 @@ mod tests {
         let router = RequestRouter::new();
 
         router
-            .register_handler("echo", |req| async move {
-                Ok(req.params.unwrap_or(json!({})))
-            })
+            .register_handler(
+                "echo",
+                |req| async move { Ok(req.params.unwrap_or(json!({}))) },
+            )
             .await;
 
-        let request = JsonRpcRequest::with_params(
-            RequestId::Number(1),
-            "echo",
-            json!({"message": "hello"}),
-        );
+        let request =
+            JsonRpcRequest::with_params(RequestId::Number(1), "echo", json!({"message": "hello"}));
 
         let result = router.dispatch(request).await.unwrap();
         assert_eq!(result["message"], "hello");
@@ -842,8 +847,7 @@ mod tests {
 
     #[test]
     fn test_request_builder_basic() {
-        let request = RequestBuilder::new(RequestId::Number(1), "ping")
-            .build();
+        let request = RequestBuilder::new(RequestId::Number(1), "ping").build();
 
         assert_eq!(request.method, "ping");
         assert!(request.params.is_none());

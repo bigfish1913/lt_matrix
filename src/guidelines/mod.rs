@@ -38,7 +38,7 @@
 
 mod loader;
 
-pub use loader::{GuidelinesLoader, Guidelines};
+pub use loader::{Guidelines, GuidelinesLoader};
 use ltmatrix_core::AgentType;
 
 /// Injects guidelines content into a prompt

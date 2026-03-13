@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Custom formatters for structured logging
 //!
 //! This module provides formatters for console and file output with

@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Warmup executor for pre-initializing agent sessions
 //!
 //! This module provides functionality to warm up agent sessions before
@@ -35,7 +34,7 @@ use std::time::Duration;
 
 use anyhow::{Context, Result};
 use tokio::time::timeout;
-use tracing::{debug, info, warn, instrument};
+use tracing::{debug, info, instrument, warn};
 
 use crate::backend::{AgentBackend, AgentSession, ExecutionConfig, MemorySession};
 use crate::pool::SessionPool;
@@ -87,8 +86,12 @@ impl WarmupResult {
     /// Get the number of queries executed (if applicable)
     pub fn queries_executed(&self) -> Option<u32> {
         match self {
-            WarmupResult::Success { queries_executed, .. } => Some(*queries_executed),
-            WarmupResult::Failed { queries_executed, .. } => Some(*queries_executed),
+            WarmupResult::Success {
+                queries_executed, ..
+            } => Some(*queries_executed),
+            WarmupResult::Failed {
+                queries_executed, ..
+            } => Some(*queries_executed),
             WarmupResult::Skipped => None,
         }
     }
@@ -132,11 +135,7 @@ impl WarmupExecutor {
     ///
     /// Returns a [`WarmupResult`] indicating success, failure, or skip
     #[instrument(skip(backend, pool), fields(agent_name = %backend.agent().name))]
-    pub async fn warmup_agent<B>(
-        &self,
-        backend: &B,
-        pool: &mut SessionPool,
-    ) -> Result<WarmupResult>
+    pub async fn warmup_agent<B>(&self, backend: &B, pool: &mut SessionPool) -> Result<WarmupResult>
     where
         B: AgentBackend + ?Sized,
     {
@@ -170,10 +169,7 @@ impl WarmupExecutor {
                 agent.name
             );
 
-            match self
-                .execute_warmup_query(backend, session)
-                .await
-            {
+            match self.execute_warmup_query(backend, session).await {
                 Ok(_) => {
                     queries_executed += 1;
                     debug!(
@@ -195,10 +191,7 @@ impl WarmupExecutor {
                     // Retry if configured
                     if self.config.retry_on_failure {
                         warn!("Retrying warmup due to retry_on_failure=true");
-                        match self
-                            .execute_warmup_query_with_retry(backend, session)
-                            .await
-                        {
+                        match self.execute_warmup_query_with_retry(backend, session).await {
                             Ok(_) => {
                                 queries_executed += 1;
                                 break;
@@ -283,11 +276,7 @@ impl WarmupExecutor {
     }
 
     /// Execute a single warmup query against the agent backend
-    async fn execute_warmup_query<B>(
-        &self,
-        backend: &B,
-        session: &MemorySession,
-    ) -> Result<()>
+    async fn execute_warmup_query<B>(&self, backend: &B, session: &MemorySession) -> Result<()>
     where
         B: AgentBackend + ?Sized,
     {
@@ -317,10 +306,7 @@ impl WarmupExecutor {
 
         // Verify we got a response
         if result.error.is_some() {
-            anyhow::bail!(
-                "Warmup query returned error: {:?}",
-                result.error
-            );
+            anyhow::bail!("Warmup query returned error: {:?}", result.error);
         }
 
         if result.output.trim().is_empty() {

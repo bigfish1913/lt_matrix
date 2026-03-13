@@ -11,8 +11,7 @@
 
 use ltmatrix::pipeline::review::{
     CodeIssue, IssueCategory, IssueSeverity, ReviewAssessment, ReviewCategory, ReviewConfig,
-    ReviewConfigSnapshot, ReviewError, ReviewFinding, ReviewMetrics, ReviewReport,
-    ReviewSeverity,
+    ReviewConfigSnapshot, ReviewError, ReviewFinding, ReviewMetrics, ReviewReport, ReviewSeverity,
 };
 
 // =============================================================================
@@ -34,7 +33,10 @@ fn test_review_error_not_recoverable_for_other_errors() {
     let parse_error = ReviewError::ParseError("Invalid JSON".to_string());
     let timeout = ReviewError::Timeout(60);
     let config_error = ReviewError::ConfigError("Invalid config".to_string());
-    let io_error = ReviewError::IoError(std::io::Error::new(std::io::ErrorKind::NotFound, "file not found"));
+    let io_error = ReviewError::IoError(std::io::Error::new(
+        std::io::ErrorKind::NotFound,
+        "file not found",
+    ));
 
     assert!(!agent_error.is_recoverable());
     assert!(!parse_error.is_recoverable());
@@ -49,13 +51,19 @@ fn test_review_error_is_fatal_for_non_critical_issues() {
     let parse_error = ReviewError::ParseError("Invalid JSON".to_string());
     let timeout = ReviewError::Timeout(60);
     let config_error = ReviewError::ConfigError("Invalid config".to_string());
-    let io_error = ReviewError::IoError(std::io::Error::new(std::io::ErrorKind::NotFound, "file not found"));
+    let io_error = ReviewError::IoError(std::io::Error::new(
+        std::io::ErrorKind::NotFound,
+        "file not found",
+    ));
 
     assert!(agent_error.is_fatal());
     assert!(parse_error.is_fatal());
     assert!(timeout.is_fatal());
     assert!(config_error.is_fatal());
-    assert!(!io_error.is_fatal(), "IoError should not be fatal (not in the is_fatal match)");
+    assert!(
+        !io_error.is_fatal(),
+        "IoError should not be fatal (not in the is_fatal match)"
+    );
 }
 
 #[test]
@@ -87,7 +95,11 @@ fn test_review_error_error_codes() {
         "REVIEW_CONFIG_ERROR"
     );
     assert_eq!(
-        ReviewError::IoError(std::io::Error::new(std::io::ErrorKind::NotFound, "file not found")).error_code(),
+        ReviewError::IoError(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "file not found"
+        ))
+        .error_code(),
         "REVIEW_IO_ERROR"
     );
 }
@@ -254,13 +266,23 @@ fn test_review_severity_serde_roundtrip() {
 #[test]
 fn test_review_category_descriptions() {
     assert!(ReviewCategory::Security.description().contains("Security"));
-    assert!(ReviewCategory::Performance.description().contains("Performance"));
+    assert!(ReviewCategory::Performance
+        .description()
+        .contains("Performance"));
     assert!(ReviewCategory::Quality.description().contains("quality"));
-    assert!(ReviewCategory::BestPractices.description().contains("practices"));
-    assert!(ReviewCategory::Documentation.description().contains("Documentation"));
+    assert!(ReviewCategory::BestPractices
+        .description()
+        .contains("practices"));
+    assert!(ReviewCategory::Documentation
+        .description()
+        .contains("Documentation"));
     assert!(ReviewCategory::Testing.description().contains("Test"));
-    assert!(ReviewCategory::ErrorHandling.description().contains("Error"));
-    assert!(ReviewCategory::Architecture.description().contains("Architectural"));
+    assert!(ReviewCategory::ErrorHandling
+        .description()
+        .contains("Error"));
+    assert!(ReviewCategory::Architecture
+        .description()
+        .contains("Architectural"));
     assert!(ReviewCategory::Style.description().contains("style"));
 }
 
@@ -307,7 +329,10 @@ fn test_review_category_default_severities() {
     );
 
     // Style defaults to Info
-    assert_eq!(ReviewCategory::Style.default_severity(), ReviewSeverity::Info);
+    assert_eq!(
+        ReviewCategory::Style.default_severity(),
+        ReviewSeverity::Info
+    );
 }
 
 #[test]
@@ -396,7 +421,10 @@ fn test_review_finding_new_generates_id() {
         "Potential SQL injection vulnerability",
     );
 
-    assert!(!finding.id.is_empty(), "Finding should have an auto-generated ID");
+    assert!(
+        !finding.id.is_empty(),
+        "Finding should have an auto-generated ID"
+    );
     assert!(finding.id.contains("security"));
     assert_eq!(finding.category, ReviewCategory::Security);
     assert_eq!(finding.severity, ReviewSeverity::High);
@@ -405,28 +433,40 @@ fn test_review_finding_new_generates_id() {
 
 #[test]
 fn test_review_finding_default_blocking_based_on_severity() {
-    let critical =
-        ReviewFinding::new(ReviewCategory::Security, ReviewSeverity::Critical, "Critical issue");
-    assert!(critical.blocking, "Critical findings should be blocking by default");
+    let critical = ReviewFinding::new(
+        ReviewCategory::Security,
+        ReviewSeverity::Critical,
+        "Critical issue",
+    );
+    assert!(
+        critical.blocking,
+        "Critical findings should be blocking by default"
+    );
 
-    let high =
-        ReviewFinding::new(ReviewCategory::Security, ReviewSeverity::High, "High issue");
-    assert!(!high.blocking, "High findings should not be blocking by default");
+    let high = ReviewFinding::new(ReviewCategory::Security, ReviewSeverity::High, "High issue");
+    assert!(
+        !high.blocking,
+        "High findings should not be blocking by default"
+    );
 }
 
 #[test]
 fn test_review_finding_builder_pattern() {
-    let finding = ReviewFinding::new(ReviewCategory::Security, ReviewSeverity::Critical, "SQL Injection")
-        .with_file("src/db.rs", 42)
-        .with_description("User input is concatenated directly into SQL query")
-        .with_suggestion("Use parameterized queries or prepared statements")
-        .with_code_snippet("format!(\"SELECT * FROM users WHERE id = {}\", user_input)")
-        .blocking(true)
-        .with_confidence(0.95)
-        .with_tag("security")
-        .with_tag("injection")
-        .with_cwe("CWE-89")
-        .with_reference("https://owasp.org/www-community/attacks/SQL_Injection");
+    let finding = ReviewFinding::new(
+        ReviewCategory::Security,
+        ReviewSeverity::Critical,
+        "SQL Injection",
+    )
+    .with_file("src/db.rs", 42)
+    .with_description("User input is concatenated directly into SQL query")
+    .with_suggestion("Use parameterized queries or prepared statements")
+    .with_code_snippet("format!(\"SELECT * FROM users WHERE id = {}\", user_input)")
+    .blocking(true)
+    .with_confidence(0.95)
+    .with_tag("security")
+    .with_tag("injection")
+    .with_cwe("CWE-89")
+    .with_reference("https://owasp.org/www-community/attacks/SQL_Injection");
 
     assert_eq!(finding.file, Some("src/db.rs".to_string()));
     assert_eq!(finding.line, Some(42));
@@ -453,8 +493,12 @@ fn test_review_finding_builder_pattern() {
 
 #[test]
 fn test_review_finding_with_file_range() {
-    let finding = ReviewFinding::new(ReviewCategory::Quality, ReviewSeverity::Medium, "Long function")
-        .with_file_range("src/utils.rs", 100, 150);
+    let finding = ReviewFinding::new(
+        ReviewCategory::Quality,
+        ReviewSeverity::Medium,
+        "Long function",
+    )
+    .with_file_range("src/utils.rs", 100, 150);
 
     assert_eq!(finding.file, Some("src/utils.rs".to_string()));
     assert_eq!(finding.line, Some(100));
@@ -480,8 +524,11 @@ fn test_review_finding_confidence_clamped() {
 
 #[test]
 fn test_review_finding_add_related() {
-    let mut finding =
-        ReviewFinding::new(ReviewCategory::Security, ReviewSeverity::High, "Related issue 1");
+    let mut finding = ReviewFinding::new(
+        ReviewCategory::Security,
+        ReviewSeverity::High,
+        "Related issue 1",
+    );
     finding.add_related("finding-123");
     finding.add_related("finding-456");
 
@@ -490,8 +537,11 @@ fn test_review_finding_add_related() {
 
 #[test]
 fn test_review_finding_meets_severity_threshold() {
-    let high =
-        ReviewFinding::new(ReviewCategory::Security, ReviewSeverity::High, "High severity issue");
+    let high = ReviewFinding::new(
+        ReviewCategory::Security,
+        ReviewSeverity::High,
+        "High severity issue",
+    );
 
     assert!(high.meets_severity_threshold(ReviewSeverity::Info));
     assert!(high.meets_severity_threshold(ReviewSeverity::Low));
@@ -502,9 +552,13 @@ fn test_review_finding_meets_severity_threshold() {
 
 #[test]
 fn test_review_finding_format() {
-    let finding = ReviewFinding::new(ReviewCategory::Security, ReviewSeverity::High, "SQL Injection")
-        .with_file("src/db.rs", 42)
-        .with_description("User input not sanitized");
+    let finding = ReviewFinding::new(
+        ReviewCategory::Security,
+        ReviewSeverity::High,
+        "SQL Injection",
+    )
+    .with_file("src/db.rs", 42)
+    .with_description("User input not sanitized");
 
     let formatted = finding.format();
     assert!(formatted.contains("SQL Injection"));
@@ -515,9 +569,13 @@ fn test_review_finding_format() {
 
 #[test]
 fn test_review_finding_format_with_range() {
-    let finding = ReviewFinding::new(ReviewCategory::Quality, ReviewSeverity::Medium, "Long function")
-        .with_file_range("src/utils.rs", 100, 150)
-        .with_description("Function exceeds 50 lines");
+    let finding = ReviewFinding::new(
+        ReviewCategory::Quality,
+        ReviewSeverity::Medium,
+        "Long function",
+    )
+    .with_file_range("src/utils.rs", 100, 150)
+    .with_description("Function exceeds 50 lines");
 
     let formatted = finding.format();
     assert!(formatted.contains("src/utils.rs:100-150"));
@@ -525,9 +583,12 @@ fn test_review_finding_format_with_range() {
 
 #[test]
 fn test_review_finding_format_without_location() {
-    let finding =
-        ReviewFinding::new(ReviewCategory::BestPractices, ReviewSeverity::Info, "General advice")
-            .with_description("Consider using a more idiomatic approach");
+    let finding = ReviewFinding::new(
+        ReviewCategory::BestPractices,
+        ReviewSeverity::Info,
+        "General advice",
+    )
+    .with_description("Consider using a more idiomatic approach");
 
     let formatted = finding.format();
     assert!(formatted.contains("unknown location"));
@@ -535,12 +596,16 @@ fn test_review_finding_format_without_location() {
 
 #[test]
 fn test_review_finding_serde_roundtrip() {
-    let original = ReviewFinding::new(ReviewCategory::Security, ReviewSeverity::Critical, "SQL Injection")
-        .with_file("src/db.rs", 42)
-        .with_description("User input not sanitized")
-        .with_suggestion("Use parameterized queries")
-        .blocking(true)
-        .with_confidence(0.9);
+    let original = ReviewFinding::new(
+        ReviewCategory::Security,
+        ReviewSeverity::Critical,
+        "SQL Injection",
+    )
+    .with_file("src/db.rs", 42)
+    .with_description("User input not sanitized")
+    .with_suggestion("Use parameterized queries")
+    .blocking(true)
+    .with_confidence(0.9);
 
     let json = serde_json::to_string(&original).unwrap();
     let deserialized: ReviewFinding = serde_json::from_str(&json).unwrap();
@@ -618,8 +683,16 @@ fn test_review_report_metrics_by_severity() {
     let mut report = ReviewReport::new("task-123");
 
     report.add_findings(vec![
-        ReviewFinding::new(ReviewCategory::Security, ReviewSeverity::Critical, "Critical 1"),
-        ReviewFinding::new(ReviewCategory::Security, ReviewSeverity::Critical, "Critical 2"),
+        ReviewFinding::new(
+            ReviewCategory::Security,
+            ReviewSeverity::Critical,
+            "Critical 1",
+        ),
+        ReviewFinding::new(
+            ReviewCategory::Security,
+            ReviewSeverity::Critical,
+            "Critical 2",
+        ),
         ReviewFinding::new(ReviewCategory::Quality, ReviewSeverity::High, "High 1"),
         ReviewFinding::new(ReviewCategory::Quality, ReviewSeverity::Medium, "Medium 1"),
     ]);
@@ -635,8 +708,16 @@ fn test_review_report_metrics_by_category() {
 
     report.add_findings(vec![
         ReviewFinding::new(ReviewCategory::Security, ReviewSeverity::High, "Security 1"),
-        ReviewFinding::new(ReviewCategory::Security, ReviewSeverity::Medium, "Security 2"),
-        ReviewFinding::new(ReviewCategory::Performance, ReviewSeverity::Low, "Performance 1"),
+        ReviewFinding::new(
+            ReviewCategory::Security,
+            ReviewSeverity::Medium,
+            "Security 2",
+        ),
+        ReviewFinding::new(
+            ReviewCategory::Performance,
+            ReviewSeverity::Low,
+            "Performance 1",
+        ),
     ]);
 
     assert_eq!(report.metrics.by_category.get("security"), Some(&2));
@@ -647,8 +728,11 @@ fn test_review_report_metrics_by_category() {
 fn test_review_report_metrics_blocking_count() {
     let mut report = ReviewReport::new("task-123");
 
-    let mut critical_finding =
-        ReviewFinding::new(ReviewCategory::Security, ReviewSeverity::Critical, "Critical issue");
+    let mut critical_finding = ReviewFinding::new(
+        ReviewCategory::Security,
+        ReviewSeverity::Critical,
+        "Critical issue",
+    );
     critical_finding.blocking = true;
 
     let high_finding =
@@ -689,9 +773,11 @@ fn test_review_report_calculate_assessment_pass() {
 fn test_review_report_calculate_assessment_warning() {
     let mut report = ReviewReport::new("task-123");
 
-    report.add_finding(
-        ReviewFinding::new(ReviewCategory::Quality, ReviewSeverity::Low, "Minor issue"),
-    );
+    report.add_finding(ReviewFinding::new(
+        ReviewCategory::Quality,
+        ReviewSeverity::Low,
+        "Minor issue",
+    ));
     report.calculate_assessment();
 
     assert_eq!(report.assessment, ReviewAssessment::Warning);
@@ -702,9 +788,11 @@ fn test_review_report_calculate_assessment_warning() {
 fn test_review_report_calculate_assessment_needs_improvements() {
     let mut report = ReviewReport::new("task-123");
 
-    report.add_finding(
-        ReviewFinding::new(ReviewCategory::Security, ReviewSeverity::High, "High severity issue"),
-    );
+    report.add_finding(ReviewFinding::new(
+        ReviewCategory::Security,
+        ReviewSeverity::High,
+        "High severity issue",
+    ));
     report.calculate_assessment();
 
     assert_eq!(report.assessment, ReviewAssessment::NeedsImprovements);
@@ -715,9 +803,11 @@ fn test_review_report_calculate_assessment_needs_improvements() {
 fn test_review_report_calculate_assessment_fail_with_critical() {
     let mut report = ReviewReport::new("task-123");
 
-    report.add_finding(
-        ReviewFinding::new(ReviewCategory::Security, ReviewSeverity::Critical, "Critical issue"),
-    );
+    report.add_finding(ReviewFinding::new(
+        ReviewCategory::Security,
+        ReviewSeverity::Critical,
+        "Critical issue",
+    ));
     report.calculate_assessment();
 
     assert_eq!(report.assessment, ReviewAssessment::Fail);
@@ -728,8 +818,11 @@ fn test_review_report_calculate_assessment_fail_with_critical() {
 fn test_review_report_calculate_assessment_fail_with_blocking() {
     let mut report = ReviewReport::new("task-123");
 
-    let mut finding =
-        ReviewFinding::new(ReviewCategory::Security, ReviewSeverity::High, "Blocking issue");
+    let mut finding = ReviewFinding::new(
+        ReviewCategory::Security,
+        ReviewSeverity::High,
+        "Blocking issue",
+    );
     finding.blocking = true;
 
     report.add_finding(finding);
@@ -744,16 +837,20 @@ fn test_review_report_passes() {
     let mut report = ReviewReport::new("task-123");
     assert!(report.passes());
 
-    report.add_finding(
-        ReviewFinding::new(ReviewCategory::Quality, ReviewSeverity::Low, "Minor issue"),
-    );
+    report.add_finding(ReviewFinding::new(
+        ReviewCategory::Quality,
+        ReviewSeverity::Low,
+        "Minor issue",
+    ));
     report.calculate_assessment();
     assert!(report.passes()); // Warning still passes
 
     report.findings.clear();
-    report.add_finding(
-        ReviewFinding::new(ReviewCategory::Security, ReviewSeverity::Critical, "Critical issue"),
-    );
+    report.add_finding(ReviewFinding::new(
+        ReviewCategory::Security,
+        ReviewSeverity::Critical,
+        "Critical issue",
+    ));
     report.calculate_assessment();
     assert!(!report.passes()); // Fail doesn't pass
 }
@@ -763,8 +860,16 @@ fn test_review_report_findings_by_severity() {
     let mut report = ReviewReport::new("task-123");
 
     report.add_findings(vec![
-        ReviewFinding::new(ReviewCategory::Security, ReviewSeverity::Critical, "Critical 1"),
-        ReviewFinding::new(ReviewCategory::Security, ReviewSeverity::Critical, "Critical 2"),
+        ReviewFinding::new(
+            ReviewCategory::Security,
+            ReviewSeverity::Critical,
+            "Critical 1",
+        ),
+        ReviewFinding::new(
+            ReviewCategory::Security,
+            ReviewSeverity::Critical,
+            "Critical 2",
+        ),
         ReviewFinding::new(ReviewCategory::Quality, ReviewSeverity::High, "High 1"),
     ]);
 
@@ -784,8 +889,16 @@ fn test_review_report_findings_by_category() {
 
     report.add_findings(vec![
         ReviewFinding::new(ReviewCategory::Security, ReviewSeverity::High, "Security 1"),
-        ReviewFinding::new(ReviewCategory::Security, ReviewSeverity::Medium, "Security 2"),
-        ReviewFinding::new(ReviewCategory::Performance, ReviewSeverity::Low, "Performance 1"),
+        ReviewFinding::new(
+            ReviewCategory::Security,
+            ReviewSeverity::Medium,
+            "Security 2",
+        ),
+        ReviewFinding::new(
+            ReviewCategory::Performance,
+            ReviewSeverity::Low,
+            "Performance 1",
+        ),
     ]);
 
     let security_findings = report.findings_by_category(ReviewCategory::Security);
@@ -813,10 +926,14 @@ fn test_review_report_to_markdown_with_findings() {
     let mut report = ReviewReport::new("task-456");
 
     report.add_finding(
-        ReviewFinding::new(ReviewCategory::Security, ReviewSeverity::High, "SQL Injection")
-            .with_file("src/db.rs", 42)
-            .with_description("User input not sanitized")
-            .with_suggestion("Use parameterized queries"),
+        ReviewFinding::new(
+            ReviewCategory::Security,
+            ReviewSeverity::High,
+            "SQL Injection",
+        )
+        .with_file("src/db.rs", 42)
+        .with_description("User input not sanitized")
+        .with_suggestion("Use parameterized queries"),
     );
     report.summary = "Found security issues".to_string();
     report.calculate_assessment();
@@ -908,7 +1025,9 @@ fn test_code_issue_to_finding() {
         title: "SQL Injection".to_string(),
         description: "User input not sanitized".to_string(),
         suggestion: Some("Use parameterized queries".to_string()),
-        code_snippet: Some("format!(\"SELECT * FROM users WHERE id = {}\", user_input)".to_string()),
+        code_snippet: Some(
+            "format!(\"SELECT * FROM users WHERE id = {}\", user_input)".to_string(),
+        ),
         blocking: true,
     };
 
@@ -920,17 +1039,24 @@ fn test_code_issue_to_finding() {
     assert_eq!(finding.line, Some(42));
     assert_eq!(finding.title, "SQL Injection");
     assert_eq!(finding.description, "User input not sanitized");
-    assert_eq!(finding.suggestion, Some("Use parameterized queries".to_string()));
+    assert_eq!(
+        finding.suggestion,
+        Some("Use parameterized queries".to_string())
+    );
     assert!(finding.blocking);
 }
 
 #[test]
 fn test_code_issue_from_finding() {
-    let finding = ReviewFinding::new(ReviewCategory::Security, ReviewSeverity::Critical, "SQL Injection")
-        .with_file("src/main.rs", 42)
-        .with_description("User input not sanitized")
-        .with_suggestion("Use parameterized queries")
-        .blocking(true);
+    let finding = ReviewFinding::new(
+        ReviewCategory::Security,
+        ReviewSeverity::Critical,
+        "SQL Injection",
+    )
+    .with_file("src/main.rs", 42)
+    .with_description("User input not sanitized")
+    .with_suggestion("Use parameterized queries")
+    .blocking(true);
 
     let issue = CodeIssue::from_finding(&finding);
 
@@ -940,7 +1066,10 @@ fn test_code_issue_from_finding() {
     assert_eq!(issue.line, Some(42));
     assert_eq!(issue.title, "SQL Injection");
     assert_eq!(issue.description, "User input not sanitized");
-    assert_eq!(issue.suggestion, Some("Use parameterized queries".to_string()));
+    assert_eq!(
+        issue.suggestion,
+        Some("Use parameterized queries".to_string())
+    );
     assert!(issue.blocking);
 }
 
@@ -998,8 +1127,11 @@ fn test_review_assessment_serde_roundtrip() {
 #[test]
 fn test_expert_mode_finding_threshold() {
     // In expert mode, even Info severity findings should be included
-    let info_finding =
-        ReviewFinding::new(ReviewCategory::Style, ReviewSeverity::Info, "Style suggestion");
+    let info_finding = ReviewFinding::new(
+        ReviewCategory::Style,
+        ReviewSeverity::Info,
+        "Style suggestion",
+    );
 
     // Expert mode threshold is typically Low
     assert!(
@@ -1011,8 +1143,11 @@ fn test_expert_mode_finding_threshold() {
 #[test]
 fn test_standard_mode_finding_threshold() {
     // In standard mode, only Medium+ severity findings should be included
-    let low_finding =
-        ReviewFinding::new(ReviewCategory::Style, ReviewSeverity::Low, "Minor style issue");
+    let low_finding = ReviewFinding::new(
+        ReviewCategory::Style,
+        ReviewSeverity::Low,
+        "Minor style issue",
+    );
 
     // Standard mode threshold is typically Medium
     assert!(
@@ -1118,7 +1253,10 @@ fn test_review_error_io_error_from_std_io_error() {
     let review_err: ReviewError = io_err.into();
 
     assert_eq!(review_err.error_code(), "REVIEW_IO_ERROR");
-    assert!(!review_err.is_recoverable(), "IoError should not be recoverable");
+    assert!(
+        !review_err.is_recoverable(),
+        "IoError should not be recoverable"
+    );
     assert!(!review_err.is_fatal(), "IoError should not be fatal");
 }
 
@@ -1138,9 +1276,13 @@ fn test_review_report_empty_findings_by_severity() {
     let report = ReviewReport::new("task-empty");
 
     // Should return empty vector for any severity when no findings exist
-    assert!(report.findings_by_severity(ReviewSeverity::Critical).is_empty());
+    assert!(report
+        .findings_by_severity(ReviewSeverity::Critical)
+        .is_empty());
     assert!(report.findings_by_severity(ReviewSeverity::High).is_empty());
-    assert!(report.findings_by_severity(ReviewSeverity::Medium).is_empty());
+    assert!(report
+        .findings_by_severity(ReviewSeverity::Medium)
+        .is_empty());
     assert!(report.findings_by_severity(ReviewSeverity::Low).is_empty());
     assert!(report.findings_by_severity(ReviewSeverity::Info).is_empty());
 }
@@ -1150,9 +1292,15 @@ fn test_review_report_empty_findings_by_category() {
     let report = ReviewReport::new("task-empty");
 
     // Should return empty vector for any category when no findings exist
-    assert!(report.findings_by_category(ReviewCategory::Security).is_empty());
-    assert!(report.findings_by_category(ReviewCategory::Performance).is_empty());
-    assert!(report.findings_by_category(ReviewCategory::Quality).is_empty());
+    assert!(report
+        .findings_by_category(ReviewCategory::Security)
+        .is_empty());
+    assert!(report
+        .findings_by_category(ReviewCategory::Performance)
+        .is_empty());
+    assert!(report
+        .findings_by_category(ReviewCategory::Quality)
+        .is_empty());
 }
 
 #[test]
@@ -1221,13 +1369,22 @@ fn test_review_category_is_enabled_consistency() {
 #[test]
 fn test_review_assessment_serde_values() {
     // Note: serde(rename_all = "lowercase") converts NeedsImprovements to "needsimprovements"
-    assert_eq!(serde_json::to_string(&ReviewAssessment::Pass).unwrap(), "\"pass\"");
-    assert_eq!(serde_json::to_string(&ReviewAssessment::Warning).unwrap(), "\"warning\"");
+    assert_eq!(
+        serde_json::to_string(&ReviewAssessment::Pass).unwrap(),
+        "\"pass\""
+    );
+    assert_eq!(
+        serde_json::to_string(&ReviewAssessment::Warning).unwrap(),
+        "\"warning\""
+    );
     assert_eq!(
         serde_json::to_string(&ReviewAssessment::NeedsImprovements).unwrap(),
         "\"needsimprovements\""
     );
-    assert_eq!(serde_json::to_string(&ReviewAssessment::Fail).unwrap(), "\"fail\"");
+    assert_eq!(
+        serde_json::to_string(&ReviewAssessment::Fail).unwrap(),
+        "\"fail\""
+    );
 }
 
 #[test]

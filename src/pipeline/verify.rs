@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Verify stage of the pipeline
 //!
 //! This module handles verification that completed tasks fulfill their

@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Task execution stage
 //!
 //! This module implements the Execute stage of the pipeline, which:
@@ -23,12 +22,65 @@ use tokio::fs;
 use tokio::time::sleep;
 use tracing::{debug, error, info, warn};
 
+use crate::memory::{
+    get_current_run_memory_path, get_project_memory_path, ProjectMemory, RunMemory,
+};
+use crate::tasks::scheduler::{schedule_tasks_with_priority, PriorityConfig};
+use crate::workspace::WorkspaceState;
 use ltmatrix_agent::backend::{AgentBackend, ExecutionConfig};
 use ltmatrix_agent::claude::ClaudeAgent;
 use ltmatrix_agent::session::SessionManager;
 use ltmatrix_agent::AgentPool;
 use ltmatrix_core::{AgentType, Mode, ModeConfig, Task, TaskComplexity, TaskStatus};
-use crate::workspace::WorkspaceState;
+
+/// Load unified memory from all sources (ProjectMemory, RunMemory, legacy)
+///
+/// Combines memory from:
+/// 1. New ProjectMemory system (.ltmatrix/memory/project.json)
+/// 2. New RunMemory system (.ltmatrix/memory/run-{id}.json)
+/// 3. Legacy memory.md (.claude/memory.md) for backwards compatibility
+pub async fn load_unified_memory(project_root: &Path) -> Result<String> {
+    let mut context = String::new();
+
+    // 1. Load new ProjectMemory if exists
+    let project_mem_path = get_project_memory_path(project_root);
+    if project_mem_path.exists() {
+        match ProjectMemory::load(&project_mem_path).await {
+            Ok(mem) => {
+                context.push_str(&mem.generate_summary());
+                context.push_str("\n\n");
+            }
+            Err(e) => warn!("Failed to load project memory: {}", e),
+        }
+    }
+
+    // 2. Load current RunMemory if exists (for session context)
+    let run_mem_path = get_current_run_memory_path(project_root);
+    if run_mem_path.exists() {
+        match RunMemory::load(&run_mem_path).await {
+            Ok(mem) => {
+                context.push_str(&mem.generate_summary());
+            }
+            Err(e) => warn!("Failed to load run memory: {}", e),
+        }
+    }
+
+    // 3. Fallback: old memory.md for backwards compatibility
+    if context.is_empty() {
+        let old_path = project_root.join(".claude/memory.md");
+        if old_path.exists() {
+            context = tokio::fs::read_to_string(&old_path)
+                .await
+                .context("Failed to read legacy memory")?;
+        }
+    }
+
+    if context.trim().is_empty() {
+        context = "No project memory available yet.".to_string();
+    }
+
+    Ok(context)
+}
 
 /// Classification of execution errors for retry decisions
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -75,7 +127,11 @@ pub enum FailureAction {
 ///
 /// Uses formula: base_delay * 2^attempt with optional jitter
 /// Maximum delay is capped to prevent excessive waits
-pub fn calculate_backoff_delay(attempt: u32, base_delay_secs: u64, max_delay_secs: u64) -> Duration {
+pub fn calculate_backoff_delay(
+    attempt: u32,
+    base_delay_secs: u64,
+    max_delay_secs: u64,
+) -> Duration {
     // Exponential backoff: 1s, 2s, 4s, 8s, 16s, etc.
     let multiplier = 2u64.pow(attempt);
     let delay = std::cmp::min(base_delay_secs * multiplier, max_delay_secs);
@@ -173,11 +229,11 @@ pub fn classify_error(error_message: &str) -> ErrorClass {
 }
 
 /// Generate a failure report for a failed task
-pub fn generate_failure_report(
-    task: &Task,
-    task_map: &HashMap<String, Task>,
-) -> FailureReport {
-    let error_message = task.error.clone().unwrap_or_else(|| "Unknown error".to_string());
+pub fn generate_failure_report(task: &Task, task_map: &HashMap<String, Task>) -> FailureReport {
+    let error_message = task
+        .error
+        .clone()
+        .unwrap_or_else(|| "Unknown error".to_string());
     let error_class = classify_error(&error_message);
 
     // Find all downstream tasks that depend on this task
@@ -398,14 +454,41 @@ pub async fn execute_tasks(
             .context("Failed to cleanup stale sessions")?;
     }
 
-    // Load project memory for context
-    let project_memory = load_project_memory(&config.memory_file).await?;
+    // Load unified memory from all sources (ProjectMemory, RunMemory, legacy)
+    let project_memory = load_unified_memory(&config.work_dir).await?;
 
     // Build task map for dependency lookup
     let task_map: HashMap<String, Task> = tasks
-        .into_iter()
-        .map(|task| (task.id.clone(), task))
+        .iter()
+        .map(|task| (task.id.clone(), task.clone()))
         .collect();
+
+    // Configure priority scheduling
+    let priority_config = PriorityConfig {
+        blocking_boost: 1,
+        max_boost: 3,
+        enable_priority_sorting: true,
+        enable_related_grouping: true,
+    };
+
+    // Get execution plan from scheduler
+    let execution_plan = schedule_tasks_with_priority(tasks, &priority_config)
+        .context("Failed to create execution plan")?;
+
+    info!(
+        "Execution plan: {} levels, {} tasks, critical path length: {}",
+        execution_plan.max_depth,
+        execution_plan.total_tasks,
+        execution_plan.critical_path.len()
+    );
+
+    // Log parallelizable tasks for debugging
+    if !execution_plan.parallelizable_tasks.is_empty() {
+        debug!(
+            "Parallelizable tasks: {:?}",
+            execution_plan.parallelizable_tasks
+        );
+    }
 
     // Track completed tasks and session propagation
     let mut completed_tasks: HashSet<String> = HashSet::new();
@@ -431,10 +514,10 @@ pub async fn execute_tasks(
         None
     };
 
-    // Execute tasks in dependency order
-    for task_id in get_execution_order(&task_map)? {
+    // Execute tasks in dependency order using scheduler's execution plan
+    for task_id in &execution_plan.execution_order {
         let mut task = task_map
-            .get(&task_id)
+            .get(task_id)
             .cloned()
             .context(format!("Task {} not found in task map", task_id))?;
 
@@ -488,13 +571,7 @@ pub async fn execute_tasks(
         // Execute task with retry logic - use AgentPool if available
         let execution_result = if let Some(pool) = &config.agent_pool {
             execute_task_with_agent_pool(
-                &mut task,
-                &context,
-                model,
-                session_id,
-                pool,
-                &agent,
-                config,
+                &mut task, &context, model, session_id, pool, &agent, config,
             )
             .await?
         } else {
@@ -530,6 +607,40 @@ pub async fn execute_tasks(
         } else {
             task.status = TaskStatus::Failed;
             stats.failed_tasks += 1;
+
+            // Generate and surface failure report
+            let report = generate_failure_report(&task, &task_map);
+
+            // Log prominently with warn level
+            warn!("=== FAILURE REPORT ===");
+            warn!("Task: {} ({})", report.task_id, task.title);
+            warn!("Error: {}", report.error_message);
+            warn!("Retries: {}/{}", report.retry_count, config.max_retries);
+            if !report.blocked_downstream.is_empty() {
+                warn!("Blocked downstream: {:?}", report.blocked_downstream);
+            }
+            warn!("Suggested action: {:?}", report.suggested_action);
+            warn!("======================");
+
+            // Write to failure log for post-mortem analysis
+            let failure_log = config.work_dir.join(".ltmatrix").join("failures.log");
+            if let Some(parent) = failure_log.parent() {
+                tokio::fs::create_dir_all(parent).await.ok();
+            }
+            let entry = format!(
+                "[{}] Task {} failed: {} (action: {:?})\n",
+                chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"),
+                report.task_id,
+                report.error_message,
+                report.suggested_action
+            );
+            // Read existing content, append new entry, write back
+            let existing = tokio::fs::read_to_string(&failure_log)
+                .await
+                .unwrap_or_default();
+            let updated = existing + &entry;
+            tokio::fs::write(&failure_log, updated).await.ok();
+
             error!("Task {} failed: {:?}", task.id, task.error);
         }
 
@@ -537,7 +648,10 @@ pub async fn execute_tasks(
         if config.enable_workspace_persistence {
             if let Some(project_root) = &config.project_root {
                 if let Err(e) = save_workspace_state(project_root, &task_map) {
-                    warn!("Failed to save workspace state after task {}: {}", task.id, e);
+                    warn!(
+                        "Failed to save workspace state after task {}: {}",
+                        task.id, e
+                    );
                 }
             }
         }
@@ -564,58 +678,6 @@ async fn load_project_memory(memory_path: &Path) -> Result<String> {
         debug!("No project memory file found at {:?}", memory_path);
         Ok(String::new())
     }
-}
-
-/// Get execution order respecting dependencies
-pub fn get_execution_order(task_map: &HashMap<String, Task>) -> Result<Vec<String>> {
-    let mut order = Vec::new();
-    let mut visited = HashSet::new();
-    let mut visiting = HashSet::new();
-
-    for task_id in task_map.keys() {
-        if !visited.contains(task_id) {
-            visit_task(task_id, task_map, &mut visited, &mut visiting, &mut order)?;
-        }
-    }
-
-    Ok(order)
-}
-
-/// Visit task for topological sort with cycle detection
-fn visit_task(
-    task_id: &str,
-    task_map: &HashMap<String, Task>,
-    visited: &mut HashSet<String>,
-    visiting: &mut HashSet<String>,
-    order: &mut Vec<String>,
-) -> Result<()> {
-    // If already fully processed, skip
-    if visited.contains(task_id) {
-        return Ok(());
-    }
-
-    // If currently on the recursion stack, we have a cycle
-    if visiting.contains(task_id) {
-        anyhow::bail!("Circular dependency detected involving task '{}'", task_id);
-    }
-
-    let task = task_map
-        .get(task_id)
-        .context(format!("Task {} not found", task_id))?;
-
-    // Mark as currently being visited
-    visiting.insert(task_id.to_string());
-
-    // Visit dependencies first
-    for dep_id in &task.depends_on {
-        visit_task(dep_id, task_map, visited, visiting, order)?;
-    }
-
-    // Done visiting - mark as fully processed
-    visiting.remove(task_id);
-    visited.insert(task_id.to_string());
-    order.push(task_id.to_string());
-    Ok(())
 }
 
 /// Build context string for task execution
@@ -982,7 +1044,10 @@ pub fn select_model_for_task(task: &Task, mode: Option<Mode>, config: &ExecuteCo
     }
 
     // Fallback to complexity-based model selection
-    config.mode_config.model_for_complexity(&task.complexity).to_string()
+    config
+        .mode_config
+        .model_for_complexity(&task.complexity)
+        .to_string()
 }
 
 /// Check if a task should be executed based on its agent type and the current mode
@@ -1008,10 +1073,7 @@ pub fn should_execute_task(task: &Task, mode: Option<Mode>) -> bool {
 /// # Returns
 ///
 /// Returns `Ok(())` if the state was saved successfully, or an error otherwise.
-fn save_workspace_state(
-    project_root: &Path,
-    task_map: &HashMap<String, Task>,
-) -> Result<()> {
+fn save_workspace_state(project_root: &Path, task_map: &HashMap<String, Task>) -> Result<()> {
     // Load or create workspace state
     let state = if let Ok(loaded) = WorkspaceState::load(project_root.to_path_buf()) {
         loaded
@@ -1069,44 +1131,6 @@ mod tests {
         assert!(prompt.contains("Implement a feature"));
         assert!(prompt.contains("Project context here"));
         assert!(prompt.contains("Begin your implementation now"));
-    }
-
-    #[test]
-    fn test_get_execution_order_no_deps() {
-        let mut task1 = Task::new("task-1", "First", "First task");
-        let mut task2 = Task::new("task-2", "Second", "Second task");
-
-        task1.complexity = TaskComplexity::Simple;
-        task2.complexity = TaskComplexity::Moderate;
-
-        let task_map: HashMap<String, Task> =
-            [(task1.id.clone(), task1), (task2.id.clone(), task2)]
-                .into_iter()
-                .collect();
-
-        let order = get_execution_order(&task_map).unwrap();
-
-        assert_eq!(order.len(), 2);
-        assert!(order.contains(&"task-1".to_string()));
-        assert!(order.contains(&"task-2".to_string()));
-    }
-
-    #[test]
-    fn test_get_execution_order_with_deps() {
-        let task1 = Task::new("task-1", "First", "First task");
-        let mut task2 = Task::new("task-2", "Second", "Second task");
-        task2.depends_on = vec!["task-1".to_string()];
-
-        let task_map: HashMap<String, Task> =
-            [(task1.id.clone(), task1), (task2.id.clone(), task2)]
-                .into_iter()
-                .collect();
-
-        let order = get_execution_order(&task_map).unwrap();
-
-        assert_eq!(order.len(), 2);
-        assert_eq!(order[0], "task-1");
-        assert_eq!(order[1], "task-2");
     }
 
     #[tokio::test]
@@ -1188,10 +1212,7 @@ mod tests {
     #[test]
     fn test_classify_error_unknown() {
         // Test unknown error patterns
-        assert_eq!(
-            classify_error("Something went wrong"),
-            ErrorClass::Unknown
-        );
+        assert_eq!(classify_error("Something went wrong"), ErrorClass::Unknown);
         assert_eq!(
             classify_error("An unexpected error occurred"),
             ErrorClass::Unknown
@@ -1257,9 +1278,8 @@ mod tests {
         let mut task = Task::new("task-1", "Test", "Test task");
         task.error = Some("Syntax error in code".to_string());
 
-        let task_map: HashMap<String, Task> = [(task.id.clone(), task.clone())]
-            .into_iter()
-            .collect();
+        let task_map: HashMap<String, Task> =
+            [(task.id.clone(), task.clone())].into_iter().collect();
 
         let report = generate_failure_report(&task, &task_map);
 

@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Git commit operations
 //!
 //! This module provides commit functionality including staging changes,

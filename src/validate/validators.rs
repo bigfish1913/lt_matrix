@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Core validation functions
 //!
 //! Provides validation utilities for goals, task IDs, agent availability,
@@ -45,9 +44,7 @@ pub fn validate_goal(goal: &str) -> Result<()> {
 
     // Check for empty goal
     if trimmed.is_empty() {
-        bail!(
-            "Goal cannot be empty. Please provide a description of what you want to accomplish."
-        );
+        bail!("Goal cannot be empty. Please provide a description of what you want to accomplish.");
     }
 
     // Check minimum length
@@ -109,8 +106,8 @@ pub fn validate_task_id_format(task_id: &str) -> Result<()> {
     }
 
     // Validate format using regex pattern
-    let re = regex::Regex::new(TASK_ID_PATTERN)
-        .context("Failed to compile task ID pattern regex")?;
+    let re =
+        regex::Regex::new(TASK_ID_PATTERN).context("Failed to compile task ID pattern regex")?;
 
     if !re.is_match(task_id) {
         bail!(
@@ -160,7 +157,10 @@ pub fn validate_task_ids_unique(task_ids: &[String]) -> Result<()> {
         );
     }
 
-    debug!("Task ID uniqueness validation passed: {} unique IDs", task_ids.len());
+    debug!(
+        "Task ID uniqueness validation passed: {} unique IDs",
+        task_ids.len()
+    );
     Ok(())
 }
 
@@ -399,12 +399,10 @@ pub fn validate_directory_creatable(dir_path: &Path) -> Result<()> {
     }
 
     // Check parent directory
-    let parent = dir_path
-        .parent()
-        .context(format!(
-            "Cannot determine parent directory for '{}'.",
-            dir_path.display()
-        ))?;
+    let parent = dir_path.parent().context(format!(
+        "Cannot determine parent directory for '{}'.",
+        dir_path.display()
+    ))?;
 
     if !parent.exists() {
         bail!(
@@ -520,30 +518,24 @@ mod tests {
     #[test]
     fn test_validate_task_ids_unique_valid() {
         assert!(validate_task_ids_unique(&["task-1".to_string()]).is_ok());
-        assert!(
-            validate_task_ids_unique(&["task-1".to_string(), "task-2".to_string()]).is_ok()
-        );
-        assert!(
-            validate_task_ids_unique(&[
-                "task-1".to_string(),
-                "task-2".to_string(),
-                "task-3".to_string()
-            ])
-            .is_ok()
-        );
+        assert!(validate_task_ids_unique(&["task-1".to_string(), "task-2".to_string()]).is_ok());
+        assert!(validate_task_ids_unique(&[
+            "task-1".to_string(),
+            "task-2".to_string(),
+            "task-3".to_string()
+        ])
+        .is_ok());
     }
 
     #[test]
     fn test_validate_task_ids_unique_duplicates() {
         assert!(validate_task_ids_unique(&["task-1".to_string(), "task-1".to_string()]).is_err());
-        assert!(
-            validate_task_ids_unique(&[
-                "task-1".to_string(),
-                "task-2".to_string(),
-                "task-1".to_string()
-            ])
-            .is_err()
-        );
+        assert!(validate_task_ids_unique(&[
+            "task-1".to_string(),
+            "task-2".to_string(),
+            "task-1".to_string()
+        ])
+        .is_err());
     }
 
     #[test]

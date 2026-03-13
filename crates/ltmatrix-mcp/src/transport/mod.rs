@@ -60,8 +60,8 @@ use std::time::Duration;
 use tokio::sync::mpsc;
 
 // Re-export main types
-pub use framing::{MessageFramer, FramingError, LineDelimitedFramer, ContentLengthFramer};
-pub use stdio::{StdioTransport, StdioConfig, ChildProcess};
+pub use framing::{ContentLengthFramer, FramingError, LineDelimitedFramer, MessageFramer};
+pub use stdio::{ChildProcess, StdioConfig, StdioTransport};
 
 // ============================================================================
 // Transport Configuration

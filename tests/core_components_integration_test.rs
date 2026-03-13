@@ -10,15 +10,16 @@
 //! - Plugin system integration
 //! - Configuration propagation
 
+use chrono::Utc;
 use ltmatrix::agent::backend::{
-    AgentConfig, AgentConfigBuilder, AgentError, AgentResponse, AgentSession, ExecutionConfig, MemorySession,
+    AgentConfig, AgentConfigBuilder, AgentError, AgentResponse, AgentSession, ExecutionConfig,
+    MemorySession,
 };
 use ltmatrix::agent::session::{SessionData, SessionManager};
-use ltmatrix::telemetry::config::TelemetryConfig;
-use ltmatrix::telemetry::collector::TelemetryCollector;
-use ltmatrix::telemetry::event::{ErrorCategory, TelemetryEvent};
 use ltmatrix::models::{ExecutionMode, Task, TaskStatus};
-use chrono::Utc;
+use ltmatrix::telemetry::collector::TelemetryCollector;
+use ltmatrix::telemetry::config::TelemetryConfig;
+use ltmatrix::telemetry::event::{ErrorCategory, TelemetryEvent};
 use std::time::Duration;
 use uuid::Uuid;
 
@@ -28,7 +29,7 @@ use uuid::Uuid;
 
 mod agent_backend_integration {
     use super::*;
-    use ltmatrix::agent::AgentSession;  // Import the trait
+    use ltmatrix::agent::AgentSession; // Import the trait
 
     #[test]
     fn test_agent_config_to_execution_config() {
@@ -159,11 +160,7 @@ mod session_management_integration {
 
         // Simulate multiple loads (reuse scenarios)
         for expected_count in 1..=3 {
-            let loaded = manager
-                .load_session(&session_id)
-                .await
-                .unwrap()
-                .unwrap();
+            let loaded = manager.load_session(&session_id).await.unwrap().unwrap();
             assert_eq!(loaded.reuse_count, expected_count);
         }
     }
@@ -183,11 +180,7 @@ mod session_management_integration {
 
         // Create new manager and verify session persists
         let manager2 = SessionManager::new(temp_dir.path()).unwrap();
-        let loaded = manager2
-            .load_session(&session_id)
-            .await
-            .unwrap()
-            .unwrap();
+        let loaded = manager2.load_session(&session_id).await.unwrap().unwrap();
 
         assert_eq!(loaded.session_id, session_id);
         assert_eq!(loaded.agent_name, "claude");
@@ -244,10 +237,7 @@ mod session_management_integration {
             .create_session("claude", "claude-sonnet-4-6")
             .await
             .unwrap();
-        let opencode = manager
-            .create_session("opencode", "gpt-4")
-            .await
-            .unwrap();
+        let opencode = manager.create_session("opencode", "gpt-4").await.unwrap();
 
         // Verify they're separate
         assert_ne!(claude.session_id, opencode.session_id);
@@ -331,7 +321,9 @@ mod telemetry_integration {
         let collector = TelemetryCollector::new(config, session_id);
 
         // Add events up to and beyond buffer limit
-        collector.record_session_start("0.1.0", "linux", "x86_64").await;
+        collector
+            .record_session_start("0.1.0", "linux", "x86_64")
+            .await;
         collector.record_error("Error 1").await;
         collector.record_error("Error 2").await;
         collector.record_error("Error 3").await; // Should trigger buffer limit
@@ -487,14 +479,12 @@ mod cross_component_integration {
         assert_eq!(events.len(), 2);
 
         // Verify event types
-        let has_session_start = events.iter().any(|e| matches!(
-            e,
-            TelemetryEvent::SessionStart { .. }
-        ));
-        let has_pipeline_complete = events.iter().any(|e| matches!(
-            e,
-            TelemetryEvent::PipelineComplete { .. }
-        ));
+        let has_session_start = events
+            .iter()
+            .any(|e| matches!(e, TelemetryEvent::SessionStart { .. }));
+        let has_pipeline_complete = events
+            .iter()
+            .any(|e| matches!(e, TelemetryEvent::PipelineComplete { .. }));
         assert!(has_session_start);
         assert!(has_pipeline_complete);
     }
@@ -549,10 +539,7 @@ mod cross_component_integration {
             .create_session("claude", "claude-sonnet-4-6")
             .await
             .unwrap();
-        let session2 = manager
-            .create_session("opencode", "gpt-4")
-            .await
-            .unwrap();
+        let session2 = manager.create_session("opencode", "gpt-4").await.unwrap();
 
         let id1 = session1.session_id.clone();
         let id2 = session2.session_id.clone();

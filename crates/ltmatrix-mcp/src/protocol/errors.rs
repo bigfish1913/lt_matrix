@@ -614,7 +614,11 @@ impl McpError {
     }
 
     /// Create an error with a specific category
-    pub fn with_category(code: McpErrorCode, message: impl Into<String>, category: ErrorCategory) -> Self {
+    pub fn with_category(
+        code: McpErrorCode,
+        message: impl Into<String>,
+        category: ErrorCategory,
+    ) -> Self {
         let recoverable = code.is_recoverable();
         McpError {
             code,
@@ -635,12 +639,20 @@ impl McpError {
 
     /// Create a serialization error
     pub fn serialization(message: impl Into<String>) -> Self {
-        Self::with_category(McpErrorCode::ParseError, message, ErrorCategory::Serialization)
+        Self::with_category(
+            McpErrorCode::ParseError,
+            message,
+            ErrorCategory::Serialization,
+        )
     }
 
     /// Create a communication error
     pub fn communication(message: impl Into<String>) -> Self {
-        Self::with_category(McpErrorCode::TransportError, message, ErrorCategory::Communication)
+        Self::with_category(
+            McpErrorCode::TransportError,
+            message,
+            ErrorCategory::Communication,
+        )
     }
 
     /// Create a tool execution error
@@ -689,7 +701,11 @@ impl McpError {
 
     /// Create a configuration error
     pub fn configuration(message: impl Into<String>) -> Self {
-        Self::with_category(McpErrorCode::ConfigurationError, message, ErrorCategory::Configuration)
+        Self::with_category(
+            McpErrorCode::ConfigurationError,
+            message,
+            ErrorCategory::Configuration,
+        )
     }
 
     /// Create a timeout error
@@ -778,7 +794,13 @@ impl McpError {
 
 impl fmt::Display for McpError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "[{}] {} ({})", self.code.as_i32(), self.message, self.category)?;
+        write!(
+            f,
+            "[{}] {} ({})",
+            self.code.as_i32(),
+            self.message,
+            self.category
+        )?;
         if let Some(ref source) = self.source {
             write!(f, " [source: {}]", source)?;
         }
@@ -1039,7 +1061,10 @@ mod tests {
             McpErrorCode::from_i32(-32503),
             McpErrorCode::ToolExecutionError
         );
-        assert_eq!(McpErrorCode::from_i32(-32504), McpErrorCode::ResourceNotFound);
+        assert_eq!(
+            McpErrorCode::from_i32(-32504),
+            McpErrorCode::ResourceNotFound
+        );
     }
 
     #[test]
@@ -1155,7 +1180,10 @@ mod tests {
         let error = McpError::resource_not_found("file:///nonexistent.txt");
         assert_eq!(error.code, McpErrorCode::ResourceNotFound);
         assert_eq!(error.category, ErrorCategory::ResourceAccess);
-        assert!(error.data.unwrap()["uri"].as_str().unwrap().contains("nonexistent"));
+        assert!(error.data.unwrap()["uri"]
+            .as_str()
+            .unwrap()
+            .contains("nonexistent"));
     }
 
     #[test]
@@ -1208,8 +1236,7 @@ mod tests {
 
     #[test]
     fn test_mcp_error_display() {
-        let error = McpError::tool_execution("test", "failed")
-            .with_source("test_module");
+        let error = McpError::tool_execution("test", "failed").with_source("test_module");
 
         let display = format!("{}", error);
         assert!(display.contains("-32503"));
@@ -1222,17 +1249,8 @@ mod tests {
     #[test]
     fn test_error_category_display() {
         assert_eq!(format!("{}", ErrorCategory::Protocol), "Protocol");
-        assert_eq!(
-            format!("{}", ErrorCategory::Serialization),
-            "Serialization"
-        );
-        assert_eq!(
-            format!("{}", ErrorCategory::Communication),
-            "Communication"
-        );
-        assert_eq!(
-            format!("{}", ErrorCategory::ToolExecution),
-            "ToolExecution"
-        );
+        assert_eq!(format!("{}", ErrorCategory::Serialization), "Serialization");
+        assert_eq!(format!("{}", ErrorCategory::Communication), "Communication");
+        assert_eq!(format!("{}", ErrorCategory::ToolExecution), "ToolExecution");
     }
 }

@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! Session pool for agent session reuse
 //!
 //! This module provides an in-memory registry of [`MemorySession`] objects that
@@ -73,7 +72,8 @@ impl SessionPool {
 
     /// Returns true if the given agent+model has been warmed up.
     pub fn is_warmed_up(&self, agent_name: &str, model: &str) -> bool {
-        self.warmed_agents.contains(&(agent_name.to_string(), model.to_string()))
+        self.warmed_agents
+            .contains(&(agent_name.to_string(), model.to_string()))
     }
 
     /// Number of sessions currently in the pool.

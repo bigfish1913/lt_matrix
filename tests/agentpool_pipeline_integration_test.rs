@@ -30,7 +30,8 @@ impl PipelineMockAgent {
     }
 
     fn execution_count(&self) -> usize {
-        self.execution_count.load(std::sync::atomic::Ordering::SeqCst)
+        self.execution_count
+            .load(std::sync::atomic::Ordering::SeqCst)
     }
 }
 
@@ -41,13 +42,17 @@ impl AgentBackend for PipelineMockAgent {
         prompt: &str,
         _config: &ExecutionConfig,
     ) -> anyhow::Result<ltmatrix::agent::backend::AgentResponse> {
-        self.execution_count.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        self.execution_count
+            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
 
         // Simulate processing
         sleep(Duration::from_millis(10)).await;
 
         Ok(ltmatrix::agent::backend::AgentResponse {
-            output: format!("Response to: {}", prompt.split_whitespace().next().unwrap_or("")),
+            output: format!(
+                "Response to: {}",
+                prompt.split_whitespace().next().unwrap_or("")
+            ),
             ..Default::default()
         })
     }
@@ -67,7 +72,8 @@ impl AgentBackend for PipelineMockAgent {
         _context: &str,
         _config: &ExecutionConfig,
     ) -> anyhow::Result<ltmatrix::agent::backend::AgentResponse> {
-        self.execution_count.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        self.execution_count
+            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         Ok(ltmatrix::agent::backend::AgentResponse::default())
     }
 
@@ -113,14 +119,20 @@ async fn test_pipeline_execution_with_agent_pool() {
 
         // Simulate execution
         let config = ExecutionConfig::default();
-        match pool.execute_with_session(&mut task_clone, &agent, "Execute task", &config).await {
+        match pool
+            .execute_with_session(&mut task_clone, &agent, "Execute task", &config)
+            .await
+        {
             Ok(response) => {
                 completed.insert(task_clone.id.clone());
                 results.push((task_clone, response));
             }
             Err(_) => {
                 task_clone.status = TaskStatus::Failed;
-                results.push((task_clone, ltmatrix::agent::backend::AgentResponse::default()));
+                results.push((
+                    task_clone,
+                    ltmatrix::agent::backend::AgentResponse::default(),
+                ));
             }
         }
     }
@@ -180,7 +192,10 @@ async fn test_pipeline_retry_with_session_reuse() {
         .await;
 
     assert_eq!(session1, session2, "Session should be reused on retry");
-    assert!(task.has_session(), "Task should still have session after retry");
+    assert!(
+        task.has_session(),
+        "Task should still have session after retry"
+    );
 }
 
 /// Test pipeline with multiple complexities
@@ -326,11 +341,7 @@ async fn test_concurrent_pipeline_execution() {
         let handle = tokio::spawn(async move {
             let mut task = Task::new(format!("pipeline-{}-task-1", i), "Task", "Description");
             let session_id = pool_clone
-                .get_or_create_session_for_task(
-                    &mut task,
-                    &agent.agent.name,
-                    &agent.agent.model,
-                )
+                .get_or_create_session_for_task(&mut task, &agent.agent.name, &agent.agent.model)
                 .await;
 
             // Simulate execution
@@ -369,11 +380,7 @@ async fn test_concurrent_dependency_execution() {
     for chain_id in 0..3 {
         let pool_clone = Arc::clone(&pool);
         let handle = tokio::spawn(async move {
-            let mut task1 = Task::new(
-                format!("chain-{}-task-1", chain_id),
-                "First",
-                "Description",
-            );
+            let mut task1 = Task::new(format!("chain-{}-task-1", chain_id), "First", "Description");
             let session1 = pool_clone
                 .get_or_create_session_for_task(&mut task1, "claude", "claude-sonnet-4-6")
                 .await;
@@ -523,11 +530,7 @@ async fn test_pool_with_execution_modes() {
 
         let pool = AgentPool::new(&config);
 
-        let mut task = Task::new(
-            format!("{}-task", mode),
-            "Task",
-            "Description",
-        );
+        let mut task = Task::new(format!("{}-task", mode), "Task", "Description");
 
         let model = match mode {
             "fast" => "claude-haiku-4-5",

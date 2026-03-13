@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-
 //! MCP protocol message types
 //!
 //! This module implements the JSON-RPC 2.0 based message types used by MCP.
@@ -14,78 +13,64 @@ pub mod wrappers;
 
 // Re-export JSON-RPC message types from messages.rs
 pub use messages::{
-    JsonRpcMessage,
-    JsonRpcRequest,
-    JsonRpcResponse,
-    JsonRpcNotification,
-    RequestId,
+    JsonRpcMessage, JsonRpcNotification, JsonRpcRequest, JsonRpcResponse, RequestId,
 };
 
 // Re-export error types from errors.rs
 pub use errors::{
-    JsonRpcError,
-    JsonRpcErrorCode,
-    McpError,
-    McpErrorCode,
-    ErrorCategory,
-    ErrorBuilder,
-    McpResult,
-    JsonRpcResult,
+    ErrorBuilder, ErrorCategory, JsonRpcError, JsonRpcErrorCode, JsonRpcResult, McpError,
+    McpErrorCode, McpResult,
 };
 
 // Re-export MCP method types from methods.rs
 pub use methods::{
-    MCP_PROTOCOL_VERSION,
-    ImplementationInfo,
-    ClientCapabilities,
-    ServerCapabilities,
-    RootsCapability,
-    PromptsCapability,
-    ResourcesCapability,
-    ToolsCapability,
-    InitializeParams,
-    InitializeResult,
-    Tool,
-    ToolsListParams,
-    ToolsListResult,
-    ToolCallParams,
-    ToolCallResult,
-    ToolContent,
-    Resource,
-    ResourcesListParams,
-    ResourcesListResult,
-    ResourceReadParams,
-    ResourceReadResult,
-    ResourceContents,
-    Prompt,
-    PromptArgument,
-    PromptsListParams,
-    PromptsListResult,
-    PromptsGetParams,
-    PromptsGetResult,
-    PromptContent,
-    PromptMessage,
-    Root,
-    RootsListParams,
-    RootsListResult,
-    LogLevel,
-    LoggingSetLevelParams,
+    ClientCapabilities, ImplementationInfo, InitializeParams, InitializeResult, LogLevel,
+    LoggingSetLevelParams, Prompt, PromptArgument, PromptContent, PromptMessage, PromptsCapability,
+    PromptsGetParams, PromptsGetResult, PromptsListParams, PromptsListResult, Resource,
+    ResourceContents, ResourceReadParams, ResourceReadResult, ResourcesCapability,
+    ResourcesListParams, ResourcesListResult, Root, RootsCapability, RootsListParams,
+    RootsListResult, ServerCapabilities, Tool, ToolCallParams, ToolCallResult, ToolContent,
+    ToolsCapability, ToolsListParams, ToolsListResult, MCP_PROTOCOL_VERSION,
 };
 
 // Re-export type-safe wrappers from wrappers.rs
 pub use wrappers::{
-    // Core traits
-    McpMethod,
-    PaginatedMethod,
-    McpNotification,
+    CompletionArgument,
+    // Completion methods
+    CompletionComplete,
+    CompletionCompleteParams,
+    CompletionCompleteResult,
+    CompletionInfo,
+    CompletionReference,
     // Lifecycle methods
     Initialize,
+    LogMessageParams,
+    // Logging methods
+    LoggingSetLevel,
+    LoggingSetLevelResult,
+    // Core traits
+    McpMethod,
+    // Method registry
+    McpMethodKind,
+    McpNotification,
+    ModelHint,
+    ModelPreferences,
+    // Notifications
+    NotificationsInitialized,
+    NotificationsMessage,
+    NotificationsProgress,
+    NotificationsPromptsListChanged,
+    NotificationsResourcesListChanged,
+    NotificationsRootsListChanged,
+    NotificationsToolsListChanged,
+    PaginatedMethod,
     Ping,
     PingParams,
     PingResult,
-    // Tools methods
-    ToolsList,
-    ToolsCall,
+    ProgressParams,
+    PromptsGet,
+    // Prompts methods
+    PromptsList,
     // Resources methods
     ResourcesList,
     ResourcesRead,
@@ -95,39 +80,15 @@ pub use wrappers::{
     ResourcesUnsubscribe,
     ResourcesUnsubscribeParams,
     ResourcesUnsubscribeResult,
-    // Prompts methods
-    PromptsList,
-    PromptsGet,
     // Roots methods
     RootsList,
-    // Logging methods
-    LoggingSetLevel,
-    LoggingSetLevelResult,
-    // Completion methods
-    CompletionComplete,
-    CompletionReference,
-    CompletionArgument,
-    CompletionCompleteParams,
-    CompletionCompleteResult,
-    CompletionInfo,
+    SamplingContent,
     // Sampling methods
     SamplingCreateMessage,
-    SamplingMessage,
-    SamplingContent,
     SamplingCreateMessageParams,
     SamplingCreateMessageResult,
-    ModelPreferences,
-    ModelHint,
-    // Notifications
-    NotificationsInitialized,
-    NotificationsToolsListChanged,
-    NotificationsResourcesListChanged,
-    NotificationsPromptsListChanged,
-    NotificationsRootsListChanged,
-    NotificationsProgress,
-    ProgressParams,
-    NotificationsMessage,
-    LogMessageParams,
-    // Method registry
-    McpMethodKind,
+    SamplingMessage,
+    ToolsCall,
+    // Tools methods
+    ToolsList,
 };

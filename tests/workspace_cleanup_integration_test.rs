@@ -6,8 +6,8 @@
 //! - Workspace reset
 //! - Dependency graph validation
 
-use ltmatrix::workspace::WorkspaceState;
 use ltmatrix::models::{Task, TaskStatus};
+use ltmatrix::workspace::WorkspaceState;
 use std::fs;
 use std::path::PathBuf;
 use tempfile::TempDir;
@@ -24,10 +24,7 @@ fn test_cleanup_orphaned_dependencies_simple() {
     let mut task2 = Task::new("task-2", "Task With Orphan", "Has missing dep");
     task2.depends_on = vec!["missing-task".to_string()];
 
-    let mut state = WorkspaceState::new(
-        project_root.to_path_buf(),
-        vec![task1, task2]
-    );
+    let mut state = WorkspaceState::new(project_root.to_path_buf(), vec![task1, task2]);
 
     // Detect orphaned dependencies
     let orphaned = state.detect_orphaned_tasks();
@@ -58,10 +55,7 @@ fn test_cleanup_orphaned_dependencies_multiple() {
     let mut task3 = Task::new("task-3", "Two Orphans", "Has two missing");
     task3.depends_on = vec!["missing-2".to_string(), "missing-3".to_string()];
 
-    let mut state = WorkspaceState::new(
-        project_root.to_path_buf(),
-        vec![task1, task2, task3]
-    );
+    let mut state = WorkspaceState::new(project_root.to_path_buf(), vec![task1, task2, task3]);
 
     // Cleanup orphaned dependencies
     let cleaned_count = state.cleanup_orphaned_dependencies();
@@ -88,10 +82,7 @@ fn test_cleanup_preserves_valid_dependencies() {
     let mut task3 = Task::new("task-3", "Third", "After second");
     task3.depends_on = vec!["task-2".to_string()];
 
-    let mut state = WorkspaceState::new(
-        project_root.to_path_buf(),
-        vec![task1, task2, task3]
-    );
+    let mut state = WorkspaceState::new(project_root.to_path_buf(), vec![task1, task2, task3]);
 
     // Cleanup should not remove any valid dependencies
     let cleaned_count = state.cleanup_orphaned_dependencies();
@@ -137,10 +128,7 @@ fn test_cleanup_with_duplicate_dependencies() {
         "task-1".to_string(), // Duplicate
     ];
 
-    let mut state = WorkspaceState::new(
-        project_root.to_path_buf(),
-        vec![task1, task2]
-    );
+    let mut state = WorkspaceState::new(project_root.to_path_buf(), vec![task1, task2]);
 
     // Cleanup should not remove valid dependencies (even duplicates)
     let cleaned_count = state.cleanup_orphaned_dependencies();
@@ -179,10 +167,7 @@ fn test_validate_valid_dependency_graph() {
     let mut task3 = Task::new("task-3", "Third", "After second");
     task3.depends_on = vec!["task-2".to_string()];
 
-    let state = WorkspaceState::new(
-        project_root.to_path_buf(),
-        vec![task1, task2, task3]
-    );
+    let state = WorkspaceState::new(project_root.to_path_buf(), vec![task1, task2, task3]);
 
     // Validation should pass
     assert!(state.validate_dependency_graph().is_ok());
@@ -198,10 +183,7 @@ fn test_validate_detects_orphaned_dependencies() {
     let mut task2 = Task::new("task-2", "With Orphan", "Has missing dep");
     task2.depends_on = vec!["missing-task".to_string()];
 
-    let state = WorkspaceState::new(
-        project_root.to_path_buf(),
-        vec![task1, task2]
-    );
+    let state = WorkspaceState::new(project_root.to_path_buf(), vec![task1, task2]);
 
     // Validation should fail
     let result = state.validate_dependency_graph();
@@ -223,10 +205,7 @@ fn test_validate_detects_circular_dependencies() {
     let mut task_b = Task::new("task-b", "Task B", "Depends on A");
     task_b.depends_on = vec!["task-a".to_string()];
 
-    let state = WorkspaceState::new(
-        project_root.to_path_buf(),
-        vec![task_a, task_b]
-    );
+    let state = WorkspaceState::new(project_root.to_path_buf(), vec![task_a, task_b]);
 
     // Validation should fail
     let result = state.validate_dependency_graph();
@@ -271,7 +250,7 @@ fn test_validate_diamond_dependency_pattern() {
 
     let state = WorkspaceState::new(
         project_root.to_path_buf(),
-        vec![task_a, task_b, task_c, task_d]
+        vec![task_a, task_b, task_c, task_d],
     );
 
     // Diamond pattern is valid (not a cycle)
@@ -300,7 +279,7 @@ fn test_validate_with_complex_graph() {
 
     let state = WorkspaceState::new(
         project_root.to_path_buf(),
-        vec![task1, task2, task3, task4, task5]
+        vec![task1, task2, task3, task4, task5],
     );
 
     // Complex graph should be valid
@@ -393,10 +372,7 @@ fn test_cleanup_then_save_persist_cleanup() {
     let mut task2 = Task::new("task-2", "With Orphan", "Has missing dep");
     task2.depends_on = vec!["missing".to_string()];
 
-    let mut state = WorkspaceState::new(
-        project_root.to_path_buf(),
-        vec![task1, task2]
-    );
+    let mut state = WorkspaceState::new(project_root.to_path_buf(), vec![task1, task2]);
     state.save().unwrap();
 
     // Load, cleanup, and save
@@ -421,10 +397,7 @@ fn test_workspace_state_integrity_after_cleanup() {
     let mut task3 = Task::new("task-3", "Valid Dep", "Valid dep");
     task3.depends_on = vec!["task-1".to_string()];
 
-    let mut state = WorkspaceState::new(
-        project_root.to_path_buf(),
-        vec![task1, task2, task3]
-    );
+    let mut state = WorkspaceState::new(project_root.to_path_buf(), vec![task1, task2, task3]);
     state.save().unwrap();
 
     // Load and cleanup
@@ -494,10 +467,7 @@ fn test_cleanup_preserves_task_properties() {
     task2.depends_on = vec!["missing".to_string()];
     task2.description = "Will be cleaned up".to_string();
 
-    let mut state = WorkspaceState::new(
-        project_root.to_path_buf(),
-        vec![task1, task2]
-    );
+    let mut state = WorkspaceState::new(project_root.to_path_buf(), vec![task1, task2]);
     state.save().unwrap();
 
     // Load and cleanup
@@ -511,7 +481,10 @@ fn test_cleanup_preserves_task_properties() {
     assert_eq!(final_state.tasks[0].id, "task-1");
     assert_eq!(final_state.tasks[0].title, "Valid");
     assert_eq!(final_state.tasks[0].status, TaskStatus::Completed);
-    assert_eq!(final_state.tasks[0].complexity, ltmatrix::models::TaskComplexity::Complex);
+    assert_eq!(
+        final_state.tasks[0].complexity,
+        ltmatrix::models::TaskComplexity::Complex
+    );
 
     assert_eq!(final_state.tasks[1].id, "task-2");
     assert_eq!(final_state.tasks[1].title, "Has Issues");
@@ -644,10 +617,7 @@ fn test_reset_all_clears_all_statuses() {
     task3.status = TaskStatus::Failed;
     task3.error = Some("Error".to_string());
 
-    let mut state = WorkspaceState::new(
-        project_root.to_path_buf(),
-        vec![task1, task2, task3]
-    );
+    let mut state = WorkspaceState::new(project_root.to_path_buf(), vec![task1, task2, task3]);
 
     // Reset all tasks
     state.reset_all().unwrap();
@@ -684,7 +654,10 @@ fn test_reset_all_preserves_other_properties() {
 
     // Verify properties preserved
     assert_eq!(state.tasks[0].status, TaskStatus::Pending);
-    assert_eq!(state.tasks[0].complexity, ltmatrix::models::TaskComplexity::Complex);
+    assert_eq!(
+        state.tasks[0].complexity,
+        ltmatrix::models::TaskComplexity::Complex
+    );
     assert_eq!(state.tasks[0].depends_on, vec!["dep-1".to_string()]);
     assert_eq!(state.tasks[0].retry_count, 3);
     assert_eq!(state.tasks[0].session_id, Some("session-123".to_string()));
@@ -738,10 +711,7 @@ fn test_reset_failed_only_resets_failed_tasks() {
     let mut task3 = Task::new("task-3", "Pending", "Third");
     task3.status = TaskStatus::Pending;
 
-    let mut state = WorkspaceState::new(
-        project_root.to_path_buf(),
-        vec![task1, task2, task3]
-    );
+    let mut state = WorkspaceState::new(project_root.to_path_buf(), vec![task1, task2, task3]);
 
     // Reset failed tasks
     let reset_count = state.reset_failed().unwrap();
@@ -799,10 +769,7 @@ fn test_reset_failed_returns_correct_count() {
     let mut task3 = Task::new("task-3", "OK", "Third");
     task3.status = TaskStatus::Completed;
 
-    let mut state = WorkspaceState::new(
-        project_root.to_path_buf(),
-        vec![task1, task2, task3]
-    );
+    let mut state = WorkspaceState::new(project_root.to_path_buf(), vec![task1, task2, task3]);
 
     // Reset failed tasks
     let reset_count = state.reset_failed().unwrap();
@@ -856,7 +823,7 @@ fn test_status_summary_all_statuses() {
 
     let state = WorkspaceState::new(
         project_root.to_path_buf(),
-        vec![task1, task2, task3, task4, task5]
+        vec![task1, task2, task3, task4, task5],
     );
 
     // Get summary
@@ -932,10 +899,7 @@ fn test_status_summary_with_transform() {
     task2.status = TaskStatus::InProgress;
     task2.started_at = Some(chrono::Utc::now());
 
-    let state = WorkspaceState::new(
-        project_root.to_path_buf(),
-        vec![task1, task2]
-    );
+    let state = WorkspaceState::new(project_root.to_path_buf(), vec![task1, task2]);
     state.save().unwrap();
 
     // Load with transform

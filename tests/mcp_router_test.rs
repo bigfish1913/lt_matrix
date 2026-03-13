@@ -4,22 +4,37 @@
 
 //! Integration tests for MCP request routing and response parsing
 
+use ltmatrix::mcp::protocol::{McpError, McpErrorCode};
 use ltmatrix::mcp::{
-    // Protocol types
-    JsonRpcRequest, JsonRpcResponse, JsonRpcNotification, RequestId,
-    JsonRpcError, JsonRpcErrorCode,
+    ClientCapabilities,
+    ImplementationInfo,
     // Method types
-    Initialize, Ping, ToolsList,
+    Initialize,
     // Parameter and result types
-    InitializeParams, InitializeResult, ImplementationInfo, ClientCapabilities,
-    ToolsListResult, ServerCapabilities,
+    InitializeParams,
+    InitializeResult,
+    JsonRpcError,
+    JsonRpcErrorCode,
+    JsonRpcNotification,
+    // Protocol types
+    JsonRpcRequest,
+    JsonRpcResponse,
+    MessageClassifier,
+    MessageKind,
+    Ping,
+    RequestBuilder,
+    RequestId,
     // Router types
-    RequestRouter, ResponseParser, ResponseCorrelator, TypedResponse,
-    RequestBuilder, MessageClassifier, MessageKind,
+    RequestRouter,
     // Correlation types
     RequestTracker,
+    ResponseCorrelator,
+    ResponseParser,
+    ServerCapabilities,
+    ToolsList,
+    ToolsListResult,
+    TypedResponse,
 };
-use ltmatrix::mcp::protocol::{McpError, McpErrorCode};
 use serde_json::json;
 use std::sync::Arc;
 use std::time::Duration;
@@ -97,7 +112,10 @@ fn test_response_parser_tools_list() {
 fn test_response_parser_error_handling() {
     let parser = ResponseParser::new();
 
-    let error = JsonRpcError::new(JsonRpcErrorCode::InvalidRequest, "Invalid Request".to_string());
+    let error = JsonRpcError::new(
+        JsonRpcErrorCode::InvalidRequest,
+        "Invalid Request".to_string(),
+    );
     let response = JsonRpcResponse::error(RequestId::Number(3), error);
 
     let result = parser.parse_response::<InitializeResult>(response);
@@ -149,7 +167,8 @@ fn test_request_builder_initialize() {
     };
 
     let builder = RequestBuilder::new(RequestId::Number(1), "initialize")
-        .params(&params).unwrap();
+        .params(&params)
+        .unwrap();
 
     let request = builder.build();
     assert_eq!(request.id, RequestId::Number(1));
@@ -159,7 +178,8 @@ fn test_request_builder_initialize() {
 #[test]
 fn test_request_builder_serialization() {
     let builder = RequestBuilder::new(RequestId::Number(42), "tools/list")
-        .params(&json!({"cursor": "abc123"})).unwrap();
+        .params(&json!({"cursor": "abc123"}))
+        .unwrap();
 
     let json_str = builder.to_json().unwrap();
     assert!(json_str.contains("\"id\":42"));
@@ -217,13 +237,15 @@ async fn test_router_register_and_dispatch() {
     // Register handler for tools/list
     {
         let counter_clone = counter.clone();
-        router.register_handler("tools/list", move |_request| {
-            let counter = counter_clone.clone();
-            async move {
-                counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-                Ok(json!({"tools": []}))
-            }
-        }).await;
+        router
+            .register_handler("tools/list", move |_request| {
+                let counter = counter_clone.clone();
+                async move {
+                    counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                    Ok(json!({"tools": []}))
+                }
+            })
+            .await;
     }
 
     // Dispatch a request
@@ -254,12 +276,14 @@ async fn test_router_notification_handlers() {
     // Register notification handler
     {
         let counter_clone = counter.clone();
-        router.register_notification_handler("notifications/initialized", move |_params| {
-            let counter = counter_clone.clone();
-            async move {
-                counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-            }
-        }).await;
+        router
+            .register_notification_handler("notifications/initialized", move |_params| {
+                let counter = counter_clone.clone();
+                async move {
+                    counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                }
+            })
+            .await;
     }
 
     // Dispatch notification
@@ -274,9 +298,15 @@ async fn test_router_stats() {
     let router = RequestRouter::new();
 
     // Register some handlers
-    router.register_handler("tools/list", |_| async { Ok(json!({})) }).await;
-    router.register_handler("tools/call", |_| async { Ok(json!({})) }).await;
-    router.register_notification_handler("notifications/initialized", |_| async {}).await;
+    router
+        .register_handler("tools/list", |_| async { Ok(json!({})) })
+        .await;
+    router
+        .register_handler("tools/call", |_| async { Ok(json!({})) })
+        .await;
+    router
+        .register_notification_handler("notifications/initialized", |_| async {})
+        .await;
 
     // Dispatch some requests to update stats
     let mut req1 = JsonRpcRequest::new(RequestId::Number(1), "tools/list");
@@ -321,7 +351,10 @@ fn test_correlator_register_with_timeout() {
     assert_eq!(handle.method(), "tools/call");
     // Check that remaining time is close to the timeout (it should be almost full)
     let remaining = handle.remaining();
-    assert!(remaining > Duration::from_secs(55), "Remaining time should be close to timeout");
+    assert!(
+        remaining > Duration::from_secs(55),
+        "Remaining time should be close to timeout"
+    );
 }
 
 // ============================================================================
@@ -348,7 +381,8 @@ fn test_full_request_response_flow() {
     };
 
     let builder = RequestBuilder::new(request_id.clone(), "initialize")
-        .params(&params).unwrap();
+        .params(&params)
+        .unwrap();
 
     let request = builder.build();
     assert_eq!(request.method, "initialize");
@@ -379,27 +413,29 @@ async fn test_router_with_multiple_handlers() {
     let router = RequestRouter::new();
 
     // Register handlers for different methods
-    router.register_handler("initialize", |_| {
-        async {
+    router
+        .register_handler("initialize", |_| async {
             Ok(json!({
                 "protocolVersion": "2025-11-25",
                 "capabilities": {},
                 "serverInfo": {"name": "test", "version": "1.0"}
             }))
-        }
-    }).await;
+        })
+        .await;
 
-    router.register_handler("tools/list", |_| {
-        async {
+    router
+        .register_handler("tools/list", |_| async {
             Ok(json!({
                 "tools": [
                     {"name": "tool1", "description": "Test tool", "inputSchema": {}}
                 ]
             }))
-        }
-    }).await;
+        })
+        .await;
 
-    router.register_handler("ping", |_| async { Ok(json!({})) }).await;
+    router
+        .register_handler("ping", |_| async { Ok(json!({})) })
+        .await;
 
     // Test each handler
     let mut init_request = JsonRpcRequest::new(RequestId::Number(1), "initialize");
@@ -551,7 +587,10 @@ fn test_response_parser_try_parse_success() {
 fn test_response_parser_try_parse_error() {
     let parser = ResponseParser::new();
 
-    let error = JsonRpcError::new(JsonRpcErrorCode::MethodNotFound, "Method not found".to_string());
+    let error = JsonRpcError::new(
+        JsonRpcErrorCode::MethodNotFound,
+        "Method not found".to_string(),
+    );
     let response = JsonRpcResponse::error(RequestId::Number(1), error);
 
     let result = parser.try_parse::<InitializeResult>(response);
@@ -569,8 +608,7 @@ fn test_response_parser_try_parse_error() {
 fn test_typed_response_with_response_time() {
     let raw_response = JsonRpcResponse::success(RequestId::Number(1), json!({}));
 
-    let typed = TypedResponse::new(raw_response, 42i32, "test".to_string())
-        .with_response_time(150);
+    let typed = TypedResponse::new(raw_response, 42i32, "test".to_string()).with_response_time(150);
 
     assert_eq!(typed.response_time_ms, Some(150));
 }
@@ -585,7 +623,11 @@ fn test_typed_response_is_success() {
 #[test]
 fn test_typed_response_result_accessors() {
     let raw_response = JsonRpcResponse::success(RequestId::Number(1), json!({}));
-    let typed = TypedResponse::new(raw_response, "test_result".to_string(), "method".to_string());
+    let typed = TypedResponse::new(
+        raw_response,
+        "test_result".to_string(),
+        "method".to_string(),
+    );
 
     // Test reference accessor
     assert_eq!(typed.result(), "test_result");
@@ -617,7 +659,9 @@ async fn test_router_has_handler() {
 
     assert!(!router.has_handler("initialize").await);
 
-    router.register_handler("initialize", |_| async { Ok(json!({})) }).await;
+    router
+        .register_handler("initialize", |_| async { Ok(json!({})) })
+        .await;
 
     assert!(router.has_handler("initialize").await);
 }
@@ -626,9 +670,15 @@ async fn test_router_has_handler() {
 async fn test_router_registered_methods() {
     let router = RequestRouter::new();
 
-    router.register_handler("initialize", |_| async { Ok(json!({})) }).await;
-    router.register_handler("tools/list", |_| async { Ok(json!({})) }).await;
-    router.register_handler("ping", |_| async { Ok(json!({})) }).await;
+    router
+        .register_handler("initialize", |_| async { Ok(json!({})) })
+        .await;
+    router
+        .register_handler("tools/list", |_| async { Ok(json!({})) })
+        .await;
+    router
+        .register_handler("ping", |_| async { Ok(json!({})) })
+        .await;
 
     let methods = router.registered_methods().await;
     assert_eq!(methods.len(), 3);
@@ -642,10 +692,14 @@ async fn test_router_handler_overwrite() {
     let router = RequestRouter::new();
 
     // Register first handler
-    router.register_handler("test", |_| async { Ok(json!({"version": 1})) }).await;
+    router
+        .register_handler("test", |_| async { Ok(json!({"version": 1})) })
+        .await;
 
     // Overwrite with second handler
-    router.register_handler("test", |_| async { Ok(json!({"version": 2})) }).await;
+    router
+        .register_handler("test", |_| async { Ok(json!({"version": 2})) })
+        .await;
 
     let mut request = JsonRpcRequest::new(RequestId::Number(1), "test");
     request.set_params(json!({}));
@@ -659,12 +713,14 @@ async fn test_router_handler_overwrite() {
 async fn test_router_error_stats() {
     let router = RequestRouter::new();
 
-    router.register_handler("failing", |_| async {
-        Err(McpError::protocol(
-            McpErrorCode::InternalError,
-            "Test error"
-        ))
-    }).await;
+    router
+        .register_handler("failing", |_| async {
+            Err(McpError::protocol(
+                McpErrorCode::InternalError,
+                "Test error",
+            ))
+        })
+        .await;
 
     let mut request = JsonRpcRequest::new(RequestId::Number(1), "failing");
     request.set_params(json!({}));
@@ -705,7 +761,9 @@ async fn test_router_parse_raw() {
         }),
     );
 
-    let typed = router.parse_raw::<InitializeResult>(response, "initialize").unwrap();
+    let typed = router
+        .parse_raw::<InitializeResult>(response, "initialize")
+        .unwrap();
     assert_eq!(typed.method, "initialize");
     assert_eq!(typed.result.protocol_version, "2025-11-25");
 }
@@ -738,8 +796,7 @@ fn test_request_builder_params_raw() {
 
 #[test]
 fn test_request_builder_string_id() {
-    let request = RequestBuilder::new(RequestId::String("custom-id".to_string()), "ping")
-        .build();
+    let request = RequestBuilder::new(RequestId::String("custom-id".to_string()), "ping").build();
 
     assert_eq!(request.id, RequestId::String("custom-id".to_string()));
 }
@@ -807,7 +864,8 @@ fn test_message_classifier_get_method_kind() {
 #[test]
 fn test_message_classifier_error_response() {
     // Response with error field should be classified as Response
-    let json_str = r#"{"jsonrpc":"2.0","id":1,"error":{"code":-32600,"message":"Invalid Request"}}"#;
+    let json_str =
+        r#"{"jsonrpc":"2.0","id":1,"error":{"code":-32600,"message":"Invalid Request"}}"#;
     let kind = MessageClassifier::classify(json_str).unwrap();
     assert!(matches!(kind, MessageKind::Response));
 }
@@ -841,10 +899,7 @@ fn test_correlator_accessors() {
 fn test_response_parser_empty_tools_list() {
     let parser = ResponseParser::new();
 
-    let response = JsonRpcResponse::success(
-        RequestId::Number(1),
-        json!({"tools": []}),
-    );
+    let response = JsonRpcResponse::success(RequestId::Number(1), json!({"tools": []}));
 
     let result = parser.parse_method::<ToolsList>(response).unwrap();
     assert!(result.tools.is_empty());
@@ -854,7 +909,9 @@ fn test_response_parser_empty_tools_list() {
 async fn test_router_concurrent_dispatch() {
     let router = Arc::new(RequestRouter::new());
 
-    router.register_handler("test", |_| async { Ok(json!({})) }).await;
+    router
+        .register_handler("test", |_| async { Ok(json!({})) })
+        .await;
 
     let mut handles = vec![];
 
@@ -890,7 +947,10 @@ fn test_typed_response_with_string_request_id() {
     );
 
     let typed = TypedResponse::new(response, "result".to_string(), "test".to_string());
-    assert_eq!(typed.request_id, RequestId::String("custom-uuid".to_string()));
+    assert_eq!(
+        typed.request_id,
+        RequestId::String("custom-uuid".to_string())
+    );
 }
 
 // ============================================================================

@@ -33,9 +33,18 @@ fn test_review_not_in_fast_mode() {
 fn test_review_position_in_expert_pipeline() {
     let stages = PipelineStage::pipeline_for_mode(ExecutionMode::Expert);
 
-    let test_pos = stages.iter().position(|s| matches!(s, PipelineStage::Test)).unwrap();
-    let review_pos = stages.iter().position(|s| matches!(s, PipelineStage::Review)).unwrap();
-    let verify_pos = stages.iter().position(|s| matches!(s, PipelineStage::Verify)).unwrap();
+    let test_pos = stages
+        .iter()
+        .position(|s| matches!(s, PipelineStage::Test))
+        .unwrap();
+    let review_pos = stages
+        .iter()
+        .position(|s| matches!(s, PipelineStage::Review))
+        .unwrap();
+    let verify_pos = stages
+        .iter()
+        .position(|s| matches!(s, PipelineStage::Verify))
+        .unwrap();
 
     assert!(review_pos > test_pos, "Review should be after Test");
     assert!(review_pos < verify_pos, "Review should be before Verify");
