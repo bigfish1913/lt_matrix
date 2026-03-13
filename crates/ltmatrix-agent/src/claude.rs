@@ -97,8 +97,7 @@ impl ClaudeAgent {
     fn build_command(&self, config: &ExecutionConfig) -> Vec<String> {
         let mut args = vec![
             self.agent.command.clone(),
-            "--prompt".to_string(),
-            "-".to_string(), // Read from stdin
+            "--print".to_string(), // Non-interactive mode, read from stdin
         ];
 
         // Add model selection if specified
@@ -165,7 +164,9 @@ impl ClaudeAgent {
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
-            .kill_on_drop(true);
+            .kill_on_drop(true)
+            // Remove CLAUDECODE to allow nested Claude CLI execution
+            .env_remove("CLAUDECODE");
 
         // Set API key from config if available, otherwise use environment variable
         if let Some(ref api_key) = self.agent.api_key {
@@ -242,6 +243,10 @@ impl ClaudeAgent {
             .context("Failed to wait for Claude process")?;
 
         debug!("Claude process exited with status: {}", status);
+        debug!("stdout length: {}, stderr length: {}", stdout_text.len(), stderr_text.len());
+        if !stderr_text.is_empty() {
+            warn!("Claude stderr: {}", stderr_text);
+        }
 
         // Check for errors
         let error = if !status.success() {
