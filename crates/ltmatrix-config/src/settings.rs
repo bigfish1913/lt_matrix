@@ -33,6 +33,10 @@ pub struct Config {
     #[serde(default)]
     pub modes: ModeConfigs,
 
+    /// Pipeline configuration
+    #[serde(default)]
+    pub pipeline: PipelineConfig,
+
     /// Output settings
     #[serde(default)]
     pub output: OutputConfig,
@@ -69,12 +73,60 @@ pub struct Config {
     pub memory: MemoryConfig,
 }
 
+/// Pipeline configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PipelineConfig {
+    /// Model to use for task generation
+    #[serde(default = "default_generation_model")]
+    pub generation_model: String,
+
+    /// Model to use for task assessment
+    #[serde(default = "default_assessment_model")]
+    pub assessment_model: String,
+
+    /// Whether to enable validation
+    #[serde(default = "default_true")]
+    pub enable_validation: bool,
+
+    /// Maximum number of tasks to generate
+    #[serde(default = "default_max_tasks")]
+    pub max_tasks: usize,
+}
+
+fn default_generation_model() -> String {
+    "claude-sonnet-4-6".to_string()
+}
+
+fn default_assessment_model() -> String {
+    "claude-sonnet-4-6".to_string()
+}
+
+fn default_true() -> bool {
+    true
+}
+
+fn default_max_tasks() -> usize {
+    50
+}
+
+impl Default for PipelineConfig {
+    fn default() -> Self {
+        PipelineConfig {
+            generation_model: default_generation_model(),
+            assessment_model: default_assessment_model(),
+            enable_validation: true,
+            max_tasks: 50,
+        }
+    }
+}
+
 impl Default for Config {
     fn default() -> Self {
         Config {
             default: Some("claude".to_string()),
             agents: HashMap::new(),
             modes: ModeConfigs::default(),
+            pipeline: PipelineConfig::default(),
             output: OutputConfig::default(),
             logging: LoggingConfig::default(),
             features: FeatureConfig::default(),
@@ -511,10 +563,6 @@ fn default_stale_threshold() -> u64 {
     3600 // 1 hour
 }
 
-fn default_true() -> bool {
-    true
-}
-
 fn default_max_retries() -> u32 {
     3
 }
@@ -604,6 +652,26 @@ fn merge_config(base: Config, override_config: Config) -> Config {
             fast: override_config.modes.fast.or(base.modes.fast),
             standard: override_config.modes.standard.or(base.modes.standard),
             expert: override_config.modes.expert.or(base.modes.expert),
+        },
+        // For pipeline config, override values take precedence
+        // We check if the override has non-default values
+        pipeline: PipelineConfig {
+            generation_model: if override_config.pipeline.generation_model != default_generation_model() {
+                override_config.pipeline.generation_model
+            } else {
+                base.pipeline.generation_model
+            },
+            assessment_model: if override_config.pipeline.assessment_model != default_assessment_model() {
+                override_config.pipeline.assessment_model
+            } else {
+                base.pipeline.assessment_model
+            },
+            enable_validation: override_config.pipeline.enable_validation,
+            max_tasks: if override_config.pipeline.max_tasks != default_max_tasks() {
+                override_config.pipeline.max_tasks
+            } else {
+                base.pipeline.max_tasks
+            },
         },
         output: override_config.output,
         logging: override_config.logging,
@@ -711,6 +779,9 @@ pub struct CliOverrides {
 
     /// Override verification
     pub verify: Option<bool>,
+
+    /// Number of parallel agent workers
+    pub agents: Option<usize>,
 }
 
 /// Loads configuration from all available sources

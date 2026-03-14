@@ -91,6 +91,10 @@ pub struct Args {
     #[arg(long, value_name = "NUM")]
     pub max_retries: Option<u32>,
 
+    /// Number of parallel agent workers
+    #[arg(short = 'n', long, value_name = "NUM", default_value = "1")]
+    pub agents: usize,
+
     /// Timeout for operations (in seconds)
     #[arg(long, value_name = "SECONDS")]
     pub timeout: Option<u64>,
@@ -205,6 +209,7 @@ impl Args {
             progress: None,
             run_tests: None,
             verify: None,
+            agents: Some(self.agents),
         }
     }
 }

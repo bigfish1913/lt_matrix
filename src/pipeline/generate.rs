@@ -12,6 +12,7 @@
 //! - Returns a validated task list ready for the assess stage
 
 use anyhow::{Context, Result};
+use regex::Regex;
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use tracing::{debug, info, warn};
@@ -644,8 +645,14 @@ fn parse_generation_response(response: &str) -> Result<Vec<Task>> {
     let json_str =
         extract_json_block(response).context("No JSON block found in generation response")?;
 
+    // Pre-process JSON to fix common LLM issues
+    let sanitized_json = sanitize_json_string(json_str);
+
     // Parse JSON
-    let json: Value = serde_json::from_str(json_str).context("Failed to parse generation JSON")?;
+    let json: Value = serde_json::from_str(&sanitized_json).context(format!(
+        "Failed to parse generation JSON. Sanitized JSON preview: {}",
+        &sanitized_json[..sanitized_json.len().min(500)]
+    ))?;
 
     // Extract tasks array
     let tasks_array = json["tasks"]
@@ -705,6 +712,22 @@ fn parse_generation_response(response: &str) -> Result<Vec<Task>> {
 
     debug!("Parsed {} tasks from generation response", tasks.len());
     Ok(tasks)
+}
+
+/// Sanitizes JSON string to fix common LLM output issues
+fn sanitize_json_string(json: &str) -> String {
+    let mut result = json.to_string();
+
+    // Fix common issue: "task-N" instead of "id": "task-N"
+    // Pattern: { "task-N", -> { "id": "task-N",
+    let task_id_pattern = regex::Regex::new(r#"\{\s*"task-(\d+)"\s*,"#).unwrap();
+    result = task_id_pattern.replace_all(&result, r#"{ "id": "task-$1","#).to_string();
+
+    // Fix trailing commas in arrays and objects
+    let trailing_comma_pattern = regex::Regex::new(r#",\s*([\]}])"#).unwrap();
+    result = trailing_comma_pattern.replace_all(&result, "$1").to_string();
+
+    result
 }
 
 /// Extracts JSON block from markdown response

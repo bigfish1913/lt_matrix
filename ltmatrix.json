@@ -1,0 +1,15 @@
+{
+    "version": "0.1.0",
+    "description": "Long-Time Agent Orchestrator - Automates software development tasks using AI agents",
+    "homepage": "https://github.com/bigfish1913/lt_matrix",
+    "license": "MIT",
+    "url": "file:///C:/Users/bigfish/Projects/github.com/bigfish1913/lt_matrix/target/release/ltmatrix.exe",
+    "bin": "ltmatrix.exe",
+    "checkver": {
+        "url": "https://github.com/bigfish1913/lt_matrix/releases/latest",
+        "regex": "tag/([\\d.]+)"
+    },
+    "autoupdate": {
+        "url": "https://github.com/bigfish1913/lt_matrix/releases/download/$version/ltmatrix-$version-x86_64-pc-windows-msvc.zip"
+    }
+}

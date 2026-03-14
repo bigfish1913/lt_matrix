@@ -19,7 +19,7 @@
 #   clean          - Clean build artifacts
 #   help           - Show this help
 
-.PHONY: build release test test-unit test-integration fmt fmt-check clippy check install-hooks uninstall-hooks docs clean help
+.PHONY: build release test test-unit test-integration fmt fmt-check clippy check install-hooks uninstall-hooks docs clean help install install-global dev
 
 # Default target
 .DEFAULT_GOAL := help

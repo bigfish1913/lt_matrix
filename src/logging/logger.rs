@@ -45,6 +45,7 @@ impl LogGuard {
 ///
 /// * `level` - The minimum log level to display
 /// * `log_file` - Optional path to a log file for output
+/// * `console` - Whether to output to console (set to false when using progress display)
 ///
 /// # Returns
 ///
@@ -57,12 +58,12 @@ impl LogGuard {
 /// use ltmatrix::logging::level::LogLevel;
 ///
 /// // Initialize with INFO level and console only
-/// let _guard = init_logging(LogLevel::Info, None::<&str>).expect("Failed to init logging");
+/// let _guard = init_logging(LogLevel::Info, None::<&str>, true).expect("Failed to init logging");
 ///
-/// // Initialize with DEBUG level and both console and file output
-/// let _guard = init_logging(LogLevel::Debug, Some("app.log")).expect("Failed to init logging");
+/// // Initialize with DEBUG level, file output, no console (for progress display)
+/// let _guard = init_logging(LogLevel::Debug, Some("app.log"), false).expect("Failed to init logging");
 /// ```
-pub fn init_logging(level: LogLevel, log_file: Option<impl AsRef<Path>>) -> io::Result<LogGuard> {
+pub fn init_logging(level: LogLevel, log_file: Option<impl AsRef<Path>>, console: bool) -> io::Result<LogGuard> {
     let env_filter = build_env_filter(level);
 
     // Initialize logging based on whether we have a file
@@ -81,48 +82,64 @@ pub fn init_logging(level: LogLevel, log_file: Option<impl AsRef<Path>>) -> io::
         let file = std::fs::File::create(file_path.as_ref())?;
         let (non_blocking_file, worker_guard) = non_blocking(file);
 
-        // Set up subscriber with both console and file output
-        let subscriber = Registry::default()
-            .with(env_filter)
-            .with(
-                fmt::layer()
-                    .with_writer(io::stdout)
-                    .with_span_events(FmtSpan::CLOSE)
-                    .with_ansi(true)
-                    .with_target(true)
-                    .with_file(true)
-                    .with_line_number(true),
-            )
-            .with(
-                fmt::layer()
-                    .with_writer(non_blocking_file)
-                    .with_span_events(FmtSpan::CLOSE)
-                    .with_ansi(false)
-                    .with_target(true)
-                    .with_file(true)
-                    .with_line_number(true),
-            );
+        // Set up subscriber based on whether console output is enabled
+        if console {
+            // Both console and file output
+            let subscriber = Registry::default()
+                .with(env_filter)
+                .with(
+                    fmt::layer()
+                        .with_writer(io::stdout)
+                        .with_span_events(FmtSpan::CLOSE)
+                        .with_ansi(true)
+                        .with_target(true)
+                        .with_file(true)
+                        .with_line_number(true),
+                )
+                .with(
+                    fmt::layer()
+                        .with_writer(non_blocking_file)
+                        .with_span_events(FmtSpan::CLOSE)
+                        .with_ansi(false)
+                        .with_target(true)
+                        .with_file(true)
+                        .with_line_number(true),
+                );
 
-        // Use try_init to handle tests
-        let _ = subscriber.try_init();
+            let _ = subscriber.try_init();
+        } else {
+            // File only (no console - for progress display)
+            let subscriber = Registry::default()
+                .with(env_filter)
+                .with(
+                    fmt::layer()
+                        .with_writer(non_blocking_file)
+                        .with_span_events(FmtSpan::CLOSE)
+                        .with_ansi(false)
+                        .with_target(true)
+                        .with_file(true)
+                        .with_line_number(true),
+                );
 
-        let path: &Path = file_path.as_ref();
-        tracing::info!("Logging to file: {}", path.display());
+            let _ = subscriber.try_init();
+        }
 
         Ok(LogGuard {
             _guard: Some(worker_guard),
         })
     } else {
-        // Console only logging - use try_init to handle tests
-        let _ = tracing_subscriber::fmt()
-            .with_env_filter(env_filter)
-            .with_writer(io::stdout)
-            .with_span_events(FmtSpan::CLOSE)
-            .with_ansi(true)
-            .with_target(true)
-            .with_file(false)
-            .with_line_number(false)
-            .try_init();
+        // Console only logging (if enabled) - use try_init to handle tests
+        if console {
+            let _ = tracing_subscriber::fmt()
+                .with_env_filter(env_filter)
+                .with_writer(io::stdout)
+                .with_span_events(FmtSpan::CLOSE)
+                .with_ansi(true)
+                .with_target(true)
+                .with_file(false)
+                .with_line_number(false)
+                .try_init();
+        }
 
         Ok(LogGuard { _guard: None })
     }
@@ -154,6 +171,7 @@ fn build_env_filter(level: LogLevel) -> EnvFilter {
 ///
 /// * `level` - The minimum log level to display
 /// * `base_dir` - Optional base directory for logs (defaults to current directory)
+/// * `console` - Whether to output to console (set to false when using progress display)
 ///
 /// # Returns
 ///
@@ -166,8 +184,12 @@ fn build_env_filter(level: LogLevel) -> EnvFilter {
 /// use ltmatrix::logging::level::LogLevel;
 /// use std::path::Path;
 ///
-/// // Initialize with automatic log file management
-/// let (_guard, log_manager) = init_logging_with_management(LogLevel::Info, None::<&Path>)
+/// // Initialize with automatic log file management and console output
+/// let (_guard, log_manager) = init_logging_with_management(LogLevel::Info, None::<&Path>, true)
+///     .expect("Failed to init logging");
+///
+/// // Initialize with progress display (no console logging)
+/// let (_guard, log_manager) = init_logging_with_management(LogLevel::Info, None::<&Path>, false)
 ///     .expect("Failed to init logging");
 ///
 /// // Cleanup old logs on successful completion
@@ -177,6 +199,7 @@ fn build_env_filter(level: LogLevel) -> EnvFilter {
 pub fn init_logging_with_management(
     level: LogLevel,
     base_dir: Option<impl AsRef<Path>>,
+    console: bool,
 ) -> io::Result<(LogGuard, LogManager)> {
     // Create log manager
     let log_manager = LogManager::new(base_dir);
@@ -185,7 +208,7 @@ pub fn init_logging_with_management(
     let log_path = log_manager.create_log_file()?;
 
     // Initialize logging with the created file
-    let guard = init_logging(level, Some(log_path.as_path()))?;
+    let guard = init_logging(level, Some(log_path.as_path()), console)?;
 
     Ok((guard, log_manager))
 }

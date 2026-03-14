@@ -62,6 +62,7 @@ reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-feature
 
 # Terminal handling
 console = "0.15"
+atty = "0.2"
 
 # Interactive prompts
 dialoguer = "0.11"
@@ -141,6 +142,7 @@ chrono = { workspace = true }
 
 # Terminal handling
 console = { workspace = true }
+atty = { workspace = true }
 
 # Interactive prompts
 dialoguer = { workspace = true }

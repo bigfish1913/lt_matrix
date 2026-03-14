@@ -1,0 +1,113 @@
+# Taskfile for ltmatrix development
+# Run with: task <task-name>
+# Install task: https://taskfile.dev/installation/
+
+version: '3'
+
+vars:
+  BINARY_NAME: ltmatrix
+
+env:
+  INSTALL_DIR:
+    sh: echo "${HOME}/bin"
+
+tasks:
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list
+
+  build:
+    desc: Build release binary
+    cmds:
+      - cargo build --release
+    sources:
+      - src/**/*.rs
+      - crates/**/*.rs
+      - Cargo.toml
+      - Cargo.lock
+    generates:
+      - target/release/ltmatrix.exe
+
+  install:
+    desc: Install binary to ~/bin
+    deps: [build]
+    cmds:
+      - cmd: mkdir -p "${HOME}/bin"
+        platforms: [linux, darwin]
+      - cmd: mkdir -p "${HOME}/bin" 2>/dev/null || true
+        platforms: [windows]
+      - cmd: cp target/release/ltmatrix "${HOME}/bin/ltmatrix" && chmod +x "${HOME}/bin/ltmatrix"
+        platforms: [linux, darwin]
+      - cmd: cp target/release/ltmatrix.exe "${HOME}/bin/ltmatrix.exe"
+        platforms: [windows]
+      - echo "Installed to ${HOME}/bin/ltmatrix"
+
+  install-global:
+    desc: Install binary to /usr/local/bin (requires sudo)
+    deps: [build]
+    cmds:
+      - sudo cp target/release/ltmatrix /usr/local/bin/ltmatrix
+      - sudo chmod +x /usr/local/bin/ltmatrix
+      - echo "Installed to /usr/local/bin/ltmatrix"
+    platforms: [linux, darwin]
+
+  dev:
+    desc: Build and install for development
+    deps: [install]
+    cmds:
+      - ltmatrix --version
+
+  clean:
+    desc: Clean build artifacts
+    cmds:
+      - cargo clean
+
+  test:
+    desc: Run all tests
+    cmds:
+      - cargo test --all-features
+
+  lint:
+    desc: Run linters
+    cmds:
+      - cargo fmt --check
+      - cargo clippy --all-targets --all-features -- -D warnings
+
+  fmt:
+    desc: Format code
+    cmds:
+      - cargo fmt
+
+  check:
+    desc: Run all checks (fmt, clippy, test)
+    deps: [fmt]
+    cmds:
+      - task: lint
+      - task: test
+
+  release:
+    desc: Build release binary for distribution
+    cmds:
+      - cargo build --release
+      - strip target/release/ltmatrix 2>/dev/null || true
+      - echo "Release binary ready at target/release/ltmatrix"
+
+  watch:
+    desc: Watch for changes and rebuild
+    cmds:
+      - cargo watch -x "build --release"
+
+  run:
+    desc: "Build and run with arguments (use: task run -- <args>)"
+    deps: [build]
+    cmds:
+      - ./target/release/ltmatrix {{.CLI_ARGS}}
+
+  uninstall:
+    desc: Remove installed binary
+    cmds:
+      - rm -f "${HOME}/bin/ltmatrix"
+      - rm -f "${HOME}/bin/ltmatrix.exe"
+      - rm -f /usr/local/bin/ltmatrix
+      - echo "Uninstalled ltmatrix"

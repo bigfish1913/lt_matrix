@@ -57,6 +57,7 @@ use crate::pipeline::memory::{update_memory, MemoryConfig};
 use crate::pipeline::review::{review_tasks, ReviewConfig};
 use crate::pipeline::test::{test_tasks, TestConfig};
 use crate::pipeline::verify::{verify_tasks, VerifyConfig};
+use crate::progress::live_display::{get_display, init_display, ProgressStats};
 use crate::workspace::{RecoverySummary, WorkspaceState};
 use ltmatrix_agent::AgentPool;
 use ltmatrix_core::{ExecutionMode, ModeConfig, PipelineStage, Task};
@@ -188,6 +189,29 @@ impl OrchestratorConfig {
     /// Set max parallel tasks
     pub fn with_max_parallel(mut self, max: usize) -> Self {
         self.max_parallel_tasks = max;
+        self
+    }
+
+    /// Override the generation model from config
+    pub fn with_generation_model(mut self, model: &str) -> Self {
+        self.generate_config.generation_model = model.to_string();
+        self
+    }
+
+    /// Override the assessment model from config
+    pub fn with_assessment_model(mut self, model: &str) -> Self {
+        self.assess_config.assessment_model = model.to_string();
+        self
+    }
+
+    /// Use models from pipeline configuration
+    pub fn with_pipeline_config(
+        mut self,
+        generation_model: &str,
+        assessment_model: &str,
+    ) -> Self {
+        self.generate_config.generation_model = generation_model.to_string();
+        self.assess_config.assessment_model = assessment_model.to_string();
         self
     }
 }
@@ -339,6 +363,11 @@ impl PipelineOrchestrator {
         info!("Starting pipeline execution in {:?} mode", mode);
         info!("Goal: {}", goal);
 
+        // Initialize live display
+        let display = init_display(self.config.show_progress);
+        display.start();
+        display.info("pipeline", &format!("开始执行 - {:?} 模式", mode));
+
         let mut result = PipelineResult::new();
         let start_time = std::time::Instant::now();
 
@@ -353,10 +382,23 @@ impl PipelineOrchestrator {
 
         // Get the pipeline stages for this mode
         let stages = PipelineStage::pipeline_for_mode(mode);
+        let total_stages = stages.len();
 
         // Execute each stage in sequence
         for (stage_index, stage) in stages.iter().enumerate() {
             self.set_current_stage(*stage).await;
+
+            // Update live display with current stage
+            display.update_stats(ProgressStats {
+                stage: stage.display_name().to_string(),
+                stage_index,
+                total_stages,
+                total_tasks: result.total_tasks,
+                completed_tasks: result.tasks_completed,
+                failed_tasks: result.tasks_failed,
+                current_task: None,
+            });
+            display.info("pipeline", &format!("执行阶段: {}", stage.display_name()));
 
             match self.execute_stage(goal, *stage, stage_index).await {
                 Ok(stage_result) => {
@@ -374,12 +416,21 @@ impl PipelineOrchestrator {
                         }
                     }
 
+                    display.success("pipeline", &format!("阶段完成: {} ({} 任务)", stage.display_name(), stage_result.len()));
                     info!("Stage {:?} completed: {} tasks", stage, stage_result.len());
                 }
                 Err(e) => {
                     error!("Stage {:?} failed: {}", stage, e);
+                    display.error("pipeline", &format!("阶段失败: {} - {}", stage.display_name(), e));
                     result.total_time = start_time.elapsed();
                     result.success = false;
+
+                    // Show final summary
+                    let summary = format!(
+                        "Pipeline 失败于阶段: {}\n错误: {}",
+                        stage.display_name(), e
+                    );
+                    display.finish(false, &summary);
                     return Ok(result);
                 }
             }
@@ -394,6 +445,18 @@ impl PipelineOrchestrator {
             result.tasks_failed,
             result.total_time.as_secs_f64()
         );
+
+        // Show final summary
+        let summary = format!(
+            "Pipeline 执行摘要:\n  总任务: {}\n  完成: {}\n  失败: {}\n  阶段完成: {}\n  成功率: {:.1}%\n  总耗时: {:.2}s",
+            result.total_tasks,
+            result.tasks_completed,
+            result.tasks_failed,
+            result.stages_completed,
+            result.success_rate(),
+            result.total_time.as_secs_f64()
+        );
+        display.finish(result.success, &summary);
 
         Ok(result)
     }

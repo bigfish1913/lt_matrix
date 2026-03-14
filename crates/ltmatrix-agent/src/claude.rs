@@ -201,6 +201,8 @@ impl ClaudeAgent {
         }
 
         // Read stdout and stderr concurrently
+        // On Windows, pipes can be closed abruptly (error 232 - PIPE_BEING_CLOSED)
+        // We need to handle this gracefully
         let stdout = child.stdout.take().expect("Failed to get stdout");
         let stderr = child.stderr.take().expect("Failed to get stderr");
 
@@ -208,9 +210,20 @@ impl ClaudeAgent {
             let mut reader = BufReader::new(stdout).lines();
             let mut output = String::new();
 
-            while let Some(line) = reader.next_line().await.unwrap_or(None) {
-                output.push_str(&line);
-                output.push('\n');
+            loop {
+                match reader.next_line().await {
+                    Ok(Some(line)) => {
+                        output.push_str(&line);
+                        output.push('\n');
+                    }
+                    Ok(None) => break, // EOF
+                    Err(e) => {
+                        // On Windows, pipe errors are common when process exits
+                        // Log but don't fail - we still want to capture what we got
+                        debug!("stdout read ended: {}", e);
+                        break;
+                    }
+                }
             }
 
             output
@@ -220,9 +233,19 @@ impl ClaudeAgent {
             let mut reader = BufReader::new(stderr).lines();
             let mut errors = String::new();
 
-            while let Some(line) = reader.next_line().await.unwrap_or(None) {
-                errors.push_str(&line);
-                errors.push('\n');
+            loop {
+                match reader.next_line().await {
+                    Ok(Some(line)) => {
+                        errors.push_str(&line);
+                        errors.push('\n');
+                    }
+                    Ok(None) => break, // EOF
+                    Err(e) => {
+                        // On Windows, pipe errors are common when process exits
+                        debug!("stderr read ended: {}", e);
+                        break;
+                    }
+                }
             }
 
             errors

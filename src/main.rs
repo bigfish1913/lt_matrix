@@ -26,6 +26,7 @@ use ltmatrix::logging::level::LogLevel as LoggingLevel;
 use ltmatrix::logging::logger;
 use ltmatrix::models::ExecutionMode;
 use ltmatrix::pipeline::orchestrator::{OrchestratorConfig, PipelineOrchestrator};
+use ltmatrix::workspace::WorkspaceState;
 
 // =============================================================================
 // Application State
@@ -67,10 +68,22 @@ impl AppState {
 
 fn main() {
     // Set up panic handler to ensure we exit with proper error code
+    // Use a robust handler that won't panic again if stderr is closed
     let _original_hook = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |panic_info| {
-        error!("Application panic: {}", panic_info);
+        // Try to print to stderr, but ignore errors (pipe might be closed on Windows)
+        let _ = std::io::stderr().write_all(b"Application panic: ");
+        if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
+            let _ = std::io::stderr().write_all(s.as_bytes());
+        } else if let Some(s) = panic_info.payload().downcast_ref::<String>() {
+            let _ = std::io::stderr().write_all(s.as_bytes());
+        }
+        if let Some(location) = panic_info.location() {
+            let _ = std::io::stderr().write_all(format!("\n at {}:{}", location.file(), location.line()).as_bytes());
+        }
+        let _ = std::io::stderr().write_all(b"\n");
         let _ = std::io::stdout().flush();
+        let _ = std::io::stderr().flush();
         std::process::exit(1);
     }));
 
@@ -174,12 +187,18 @@ fn print_banner(args: &Args) {
         return;
     }
 
-    println!("ltmatrix - Long-Time Agent Orchestrator");
-    println!("Version: {}", env!("CARGO_PKG_VERSION"));
+    let mut write_out = |msg: &str| {
+        let _ = std::io::stdout().write_all(msg.as_bytes());
+    };
+
+    write_out("ltmatrix - Long-Time Agent Orchestrator\n");
+    write_out(&format!("Version: {}\n", env!("CARGO_PKG_VERSION")));
 
     if args.is_run_command() && args.goal.is_some() {
-        println!();
+        write_out("\n");
     }
+
+    let _ = std::io::stdout().flush();
 }
 
 /// Initialize logging from CLI arguments
@@ -199,33 +218,35 @@ fn initialize_logging(args: &Args) -> Result<(Option<LogManager>, LoggingLevel)>
     });
 
     // Determine if we should use file logging
+    // For main pipeline (no command) and release command, disable console to not interfere with progress display
+    let is_main_pipeline = args.command.is_none() || matches!(args.command, Some(Command::Release(_)));
+
     let log_manager = if args.log_file.is_some() {
         // User specified a specific log file
         let log_file = args.log_file.as_ref().unwrap();
-        let _guard = logger::init_logging(log_level, Some(log_file.as_path()))
+        let _guard = logger::init_logging(log_level, Some(log_file.as_path()), !is_main_pipeline)
             .context("Failed to initialize logging with file")?;
-        info!("Logging to file: {}", log_file.display());
         None
-    } else if args.command.is_none() || matches!(args.command, Some(Command::Release(_))) {
+    } else if is_main_pipeline {
         // Use automatic log file management for main run and release commands
+        // Disable console output to not interfere with progress display
         let base_dir = env::current_dir().context("Failed to get current directory")?;
 
-        let (guard, manager) = logger::init_logging_with_management(log_level, Some(base_dir))
+        let (guard, manager) = logger::init_logging_with_management(log_level, Some(base_dir), false)
             .context("Failed to initialize logging with management")?;
 
         // The guard must be kept alive for the application lifetime
         // We store it in a static to prevent it from being dropped
         if let Err(e) = set_global_log_guard(guard) {
-            warn!("Failed to set global log guard: {}", e);
+            // Can't use warn! here since logging might not be fully initialized
+            eprintln!("Failed to set global log guard: {}", e);
         }
 
-        info!("Logging initialized with automatic file management");
         Some(manager)
     } else {
         // Console-only logging for other subcommands
-        let _guard = logger::init_logging(log_level, None::<&PathBuf>)
+        let _guard = logger::init_logging(log_level, None::<&PathBuf>, true)
             .context("Failed to initialize console logging")?;
-        info!("Console-only logging initialized");
         None
     };
 
@@ -345,6 +366,26 @@ fn is_shutdown_requested() -> bool {
 }
 
 // =============================================================================
+// Helper Functions
+// =============================================================================
+
+/// Safely write to stdout, ignoring pipe errors (common on Windows when pipe is closed)
+fn safe_print(msg: &str) {
+    let _ = std::io::stdout().write_all(msg.as_bytes());
+}
+
+/// Safely write a line to stdout
+fn safe_println(msg: &str) {
+    safe_print(msg);
+    safe_print("\n");
+}
+
+/// Safely flush stdout
+fn safe_flush() {
+    let _ = std::io::stdout().flush();
+}
+
+// =============================================================================
 // Command Execution Functions
 // =============================================================================
 
@@ -360,33 +401,124 @@ fn is_shutdown_requested() -> bool {
 fn execute_run_command(app_state: &mut AppState) -> Result<i32> {
     let args = &app_state.args;
 
-    // Ensure we have a goal (from CLI arg or file)
-    let goal = if let Some(ref file_path) = args.file {
-        // Read goal from file
-        std::fs::read_to_string(file_path)
-            .with_context(|| format!("Failed to read goal from file: {}", file_path.display()))?
-    } else if let Some(ref goal) = args.goal {
-        goal.clone()
-    } else {
-        print_help();
-        return Ok(0);
+    // Maximum document size for display (characters)
+    const MAX_DOC_DISPLAY_SIZE: usize = 5000;
+
+    // Build goal from CLI args and/or file
+    let goal = match (&args.goal, &args.file) {
+        (Some(cli_goal), Some(file_path)) => {
+            // Both provided: combine them
+            let file_content = std::fs::read_to_string(file_path)
+                .with_context(|| format!("Failed to read goal from file: {}", file_path.display()))?;
+
+            // Truncate file content for display if too long
+            let truncated_content = if file_content.len() > MAX_DOC_DISPLAY_SIZE {
+                format!("{}...\n\n[文档已截断，共 {} 字符]", &file_content[..MAX_DOC_DISPLAY_SIZE], file_content.len())
+            } else {
+                file_content.clone()
+            };
+
+            info!("Goal from CLI: {}", cli_goal);
+            info!("Goal from file: {} ({} chars)", file_path.display(), file_content.len());
+
+            // Combine: CLI goal as main instruction, file as reference document
+            format!(
+                "{}\n\n---\n参考文档:\n{}\n---",
+                cli_goal, truncated_content
+            )
+        }
+        (None, Some(file_path)) => {
+            // File only
+            let file_content = std::fs::read_to_string(file_path)
+                .with_context(|| format!("Failed to read goal from file: {}", file_path.display()))?;
+
+            // Truncate if too long
+            let goal = if file_content.len() > MAX_DOC_DISPLAY_SIZE {
+                info!("Goal from file: {} (truncated from {} chars)", file_path.display(), file_content.len());
+                format!("{}...\n\n[文档已截断，共 {} 字符]", &file_content[..MAX_DOC_DISPLAY_SIZE], file_content.len())
+            } else {
+                info!("Goal from file: {} ({} chars)", file_path.display(), file_content.len());
+                file_content
+            };
+            goal
+        }
+        (Some(cli_goal), None) => {
+            // CLI only
+            info!("Goal from CLI: {}", cli_goal);
+            cli_goal.clone()
+        }
+        (None, None) => {
+            print_help();
+            return Ok(0);
+        }
     };
 
     info!("Starting run command");
-    info!("Goal: {}", goal);
     info!("Mode: {:?}", args.get_execution_mode());
 
     // Determine execution mode
     let mode = args.get_execution_mode().to_model();
 
+    // Build orchestrator configuration
+    let work_dir = env::current_dir().context("Failed to get current directory")?;
+
+    // Auto-detect existing tasks and ask to resume (unless --resume is explicitly set)
+    let should_resume = if !args.resume && WorkspaceState::exists(&work_dir) {
+        if let Ok(state) = WorkspaceState::load(work_dir.clone()) {
+            let recovery = state.get_recovery_summary();
+            if recovery.can_resume {
+                let completed = state.tasks.iter().filter(|t| t.status == ltmatrix::models::TaskStatus::Completed).count();
+                let total = state.tasks.len();
+                let pending = recovery.total_incomplete;
+
+                safe_println("");
+                safe_println(&format!("\x1B[33m发现已有 {} 个任务 ({} 已完成, {} 待处理)\x1B[0m", total, completed, pending));
+                safe_print("继续上次执行? [Y/n] ");
+                safe_flush();
+
+                // Read user input
+                let mut input = String::new();
+                match std::io::stdin().read_line(&mut input) {
+                    Ok(_) => {
+                        let answer = input.trim().to_lowercase();
+                        if answer.is_empty() || answer == "y" || answer == "yes" {
+                            true
+                        } else {
+                            safe_println("\x1B[33m清除现有任务，重新生成...\x1B[0m");
+                            // Clear existing tasks
+                            let manifest_path = work_dir.join(".ltmatrix").join("tasks-manifest.json");
+                            if manifest_path.exists() {
+                                std::fs::remove_file(&manifest_path).ok();
+                            }
+                            false
+                        }
+                    }
+                    Err(_) => false
+                }
+            } else {
+                false
+            }
+        } else {
+            false
+        }
+    } else {
+        args.resume
+    };
+
+    // Handle resume mode
+    if should_resume {
+        return execute_resume_from_run(app_state, work_dir, mode);
+    }
+
     // Check for dry-run mode
     if args.dry_run {
         info!("Dry run mode: pipeline will be planned but not executed");
-        println!("\nDry run mode - planning without execution");
-        println!("Goal: {}", goal);
-        println!("Mode: {:?}", mode);
-        println!();
-        println!("Remove --dry-run to execute the pipeline");
+        safe_println("\nDry run mode - planning without execution");
+        safe_println(&format!("Goal: {}", goal));
+        safe_println(&format!("Mode: {:?}", mode));
+        safe_println("");
+        safe_println("Remove --dry-run to execute the pipeline");
+        safe_flush();
         return Ok(0);
     }
 
@@ -400,29 +532,41 @@ fn execute_run_command(app_state: &mut AppState) -> Result<i32> {
         .ok_or_else(|| anyhow::anyhow!("Agent pool not initialized"))?;
 
     // Create orchestrator config based on execution mode
+    // Use model from config file if specified
+    let pipeline_config = &app_state.config.pipeline;
+    let generation_model = &pipeline_config.generation_model;
+    let assessment_model = &pipeline_config.assessment_model;
+
+    debug!("Pipeline config from file: generation_model={}, assessment_model={}", generation_model, assessment_model);
+    info!("Using models: generation={}, assessment={}", generation_model, assessment_model);
+
     let orchestrator_config = match mode {
         ExecutionMode::Fast => OrchestratorConfig::fast_mode()
             .with_work_dir(&work_dir)
             .with_agent_pool(agent_pool)
-            .with_progress(app_state.config.output.progress),
+            .with_progress(app_state.config.output.progress)
+            .with_pipeline_config(generation_model, assessment_model),
         ExecutionMode::Expert => OrchestratorConfig::expert_mode()
             .with_work_dir(&work_dir)
             .with_agent_pool(agent_pool)
-            .with_progress(app_state.config.output.progress),
+            .with_progress(app_state.config.output.progress)
+            .with_pipeline_config(generation_model, assessment_model),
         ExecutionMode::Standard => OrchestratorConfig::default()
             .with_work_dir(&work_dir)
             .with_agent_pool(agent_pool)
-            .with_progress(app_state.config.output.progress),
+            .with_progress(app_state.config.output.progress)
+            .with_pipeline_config(generation_model, assessment_model),
     };
 
     // Create pipeline orchestrator
     let orchestrator = PipelineOrchestrator::new(orchestrator_config)
         .context("Failed to create pipeline orchestrator")?;
 
-    println!("\n🚀 Starting Pipeline Execution");
-    println!("Goal: {}", goal);
-    println!("Mode: {}", mode);
-    println!();
+    safe_println("\nStarting Pipeline Execution");
+    safe_println(&format!("Goal: {}", goal));
+    safe_println(&format!("Mode: {}", mode));
+    safe_println("");
+    safe_flush();
 
     // Execute the pipeline
     let result = tokio::runtime::Runtime::new()
@@ -431,17 +575,102 @@ fn execute_run_command(app_state: &mut AppState) -> Result<i32> {
         .context("Pipeline execution failed")?;
 
     // Print results
-    println!();
-    println!("Pipeline Execution Summary:");
-    println!("  Total tasks: {}", result.total_tasks);
-    println!("  Completed: {}", result.tasks_completed);
-    println!("  Failed: {}", result.tasks_failed);
-    println!("  Stages completed: {}", result.stages_completed);
-    println!("  Success rate: {:.1}%", result.success_rate());
-    println!("  Total time: {:.2}s", result.total_time.as_secs_f64());
-    println!();
+    safe_println("");
+    safe_println("Pipeline Execution Summary:");
+    safe_println(&format!("  Total tasks: {}", result.total_tasks));
+    safe_println(&format!("  Completed: {}", result.tasks_completed));
+    safe_println(&format!("  Failed: {}", result.tasks_failed));
+    safe_println(&format!("  Stages completed: {}", result.stages_completed));
+    safe_println(&format!("  Success rate: {:.1}%", result.success_rate()));
+    safe_println(&format!("  Total time: {:.2}s", result.total_time.as_secs_f64()));
+    safe_println("");
+    safe_flush();
 
     // Return appropriate exit code
+    if result.success {
+        Ok(0)
+    } else {
+        Ok(1)
+    }
+}
+
+/// Execute resume from within run command (auto-detected or user requested)
+#[instrument(skip(app_state))]
+fn execute_resume_from_run(app_state: &mut AppState, work_dir: PathBuf, mode: ExecutionMode) -> Result<i32> {
+    info!("Resuming pipeline from previous run");
+
+    // Load workspace state with transformation
+    let state = WorkspaceState::load_with_transform(work_dir.clone())
+        .context("Failed to load workspace state")?;
+
+    let recovery = state.get_recovery_summary();
+    if !recovery.can_resume {
+        safe_println("No incomplete tasks found, nothing to resume");
+        return Ok(0);
+    }
+
+    // Display workspace status
+    let summary = state.status_summary();
+    safe_println("\n\x1B[36m恢复执行\x1B[0m");
+    safe_println(&format!("  总任务: {}", summary.total()));
+    safe_println(&format!("  已完成: {}", summary.completed));
+    safe_println(&format!("  待处理: {}", summary.pending));
+    safe_println(&format!("  失败: {} (将重试)", summary.failed));
+    safe_println(&format!("  进度: {:.1}%", summary.completion_percentage()));
+    safe_println("");
+    safe_flush();
+
+    // Get agent pool
+    let agent_pool = app_state
+        .agent_pool
+        .clone()
+        .ok_or_else(|| anyhow::anyhow!("Agent pool not initialized"))?;
+
+    // Create orchestrator config
+    let pipeline_config = &app_state.config.pipeline;
+    let generation_model = &pipeline_config.generation_model;
+    let assessment_model = &pipeline_config.assessment_model;
+
+    let orchestrator_config = match mode {
+        ExecutionMode::Fast => OrchestratorConfig::fast_mode()
+            .with_work_dir(&work_dir)
+            .with_agent_pool(agent_pool)
+            .with_progress(app_state.config.output.progress)
+            .with_pipeline_config(generation_model, assessment_model),
+        ExecutionMode::Expert => OrchestratorConfig::expert_mode()
+            .with_work_dir(&work_dir)
+            .with_agent_pool(agent_pool)
+            .with_progress(app_state.config.output.progress)
+            .with_pipeline_config(generation_model, assessment_model),
+        ExecutionMode::Standard => OrchestratorConfig::default()
+            .with_work_dir(&work_dir)
+            .with_agent_pool(agent_pool)
+            .with_progress(app_state.config.output.progress)
+            .with_pipeline_config(generation_model, assessment_model),
+    };
+
+    // Create orchestrator
+    let orchestrator = PipelineOrchestrator::new(orchestrator_config)
+        .context("Failed to create pipeline orchestrator")?;
+
+    // Resume pipeline
+    let result = tokio::runtime::Runtime::new()
+        .context("Failed to create async runtime")?
+        .block_on(orchestrator.resume_pipeline())
+        .context("Pipeline resume failed")?;
+
+    // Print results
+    safe_println("");
+    safe_println("Pipeline Execution Summary:");
+    safe_println(&format!("  Total tasks: {}", result.total_tasks));
+    safe_println(&format!("  Completed: {}", result.tasks_completed));
+    safe_println(&format!("  Failed: {}", result.tasks_failed));
+    safe_println(&format!("  Stages completed: {}", result.stages_completed));
+    safe_println(&format!("  Success rate: {:.1}%", result.success_rate()));
+    safe_println(&format!("  Total time: {:.2}s", result.total_time.as_secs_f64()));
+    safe_println("");
+    safe_flush();
+
     if result.success {
         Ok(0)
     } else {
@@ -573,75 +802,95 @@ fn cleanup_on_success(log_manager: Option<LogManager>) -> Result<()> {
 
 /// Print error with user-friendly formatting
 fn print_error(error: &anyhow::Error) {
-    eprintln!();
-    eprintln!("❌ Error:");
+    // Use a helper to safely write to stderr, ignoring pipe errors on Windows
+    let mut write_err = |msg: &str| {
+        let _ = std::io::stderr().write_all(msg.as_bytes());
+    };
+
+    write_err("\n");
+    write_err("Error:\n");
 
     // Print the error chain
     for (i, cause) in error.chain().enumerate() {
         if i == 0 {
-            eprintln!("   {}", cause);
+            write_err("   ");
+            write_err(&cause.to_string());
+            write_err("\n");
         } else {
-            eprintln!("   Caused by: {}", cause);
+            write_err("   Caused by: ");
+            write_err(&cause.to_string());
+            write_err("\n");
         }
     }
 
-    eprintln!();
+    write_err("\n");
 
     // Print helpful hints based on error content
     let error_msg = error.to_string().to_lowercase();
     if error_msg.contains("permission") || error_msg.contains("access") {
-        eprintln!("Hint: Check file permissions and try running with appropriate access.");
+        write_err("Hint: Check file permissions and try running with appropriate access.\n");
     } else if error_msg.contains("network") || error_msg.contains("connection") {
-        eprintln!("Hint: Check your internet connection and try again.");
+        write_err("Hint: Check your internet connection and try again.\n");
     } else if error_msg.contains("config") || error_msg.contains("configuration") {
-        eprintln!("Hint: Check your configuration file at:");
-        eprintln!("  - ~/.config/ltmatrix/config.toml (global)");
-        eprintln!("  - .ltmatrix/config.toml (project)");
+        write_err("Hint: Check your configuration file at:\n");
+        write_err("  - ~/.config/ltmatrix/config.toml (global)\n");
+        write_err("  - .ltmatrix/config.toml (project)\n");
     } else if error_msg.contains("agent") || error_msg.contains("backend") {
-        eprintln!("Hint: Ensure the agent backend is properly configured.");
-        eprintln!("Run 'ltmatrix --help' for more information.");
+        write_err("Hint: Ensure the agent backend is properly configured.\n");
+        write_err("Run 'ltmatrix --help' for more information.\n");
     }
 
-    eprintln!();
-    eprintln!("For more help, visit: https://github.com/bigfish/ltmatrix");
-    eprintln!();
+    write_err("\n");
+    write_err("For more help, visit: https://github.com/bigfish/ltmatrix\n");
+    write_err("\n");
+
+    // Flush stderr, ignoring any errors
+    let _ = std::io::stderr().flush();
 }
 
 /// Print help information when no goal is provided
 fn print_help() {
-    println!("ltmatrix - Long-Time Agent Orchestrator");
-    println!();
-    println!("USAGE:");
-    println!("  ltmatrix [OPTIONS] <GOAL>");
-    println!("  ltmatrix [SUBCOMMAND]");
-    println!();
-    println!("OPTIONS:");
-    println!("  -h, --help           Print help information");
-    println!("  -V, --version        Print version information");
-    println!("  --fast               Fast execution mode");
-    println!("  --expert             Expert execution mode");
-    println!("  --dry-run            Generate plan without execution");
-    println!("  --resume             Resume interrupted work");
-    println!("  --ask                Ask for clarification before planning");
-    println!("  --output <FORMAT>    Output format (text, json)");
-    println!("  --log-level <LEVEL>  Log level (trace, debug, info, warn, error)");
-    println!("  --log-file <FILE>    Log file path");
-    println!();
-    println!("SUBCOMMANDS:");
-    println!("  release      Create a release build");
-    println!("  completions  Generate shell completions");
-    println!("  man          Generate man pages");
-    println!("  cleanup      Clean up workspace state");
-    println!();
-    println!("EXAMPLES:");
-    println!("  ltmatrix \"build a REST API\"");
-    println!("  ltmatrix --fast \"add error handling\"");
-    println!("  ltmatrix --expert \"implement authentication\"");
-    println!("  ltmatrix --resume");
-    println!("  ltmatrix cleanup --remove --force");
-    println!("  ltmatrix completions bash");
-    println!();
-    println!("For more information, visit: https://github.com/bigfish/ltmatrix");
+    // Use a helper to safely write to stdout, ignoring pipe errors
+    let mut write_out = |msg: &str| {
+        let _ = std::io::stdout().write_all(msg.as_bytes());
+    };
+
+    write_out("ltmatrix - Long-Time Agent Orchestrator\n");
+    write_out("\n");
+    write_out("USAGE:\n");
+    write_out("  ltmatrix [OPTIONS] <GOAL>\n");
+    write_out("  ltmatrix [SUBCOMMAND]\n");
+    write_out("\n");
+    write_out("OPTIONS:\n");
+    write_out("  -h, --help           Print help information\n");
+    write_out("  -V, --version        Print version information\n");
+    write_out("  --fast               Fast execution mode\n");
+    write_out("  --expert             Expert execution mode\n");
+    write_out("  --dry-run            Generate plan without execution\n");
+    write_out("  --resume             Resume interrupted work\n");
+    write_out("  --ask                Ask for clarification before planning\n");
+    write_out("  --output <FORMAT>    Output format (text, json)\n");
+    write_out("  --log-level <LEVEL>  Log level (trace, debug, info, warn, error)\n");
+    write_out("  --log-file <FILE>    Log file path\n");
+    write_out("\n");
+    write_out("SUBCOMMANDS:\n");
+    write_out("  release      Create a release build\n");
+    write_out("  completions  Generate shell completions\n");
+    write_out("  man          Generate man pages\n");
+    write_out("  cleanup      Clean up workspace state\n");
+    write_out("\n");
+    write_out("EXAMPLES:\n");
+    write_out("  ltmatrix \"build a REST API\"\n");
+    write_out("  ltmatrix --fast \"add error handling\"\n");
+    write_out("  ltmatrix --expert \"implement authentication\"\n");
+    write_out("  ltmatrix --resume\n");
+    write_out("  ltmatrix cleanup --remove --force\n");
+    write_out("  ltmatrix completions bash\n");
+    write_out("\n");
+    write_out("For more information, visit: https://github.com/bigfish/ltmatrix\n");
+
+    // Flush stdout, ignoring any errors
+    let _ = std::io::stdout().flush();
 }
 
 // =============================================================================

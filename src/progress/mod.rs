@@ -9,6 +9,7 @@
 
 pub mod bar;
 pub mod eta;
+pub mod live_display;
 pub mod manager;
 pub mod reporter;
 pub mod tracker;
@@ -19,6 +20,9 @@ pub use bar::{
     BarColorConfig,
 };
 pub use eta::{format_eta, EtaCalculator, HistoricalData, MetricsCollector};
+pub use live_display::{
+    get_display, init_display, LiveDisplay, LogMessage, MessageLevel, ProgressStats,
+};
 pub use manager::{ProgressBarType, ProgressManager, ProgressManagerConfig};
 pub use reporter::{
     flush, report_progress_summary, report_status, report_task_blocked, report_task_complete,

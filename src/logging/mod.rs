@@ -76,7 +76,7 @@ pub use logger::{init_api_trace_logging, init_logging, init_logging_with_managem
 /// let _guard = init_default_logging().expect("Failed to initialize logging");
 /// ```
 pub fn init_default_logging() -> std::io::Result<logger::LogGuard> {
-    init_logging(LogLevel::Info, None::<&str>)
+    init_logging(LogLevel::Info, None::<&str>, true)
 }
 
 #[cfg(test)]
