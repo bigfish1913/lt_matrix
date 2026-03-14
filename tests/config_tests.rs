@@ -235,6 +235,8 @@ fn test_agent_config_to_agent() {
         command: Some("test-cmd".to_string()),
         model: Some("test-model".to_string()),
         timeout: Some(1234),
+        api_key: None,
+        base_url: None,
     };
 
     let agent = agent_config_to_agent("test-agent", &config).unwrap();
@@ -252,6 +254,8 @@ fn test_agent_config_missing_required_fields() {
         command: None,
         model: Some("test-model".to_string()),
         timeout: Some(3600),
+        api_key: None,
+        base_url: None,
     };
 
     let result = agent_config_to_agent("test", &config_no_command);
@@ -266,6 +270,8 @@ fn test_agent_config_missing_required_fields() {
         command: Some("test-cmd".to_string()),
         model: None,
         timeout: Some(3600),
+        api_key: None,
+        base_url: None,
     };
 
     let result = agent_config_to_agent("test", &config_no_model);
@@ -279,6 +285,8 @@ fn test_agent_config_default_timeout() {
         command: Some("test-cmd".to_string()),
         model: Some("test-model".to_string()),
         timeout: None, // Not specified
+        api_key: None,
+        base_url: None,
     };
 
     let agent = agent_config_to_agent("test", &config).unwrap();
@@ -294,12 +302,16 @@ fn test_get_default_agent() {
         command: Some("claude".to_string()),
         model: Some("claude-sonnet-4-6".to_string()),
         timeout: Some(3600),
+        api_key: None,
+        base_url: None,
     };
 
     let opencode_config = ltmatrix::config::settings::AgentConfig {
         command: Some("opencode".to_string()),
         model: Some("gpt-4".to_string()),
         timeout: Some(1800),
+        api_key: None,
+        base_url: None,
     };
 
     config.agents.insert("claude".to_string(), claude_config);
@@ -333,6 +345,8 @@ fn test_merge_configs_project_overrides_global() {
         command: Some("global-cmd".to_string()),
         model: Some("global-model".to_string()),
         timeout: Some(1000),
+        api_key: None,
+        base_url: None,
     };
     global
         .agents
@@ -345,6 +359,8 @@ fn test_merge_configs_project_overrides_global() {
         command: Some("project-cmd".to_string()),
         model: Some("project-model".to_string()),
         timeout: Some(2000),
+        api_key: None,
+        base_url: None,
     };
     project
         .agents
@@ -370,6 +386,8 @@ fn test_merge_configs_preserves_global_when_not_in_project() {
         command: Some("global-cmd".to_string()),
         model: Some("global-model".to_string()),
         timeout: Some(1000),
+        api_key: None,
+        base_url: None,
     };
     global
         .agents
@@ -577,6 +595,8 @@ fn test_config_serialization_roundtrip() {
             command: Some("claude".to_string()),
             model: Some("claude-sonnet-4-6".to_string()),
             timeout: Some(3600),
+            api_key: None,
+            base_url: None,
         },
     );
 
@@ -821,6 +841,8 @@ fn test_cli_timeout_overrides_agent_config() {
         command: Some("claude".to_string()),
         model: Some("claude-sonnet-4-6".to_string()),
         timeout: Some(3600), // Config specifies 1 hour
+        api_key: None,
+        base_url: None,
     };
 
     // CLI --timeout argument should override agent config
@@ -926,12 +948,16 @@ fn test_cli_agent_override() {
         command: Some("claude".to_string()),
         model: Some("claude-sonnet-4-6".to_string()),
         timeout: Some(3600),
+        api_key: None,
+        base_url: None,
     };
 
     let opencode_config = ltmatrix::config::settings::AgentConfig {
         command: Some("opencode".to_string()),
         model: Some("gpt-4".to_string()),
         timeout: Some(1800),
+        api_key: None,
+        base_url: None,
     };
 
     config.agents.insert("claude".to_string(), claude_config);

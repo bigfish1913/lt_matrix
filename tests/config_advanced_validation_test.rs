@@ -239,6 +239,8 @@ fn test_agent_config_with_all_fields_none() {
         command: None,
         model: None,
         timeout: None,
+        api_key: None,
+        base_url: None,
     };
 
     // Should be able to serialize and deserialize
@@ -283,6 +285,8 @@ fn test_config_serialization_roundtrip_with_all_fields() {
             command: Some("test-command".to_string()),
             model: Some("test-model".to_string()),
             timeout: Some(3600),
+            api_key: None,
+            base_url: None,
         },
     );
 
@@ -394,6 +398,8 @@ fn test_merge_with_empty_override_config() {
             command: Some("cmd1".to_string()),
             model: Some("model1".to_string()),
             timeout: Some(1000),
+            api_key: None,
+            base_url: None,
         },
     );
 
@@ -431,6 +437,8 @@ fn test_merge_with_empty_base_config() {
             command: Some("cmd1".to_string()),
             model: Some("model1".to_string()),
             timeout: Some(1000),
+            api_key: None,
+            base_url: None,
         },
     );
 

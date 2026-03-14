@@ -448,6 +448,8 @@ fn acceptance_5_4_merge_combines_all_sources() {
                     command: Some("cmd1".to_string()),
                     model: Some("model1".to_string()),
                     timeout: Some(100),
+                    api_key: None,
+                    base_url: None,
                 },
             );
             map.insert(
@@ -456,6 +458,8 @@ fn acceptance_5_4_merge_combines_all_sources() {
                     command: Some("cmd2".to_string()),
                     model: Some("model2".to_string()),
                     timeout: Some(200),
+                    api_key: None,
+                    base_url: None,
                 },
             );
             map
@@ -493,6 +497,8 @@ fn acceptance_5_4_merge_combines_all_sources() {
                     command: Some("cmd1-updated".to_string()),
                     model: None,
                     timeout: Some(150),
+                    api_key: None,
+                    base_url: None,
                 },
             );
             map.insert(
@@ -501,6 +507,8 @@ fn acceptance_5_4_merge_combines_all_sources() {
                     command: Some("cmd3".to_string()),
                     model: Some("model3".to_string()),
                     timeout: Some(300),
+                    api_key: None,
+                    base_url: None,
                 },
             );
             map

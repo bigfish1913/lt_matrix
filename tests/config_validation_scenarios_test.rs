@@ -624,6 +624,8 @@ fn test_merge_agent_with_partial_override() {
             command: Some("base-command".to_string()),
             model: Some("base-model".to_string()),
             timeout: Some(1000),
+            api_key: None,
+            base_url: None,
         },
     );
 
@@ -634,6 +636,8 @@ fn test_merge_agent_with_partial_override() {
             command: None,                             // Keep base
             model: Some("override-model".to_string()), // Override
             timeout: None,                             // Keep base
+            api_key: None,
+            base_url: None,
         },
     );
 

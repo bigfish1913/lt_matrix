@@ -1094,6 +1094,51 @@ fn save_workspace_state(project_root: &Path, task_map: &HashMap<String, Task>) -
     Ok(())
 }
 
+/// Get execution order for tasks using topological sort
+///
+/// Returns tasks in dependency-respecting order.
+/// Tasks with no dependencies come first, followed by tasks that depend on them.
+pub fn get_execution_order(tasks: &HashMap<String, Task>) -> Result<Vec<String>> {
+    let mut result = Vec::new();
+    let mut visited = HashSet::new();
+    let mut temp_mark = HashSet::new();
+
+    fn visit(
+        task_id: &str,
+        tasks: &HashMap<String, Task>,
+        result: &mut Vec<String>,
+        visited: &mut HashSet<String>,
+        temp_mark: &mut HashSet<String>,
+    ) -> Result<()> {
+        if visited.contains(task_id) {
+            return Ok(());
+        }
+        if temp_mark.contains(task_id) {
+            anyhow::bail!("Cycle detected in task dependencies");
+        }
+
+        temp_mark.insert(task_id.to_string());
+
+        if let Some(task) = tasks.get(task_id) {
+            for dep in &task.depends_on {
+                visit(dep, tasks, result, visited, temp_mark)?;
+            }
+        }
+
+        temp_mark.remove(task_id);
+        visited.insert(task_id.to_string());
+        result.push(task_id.to_string());
+
+        Ok(())
+    }
+
+    for task_id in tasks.keys() {
+        visit(task_id, tasks, &mut result, &mut visited, &mut temp_mark)?;
+    }
+
+    Ok(result)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

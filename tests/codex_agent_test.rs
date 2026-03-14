@@ -468,6 +468,8 @@ fn factory_codex_rejects_zero_timeout() {
         timeout_secs: 0,
         max_retries: 3,
         enable_session: true,
+        api_key: None,
+        base_url: None,
     };
     assert!(factory.create_with_config(config).is_err());
 }

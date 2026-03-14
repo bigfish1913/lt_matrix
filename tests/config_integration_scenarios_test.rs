@@ -484,6 +484,8 @@ fn test_config_serialization_idempotence() {
                     command: Some("claude".to_string()),
                     model: Some("claude-sonnet-4-6".to_string()),
                     timeout: Some(3600),
+                    api_key: None,
+                    base_url: None,
                 },
             );
             map

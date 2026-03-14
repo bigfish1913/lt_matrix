@@ -160,6 +160,8 @@ fn ac13_factory_create_with_zero_timeout_fails() {
         timeout_secs: 0,
         max_retries: 3,
         enable_session: true,
+        api_key: None,
+        base_url: None,
     };
 
     assert!(
@@ -178,6 +180,8 @@ fn ac14_factory_create_with_empty_name_fails() {
         timeout_secs: 3600,
         max_retries: 3,
         enable_session: true,
+        api_key: None,
+        base_url: None,
     };
 
     assert!(

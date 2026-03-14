@@ -31,6 +31,8 @@ fn test_conflicting_agent_names_between_sources() {
             command: Some("claude-global".to_string()),
             model: Some("global-model".to_string()),
             timeout: Some(1800),
+            api_key: None,
+            base_url: None,
         },
     );
 
@@ -41,6 +43,8 @@ fn test_conflicting_agent_names_between_sources() {
             command: Some("claude-project".to_string()),
             model: Some("project-model".to_string()),
             timeout: Some(3600),
+            api_key: None,
+            base_url: None,
         },
     );
 
@@ -341,6 +345,8 @@ fn test_merge_with_partial_agent_configs() {
             command: Some("global-command".to_string()),
             model: None,
             timeout: None,
+            api_key: None,
+            base_url: None,
         },
     );
 
@@ -351,6 +357,8 @@ fn test_merge_with_partial_agent_configs() {
             command: None,
             model: Some("project-model".to_string()),
             timeout: Some(1800),
+            api_key: None,
+            base_url: None,
         },
     );
 
@@ -373,6 +381,8 @@ fn test_merge_preserves_unique_agents() {
             command: Some("cmd1".to_string()),
             model: Some("model1".to_string()),
             timeout: Some(1000),
+            api_key: None,
+            base_url: None,
         },
     );
 
@@ -383,6 +393,8 @@ fn test_merge_preserves_unique_agents() {
             command: Some("cmd2".to_string()),
             model: Some("model2".to_string()),
             timeout: Some(2000),
+            api_key: None,
+            base_url: None,
         },
     );
 
@@ -407,6 +419,8 @@ fn test_validation_timeout_boundary_values() {
             command: Some("test".to_string()),
             model: Some("test-model".to_string()),
             timeout: Some(86400), // Exactly 24 hours
+            api_key: None,
+            base_url: None,
         },
     );
     config.default = Some("test".to_string());
@@ -424,6 +438,8 @@ fn test_validation_timeout_just_over_limit() {
             command: Some("test".to_string()),
             model: Some("test-model".to_string()),
             timeout: Some(86401), // Just over 24 hours
+            api_key: None,
+            base_url: None,
         },
     );
     config.default = Some("test".to_string());
@@ -441,6 +457,8 @@ fn test_validation_max_depth_boundary() {
             command: Some("test".to_string()),
             model: Some("test-model".to_string()),
             timeout: Some(3600),
+            api_key: None,
+            base_url: None,
         },
     );
     config.default = Some("test".to_string());
@@ -468,6 +486,8 @@ fn test_validation_max_retries_boundary() {
             command: Some("test".to_string()),
             model: Some("test-model".to_string()),
             timeout: Some(3600),
+            api_key: None,
+            base_url: None,
         },
     );
     config.default = Some("test".to_string());
@@ -506,6 +526,8 @@ fn test_validation_mode_specific_timeout_minimums() {
                 command: Some("test".to_string()),
                 model: Some("test-model".to_string()),
                 timeout: Some(3600),
+                api_key: None,
+                base_url: None,
             },
         );
         config.default = Some("test".to_string());

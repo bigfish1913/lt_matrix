@@ -367,6 +367,8 @@ fn test_merge_with_overlapping_fields() {
                     command: Some("base-command".to_string()),
                     model: Some("base-model".to_string()),
                     timeout: Some(100),
+                    api_key: None,
+                    base_url: None,
                 },
             );
             map
@@ -392,6 +394,8 @@ fn test_merge_with_overlapping_fields() {
                     command: Some("override-command".to_string()),
                     model: None,        // Keep base
                     timeout: Some(200), // Override
+                    api_key: None,
+                    base_url: None,
                 },
             );
             map
@@ -438,6 +442,8 @@ fn test_merge_multiple_levels() {
                     command: Some("cmd1".to_string()),
                     model: Some("model1".to_string()),
                     timeout: Some(100),
+                    api_key: None,
+                    base_url: None,
                 },
             );
             map
@@ -463,6 +469,8 @@ fn test_merge_multiple_levels() {
                     command: Some("cmd2".to_string()),
                     model: None,
                     timeout: Some(200),
+                    api_key: None,
+                    base_url: None,
                 },
             );
             map

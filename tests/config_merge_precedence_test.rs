@@ -253,6 +253,8 @@ fn test_deep_merge_agent_configs() {
             command: Some("claude".to_string()),
             model: Some("claude-sonnet-4-6".to_string()),
             timeout: Some(3600),
+            api_key: None,
+            base_url: None,
         },
     );
     global_agents.insert(
@@ -261,6 +263,8 @@ fn test_deep_merge_agent_configs() {
             command: Some("other-cmd".to_string()),
             model: Some("other-model".to_string()),
             timeout: Some(1800),
+            api_key: None,
+            base_url: None,
         },
     );
     global_config.agents = global_agents;
@@ -274,6 +278,8 @@ fn test_deep_merge_agent_configs() {
             command: None,                              // Not specified, should inherit from global
             model: Some("claude-opus-4-6".to_string()), // Override global
             timeout: None,                              // Not specified, should inherit from global
+            api_key: None,
+            base_url: None,
         },
     );
     // Project adds a new agent
@@ -283,6 +289,8 @@ fn test_deep_merge_agent_configs() {
             command: Some("project-cmd".to_string()),
             model: Some("project-model".to_string()),
             timeout: Some(7200),
+            api_key: None,
+            base_url: None,
         },
     );
     project_config.agents = project_agents;
@@ -664,6 +672,8 @@ fn test_validation_valid_config() {
                     command: Some("claude".to_string()),
                     model: Some("claude-sonnet-4-6".to_string()),
                     timeout: Some(3600),
+                    api_key: None,
+                    base_url: None,
                 },
             );
             map
@@ -695,6 +705,8 @@ fn test_validation_missing_default_agent() {
                     command: Some("claude".to_string()),
                     model: Some("claude-sonnet-4-6".to_string()),
                     timeout: Some(3600),
+                    api_key: None,
+                    base_url: None,
                 },
             );
             map
@@ -735,6 +747,8 @@ fn test_validation_zero_timeout() {
                     command: Some("test".to_string()),
                     model: Some("test-model".to_string()),
                     timeout: Some(0), // Invalid: must be positive
+                    api_key: None,
+                    base_url: None,
                 },
             );
             map
@@ -775,6 +789,8 @@ fn test_validation_excessive_timeout() {
                     command: Some("test".to_string()),
                     model: Some("test-model".to_string()),
                     timeout: Some(100000), // > 24 hours
+                    api_key: None,
+                    base_url: None,
                 },
             );
             map
@@ -815,6 +831,8 @@ fn test_validation_empty_command() {
                     command: Some("".to_string()), // Invalid: empty command
                     model: Some("test-model".to_string()),
                     timeout: Some(3600),
+                    api_key: None,
+                    base_url: None,
                 },
             );
             map
@@ -855,6 +873,8 @@ fn test_validation_mode_max_depth_exceeded() {
                     command: Some("test".to_string()),
                     model: Some("test-model".to_string()),
                     timeout: Some(3600),
+                    api_key: None,
+                    base_url: None,
                 },
             );
             map
@@ -907,6 +927,8 @@ fn test_validation_mode_max_retries_exceeded() {
                     command: Some("test".to_string()),
                     model: Some("test-model".to_string()),
                     timeout: Some(3600),
+                    api_key: None,
+                    base_url: None,
                 },
             );
             map
@@ -959,6 +981,8 @@ fn test_validation_mode_zero_timeout_plan() {
                     command: Some("test".to_string()),
                     model: Some("test-model".to_string()),
                     timeout: Some(3600),
+                    api_key: None,
+                    base_url: None,
                 },
             );
             map
@@ -1011,6 +1035,8 @@ fn test_validation_mode_zero_timeout_exec() {
                     command: Some("test".to_string()),
                     model: Some("test-model".to_string()),
                     timeout: Some(3600),
+                    api_key: None,
+                    base_url: None,
                 },
             );
             map
@@ -1063,6 +1089,8 @@ fn test_validation_mode_too_short_timeout_exec() {
                     command: Some("test".to_string()),
                     model: Some("test-model".to_string()),
                     timeout: Some(3600),
+                    api_key: None,
+                    base_url: None,
                 },
             );
             map
@@ -1116,6 +1144,8 @@ fn test_validation_fast_mode_allows_short_timeout() {
                     command: Some("test".to_string()),
                     model: Some("test-model".to_string()),
                     timeout: Some(3600),
+                    api_key: None,
+                    base_url: None,
                 },
             );
             map
@@ -1245,6 +1275,8 @@ fn test_agent_config_partial_override() {
             command: Some("base-command".to_string()),
             model: Some("base-model".to_string()),
             timeout: Some(1000),
+            api_key: None,
+            base_url: None,
         },
     );
 
@@ -1255,6 +1287,8 @@ fn test_agent_config_partial_override() {
             command: None,                             // Keep base
             model: Some("override-model".to_string()), // Override base
             timeout: None,                             // Keep base
+            api_key: None,
+            base_url: None,
         },
     );
 
@@ -1265,6 +1299,8 @@ fn test_agent_config_partial_override() {
                 command: override_agent.command.or(base_agent.command),
                 model: override_agent.model.or(base_agent.model),
                 timeout: override_agent.timeout.or(base_agent.timeout),
+                api_key: override_agent.api_key.or(base_agent.api_key),
+                base_url: override_agent.base_url.or(base_agent.base_url),
             };
             merged.insert(key, merged_agent);
         }

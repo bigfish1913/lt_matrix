@@ -197,6 +197,7 @@ fn test_man_subcommand_execution() {
 
     let args = Args {
         goal: None,
+        file: None,
         agent: None,
         mode: None,
         fast: false,

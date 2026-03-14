@@ -57,6 +57,8 @@ fn test_settings_agent_config_exists() {
         command: Some("test-command".to_string()),
         model: Some("test-model".to_string()),
         timeout: Some(3600),
+        api_key: None,
+        base_url: None,
     };
 
     assert_eq!(agent_config.command, Some("test-command".to_string()));
@@ -430,6 +432,8 @@ fn test_multiple_agents_in_config() {
             command: Some("claude".to_string()),
             model: Some("claude-sonnet-4-6".to_string()),
             timeout: Some(3600),
+            api_key: None,
+            base_url: None,
         },
     );
 
@@ -439,6 +443,8 @@ fn test_multiple_agents_in_config() {
             command: Some("opencode".to_string()),
             model: Some("gpt-4".to_string()),
             timeout: Some(1800),
+            api_key: None,
+            base_url: None,
         },
     );
 

@@ -150,6 +150,8 @@ fn factory_validates_zero_timeout() {
         timeout_secs: 0,
         max_retries: 3,
         enable_session: true,
+        api_key: None,
+        base_url: None,
     };
 
     let result = factory.validate_config("claude", &bad);

@@ -98,6 +98,7 @@ impl ClaudeAgent {
         let mut args = vec![
             self.agent.command.clone(),
             "--print".to_string(), // Non-interactive mode, read from stdin
+            "--dangerously-skip-permissions".to_string(), // Allow tool execution without prompts
         ];
 
         // Add model selection if specified
@@ -165,8 +166,9 @@ impl ClaudeAgent {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .kill_on_drop(true)
-            // Remove CLAUDECODE to allow nested Claude CLI execution
-            .env_remove("CLAUDECODE");
+            // Clear CLAUDECODE to allow nested Claude CLI execution
+            // Using env_set instead of env_remove for Windows/MINGW compatibility
+            .env("CLAUDECODE", "");
 
         // Set API key from config if available, otherwise use environment variable
         if let Some(ref api_key) = self.agent.api_key {
