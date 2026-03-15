@@ -11,10 +11,12 @@ pub mod agent;
 pub mod feature;
 pub mod mcp;
 pub mod modes;
+pub mod prompts;
 pub mod settings;
 pub mod telemetry;
 
 // Re-export commonly used types
 pub use feature::FeatureConfig;
+pub use prompts::PromptsConfig;
 pub use settings::Config;
 pub use telemetry::TelemetryConfig;

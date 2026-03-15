@@ -401,30 +401,20 @@ fn safe_flush() {
 fn execute_run_command(app_state: &mut AppState) -> Result<i32> {
     let args = &app_state.args;
 
-    // Maximum document size for display (characters)
-    const MAX_DOC_DISPLAY_SIZE: usize = 5000;
-
     // Build goal from CLI args and/or file
     let goal = match (&args.goal, &args.file) {
         (Some(cli_goal), Some(file_path)) => {
-            // Both provided: combine them
+            // Both provided: CLI goal as main, file as reference
             let file_content = std::fs::read_to_string(file_path)
                 .with_context(|| format!("Failed to read goal from file: {}", file_path.display()))?;
 
-            // Truncate file content for display if too long
-            let truncated_content = if file_content.len() > MAX_DOC_DISPLAY_SIZE {
-                format!("{}...\n\n[文档已截断，共 {} 字符]", &file_content[..MAX_DOC_DISPLAY_SIZE], file_content.len())
-            } else {
-                file_content.clone()
-            };
-
             info!("Goal from CLI: {}", cli_goal);
-            info!("Goal from file: {} ({} chars)", file_path.display(), file_content.len());
+            info!("Reference file: {} ({} chars)", file_path.display(), file_content.len());
 
-            // Combine: CLI goal as main instruction, file as reference document
+            // Combine: CLI goal as main instruction, file content as reference (not displayed)
             format!(
-                "{}\n\n---\n参考文档:\n{}\n---",
-                cli_goal, truncated_content
+                "{}\n\n---\n参考文档内容:\n{}\n---",
+                cli_goal, file_content
             )
         }
         (None, Some(file_path)) => {
@@ -432,15 +422,8 @@ fn execute_run_command(app_state: &mut AppState) -> Result<i32> {
             let file_content = std::fs::read_to_string(file_path)
                 .with_context(|| format!("Failed to read goal from file: {}", file_path.display()))?;
 
-            // Truncate if too long
-            let goal = if file_content.len() > MAX_DOC_DISPLAY_SIZE {
-                info!("Goal from file: {} (truncated from {} chars)", file_path.display(), file_content.len());
-                format!("{}...\n\n[文档已截断，共 {} 字符]", &file_content[..MAX_DOC_DISPLAY_SIZE], file_content.len())
-            } else {
-                info!("Goal from file: {} ({} chars)", file_path.display(), file_content.len());
-                file_content
-            };
-            goal
+            info!("Goal from file: {} ({} chars)", file_path.display(), file_content.len());
+            file_content
         }
         (Some(cli_goal), None) => {
             // CLI only
@@ -514,9 +497,7 @@ fn execute_run_command(app_state: &mut AppState) -> Result<i32> {
     if args.dry_run {
         info!("Dry run mode: pipeline will be planned but not executed");
         safe_println("\nDry run mode - planning without execution");
-        safe_println(&format!("Goal: {}", goal));
         safe_println(&format!("Mode: {:?}", mode));
-        safe_println("");
         safe_println("Remove --dry-run to execute the pipeline");
         safe_flush();
         return Ok(0);
@@ -563,9 +544,7 @@ fn execute_run_command(app_state: &mut AppState) -> Result<i32> {
         .context("Failed to create pipeline orchestrator")?;
 
     safe_println("\nStarting Pipeline Execution");
-    safe_println(&format!("Goal: {}", goal));
     safe_println(&format!("Mode: {}", mode));
-    safe_println("");
     safe_flush();
 
     // Execute the pipeline

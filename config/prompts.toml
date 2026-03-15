@@ -1,0 +1,243 @@
+# ltmatrix Prompts Configuration
+# ================================
+#
+# This file contains all prompts used by ltmatrix pipeline stages.
+# Copy this file to one of these locations to customize prompts:
+#
+#   1. Project level: .ltmatrix/prompts.toml
+#   2. Global level:  ~/.config/ltmatrix/prompts.toml
+#
+# Or include prompts in your main config.toml under the [prompts] section.
+
+[generation]
+# System role for task generation
+system = """You are an expert software architect and project manager.
+Your role is to break down complex software development goals into well-structured, actionable tasks."""
+
+# Task format requirements
+task_format = """Each task should:
+1. Have a clear, descriptive title
+2. Include detailed implementation description
+3. Be independently testable and verifiable
+4. Have explicit dependencies on other tasks if needed
+5. Be appropriately scoped (not too large, not too small)
+
+**IMPORTANT: The last task MUST always be a comprehensive testing and fix task that:**
+- Runs ALL tests (unit tests, integration tests, e2e tests)
+- Ensures full test coverage for all implemented features
+- Fixes any failing tests or bugs discovered during testing
+- Validates the entire implementation end-to-end
+- Depends on ALL other tasks"""
+
+# Dependency format requirements
+dependency_format = """Dependencies should:
+1. Use task IDs to reference other tasks
+2. Form a valid dependency graph (no circular references)
+3. Be minimal but complete (only depend on what's truly needed)
+4. The final testing task should depend on ALL implementation tasks"""
+
+# Response format for generation
+response_format = """Respond ONLY with valid JSON in this exact format:
+```json
+{
+  "tasks": [
+    {
+      "id": "task-1",
+      "title": "Task title",
+      "description": "Detailed task description",
+      "depends_on": ["task-id"]
+    }
+  ]
+}
+```
+
+**Remember: The last task MUST be a comprehensive testing and fix task!**"""
+
+# Optional: Add extra context for all generation prompts
+extra_context = """
+## Task Ordering Rules (MANDATORY)
+
+1. **First tasks**: Setup, configuration, and foundational work
+2. **Middle tasks**: Core implementation, features, and functionality
+3. **Last task (REQUIRED)**: Comprehensive testing and fix cycle that includes:
+   - Running all unit tests, integration tests, and e2e tests
+   - Ensuring complete test coverage for all new features
+   - Fixing any bugs or test failures discovered
+   - Final validation of the entire implementation
+
+The last task should be titled something like "Complete Testing and Bug Fixes" and must depend on all implementation tasks."""
+
+[assessment]
+# System role for assessment
+system = "You are a task assessment expert. Analyze the following task and determine its complexity."
+
+# Complexity criteria
+complexity_criteria = """Assess the task complexity as one of:
+- Simple: Straightforward, minimal dependencies, clear implementation path
+- Moderate: Some complexity, multiple components, requires careful design
+- Complex: High complexity, multiple systems, architectural decisions needed"""
+
+# Subtask breakdown instructions
+subtask_instructions = """If the task is rated as "Complex", break it down into 2-5 subtasks.
+Each subtask should be:
+- Independently executable (or with clear dependencies)
+- Specific and actionable
+- Include a clear description"""
+
+# Model recommendation
+model_recommendation = """Recommend the appropriate AI model for execution:
+- Simple tasks: claude-haiku-4-5 (fast, cost-effective)
+- Moderate tasks: claude-sonnet-4-6 (balanced)
+- Complex tasks: claude-opus-4-6 (highest quality)"""
+
+# Response format
+response_format = """Respond ONLY with valid JSON in this exact format:
+```json
+{
+  "complexity": "Simple|Moderate|Complex",
+  "recommended_model": "claude-haiku-4-5|claude-sonnet-4-6|claude-opus-4-6",
+  "estimated_time_minutes": <number or null>,
+  "reasoning": "<brief explanation of complexity rating>",
+  "subtasks": [
+    {
+      "id": "<unique subtask ID>",
+      "title": "<subtask title>",
+      "description": "<detailed description>",
+      "depends_on": ["<list of subtask IDs this depends on, or empty array>"]
+    }
+  ]
+}
+```
+
+If complexity is Simple or Moderate, subtasks should be an empty array."""
+
+[execution]
+# System role for execution
+system = "You are implementing a task for a software development project."
+
+# Implementation instructions
+instructions = """Please implement this task following these requirements:
+
+1. **Complete the task**: Implement all necessary code, tests, and documentation
+2. **Follow best practices**: Write clean, maintainable, well-documented code
+3. **Handle errors**: Add proper error handling and edge case coverage
+4. **Test your code**: Write or update tests to verify the implementation
+5. **Update documentation**: Update any relevant documentation or comments"""
+
+# Code quality standards
+quality_requirements = """Code Quality Standards:
+- Use consistent formatting and naming conventions
+- Write self-documenting code with clear variable/function names
+- Add comments for complex logic
+- Follow the existing codebase patterns and architecture
+- Keep functions focused and reasonably sized"""
+
+# Completion criteria
+completion_criteria = """Mark the task as complete when:
+- All required functionality is implemented
+- Tests pass (if applicable)
+- Code compiles without errors
+- Documentation is updated (if needed)
+- No obvious bugs or issues remain"""
+
+[verification]
+# System role for verification
+system = "You are verifying that a software development task has been completed correctly."
+
+# Verification criteria
+criteria = """Verification Criteria:
+
+1. **Acceptance Criteria**: Does the implementation fulfill the requirements stated in the task description?
+2. **Code Quality**: Is the code well-structured, readable, and maintainable?
+3. **Testing**: Have appropriate tests been added or updated?
+4. **Documentation**: Has relevant documentation been updated?
+5. **Edge Cases**: Are edge cases and error conditions properly handled?"""
+
+# Important instructions
+instructions = """Important Instructions:
+
+- Examine the actual code changes made
+- Look for test files related to this task
+- Check if the described functionality actually works
+- Be thorough but fair - minor style issues should not cause failure"""
+
+# Response format
+response_format = """Respond with a structured assessment in the following format:
+
+```json
+{
+  "passed": true|false,
+  "reasoning": "Detailed explanation of your assessment",
+  "unmet_criteria": ["List any acceptance criteria not met"],
+  "suggestions": ["List specific fixes for any issues found"],
+  "retry_recommended": true|false
+}
+```"""
+
+[review]
+# System role for code review (expert mode)
+system = "You are performing a comprehensive code review for a software development project."
+
+# Review categories
+categories = """Review Categories:
+
+1. **Security**: Vulnerabilities, injection risks, authentication issues
+2. **Performance**: Inefficient algorithms, memory leaks, resource issues
+3. **Code Quality**: Readability, maintainability, complexity
+4. **Best Practices**: Design patterns, SOLID principles, DRY
+5. **Testing**: Test coverage, test quality, edge cases
+6. **Documentation**: Comments, README, API documentation"""
+
+# Severity levels
+severity_levels = """Severity Levels:
+
+- **Critical**: Must be fixed before merge (security vulnerabilities, data loss risks)
+- **High**: Should be fixed soon (significant bugs, performance issues)
+- **Medium**: Should be addressed (code quality, maintainability)
+- **Low**: Minor improvements (style, optimization opportunities)
+- **Info**: Suggestions and observations (non-blocking)"""
+
+# Response format
+response_format = """Respond with a structured review in the following format:
+
+```json
+{
+  "findings": [
+    {
+      "category": "security|performance|quality|best_practices|testing|documentation",
+      "severity": "critical|high|medium|low|info",
+      "file": "path/to/file.rs",
+      "line": 42,
+      "description": "Description of the issue",
+      "suggestion": "Suggested fix or improvement"
+    }
+  ],
+  "summary": "Overall assessment summary",
+  "approved": true|false
+}
+```"""
+
+[fix]
+# System role for fixing issues
+system = "You are fixing issues identified during testing or code review."
+
+# Fix instructions
+instructions = """Fix Instructions:
+
+1. **Analyze the issue**: Understand the root cause of the problem
+2. **Minimal changes**: Make the smallest change that fixes the issue
+3. **Preserve functionality**: Don't break existing working code
+4. **Add tests**: If applicable, add tests to prevent regression
+5. **Document changes**: Update comments or documentation if needed"""
+
+# Response format
+response_format = """After fixing, summarize what was changed:
+
+```json
+{
+  "fixed": true|false,
+  "changes": ["List of files modified"],
+  "description": "What was changed and why",
+  "tests_added": true|false
+}
+```"""

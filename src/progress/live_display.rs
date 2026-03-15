@@ -2,12 +2,12 @@
 // SPDX-License-Identifier: MIT
 // This file is part of ltmatrix under the MIT License.
 
-//! Live progress display with fixed header and scrolling messages
+//! Live progress display with clean, minimal output
 //!
 //! This module provides a terminal UI that shows:
-//! - Fixed header with overall progress, elapsed time, and last activity
-//! - Scrolling message area for Claude output and status updates
-//! - Animated spinner and progress indicators with background refresh
+//! - Single-line status with spinner, progress bar, and current task
+//! - Clean message output without screen flickering
+//! - No complex borders or animations that cause display issues
 
 use std::io::{self, Write};
 use std::sync::{
@@ -18,6 +18,44 @@ use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
 use crate::terminal::ColorConfig;
+
+/// Enable ANSI escape code support on Windows
+#[cfg(windows)]
+fn enable_ansi_support() -> io::Result<()> {
+    use std::os::windows::raw::HANDLE;
+
+    const STD_OUTPUT_HANDLE: u32 = 0xFFFFFFF5;
+    const ENABLE_VIRTUAL_TERMINAL_PROCESSING: u32 = 0x0004;
+
+    extern "system" {
+        fn GetStdHandle(nStdHandle: u32) -> HANDLE;
+        fn GetConsoleMode(hConsoleHandle: HANDLE, lpMode: *mut u32) -> i32;
+        fn SetConsoleMode(hConsoleHandle: HANDLE, dwMode: u32) -> i32;
+    }
+
+    unsafe {
+        let handle = GetStdHandle(STD_OUTPUT_HANDLE);
+        if handle.is_null() {
+            return Err(io::Error::new(io::ErrorKind::Other, "Failed to get stdout handle"));
+        }
+
+        let mut mode: u32 = 0;
+        if GetConsoleMode(handle, &mut mode) == 0 {
+            return Err(io::Error::new(io::ErrorKind::Other, "Failed to get console mode"));
+        }
+
+        if SetConsoleMode(handle, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING) == 0 {
+            return Err(io::Error::new(io::ErrorKind::Other, "Failed to set console mode"));
+        }
+    }
+
+    Ok(())
+}
+
+#[cfg(not(windows))]
+fn enable_ansi_support() -> io::Result<()> {
+    Ok(())
+}
 
 /// Message severity level
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -54,8 +92,8 @@ pub struct ProgressStats {
 pub struct LiveDisplay {
     /// Color configuration
     color_config: ColorConfig,
-    /// Start time
-    start_time: Instant,
+    /// Start time (mutable for reset)
+    start_time: Arc<Mutex<Option<Instant>>>,
     /// Last activity time
     last_activity: Arc<Mutex<Instant>>,
     /// Progress statistics
@@ -74,32 +112,32 @@ pub struct LiveDisplay {
     refresh_handle: Mutex<Option<JoinHandle<()>>>,
     /// Flag to stop background thread
     running: Arc<AtomicBool>,
+    /// Track if we've taken over the terminal
+    terminal_captured: Arc<Mutex<bool>>,
 }
 
-/// Spinner frames for animation
-const SPINNER_FRAMES: &[&str] = &["⠋", "⠙", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
-
-/// Progress animation frames
-const ANIMATION: &[&str] = &["█", "▓", "▒", "░", "▓", "▒"];
+/// Simple spinner frames (ASCII-safe)
+const SPINNER_FRAMES: &[&str] = &["-", "\\", "|", "/"];
 
 /// Refresh interval in milliseconds
-const REFRESH_INTERVAL_MS: u64 = 150;
+const REFRESH_INTERVAL_MS: u64 = 200;
 
 impl LiveDisplay {
     /// Create a new live display
     pub fn new(enabled: bool) -> Self {
         LiveDisplay {
             color_config: ColorConfig::auto(),
-            start_time: Instant::now(),
+            start_time: Arc::new(Mutex::new(None)),
             last_activity: Arc::new(Mutex::new(Instant::now())),
             stats: Arc::new(Mutex::new(ProgressStats::default())),
             messages: Arc::new(Mutex::new(Vec::new())),
-            max_messages: 100,
+            max_messages: 50,
             enabled,
-            header_lines: 6,
+            header_lines: 3, // Number of status lines we use
             frame: Arc::new(Mutex::new(0)),
             refresh_handle: Mutex::new(None),
             running: Arc::new(AtomicBool::new(false)),
+            terminal_captured: Arc::new(Mutex::new(false)),
         }
     }
 
@@ -109,9 +147,31 @@ impl LiveDisplay {
             return;
         }
 
-        // Already running
+        // Enable ANSI support on Windows - this is critical for Windows terminals
+        #[cfg(windows)]
+        {
+            let _ = enable_ansi_support();
+        }
+
+        // Always reset start time for a fresh start - this ensures time is accurate
+        if let Ok(mut start) = self.start_time.lock() {
+            *start = Some(Instant::now());
+        }
+
+        // Mark terminal as captured
+        if let Ok(mut captured) = self.terminal_captured.lock() {
+            *captured = true;
+        }
+
+        // Already running - just update the start time above and return
         if self.running.load(Ordering::SeqCst) {
             return;
+        }
+
+        // Print initial empty lines for cursor movement
+        let header_lines = self.header_lines;
+        for _ in 0..(header_lines + 1) {
+            println!();
         }
 
         self.running.store(true, Ordering::SeqCst);
@@ -119,21 +179,27 @@ impl LiveDisplay {
         let stats = Arc::clone(&self.stats);
         let messages = Arc::clone(&self.messages);
         let last_activity = Arc::clone(&self.last_activity);
+        let start_time = Arc::clone(&self.start_time);
         let frame = Arc::clone(&self.frame);
         let running = Arc::clone(&self.running);
-        let start_time = self.start_time;
-        let header_lines = self.header_lines;
+        let terminal_captured = Arc::clone(&self.terminal_captured);
 
         let handle = thread::spawn(move || {
             while running.load(Ordering::SeqCst) {
-                // Render display
-                Self::render_internal(
+                let current_start_time = if let Ok(st) = start_time.lock() {
+                    *st
+                } else {
+                    None
+                };
+
+                Self::render_frame(
                     &stats,
                     &messages,
                     &last_activity,
                     &frame,
-                    start_time,
+                    current_start_time,
                     header_lines,
+                    &terminal_captured,
                 );
 
                 thread::sleep(Duration::from_millis(REFRESH_INTERVAL_MS));
@@ -145,7 +211,7 @@ impl LiveDisplay {
         }
     }
 
-    /// Stop the background refresh thread
+    /// Stop the background refresh thread and restore terminal
     pub fn stop(&self) {
         self.running.store(false, Ordering::SeqCst);
 
@@ -154,6 +220,30 @@ impl LiveDisplay {
                 let _ = h.join();
             }
         }
+
+        self.restore_terminal();
+    }
+
+    /// Restore terminal to normal state
+    fn restore_terminal(&self) {
+        let is_captured = if let Ok(c) = self.terminal_captured.lock() {
+            *c
+        } else {
+            false
+        };
+
+        if !is_captured {
+            return;
+        }
+
+        if let Ok(mut captured) = self.terminal_captured.lock() {
+            *captured = false;
+        }
+
+        // Restore terminal - just show cursor and add newline
+        let term = console::Term::stdout();
+        let _ = term.show_cursor();
+        println!();
     }
 
     /// Get spinner frame
@@ -161,9 +251,9 @@ impl LiveDisplay {
         SPINNER_FRAMES[frame % SPINNER_FRAMES.len()]
     }
 
-    /// Get progress animation characters
-    fn get_progress_animation(frame: usize) -> &'static str {
-        ANIMATION[frame % ANIMATION.len()]
+    /// Get progress animation characters (no longer used, kept for compatibility)
+    fn get_progress_animation(_frame: usize) -> &'static str {
+        ""
     }
 
     /// Get terminal size using console crate
@@ -199,13 +289,25 @@ impl LiveDisplay {
     pub fn log(&self, level: MessageLevel, source: &str, message: &str) {
         if !self.enabled {
             let prefix = match level {
-                MessageLevel::Info => "ℹ",
-                MessageLevel::Success => "✓",
-                MessageLevel::Warning => "⚠",
-                MessageLevel::Error => "✗",
-                MessageLevel::Debug => "◇",
+                MessageLevel::Info => "i",
+                MessageLevel::Success => "+",
+                MessageLevel::Warning => "!",
+                MessageLevel::Error => "x",
+                MessageLevel::Debug => "-",
             };
-            println!("[{}] {} {}", prefix, source, message);
+            let colored_prefix = match level {
+                MessageLevel::Info => console::style(prefix).blue(),
+                MessageLevel::Success => console::style(prefix).green(),
+                MessageLevel::Warning => console::style(prefix).yellow(),
+                MessageLevel::Error => console::style(prefix).red(),
+                MessageLevel::Debug => console::style(prefix).dim(),
+            };
+            let source_part = if source.is_empty() {
+                String::new()
+            } else {
+                format!("[{}] ", console::style(source).cyan())
+            };
+            println!("{} {}{}", colored_prefix, source_part, message);
             return;
         }
 
@@ -289,31 +391,42 @@ impl LiveDisplay {
         "未知".to_string()
     }
 
-    /// Create a progress bar string
+    /// Create a compact progress bar string
     fn create_progress_bar(current: usize, total: usize, width: usize) -> String {
         if total == 0 {
-            return "░".repeat(width);
+            return format!("[{}] 0%", " ".repeat(width));
         }
 
         let percentage = current as f64 / total as f64;
         let filled = (percentage * width as f64).round() as usize;
         let filled = filled.min(width);
 
-        let bar: String = "█".repeat(filled);
-        let empty: String = "░".repeat(width.saturating_sub(filled));
+        let bar: String = "=".repeat(filled);
+        let empty: String = " ".repeat(width.saturating_sub(filled));
 
-        format!("{}{} {:.0}%", bar, empty, percentage * 100.0)
+        format!("[{}{}] {:3.0}%", bar, empty, percentage * 100.0)
     }
 
-    /// Internal render function used by background thread
-    fn render_internal(
+    /// Render a single frame (used by background thread)
+    fn render_frame(
         stats: &Arc<Mutex<ProgressStats>>,
         messages: &Arc<Mutex<Vec<LogMessage>>>,
         last_activity: &Arc<Mutex<Instant>>,
         frame: &Arc<Mutex<usize>>,
-        start_time: Instant,
+        start_time: Option<Instant>,
         header_lines: usize,
+        terminal_captured: &Arc<Mutex<bool>>,
     ) {
+        let is_captured = if let Ok(c) = terminal_captured.lock() {
+            *c
+        } else {
+            false
+        };
+
+        if !is_captured {
+            return;
+        }
+
         let stats = match stats.lock() {
             Ok(s) => s.clone(),
             Err(_) => return,
@@ -324,10 +437,11 @@ impl LiveDisplay {
             Err(_) => return,
         };
 
-        let elapsed = start_time.elapsed();
-        let idle = Self::format_idle_time(last_activity);
+        let elapsed = match start_time {
+            Some(st) => st.elapsed(),
+            None => Duration::from_secs(0),
+        };
 
-        // Get and increment animation frame
         let frame_num = match frame.lock() {
             Ok(mut f) => {
                 let current = *f;
@@ -337,124 +451,76 @@ impl LiveDisplay {
             Err(_) => 0,
         };
 
-        let (width, height) = Self::get_terminal_size();
-        let width = width.max(40);
-        let height = height.max(10);
+        let term = console::Term::stdout();
+        let (width, _) = term.size();
+        let width = (width as usize).max(40);
 
-        let mut output = String::new();
-        output.push_str("\x1B[H");
-        output.push_str("\x1B[?25l");
+        // Move cursor up to rewrite status lines (no flickering clear)
+        for _ in 0..header_lines {
+            let _ = term.move_cursor_up(1);
+        }
 
-        // ===== HEADER =====
-        let border = "═".repeat(width.saturating_sub(22));
         let spinner = Self::get_spinner(frame_num);
 
-        output.push_str(&format!("\x1B[2K\r\x1B[1;36m╔{}╗\x1B[0m\n", border));
-        output.push_str(&format!(
-            "\x1B[2K\r\x1B[1;36m║\x1B[1;37m{:.^width$}\x1B[0m \x1B[1;33m{}\x1B[0m \x1B[36m║\x1B[0m\n",
-            format!(" ltmatrix - {} {} ", stats.stage, spinner),
-            width = width.saturating_sub(4)
-        ));
-        output.push_str(&format!("\x1B[2K\r\x1B[1;36m╠{}╣\x1B[0m\n", border));
+        // Line 1: Single line with all info
+        let progress_pct = if stats.total_tasks > 0 {
+            (stats.completed_tasks * 100) / stats.total_tasks
+        } else {
+            0
+        };
 
-        // Progress bar
+        let current_task = if let Some(ref task) = stats.current_task {
+            let max_len = width.saturating_sub(35);
+            if task.len() > max_len {
+                format!("{}...", &task[..max_len.saturating_sub(3)])
+            } else {
+                task.clone()
+            }
+        } else {
+            "Waiting...".to_string()
+        };
+
+        let status_line = format!(
+            "{} [{}] {} ({}/{}) {}",
+            spinner,
+            Self::format_duration(elapsed),
+            stats.stage,
+            stats.completed_tasks,
+            stats.total_tasks,
+            current_task
+        );
+
+        let _ = term.clear_line();
+        let _ = term.write_line(&format!("{}", console::style(status_line).cyan().bold()));
+
+        // Line 2: Progress bar
         let progress_bar = Self::create_progress_bar(
             stats.completed_tasks,
             stats.total_tasks.max(stats.completed_tasks),
-            width.saturating_sub(22),
+            width.saturating_sub(15),
         );
-        let anim = Self::get_progress_animation(frame_num);
-        output.push_str(&format!(
-            "\x1B[2K\r\x1B[1;36m║\x1B[32m{} \x1B[1;33m{}\x1B[0m \x1B[1;36m║\x1B[0m\n",
-            progress_bar, anim
+        let _ = term.clear_line();
+        let _ = term.write_line(&format!(
+            "  {}",
+            console::style(progress_bar).green()
         ));
 
-        // Stats line
-        let stats_line = format!(
-            "阶段: {}/{}  │  任务: {}/{}  │  失败: {}  │  耗时: {}  │  {}",
-            stats.stage_index + 1,
-            stats.total_stages,
-            stats.completed_tasks,
-            stats.total_tasks,
-            stats.failed_tasks,
-            Self::format_duration(elapsed),
-            idle
-        );
-        output.push_str(&format!(
-            "\x1B[2K\r\x1B[1;36m║\x1B[90m{:<width$}\x1B[0m \x1B[1;36m║\x1B[0m\n",
-            stats_line,
-            width = width.saturating_sub(4)
-        ));
-
-        // Current task
-        let current_line = if let Some(ref task) = stats.current_task {
-            let truncated = if task.len() > width.saturating_sub(15) {
-                format!("{}...", &task[..width.saturating_sub(18)])
+        // Line 3: Current task (target) - highlighted
+        let _ = term.clear_line();
+        let target = if let Some(ref task) = stats.current_task {
+            let max_len = width.saturating_sub(12);
+            if task.len() > max_len {
+                format!("> {}", &task[..max_len.saturating_sub(3)])
             } else {
-                task.clone()
-            };
-            format!("当前: {}", truncated)
+                format!("> {}", task)
+            }
         } else {
-            format!("{} 等待中...", Self::get_spinner(frame_num))
+            format!("{} Waiting...", spinner)
         };
-        output.push_str(&format!(
-            "\x1B[2K\r\x1B[1;36m║\x1B[33m{:<width$}\x1B[0m \x1B[1;36m║\x1B[0m\n",
-            current_line,
-            width = width.saturating_sub(4)
-        ));
-        output.push_str(&format!("\x1B[2K\r\x1B[1;36m╚{}╝\x1B[0m\n", border));
+        let _ = term.write_line(&format!("{}", console::style(target).yellow().bold()));
 
-        // ===== MESSAGES =====
-        let available_lines = height.saturating_sub(header_lines + 2);
-        let msg_start = messages.len().saturating_sub(available_lines);
-        let mut lines_written = 0;
-
-        for msg in messages.iter().skip(msg_start) {
-            let prefix = match msg.level {
-                MessageLevel::Info => "\x1B[34mℹ\x1B[0m",
-                MessageLevel::Success => "\x1B[32m✓\x1B[0m",
-                MessageLevel::Warning => "\x1B[33m⚠\x1B[0m",
-                MessageLevel::Error => "\x1B[31m✗\x1B[0m",
-                MessageLevel::Debug => "\x1B[90m◇\x1B[0m",
-            };
-
-            let time_ago = msg.timestamp.elapsed();
-            let time_str = if time_ago < Duration::from_secs(60) {
-                format!("{}s", time_ago.as_secs())
-            } else {
-                format!("{}m", time_ago.as_secs() / 60)
-            };
-
-            let source = if msg.source.is_empty() {
-                String::new()
-            } else {
-                format!("[{}] ", msg.source)
-            };
-
-            let max_msg_len = width.saturating_sub(time_str.len() + source.len() + 5);
-            let truncated_msg = if msg.message.len() > max_msg_len {
-                format!("{}...", &msg.message[..max_msg_len.saturating_sub(3)])
-            } else {
-                msg.message.clone()
-            };
-
-            output.push_str(&format!(
-                "\x1B[2K\r{} \x1B[90m{:>3}\x1B[0m \x1B[36m{:<10}\x1B[0m {}\n",
-                prefix, time_str, source, truncated_msg
-            ));
-            lines_written += 1;
-        }
-
-        let max_clear = 3;
-        let extra_lines_to_clear = available_lines.saturating_sub(lines_written).min(max_clear);
-        for _ in 0..extra_lines_to_clear {
-            output.push_str("\x1B[2K\r\n");
-        }
-
-        output.push_str("\x1B[?25h");
-
-        let _ = io::stdout().write_all(output.as_bytes());
-        let _ = io::stdout().flush();
+        // Flush output
+        let _ = term.flush();
     }
 
     /// Render the display (manual trigger)
@@ -462,19 +528,24 @@ impl LiveDisplay {
         if !self.enabled {
             return;
         }
-        Self::render_internal(
+        let current_start_time = if let Ok(st) = self.start_time.lock() {
+            *st
+        } else {
+            None
+        };
+        Self::render_frame(
             &self.stats,
             &self.messages,
             &self.last_activity,
             &self.frame,
-            self.start_time,
+            current_start_time,
             self.header_lines,
+            &self.terminal_captured,
         );
     }
 
     /// Clear the display and show final summary
     pub fn finish(&self, success: bool, summary: &str) {
-        // Stop background thread first
         self.stop();
 
         if !self.enabled {
@@ -482,26 +553,47 @@ impl LiveDisplay {
             return;
         }
 
-        let mut output = String::new();
-        output.push_str("\x1B[2J\x1B[H");
-
-        let elapsed = self.start_time.elapsed();
-        let status = if success {
-            "\x1B[32m✓ 完成\x1B[0m"
+        let current_start_time = if let Ok(st) = self.start_time.lock() {
+            *st
         } else {
-            "\x1B[31m✗ 失败\x1B[0m"
+            None
         };
 
-        output.push_str(&format!(
-            "\n{} \x1B[90m总耗时: {}\x1B[0m\n\n",
-            status,
-            Self::format_duration(elapsed)
-        ));
-        output.push_str(summary);
-        output.push_str("\n");
+        let elapsed = match current_start_time {
+            Some(st) => st.elapsed(),
+            None => Duration::from_secs(0),
+        };
 
-        let _ = io::stdout().write_all(output.as_bytes());
-        let _ = io::stdout().flush();
+        let status = if success {
+            console::style("[OK]").green().bold()
+        } else {
+            console::style("[FAIL]").red().bold()
+        };
+
+        println!();
+        println!(
+            "{} Completed in {}",
+            status,
+            console::style(Self::format_duration(elapsed)).cyan()
+        );
+        println!();
+        println!("{}", summary);
+        println!();
+    }
+
+    /// Reset for a new execution
+    pub fn reset(&self) {
+        self.stop();
+
+        if let Ok(mut start) = self.start_time.lock() {
+            *start = None;
+        }
+        if let Ok(mut msgs) = self.messages.lock() {
+            msgs.clear();
+        }
+        if let Ok(mut st) = self.stats.lock() {
+            *st = ProgressStats::default();
+        }
     }
 }
 

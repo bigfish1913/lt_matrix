@@ -30,18 +30,29 @@ tasks:
       - target/release/ltmatrix.exe
 
   install:
-    desc: Install binary to ~/bin
-    deps: [build]
+    desc: Clean, build and install binary to PATH
+    vars:
+      INSTALL_DIR:
+        sh: |
+          if command -v ltmatrix &>/dev/null; then
+            dirname "$(command -v ltmatrix)"
+          elif [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
+            echo "/mingw64/bin"
+          else
+            echo "${HOME}/bin"
+          fi
     cmds:
-      - cmd: mkdir -p "${HOME}/bin"
+      - cargo clean
+      - cargo build --release
+      - cmd: mkdir -p "{{.INSTALL_DIR}}"
         platforms: [linux, darwin]
-      - cmd: mkdir -p "${HOME}/bin" 2>/dev/null || true
+      - cmd: mkdir -p "{{.INSTALL_DIR}}" 2>/dev/null || true
         platforms: [windows]
-      - cmd: cp target/release/ltmatrix "${HOME}/bin/ltmatrix" && chmod +x "${HOME}/bin/ltmatrix"
+      - cmd: cp target/release/ltmatrix "{{.INSTALL_DIR}}/ltmatrix" && chmod +x "{{.INSTALL_DIR}}/ltmatrix"
         platforms: [linux, darwin]
-      - cmd: cp target/release/ltmatrix.exe "${HOME}/bin/ltmatrix.exe"
+      - cmd: cp target/release/ltmatrix.exe "{{.INSTALL_DIR}}/ltmatrix.exe"
         platforms: [windows]
-      - echo "Installed to ${HOME}/bin/ltmatrix"
+      - echo "Installed to {{.INSTALL_DIR}}/ltmatrix"
 
   install-global:
     desc: Install binary to /usr/local/bin (requires sudo)
@@ -111,3 +122,25 @@ tasks:
       - rm -f "${HOME}/bin/ltmatrix.exe"
       - rm -f /usr/local/bin/ltmatrix
       - echo "Uninstalled ltmatrix"
+
+  install-hooks:
+    desc: Install Git hooks
+    cmds:
+      - git config core.hooksPath .githooks
+      - echo "Git hooks installed"
+
+  uninstall-hooks:
+    desc: Uninstall Git hooks
+    cmds:
+      - git config --unset core.hooksPath
+      - echo "Git hooks uninstalled"
+
+  docs:
+    desc: Build documentation
+    cmds:
+      - cargo doc --no-deps
+
+  docs-open:
+    desc: Build and open documentation
+    cmds:
+      - cargo doc --open --no-deps

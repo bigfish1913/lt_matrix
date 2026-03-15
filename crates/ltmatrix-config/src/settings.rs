@@ -15,6 +15,7 @@ use tracing::debug;
 
 use crate::feature::FeatureConfig;
 use crate::mcp::LoadedMcpConfig;
+use crate::prompts::PromptsConfig;
 use crate::telemetry::TelemetryConfig;
 use ltmatrix_core::Agent;
 
@@ -71,6 +72,10 @@ pub struct Config {
     /// Memory summarization configuration
     #[serde(default)]
     pub memory: MemoryConfig,
+
+    /// Prompts configuration
+    #[serde(default)]
+    pub prompts: PromptsConfig,
 }
 
 /// Pipeline configuration
@@ -135,6 +140,7 @@ impl Default for Config {
             mcp: None,
             telemetry: TelemetryConfig::default(),
             memory: MemoryConfig::default(),
+            prompts: PromptsConfig::default(),
         }
     }
 }
@@ -681,6 +687,7 @@ fn merge_config(base: Config, override_config: Config) -> Config {
         pool: override_config.pool,
         mcp: override_config.mcp.or(base.mcp),
         memory: override_config.memory,
+        prompts: override_config.prompts,
     }
 }
 

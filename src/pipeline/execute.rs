@@ -31,6 +31,7 @@ use ltmatrix_agent::backend::{AgentBackend, ExecutionConfig};
 use ltmatrix_agent::claude::ClaudeAgent;
 use ltmatrix_agent::session::SessionManager;
 use ltmatrix_agent::AgentPool;
+use ltmatrix_config::PromptsConfig;
 use ltmatrix_core::{AgentType, Mode, ModeConfig, Task, TaskComplexity, TaskStatus};
 
 /// Load unified memory from all sources (ProjectMemory, RunMemory, legacy)
@@ -977,6 +978,17 @@ async fn execute_with_session(
 
 /// Build execution prompt for the agent
 pub fn build_execution_prompt(task: &Task, context: &str) -> String {
+    build_execution_prompt_with_prompts(task, context, None)
+}
+
+/// Build execution prompt with optional prompts configuration
+pub fn build_execution_prompt_with_prompts(task: &Task, context: &str, prompts: Option<&PromptsConfig>) -> String {
+    // If prompts configuration is available, use it
+    if let Some(p) = prompts {
+        return p.build_execution_prompt(&task.title, &task.description, context);
+    }
+
+    // Otherwise, use the built-in prompt
     format!(
         r#"You are implementing a task for a software development project.
 

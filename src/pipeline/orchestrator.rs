@@ -41,7 +41,6 @@
 //! ```
 
 use anyhow::{bail, Result};
-use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use std::collections::HashSet;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -57,7 +56,7 @@ use crate::pipeline::memory::{update_memory, MemoryConfig};
 use crate::pipeline::review::{review_tasks, ReviewConfig};
 use crate::pipeline::test::{test_tasks, TestConfig};
 use crate::pipeline::verify::{verify_tasks, VerifyConfig};
-use crate::progress::live_display::{get_display, init_display, ProgressStats};
+use crate::progress::live_display::{init_display, ProgressStats};
 use crate::workspace::{RecoverySummary, WorkspaceState};
 use ltmatrix_agent::AgentPool;
 use ltmatrix_core::{ExecutionMode, ModeConfig, PipelineStage, Task};
@@ -285,41 +284,17 @@ struct PipelineState {
 
     /// Start time
     start_time: std::time::Instant,
-
-    /// Progress bars (if enabled)
-    progress: Option<MultiProgress>,
 }
 
 impl PipelineState {
-    fn new(show_progress: bool) -> Self {
-        let progress = if show_progress {
-            Some(MultiProgress::new())
-        } else {
-            None
-        };
-
+    fn new(_show_progress: bool) -> Self {
         PipelineState {
             current_stage: None,
             tasks: Vec::new(),
             completed_tasks: HashSet::new(),
             failed_tasks: HashSet::new(),
             start_time: std::time::Instant::now(),
-            progress,
         }
-    }
-
-    fn create_progress_bar(&self, message: &str) -> Option<ProgressBar> {
-        self.progress.as_ref().map(|multi| {
-            let pb = multi.add(ProgressBar::new(100));
-            pb.set_style(
-                ProgressStyle::default_bar()
-                    .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {msg}")
-                    .unwrap()
-                    .progress_chars("=>-"),
-            );
-            pb.set_message(message.to_string());
-            pb
-        })
     }
 }
 
@@ -466,51 +441,44 @@ impl PipelineOrchestrator {
         &self,
         goal: &str,
         stage: PipelineStage,
-        stage_index: usize,
+        _stage_index: usize,
     ) -> Result<Vec<Task>> {
         info!("Executing stage: {:?}", stage);
 
-        let stage_name = stage.display_name();
-        let pb = self.create_stage_progress_bar(stage_name, stage_index);
-
         let result = match stage {
-            PipelineStage::Generate => self.execute_generate_stage(goal, pb.as_ref()).await?,
+            PipelineStage::Generate => self.execute_generate_stage(goal).await?,
             PipelineStage::Assess => {
                 let tasks = self.get_current_tasks().await?;
-                self.execute_assess_stage(tasks, pb.as_ref()).await?
+                self.execute_assess_stage(tasks).await?
             }
             PipelineStage::Execute => {
                 let tasks = self.get_current_tasks().await?;
-                self.execute_execute_stage(tasks, pb.as_ref()).await?
+                self.execute_execute_stage(tasks).await?
             }
             PipelineStage::Test => {
                 let tasks = self.get_completed_tasks().await?;
-                self.execute_test_stage(tasks, pb.as_ref()).await?
+                self.execute_test_stage(tasks).await?
             }
             PipelineStage::Review => {
                 let tasks = self.get_completed_tasks().await?;
-                self.execute_review_stage(tasks, pb.as_ref()).await?
+                self.execute_review_stage(tasks).await?
             }
             PipelineStage::Verify => {
                 let tasks = self.get_completed_tasks().await?;
-                self.execute_verify_stage(tasks, pb.as_ref()).await?
+                self.execute_verify_stage(tasks).await?
             }
             PipelineStage::Commit => {
                 let tasks = self.get_completed_tasks().await?;
-                self.execute_commit_stage(tasks, pb.as_ref()).await?
+                self.execute_commit_stage(tasks).await?
             }
             PipelineStage::Memory => {
                 let tasks = self.get_completed_tasks().await?;
-                self.execute_memory_stage(tasks, pb.as_ref()).await?
+                self.execute_memory_stage(tasks).await?
             }
         };
 
         // Update state with new tasks
         self.update_tasks(result.clone()).await?;
-
-        if let Some(pb) = pb {
-            pb.finish_with_message(format!("{} completed", stage_name));
-        }
 
         Ok(result)
     }
@@ -519,18 +487,8 @@ impl PipelineOrchestrator {
     async fn execute_generate_stage(
         &self,
         goal: &str,
-        pb: Option<&ProgressBar>,
     ) -> Result<Vec<Task>> {
-        if let Some(pb) = pb {
-            pb.set_message("Generating tasks from goal...");
-        }
-
         let generation_result = generate_tasks(goal, &self.config.generate_config).await?;
-
-        if let Some(pb) = pb {
-            pb.set_message(format!("Generated {} tasks", generation_result.task_count));
-            pb.inc(50);
-        }
 
         info!("Generated {} tasks from goal", generation_result.task_count);
         Ok(generation_result.tasks)
@@ -540,18 +498,8 @@ impl PipelineOrchestrator {
     async fn execute_assess_stage(
         &self,
         tasks: Vec<Task>,
-        pb: Option<&ProgressBar>,
     ) -> Result<Vec<Task>> {
-        if let Some(pb) = pb {
-            pb.set_message(format!("Assessing {} tasks...", tasks.len()));
-        }
-
         let assessed_tasks = assess_tasks(tasks, &self.config.assess_config).await?;
-
-        if let Some(pb) = pb {
-            pb.set_message(format!("Assessed {} tasks", assessed_tasks.len()));
-            pb.inc(50);
-        }
 
         Ok(assessed_tasks)
     }
@@ -560,28 +508,12 @@ impl PipelineOrchestrator {
     async fn execute_execute_stage(
         &self,
         tasks: Vec<Task>,
-        pb: Option<&ProgressBar>,
     ) -> Result<Vec<Task>> {
         if tasks.is_empty() {
             return Ok(tasks);
         }
 
-        if let Some(pb) = pb {
-            pb.set_message(format!("Executing {} tasks...", tasks.len()));
-        }
-
         let (executed_tasks, _stats) = execute_tasks(tasks, &self.config.execute_config).await?;
-
-        // Update progress
-        if let Some(pb) = pb {
-            let completed = executed_tasks.iter().filter(|t| t.is_completed()).count();
-            pb.set_message(format!(
-                "Executed {}/{} tasks",
-                completed,
-                executed_tasks.len()
-            ));
-            pb.inc(50);
-        }
 
         Ok(executed_tasks)
     }
@@ -590,7 +522,6 @@ impl PipelineOrchestrator {
     async fn execute_test_stage(
         &self,
         tasks: Vec<Task>,
-        pb: Option<&ProgressBar>,
     ) -> Result<Vec<Task>> {
         if !self.config.execution_mode.run_tests() {
             debug!("Test stage skipped in Fast mode");
@@ -601,17 +532,7 @@ impl PipelineOrchestrator {
             return Ok(tasks);
         }
 
-        if let Some(pb) = pb {
-            pb.set_message(format!("Testing {} tasks...", tasks.len()));
-        }
-
         let tested_tasks = test_tasks(tasks, &self.config.test_config).await?;
-
-        if let Some(pb) = pb {
-            let passed = tested_tasks.iter().filter(|t| t.is_completed()).count();
-            pb.set_message(format!("Tested {}/{} tasks", passed, tested_tasks.len()));
-            pb.inc(50);
-        }
 
         Ok(tested_tasks)
     }
@@ -620,7 +541,6 @@ impl PipelineOrchestrator {
     async fn execute_review_stage(
         &self,
         tasks: Vec<Task>,
-        pb: Option<&ProgressBar>,
     ) -> Result<Vec<Task>> {
         if !self.config.review_config.should_run() {
             debug!("Review stage skipped: only runs in expert mode with verify enabled");
@@ -629,10 +549,6 @@ impl PipelineOrchestrator {
 
         if tasks.is_empty() {
             return Ok(tasks);
-        }
-
-        if let Some(pb) = pb {
-            pb.set_message(format!("Reviewing {} tasks...", tasks.len()));
         }
 
         let (reviewed_tasks, review_summary) =
@@ -650,17 +566,6 @@ impl PipelineOrchestrator {
             "Review completed: {} tasks assessed, {} blocking issues found",
             review_summary.total_tasks, blocking_count
         );
-
-        if let Some(pb) = pb {
-            let approved = reviewed_tasks.iter().filter(|t| t.is_completed()).count();
-            pb.set_message(format!(
-                "Reviewed {}/{} tasks ({} blocking issues)",
-                approved,
-                reviewed_tasks.len(),
-                blocking_count
-            ));
-            pb.inc(50);
-        }
 
         // If there are critical issues that block the pipeline, log them
         if blocking_count > 0 {
@@ -703,27 +608,12 @@ impl PipelineOrchestrator {
     async fn execute_verify_stage(
         &self,
         tasks: Vec<Task>,
-        pb: Option<&ProgressBar>,
     ) -> Result<Vec<Task>> {
         if tasks.is_empty() {
             return Ok(tasks);
         }
 
-        if let Some(pb) = pb {
-            pb.set_message(format!("Verifying {} tasks...", tasks.len()));
-        }
-
         let (verified_tasks, _summary) = verify_tasks(tasks, &self.config.verify_config).await?;
-
-        if let Some(pb) = pb {
-            let verified = verified_tasks.iter().filter(|t| t.is_completed()).count();
-            pb.set_message(format!(
-                "Verified {}/{} tasks",
-                verified,
-                verified_tasks.len()
-            ));
-            pb.inc(50);
-        }
 
         Ok(verified_tasks)
     }
@@ -732,25 +622,12 @@ impl PipelineOrchestrator {
     async fn execute_commit_stage(
         &self,
         tasks: Vec<Task>,
-        pb: Option<&ProgressBar>,
     ) -> Result<Vec<Task>> {
         if tasks.is_empty() {
             return Ok(tasks);
         }
 
-        if let Some(pb) = pb {
-            pb.set_message("Committing changes...");
-        }
-
         let (committed_tasks, _summary) = commit_tasks(tasks, &self.config.commit_config).await?;
-
-        if let Some(pb) = pb {
-            pb.set_message(format!(
-                "Committed changes for {} tasks",
-                committed_tasks.len()
-            ));
-            pb.inc(100);
-        }
 
         Ok(committed_tasks)
     }
@@ -759,22 +636,12 @@ impl PipelineOrchestrator {
     async fn execute_memory_stage(
         &self,
         tasks: Vec<Task>,
-        pb: Option<&ProgressBar>,
     ) -> Result<Vec<Task>> {
         if tasks.is_empty() {
             return Ok(tasks);
         }
 
-        if let Some(pb) = pb {
-            pb.set_message("Updating project memory...");
-        }
-
         update_memory(&tasks, &self.config.memory_config).await?;
-
-        if let Some(pb) = pb {
-            pb.set_message("Updated project memory");
-            pb.inc(100);
-        }
 
         Ok(tasks)
     }
@@ -807,20 +674,6 @@ impl PipelineOrchestrator {
     async fn set_current_stage(&self, stage: PipelineStage) {
         let mut state = self.state.write().await;
         state.current_stage = Some(stage);
-    }
-
-    /// Create a progress bar for a stage
-    fn create_stage_progress_bar(
-        &self,
-        stage_name: &str,
-        stage_index: usize,
-    ) -> Option<ProgressBar> {
-        if !self.config.show_progress {
-            return None;
-        }
-
-        let state = self.state.try_read().ok()?;
-        state.create_progress_bar(&format!("Stage {}: {}", stage_index + 1, stage_name))
     }
 
     /// Check for recovery opportunity at startup
@@ -985,12 +838,9 @@ impl PipelineOrchestrator {
     async fn execute_stage_from_state(
         &self,
         stage: PipelineStage,
-        stage_index: usize,
+        _stage_index: usize,
     ) -> Result<Vec<Task>> {
         info!("Executing stage: {:?}", stage);
-
-        let stage_name = stage.display_name();
-        let pb = self.create_stage_progress_bar(stage_name, stage_index);
 
         let tasks = self.get_current_tasks().await?;
         let result = match stage {
@@ -998,36 +848,32 @@ impl PipelineOrchestrator {
                 // For resume, we skip generation and use existing tasks
                 return Ok(tasks);
             }
-            PipelineStage::Assess => self.execute_assess_stage(tasks, pb.as_ref()).await?,
-            PipelineStage::Execute => self.execute_execute_stage(tasks, pb.as_ref()).await?,
+            PipelineStage::Assess => self.execute_assess_stage(tasks).await?,
+            PipelineStage::Execute => self.execute_execute_stage(tasks).await?,
             PipelineStage::Test => {
                 let completed = self.get_completed_tasks().await?;
-                self.execute_test_stage(completed, pb.as_ref()).await?
+                self.execute_test_stage(completed).await?
             }
             PipelineStage::Review => {
                 let completed = self.get_completed_tasks().await?;
-                self.execute_review_stage(completed, pb.as_ref()).await?
+                self.execute_review_stage(completed).await?
             }
             PipelineStage::Verify => {
                 let completed = self.get_completed_tasks().await?;
-                self.execute_verify_stage(completed, pb.as_ref()).await?
+                self.execute_verify_stage(completed).await?
             }
             PipelineStage::Commit => {
                 let completed = self.get_completed_tasks().await?;
-                self.execute_commit_stage(completed, pb.as_ref()).await?
+                self.execute_commit_stage(completed).await?
             }
             PipelineStage::Memory => {
                 let completed = self.get_completed_tasks().await?;
-                self.execute_memory_stage(completed, pb.as_ref()).await?
+                self.execute_memory_stage(completed).await?
             }
         };
 
         // Update state with new tasks
         self.update_tasks(result.clone()).await?;
-
-        if let Some(pb) = pb {
-            pb.finish_with_message(format!("{} completed", stage_name));
-        }
 
         Ok(result)
     }

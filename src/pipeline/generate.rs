@@ -19,6 +19,7 @@ use tracing::{debug, info, warn};
 
 use ltmatrix_agent::backend::{AgentBackend, ExecutionConfig};
 use ltmatrix_agent::ClaudeAgent;
+use ltmatrix_config::PromptsConfig;
 use ltmatrix_core::{AgentType, Task, TaskComplexity, TaskStatus};
 
 /// Configuration for the generation stage
@@ -41,6 +42,9 @@ pub struct GenerateConfig {
 
     /// Execution mode (affects task granularity)
     pub execution_mode: ExecutionMode,
+
+    /// Prompts configuration (optional)
+    pub prompts: Option<PromptsConfig>,
 }
 
 impl Default for GenerateConfig {
@@ -52,6 +56,7 @@ impl Default for GenerateConfig {
             max_tasks: 50,
             enable_validation: true,
             execution_mode: ExecutionMode::Standard,
+            prompts: None,
         }
     }
 }
@@ -66,6 +71,7 @@ impl GenerateConfig {
             max_tasks: 20,
             enable_validation: true,
             execution_mode: ExecutionMode::Fast,
+            prompts: None,
         }
     }
 
@@ -78,7 +84,14 @@ impl GenerateConfig {
             max_tasks: 100,
             enable_validation: true,
             execution_mode: ExecutionMode::Expert,
+            prompts: None,
         }
+    }
+
+    /// Set prompts configuration
+    pub fn with_prompts(mut self, prompts: PromptsConfig) -> Self {
+        self.prompts = Some(prompts);
+        self
     }
 }
 
@@ -548,6 +561,17 @@ pub async fn generate_tasks(goal: &str, config: &GenerateConfig) -> Result<Gener
 
 /// Builds the generation prompt for Claude
 fn build_generation_prompt(goal: &str, config: &GenerateConfig) -> String {
+    // If prompts configuration is available, use it
+    if let Some(ref prompts) = config.prompts {
+        let mode = match config.execution_mode {
+            ExecutionMode::Fast => "fast",
+            ExecutionMode::Standard => "standard",
+            ExecutionMode::Expert => "expert",
+        };
+        return prompts.build_generation_prompt(goal, mode);
+    }
+
+    // Otherwise, use the built-in prompt
     let (task_hint, granularity_hint) = match config.execution_mode {
         ExecutionMode::Fast => (
             "5-15 high-level tasks",
@@ -595,6 +619,15 @@ fn build_generation_prompt(goal: &str, config: &GenerateConfig) -> String {
 
 5. {}
 
+## MANDATORY: Final Testing Task
+
+**IMPORTANT: The last task MUST always be a comprehensive testing and fix task that:**
+- Runs ALL tests (unit tests, integration tests, e2e tests)
+- Fixes any failing tests or bugs discovered during testing
+- Ensures complete test coverage for all implemented features
+- Validates the entire implementation end-to-end
+- Depends on ALL other implementation tasks
+
 ## Response Format
 
 Respond ONLY with valid JSON in this exact format:
@@ -617,18 +650,25 @@ Respond ONLY with valid JSON in this exact format:
       "description": "<Detailed description>",
       "depends_on": ["task-1"],
       "complexity": "Simple|Moderate|Complex"
+    }},
+    {{
+      "id": "task-N",
+      "title": "Complete Testing and Bug Fixes",
+      "description": "Run all tests (unit, integration, e2e), fix any failures, ensure complete test coverage, and validate the entire implementation end-to-end.",
+      "depends_on": ["task-1", "task-2", "...all previous task IDs..."],
+      "complexity": "Moderate"
     }}
   ]
 }}
 ```
 
 ## Important Notes
-
 - Task IDs must be unique and follow the pattern: `task-1`, `task-2`, etc.
 - The first task should have `depends_on: []` (no dependencies)
 - Avoid circular dependencies
 - Be realistic about complexity
 - Focus on actionable implementation steps
+- **The last task MUST be a comprehensive testing task that depends on all other tasks**
 "#,
         goal, task_hint, granularity_hint
     )
@@ -636,11 +676,6 @@ Respond ONLY with valid JSON in this exact format:
 
 /// Parses Claude's response and extracts tasks
 fn parse_generation_response(response: &str) -> Result<Vec<Task>> {
-    // Debug: print response to help debugging
-    eprintln!("=== DEBUG: Raw Agent Response ===");
-    eprintln!("{}", response);
-    eprintln!("=== End of Response ===");
-
     // Extract JSON from response
     let json_str =
         extract_json_block(response).context("No JSON block found in generation response")?;
